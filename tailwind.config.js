@@ -7,18 +7,26 @@ export default {
   theme: {
     extend: {
       colors: {
+        fluent: {
+          blue: '#0f6cbd',
+          primary: '#0078d4',
+          dark: '#115ea3',
+          tint: '#ebf3fc',
+          bg: '#f8f9fa',
+          border: '#e1dfdd',
+        },
         brand: {
           50: '#eff6ff',
           100: '#dbeafe',
           200: '#bfdbfe',
           300: '#93c5fd',
           400: '#60a5fa',
-          500: '#3b82f6', // main brand blue
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-          950: '#172554',
+          500: '#0f6cbd', // Microsoft Fluent Blue
+          600: '#0078d4',
+          700: '#115ea3',
+          800: '#0f4c81',
+          900: '#0c3b66',
+          950: '#082845',
         }
       },
       fontFamily: {

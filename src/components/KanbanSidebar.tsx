@@ -30,7 +30,7 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
   ];
 
   return (
-    <aside className="w-64 bg-[#fbfbf9] border-r border-slate-200/60 h-screen sticky top-0 flex flex-col justify-between p-6 flex-shrink-0 z-30">
+    <aside className="w-64 bg-[#fcfcfb] border-r border-[#e1dfdd]/80 h-screen sticky top-0 flex flex-col justify-between p-6 flex-shrink-0 z-30">
       <div className="space-y-8">
         
         {/* Brand Header */}
@@ -38,11 +38,14 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
           onClick={() => { setActiveCategory('all'); setActiveToolId(null); }}
           className="flex items-center gap-2.5 cursor-pointer group px-2"
         >
-          <div className="w-8 h-8 bg-slate-900 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-sm">
+          <div className="w-8 h-8 bg-[#0f6cbd] rounded-xl flex items-center justify-center text-white font-black text-xs shadow-sm group-hover:bg-[#0078d4] transition-colors">
             SD
           </div>
           <span className="font-extrabold text-base text-slate-900 tracking-tight">
             스쿨독
+          </span>
+          <span className="text-[9px] font-bold bg-[#ebf3fc] text-[#0f6cbd] px-2 py-0.5 rounded-full border border-blue-200/50">
+            Fluent 2
           </span>
         </div>
 
@@ -57,11 +60,11 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
                 onClick={() => { setActiveCategory(item.id === 'collect' ? 'collect' : 'all'); setActiveToolId(null); }}
                 className={`w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left ${
                   isNavActive && item.id === 'all'
-                    ? 'text-slate-900 bg-slate-100/80 font-black'
-                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
+                    ? 'text-[#0f6cbd] bg-[#ebf3fc] font-black'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
                 }`}
               >
-                <Icon className="w-4 h-4 text-slate-400" />
+                <Icon className={`w-4 h-4 ${isNavActive && item.id === 'all' ? 'text-[#0f6cbd]' : 'text-slate-400'}`} />
                 <span>{item.label}</span>
               </button>
             );
@@ -82,11 +85,11 @@ export const KanbanSidebar: React.FC<KanbanSidebarProps> = ({
                   onClick={() => { setActiveCategory(cat.id); setActiveToolId(null); }}
                   className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition-all text-left ${
                     isActive
-                      ? 'bg-[#fef08a]/80 text-slate-900 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/60'
+                      ? 'bg-[#0f6cbd] text-white shadow-sm shadow-blue-950/20'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/60'
                   }`}
                 >
-                  <span className={`w-2 h-2 rounded-full ${cat.dotColor}`}></span>
+                  <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-white' : cat.dotColor}`}></span>
                   <span>{cat.label}</span>
                 </button>
               );

@@ -296,7 +296,7 @@ export const KanbanWorkspace: React.FC<KanbanWorkspaceProps> = ({
                 <div
                   key={card.id}
                   onClick={() => setActiveToolId(card.id)}
-                  className="bg-white rounded-2xl p-5 border border-slate-200/70 shadow-xs hover:shadow-md transition-all duration-200 group cursor-pointer space-y-3.5"
+                  className="bg-white rounded-2xl p-5 border border-[#e1dfdd]/90 shadow-[0_2px_4px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_16px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 hover:border-blue-400/80 transition-all duration-200 group cursor-pointer space-y-3.5"
                 >
                   {/* Priority / Status Tag Pill */}
                   <div>
@@ -307,17 +307,17 @@ export const KanbanWorkspace: React.FC<KanbanWorkspaceProps> = ({
 
                   {/* Title & Description */}
                   <div className="space-y-1">
-                    <h4 className="font-black text-slate-900 text-sm group-hover:text-amber-600 transition-colors">
+                    <h4 className="font-black text-slate-900 text-sm group-hover:text-[#0f6cbd] transition-colors">
                       {card.title}
                     </h4>
-                    <p className="text-xs text-slate-400 leading-relaxed font-semibold">
+                    <p className="text-xs text-slate-500 leading-relaxed font-semibold">
                       {card.desc}
                     </p>
                   </div>
 
                   {/* Artwork Illustration Thumbnail */}
                   <div className={`w-full h-28 rounded-xl bg-gradient-to-tr ${card.imgBg} flex items-center justify-center p-4 relative overflow-hidden group-hover:scale-[1.01] transition-transform`}>
-                    <div className="w-10 h-10 bg-white/60 backdrop-blur-md rounded-2xl flex items-center justify-center text-slate-800 shadow-sm font-black text-base">
+                    <div className="w-10 h-10 bg-white/80 backdrop-blur-md rounded-xl flex items-center justify-center text-[#0f6cbd] shadow-sm font-black text-base">
                       📄
                     </div>
                   </div>
