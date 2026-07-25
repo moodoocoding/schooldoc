@@ -198,37 +198,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ activeCategory }) => {
           </div>
         </div>
       ) : (
-        /* Render Category Card Grid (Matches User Screenshot Style) */
+        /* Minimalist Zen-style Category Card Grid */
         <div>
           <div className="flex items-center gap-2 mb-6">
-            <span className="text-base">📦</span>
-            <h3 className="font-extrabold text-sm text-slate-800">사용 가능한 도구</h3>
+            <span className="text-sm">📦</span>
+            <h3 className="font-extrabold text-xs text-slate-400 uppercase tracking-wider">사용 가능한 도구</h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredTools.map((tool) => {
               const Icon = tool.icon;
               return (
                 <div 
                   key={tool.id} 
-                  className="bg-white border border-slate-200 rounded-3xl p-6 flex flex-col justify-between hover:shadow-lg transition-all duration-300 hover:border-slate-300 min-h-[220px]"
+                  className="bg-white border border-slate-150 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-300 transition-all min-h-[170px]"
                 >
                   <div>
-                    {/* Rounded Square Icon Box matching screenshot colors */}
-                    <div className={`w-10 h-10 rounded-xl ${tool.color} flex items-center justify-center mb-5`}>
-                      <Icon className="w-5 h-5" />
+                    {/* Tiny Muted Icon & Title */}
+                    <div className="flex items-center gap-2.5 mb-3">
+                      <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-500 border border-slate-100 flex-shrink-0">
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <h4 className="font-bold text-slate-800 text-xs sm:text-sm">{tool.title}</h4>
                     </div>
-                    <h4 className="font-bold text-slate-900 text-sm mb-2">{tool.title}</h4>
-                    <p className="text-[11px] text-slate-450 leading-relaxed font-semibold text-slate-400 mb-6">
+                    <p className="text-[11px] leading-relaxed text-slate-450 text-slate-400 font-medium mb-4">
                       {tool.desc}
                     </p>
                   </div>
 
                   <button
                     onClick={() => handleLaunchTool(tool.id)}
-                    className="w-full bg-teal-800 hover:bg-teal-900 text-white font-extrabold text-xs py-2.5 rounded-xl transition-colors shadow-sm"
+                    className="text-left text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-0.5 mt-auto pt-2"
                   >
-                    사용하기
+                    도구 실행하기 &rarr;
                   </button>
                 </div>
               );

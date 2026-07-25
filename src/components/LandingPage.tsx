@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, CheckSquare, Settings, Search, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Mail, CheckSquare, Settings, Search } from 'lucide-react';
 
 interface LandingPageProps {
   setActiveTab: (tab: string) => void;
@@ -94,40 +94,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab }) => {
 
       {/* Services Grid Section */}
       <section className="max-w-6xl mx-auto py-12 px-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {services.map((service) => {
             const Icon = service.icon;
             return (
               <div
                 key={service.id}
                 onClick={() => setActiveTab(service.id)}
-                className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-pointer flex flex-col justify-between group"
+                className="bg-white border border-slate-150 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-350 transition-all cursor-pointer min-h-[170px] group"
               >
                 <div>
-                  <div className={`w-10 h-10 rounded-xl ${service.bgColor} flex items-center justify-center mb-5`}>
-                    <Icon className={`w-5 h-5 ${service.textColor}`} />
+                  {/* Flat Muted Icon & Title */}
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-500 border border-slate-100 flex-shrink-0">
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                      {service.title}
+                    </h3>
                   </div>
-                  <h3 className="text-sm font-bold text-slate-800 mb-2 group-hover:text-indigo-600 transition-colors">
-                    {service.title}
-                  </h3>
-                  <p className="text-[11px] text-slate-400 font-semibold mb-4 leading-relaxed">
+                  <p className="text-[11px] leading-relaxed text-slate-450 text-slate-400 font-medium mb-4">
                     {service.desc}
                   </p>
-                  
-                  {/* Features tags */}
-                  <div className="flex flex-wrap gap-1.5 mb-6">
-                    {service.features.map((f, i) => (
-                      <span key={i} className="text-[10px] bg-slate-50 text-slate-500 border border-slate-100 rounded-lg px-2 py-0.5 font-bold flex items-center gap-1">
-                        <CheckCircle2 className="w-2.5 h-2.5 text-slate-300" />
-                        {f}
-                      </span>
-                    ))}
-                  </div>
                 </div>
 
-                <div className="flex items-center text-[10px] font-bold text-indigo-600 hover:text-indigo-700 mt-auto pt-4 border-t border-slate-100">
-                  <span>도구 목록 보기</span>
-                  <ArrowRight className="w-3.5 h-3.5 ml-1 transition-transform group-hover:translate-x-0.5" />
+                <div className="flex items-center text-[10px] font-bold text-indigo-600 group-hover:text-indigo-800 group-hover:underline mt-auto pt-2 border-t border-slate-50">
+                  <span>도구 목록 보기 &rarr;</span>
                 </div>
               </div>
             );
