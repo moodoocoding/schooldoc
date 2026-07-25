@@ -8,17 +8,17 @@ export default {
     extend: {
       colors: {
         brand: {
-          50: '#FFF5F3',
-          100: '#FFEBE6',
-          200: '#FFCDCA',
-          300: '#FFA59D',
-          400: '#FF7060',
-          500: '#FF4D30', // main brand red-orange
-          600: '#E6391E',
-          700: '#CC2B12',
-          800: '#A6210C',
-          900: '#7F1807',
-          orange: '#FF7A00',
+          50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          300: '#93c5fd',
+          400: '#60a5fa',
+          500: '#3b82f6', // main brand blue
+          600: '#2563eb',
+          700: '#1d4ed8',
+          800: '#1e40af',
+          900: '#1e3a8a',
+          950: '#172554',
         }
       },
       fontFamily: {
