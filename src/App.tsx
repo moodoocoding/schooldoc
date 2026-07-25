@@ -1,11 +1,7 @@
 import { useState } from 'react';
 import { Navbar } from './components/Navbar';
 import { LandingPage } from './components/LandingPage';
-import { Workmate } from './components/Workmate';
-import { Classmate } from './components/Classmate';
-import { Timetable } from './components/Timetable';
-import { Infomate } from './components/Infomate';
-import { Community } from './components/Community';
+import { Dashboard } from './components/Dashboard';
 
 function App() {
   const [activeTab, setActiveTab] = useState<string>('home');
@@ -18,11 +14,9 @@ function App() {
       {/* Main Workspace Router */}
       <main className="flex-1">
         {activeTab === 'home' && <LandingPage setActiveTab={setActiveTab} />}
-        {activeTab === 'workmate' && <Workmate />}
-        {activeTab === 'classmate' && <Classmate />}
-        {activeTab === 'timetable' && <Timetable />}
-        {activeTab === 'infomate' && <Infomate />}
-        {activeTab === 'community' && <Community />}
+        {['collect', 'evaluation', 'admin'].includes(activeTab) && (
+          <Dashboard activeCategory={activeTab} setActiveTab={setActiveTab} />
+        )}
       </main>
 
       {/* Footer */}

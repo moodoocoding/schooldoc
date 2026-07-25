@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Users, Calendar, FolderOpen, MessageSquare, Bell, Menu } from 'lucide-react';
+import { Mail, CheckSquare, Settings, Bell, Menu } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: string;
@@ -8,11 +8,9 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
   const menuItems = [
-    { id: 'workmate', label: '워크메이트', icon: Sparkles },
-    { id: 'classmate', label: '클래스메이트', icon: Users },
-    { id: 'timetable', label: '시간표/일정', icon: Calendar },
-    { id: 'infomate', label: '자료실', icon: FolderOpen },
-    { id: 'community', label: '소통공간', icon: MessageSquare },
+    { id: 'collect', label: '수합 & 서명', icon: Mail },
+    { id: 'evaluation', label: '평가 & 조회', icon: CheckSquare },
+    { id: 'admin', label: '행정 & 관리', icon: Settings },
   ];
 
   return (
@@ -41,13 +39,13 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
                     isActive
                       ? 'bg-slate-100 text-slate-900'
                       : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                   }`}
                 >
-                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-600' : 'text-slate-450'}`} />
                   <span>{item.label}</span>
                 </button>
               );
@@ -76,7 +74,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
       </div>
       
       {/* Mobile Submenu Bar */}
-      <div className="md:hidden border-t border-slate-50 bg-white flex overflow-x-auto scrollbar-none py-1 px-2 gap-1">
+      <div className="md:hidden border-t border-slate-50 bg-white flex overflow-x-auto scrollbar-none py-1.5 px-3 gap-1">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -84,7 +82,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`flex-none flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold transition-colors ${
+              className={`flex-none flex items-center gap-1 px-3 py-1 rounded text-[11px] font-bold transition-colors ${
                 isActive
                   ? 'bg-slate-800 text-white'
                   : 'text-slate-500 hover:bg-slate-50'
