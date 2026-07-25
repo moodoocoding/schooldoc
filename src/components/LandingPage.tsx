@@ -59,15 +59,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab }) => {
 
   return (
     <div className="bg-slate-50 min-h-screen">
-      {/* Refined Premium Dark Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 text-white py-16 px-6 sm:px-12">
-        <div className="max-w-4xl mx-auto relative z-10 text-center">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight mb-4">
-            선생님의 일과에 여유를 더하는 <span className="text-indigo-400">스쿨독</span>
+      {/* Refined Premium Light Hero Section */}
+      <section className="bg-white border-b border-slate-100/80 py-20 px-6 sm:px-12">
+        <div className="max-w-4xl mx-auto text-center">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-800 mb-4 leading-tight">
+            선생님의 일과에 여유를 더하는, <span className="text-indigo-600">스쿨독</span>
           </h1>
 
-          <p className="text-xs sm:text-sm text-slate-350 font-medium mb-8 max-w-lg mx-auto text-slate-300">
-            가정통신문 수합, 서명 관리, 개별 데이터 안심 조회 및 영수증 자동 정리까지 교직원 업무에 필수적인 유틸리티를 한곳에서 처리하세요.
+          <p className="text-xs sm:text-sm text-slate-400 font-medium mb-8 max-w-lg mx-auto leading-relaxed">
+            가정통신문 수합, 서명 관리, 개별 데이터 안심 조회 및 영수증 자동 정리까지<br />
+            교직원 업무에 필수적인 유틸리티를 한곳에서 간결하게 처리하세요.
           </p>
 
           {/* Clean Search Bar */}
@@ -78,12 +79,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab }) => {
                 placeholder="필요한 업무 범주를 검색해보세요 (예: 서류 수합, 안심 조회, 영수증)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-24 py-3.5 rounded-2xl bg-white/10 border border-white/10 text-white placeholder-slate-400 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:bg-white focus:text-slate-900 transition-all shadow-lg"
+                className="w-full pl-10 pr-24 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-850 placeholder-slate-450 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-slate-300 focus:bg-white transition-all shadow-sm"
               />
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <button
                 type="submit"
-                className="absolute right-2 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition shadow"
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-4 py-1.5 rounded-xl transition shadow-sm"
               >
                 검색
               </button>
