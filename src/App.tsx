@@ -28,10 +28,10 @@ function App() {
           </div>
 
           <div className="flex gap-4">
-            <a href="https://foreducator.com" target="_blank" rel="noreferrer" className="hover:text-indigo-600 flex items-center gap-0.5">
+            <a href="https://foreducator.com" target="_blank" rel="noreferrer" className="hover:text-blue-600 flex items-center gap-0.5">
               ForEducator
             </a>
-            <a href="https://schooldocu.vercel.app" target="_blank" rel="noreferrer" className="hover:text-indigo-600 flex items-center gap-0.5">
+            <a href="https://schooldocu.vercel.app" target="_blank" rel="noreferrer" className="hover:text-blue-600 flex items-center gap-0.5">
               SchoolDocu
             </a>
           </div>

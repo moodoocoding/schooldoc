@@ -177,7 +177,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ activeCategory }) => {
             {/* Remaining Tools Fallback Simulation */}
             {!['life-record', 'eval-plan', 'student-lookup', 'receipt-auto', 'special-room'].includes(activeToolId) && (
               <div className="max-w-md mx-auto text-center py-16 space-y-4">
-                <div className="w-12 h-12 bg-indigo-50 text-indigo-600 mx-auto rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-blue-50 text-blue-600 mx-auto rounded-xl flex items-center justify-center">
                   <Upload className="w-6 h-6" />
                 </div>
                 <h4 className="font-extrabold text-sm text-slate-800">
@@ -228,7 +228,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ activeCategory }) => {
 
                   <button
                     onClick={() => handleLaunchTool(tool.id)}
-                    className="text-left text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-0.5 mt-auto pt-2"
+                    className="text-left text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-0.5 mt-auto pt-2"
                   >
                     도구 실행하기 &rarr;
                   </button>
