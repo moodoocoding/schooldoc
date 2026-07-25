@@ -16,11 +16,11 @@ interface ToolCard {
   id: string;
   title: string;
   desc: string;
-  priority: 'Low' | 'High' | 'Completed';
+  priority: string;
   priorityBg: string;
   priorityText: string;
-  comments: number;
-  files: number;
+  responses: number;
+  timeSaved: string;
   imgBg: string;
   category: 'collect' | 'evaluation' | 'admin';
 }
@@ -37,11 +37,11 @@ export const KanbanWorkspace: React.FC<KanbanWorkspaceProps> = ({
       id: 'notice-collect',
       title: '뚝딱 서류 수합기',
       desc: '가정통신문 및 동의서 PDF를 업로드하고 서명란 지정 후 링크/QR로 응답을 수합해요.',
-      priority: 'Low',
-      priorityBg: 'bg-amber-100/80',
-      priorityText: 'text-amber-700',
-      comments: 12,
-      files: 2,
+      priority: '🔥 즉시 실행',
+      priorityBg: 'bg-rose-100/80',
+      priorityText: 'text-rose-700',
+      responses: 28,
+      timeSaved: '1분',
       imgBg: 'from-orange-100 via-amber-100 to-yellow-200',
       category: 'collect',
     },
@@ -49,11 +49,11 @@ export const KanbanWorkspace: React.FC<KanbanWorkspaceProps> = ({
       id: 'registry-sign',
       title: '등록부 서명 수합기',
       desc: '등록부 명단을 만들고 링크를 공유해 참석자 터치 서명을 받아 PDF로 저장하세요.',
-      priority: 'High',
-      priorityBg: 'bg-rose-100/80',
-      priorityText: 'text-rose-700',
-      comments: 8,
-      files: 1,
+      priority: '🔒 안심 인증',
+      priorityBg: 'bg-emerald-100/80',
+      priorityText: 'text-emerald-700',
+      responses: 18,
+      timeSaved: '2분',
       imgBg: 'from-rose-100 via-pink-100 to-orange-100',
       category: 'collect',
     },
@@ -61,11 +61,11 @@ export const KanbanWorkspace: React.FC<KanbanWorkspaceProps> = ({
       id: 'doc-sign',
       title: '문서 서명 받기',
       desc: '결재·계약 등 한 문서에 여러 명의 서명이 필요할 때 PDF에 칸을 지정하고 서명을 수집합니다.',
-      priority: 'Completed',
-      priorityBg: 'bg-emerald-100/80',
-      priorityText: 'text-emerald-700',
-      comments: 15,
-      files: 4,
+      priority: '📂 HWP/XLSX 연동',
+      priorityBg: 'bg-blue-100/80',
+      priorityText: 'text-blue-700',
+      responses: 15,
+      timeSaved: '3분',
       imgBg: 'from-blue-100 via-indigo-100 to-slate-200',
       category: 'collect',
     },
@@ -75,11 +75,11 @@ export const KanbanWorkspace: React.FC<KanbanWorkspaceProps> = ({
       id: 'student-lookup',
       title: '개별 데이터 안심 조회',
       desc: '성적 엑셀을 올리면 학생은 본인 이름+인증키로 본인 결과만 안전하게 조회해요.',
-      priority: 'High',
-      priorityBg: 'bg-rose-100/80',
-      priorityText: 'text-rose-700',
-      comments: 24,
-      files: 0,
+      priority: '🔒 안심 인증',
+      priorityBg: 'bg-emerald-100/80',
+      priorityText: 'text-emerald-700',
+      responses: 42,
+      timeSaved: '1분',
       imgBg: 'from-red-100 via-orange-100 to-amber-200',
       category: 'evaluation',
     },
@@ -87,11 +87,11 @@ export const KanbanWorkspace: React.FC<KanbanWorkspaceProps> = ({
       id: 'life-record',
       title: '생활기록부 문구 생성',
       desc: '학생별 맞춤 세특 문구를 AI가 키워드 조합 및 성향 분석을 바탕으로 자연스럽게 생성합니다.',
-      priority: 'Low',
+      priority: '✨ AI 자동화',
       priorityBg: 'bg-amber-100/80',
       priorityText: 'text-amber-700',
-      comments: 19,
-      files: 3,
+      responses: 35,
+      timeSaved: '5분',
       imgBg: 'from-purple-100 via-indigo-100 to-sky-200',
       category: 'evaluation',
     },
@@ -99,11 +99,11 @@ export const KanbanWorkspace: React.FC<KanbanWorkspaceProps> = ({
       id: 'eval-plan',
       title: '평가 계획 작성 도우미',
       desc: '성취기준을 입력하면 수업·평가 계획 및 상/중/하 채점 루브릭 매트릭스를 자동 생성해 드려요.',
-      priority: 'Low',
+      priority: '✨ AI 자동화',
       priorityBg: 'bg-amber-100/80',
       priorityText: 'text-amber-700',
-      comments: 7,
-      files: 1,
+      responses: 12,
+      timeSaved: '4분',
       imgBg: 'from-emerald-100 via-teal-100 to-cyan-200',
       category: 'evaluation',
     },
@@ -113,11 +113,11 @@ export const KanbanWorkspace: React.FC<KanbanWorkspaceProps> = ({
       id: 'receipt-auto',
       title: '영수증 자동 정리',
       desc: '영수증 이미지를 올리면 AI OCR이 가액, 부가세, 상호명을 자동 파싱해 엑셀로 정리해요.',
-      priority: 'Completed',
-      priorityBg: 'bg-emerald-100/80',
-      priorityText: 'text-emerald-700',
-      comments: 14,
-      files: 5,
+      priority: '✨ AI 자동화',
+      priorityBg: 'bg-amber-100/80',
+      priorityText: 'text-amber-700',
+      responses: 14,
+      timeSaved: '2분',
       imgBg: 'from-amber-100 via-yellow-100 to-green-100',
       category: 'admin',
     },
@@ -125,11 +125,11 @@ export const KanbanWorkspace: React.FC<KanbanWorkspaceProps> = ({
       id: 'special-room',
       title: '특별실 사용 신청',
       desc: '과학실, 컴퓨터실, 강당 등 교내 특별실 대여 일정을 조율하고 실시간 예약을 관리합니다.',
-      priority: 'Low',
-      priorityBg: 'bg-amber-100/80',
-      priorityText: 'text-amber-700',
-      comments: 5,
-      files: 2,
+      priority: '🔥 즉시 실행',
+      priorityBg: 'bg-rose-100/80',
+      priorityText: 'text-rose-700',
+      responses: 9,
+      timeSaved: '1분',
       imgBg: 'from-blue-100 via-cyan-100 to-teal-100',
       category: 'admin',
     },
@@ -137,20 +137,20 @@ export const KanbanWorkspace: React.FC<KanbanWorkspaceProps> = ({
       id: 'lost-found',
       title: '분실물 통합 관리',
       desc: '교내 습득물과 분실물 사진을 게시하여 학생들과 신속하게 매칭 공지를 띄웁니다.',
-      priority: 'Completed',
-      priorityBg: 'bg-emerald-100/80',
-      priorityText: 'text-emerald-700',
-      comments: 3,
-      files: 1,
+      priority: '📂 HWP/XLSX 연동',
+      priorityBg: 'bg-blue-100/80',
+      priorityText: 'text-blue-700',
+      responses: 6,
+      timeSaved: '1분',
       imgBg: 'from-pink-100 via-purple-100 to-rose-200',
       category: 'admin',
     },
   ];
 
   const columns = [
-    { id: 'collect', title: 'To Do', subTitle: '수합 & 서명', dotColor: 'bg-slate-400', cards: tools.filter(t => t.category === 'collect') },
-    { id: 'evaluation', title: 'On Progress', subTitle: '평가 & 조회', dotColor: 'bg-orange-400', cards: tools.filter(t => t.category === 'evaluation') },
-    { id: 'admin', title: 'Done', subTitle: '행정 & 관리', dotColor: 'bg-emerald-400', cards: tools.filter(t => t.category === 'admin') },
+    { id: 'collect', title: '수합 & 서명 센터', subTitle: '가정통신문 · 동의서 · 서명', dotColor: 'bg-amber-400', cards: tools.filter(t => t.category === 'collect') },
+    { id: 'evaluation', title: '평가 & 조회 센터', subTitle: '성적조회 · AI세특 · 루브릭', dotColor: 'bg-orange-400', cards: tools.filter(t => t.category === 'evaluation') },
+    { id: 'admin', title: '행정 & 관리 센터', subTitle: '영수증 · 특별실 · 분실물', dotColor: 'bg-emerald-400', cards: tools.filter(t => t.category === 'admin') },
   ];
 
   const visibleColumns = activeCategory === 'all' 
@@ -209,39 +209,39 @@ export const KanbanWorkspace: React.FC<KanbanWorkspaceProps> = ({
         </div>
       )}
 
-      {/* Main Header (Matched 100% with Screenshot) */}
+      {/* Main Header (Customized for SchoolDoc Domain) */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         
         {/* Left: Title & Link Icons */}
         <div className="flex items-center gap-3">
-          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            App Design
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            스쿨독 교무 행정 센터
           </h1>
           <div className="flex items-center gap-1 text-slate-400">
-            <button className="p-1.5 hover:bg-slate-200/60 rounded-lg transition-colors">
+            <button className="p-1.5 hover:bg-slate-200/60 rounded-lg transition-colors" title="업무 가이드">
               <Link className="w-4 h-4" />
             </button>
-            <button className="p-1.5 hover:bg-slate-200/60 rounded-lg transition-colors">
+            <button className="p-1.5 hover:bg-slate-200/60 rounded-lg transition-colors" title="학생 제출 URL">
               <Link className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Right: Sub Actions (Invite, Members, Share, Grid View) */}
+        {/* Right: Sub Actions (+ 학급 교사 추가, Avatars, 서식 공유, View Mode) */}
         <div className="flex items-center gap-3">
           <button className="text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors">
-            + Invite
+            + 학급 교사 추가
           </button>
           
           {/* Member Avatars */}
           <div className="flex items-center -space-x-2">
-            <div className="w-7 h-7 rounded-full bg-amber-400 border-2 border-white flex items-center justify-center text-[10px] font-black text-slate-900">
+            <div className="w-7 h-7 rounded-full bg-amber-400 border-2 border-white flex items-center justify-center text-[10px] font-black text-slate-900" title="김교사">
               김
             </div>
-            <div className="w-7 h-7 rounded-full bg-blue-400 border-2 border-white flex items-center justify-center text-[10px] font-black text-white">
+            <div className="w-7 h-7 rounded-full bg-blue-400 border-2 border-white flex items-center justify-center text-[10px] font-black text-white" title="이교사">
               이
             </div>
-            <div className="w-7 h-7 rounded-full bg-purple-400 border-2 border-white flex items-center justify-center text-[10px] font-black text-white">
+            <div className="w-7 h-7 rounded-full bg-purple-400 border-2 border-white flex items-center justify-center text-[10px] font-black text-white" title="박교사">
               박
             </div>
             <div className="w-7 h-7 rounded-full bg-rose-300 border-2 border-white flex items-center justify-center text-[10px] font-bold text-rose-700">
@@ -251,7 +251,7 @@ export const KanbanWorkspace: React.FC<KanbanWorkspaceProps> = ({
 
           <button className="bg-white border border-slate-200/80 hover:bg-slate-50 text-slate-700 font-bold text-xs px-3.5 py-1.5 rounded-xl transition shadow-xs flex items-center gap-1.5">
             <Share2 className="w-3.5 h-3.5" />
-            <span>Share</span>
+            <span>서식 공유</span>
           </button>
 
           <button className="bg-white border border-slate-200/80 hover:bg-slate-50 p-2 rounded-xl text-slate-600 transition shadow-xs">
@@ -264,16 +264,16 @@ export const KanbanWorkspace: React.FC<KanbanWorkspaceProps> = ({
       <div className="flex items-center gap-3">
         <button className="bg-white border border-slate-200/80 hover:bg-slate-50 px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 transition shadow-xs flex items-center gap-1.5">
           <Filter className="w-3.5 h-3.5 text-slate-400" />
-          <span>Filter</span>
+          <span>분류 필터</span>
         </button>
 
         <button className="bg-white border border-slate-200/80 hover:bg-slate-50 px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 transition shadow-xs flex items-center gap-1.5">
           <Calendar className="w-3.5 h-3.5 text-slate-400" />
-          <span>Today</span>
+          <span>오늘의 일과</span>
         </button>
       </div>
 
-      {/* Kanban 3-Column Layout (Matched 100% with Screenshot) */}
+      {/* Kanban 3-Column Layout (Customized for School Administrative Categories) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
         {visibleColumns.map((col) => (
           <div key={col.id} className="space-y-4">
@@ -298,7 +298,7 @@ export const KanbanWorkspace: React.FC<KanbanWorkspaceProps> = ({
                   onClick={() => setActiveToolId(card.id)}
                   className="bg-white rounded-2xl p-5 border border-slate-200/70 shadow-xs hover:shadow-md transition-all duration-200 group cursor-pointer space-y-3.5"
                 >
-                  {/* Priority Tag Pill */}
+                  {/* Priority / Status Tag Pill */}
                   <div>
                     <span className={`text-[10px] font-black px-2.5 py-1 rounded-md ${card.priorityBg} ${card.priorityText}`}>
                       {card.priority}
@@ -315,15 +315,15 @@ export const KanbanWorkspace: React.FC<KanbanWorkspaceProps> = ({
                     </p>
                   </div>
 
-                  {/* Artwork Illustration Thumbnail (Matched with Screenshot) */}
-                  <div className={`w-full h-32 rounded-xl bg-gradient-to-tr ${card.imgBg} flex items-center justify-center p-4 relative overflow-hidden group-hover:scale-[1.01] transition-transform`}>
-                    <div className="w-12 h-12 bg-white/60 backdrop-blur-md rounded-2xl flex items-center justify-center text-slate-800 shadow-sm font-black text-lg">
-                      ✨
+                  {/* Artwork Illustration Thumbnail */}
+                  <div className={`w-full h-28 rounded-xl bg-gradient-to-tr ${card.imgBg} flex items-center justify-center p-4 relative overflow-hidden group-hover:scale-[1.01] transition-transform`}>
+                    <div className="w-10 h-10 bg-white/60 backdrop-blur-md rounded-2xl flex items-center justify-center text-slate-800 shadow-sm font-black text-base">
+                      📄
                     </div>
                   </div>
 
-                  {/* Bottom Stats: Avatars + Comments + Files */}
-                  <div className="flex items-center justify-between pt-2 text-[11px] font-bold text-slate-400">
+                  {/* Bottom Stats: Avatars + Teacher Workflow Metrics */}
+                  <div className="flex items-center justify-between pt-2 text-[11px] font-bold text-slate-400 border-t border-slate-50">
                     {/* Avatars */}
                     <div className="flex items-center -space-x-1.5">
                       <div className="w-5 h-5 rounded-full bg-amber-400 border border-white flex items-center justify-center text-[8px] font-black text-slate-900">
@@ -337,12 +337,12 @@ export const KanbanWorkspace: React.FC<KanbanWorkspaceProps> = ({
                     {/* Meta Stats */}
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-1">
-                        <MessageSquare className="w-3.5 h-3.5" />
-                        <span>{card.comments} comments</span>
+                        <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
+                        <span>수합 {card.responses}건</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Paperclip className="w-3.5 h-3.5" />
-                        <span>{card.files} files</span>
+                        <Paperclip className="w-3.5 h-3.5 text-slate-400" />
+                        <span>절감 {card.timeSaved}</span>
                       </div>
                     </div>
                   </div>
