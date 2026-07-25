@@ -140,7 +140,9 @@ export const PinterestGrid: React.FC<PinterestGridProps> = ({
 
   // Filter tools based on tab & search query
   const filteredTools = tools.filter((tool) => {
-    const matchCategory = activeTab === 'all' || tool.category === activeTab;
+    const matchCategory = 
+      activeTab === 'all' || 
+      (activeTab === 'bookmark' ? bookmarkedTools.includes(tool.id) : tool.category === activeTab);
     const matchSearch = !searchQuery || 
       tool.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
       tool.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
