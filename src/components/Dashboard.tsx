@@ -18,11 +18,15 @@ interface ToolItem {
 
 interface DashboardProps {
   activeCategory: string;
-  setActiveTab: (tab: string) => void;
+  activeToolId: string | null;
+  setActiveToolId: (toolId: string | null) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ activeCategory }) => {
-  const [activeToolId, setActiveToolId] = useState<string | null>(null);
+export const Dashboard: React.FC<DashboardProps> = ({ 
+  activeCategory, 
+  activeToolId,
+  setActiveToolId
+}) => {
 
   // Tools mapping from user request + screenshot
   const tools: ToolItem[] = [
