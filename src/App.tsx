@@ -6,7 +6,6 @@ import { Classmate } from './components/Classmate';
 import { Timetable } from './components/Timetable';
 import { Infomate } from './components/Infomate';
 import { Community } from './components/Community';
-import { ArrowUpRight } from 'lucide-react';
 
 function App() {
   const [activeTab, setActiveTab] = useState<string>('home');
@@ -27,28 +26,20 @@ function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-slate-100 py-12 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-black text-sm">
-              SD
-            </div>
-            <div>
-              <p className="text-xs font-extrabold text-slate-800">스쿨독 (SchoolDoc)</p>
-              <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
-                School & Document - 교사를 위한 행정 및 학급경영 스마트 지원 솔루션
-              </p>
-            </div>
+      <footer className="bg-white border-t border-slate-100 py-6 px-6">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] font-bold text-slate-400">
+          <div className="flex items-center gap-2">
+            <span className="text-slate-700">스쿨독 (SchoolDoc)</span>
+            <span>&copy; {new Date().getFullYear()} SchoolDoc. All rights reserved.</span>
           </div>
 
-          <div className="flex flex-wrap gap-6 text-[10px] font-bold text-slate-400">
+          <div className="flex gap-4">
             <a href="https://foreducator.com" target="_blank" rel="noreferrer" className="hover:text-indigo-600 flex items-center gap-0.5">
-              포에듀케이터 레퍼런스 <ArrowUpRight className="w-3 h-3" />
+              ForEducator
             </a>
             <a href="https://schooldocu.vercel.app" target="_blank" rel="noreferrer" className="hover:text-indigo-600 flex items-center gap-0.5">
-              스쿨도큐 레퍼런스 <ArrowUpRight className="w-3 h-3" />
+              SchoolDocu
             </a>
-            <span>&copy; {new Date().getFullYear()} SchoolDoc. All rights reserved.</span>
           </div>
         </div>
       </footer>
