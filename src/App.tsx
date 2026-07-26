@@ -2,13 +2,16 @@ import { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { HomeWorkspace } from './components/HomeWorkspace';
 import { ToolExecutionPage } from './components/ToolExecutionPage';
-import type { SidebarTab, SchoolTool } from './types/schooldoc';
+import type { SidebarTab, SchoolTool, ActiveTask } from './types/schooldoc';
 import { MessageSquarePlus, X, CheckCircle2 } from 'lucide-react';
 
 function App() {
   const [activeTab, setActiveTab] = useState<SidebarTab>('home');
   const [activeToolId, setActiveToolId] = useState<string | null>(null);
   const [isOpenMobile, setIsOpenMobile] = useState<boolean>(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [quickMenuIds, setQuickMenuIds] = useState<string[]>(['notice-collect', 'cert-collect']);
+  const [activeTasks] = useState<ActiveTask[]>([]);
   const [isOpenSuggestion, setIsOpenSuggestion] = useState<boolean>(false);
   const [suggestionText, setSuggestionText] = useState<string>('');
   const [isSuggestionSent, setIsSuggestionSent] = useState<boolean>(false);
@@ -27,16 +30,14 @@ function App() {
       name: '가정통신문 수합',
       desc: '가정통신문의 응답과 보호자 서명을 온라인으로 받습니다.',
       iconName: 'file-signature',
-      status: 'in_progress',
-      statusText: '응답 28/30명 (미응답 2명)',
+      status: 'ready',
     },
     'registry-sign': {
       id: 'registry-sign',
       name: '등록부 서명',
       desc: '회의와 행사 참석자의 서명을 받아 등록부를 완성합니다.',
       iconName: 'clipboard-list',
-      status: 'in_progress',
-      statusText: '서명 완료 18/20명',
+      status: 'ready',
     },
     'data-collect': {
       id: 'data-collect',
@@ -57,8 +58,7 @@ function App() {
       name: '영수증 정리',
       desc: '영수증을 촬영하면 금액과 상호명을 인식해 표로 정리합니다.',
       iconName: 'receipt',
-      status: 'in_progress',
-      statusText: '검토 필요 3건',
+      status: 'ready',
     },
     'cert-collect': {
       id: 'cert-collect',
@@ -73,7 +73,6 @@ function App() {
       desc: '특별실의 사용 가능 시간을 확인하고 예약합니다.',
       iconName: 'calendar-clock',
       status: 'ready',
-      statusText: '오늘 예약 4건',
     },
     'lost-found': {
       id: 'lost-found',
@@ -81,7 +80,6 @@ function App() {
       desc: '습득물 사진과 장소를 등록하고 반환 상태를 관리합니다.',
       iconName: 'package-search',
       status: 'ready',
-      statusText: '보관 중 6건',
     },
     'item-rent': {
       id: 'item-rent',
@@ -89,11 +87,21 @@ function App() {
       desc: '공용 물품의 대여자와 반납 예정일을 관리합니다.',
       iconName: 'package-check',
       status: 'ready',
-      statusText: '대여 중 7건',
     },
   };
 
   const selectedTool = activeToolId ? allToolsMap[activeToolId] : null;
+
+  const handleAddQuickMenu = (toolId: string) => {
+    if (quickMenuIds.length >= 5) return;
+    if (!quickMenuIds.includes(toolId)) {
+      setQuickMenuIds([...quickMenuIds, toolId]);
+    }
+  };
+
+  const handleRemoveQuickMenu = (toolId: string) => {
+    setQuickMenuIds(quickMenuIds.filter((id) => id !== toolId));
+  };
 
   const handleSendSuggestion = (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,13 +116,18 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#F6F8FB] font-sans text-[#0F172A] flex antialiased">
-      {/* Sidebar Component */}
+      {/* Smart Hover Sidebar Component */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={(tab) => {
           setActiveTab(tab);
           setActiveToolId(null);
         }}
+        quickMenuIds={quickMenuIds}
+        allToolsMap={allToolsMap}
+        onSelectTool={(id) => setActiveToolId(id)}
+        onAddQuickMenu={handleAddQuickMenu}
+        onRemoveQuickMenu={handleRemoveQuickMenu}
         isOpenMobile={isOpenMobile}
         setIsOpenMobile={setIsOpenMobile}
         onOpenSuggestionModal={() => setIsOpenSuggestion(true)}
@@ -133,8 +146,11 @@ function App() {
           <main className="flex-1">
             {activeTab === 'home' && (
               <HomeWorkspace
-                activeTab={activeTab}
                 setActiveTab={setActiveTab}
+                allToolsMap={allToolsMap}
+                activeTasks={activeTasks}
+                isLoggedIn={isLoggedIn}
+                onToggleLogin={() => setIsLoggedIn(!isLoggedIn)}
                 onSelectTool={(id) => setActiveToolId(id)}
                 onOpenMobileMenu={() => setIsOpenMobile(true)}
               />
@@ -143,50 +159,34 @@ function App() {
             {activeTab === 'in_progress' && (
               <div className="max-w-7xl mx-auto p-6 sm:p-8 space-y-6">
                 <h1 className="text-2xl font-extrabold text-[#0F172A]">진행 중인 업무</h1>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Object.values(allToolsMap)
-                    .filter((t) => t.statusText)
-                    .map((tool) => (
+                {activeTasks.length === 0 ? (
+                  <div className="bg-white p-12 rounded-xl border border-[#DCE3EA] text-center space-y-3">
+                    <p className="text-base font-semibold text-[#334155]">
+                      현재 진행 중인 수합·서명·예약 업무가 없습니다.
+                    </p>
+                    <p className="text-xs text-[#64748B]">
+                      홈 화면에서 10가지 업무 도구를 선택해 새 업무를 시작해 보세요.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {activeTasks.map((task) => (
                       <div
-                        key={tool.id}
-                        onClick={() => setActiveToolId(tool.id)}
+                        key={task.id}
+                        onClick={() => setActiveToolId(task.toolId)}
                         className="bg-white p-5 rounded-xl border border-[#DCE3EA] shadow-xs hover:border-[#0F6CBD] cursor-pointer transition flex justify-between items-center"
                       >
                         <div>
-                          <h3 className="text-base font-bold text-[#0F172A] mb-1">{tool.name}</h3>
-                          <p className="text-xs text-[#0F6CBD] font-semibold">{tool.statusText}</p>
+                          <h3 className="text-base font-bold text-[#0F172A] mb-1">{task.toolName}</h3>
+                          <p className="text-xs text-[#0F6CBD] font-semibold">{task.statusText}</p>
                         </div>
                         <span className="text-xs font-semibold bg-[#EFF6FC] text-[#0F6CBD] px-3 py-1.5 rounded-lg">
                           상세 보기 ↗
                         </span>
                       </div>
                     ))}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'completed' && (
-              <div className="max-w-7xl mx-auto p-6 sm:p-8 space-y-6">
-                <h1 className="text-2xl font-extrabold text-[#0F172A]">완료된 문서 및 결과물</h1>
-                <div className="bg-white p-8 rounded-xl border border-[#DCE3EA] text-center space-y-2">
-                  <CheckCircle2 className="w-10 h-10 text-[#16803C] mx-auto" />
-                  <p className="text-base font-bold text-[#0F172A]">완료된 서류 12건 보관 중</p>
-                  <p className="text-xs text-[#64748B]">최근 90일 이내에 작성 및 수합 완료된 PDF, 엑셀 문서 목록입니다.</p>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'roster' && (
-              <div className="max-w-7xl mx-auto p-6 sm:p-8 space-y-6">
-                <h1 className="text-2xl font-extrabold text-[#0F172A]">학급 명단 관리</h1>
-                <div className="bg-white p-8 rounded-xl border border-[#DCE3EA] space-y-4">
-                  <p className="text-sm font-semibold text-[#334155]">담임 학급 3학년 2반 명단 (총 25명)</p>
-                  <div className="flex gap-2">
-                    <button className="bg-[#0F6CBD] text-white text-xs font-semibold px-4 py-2 rounded-lg">
-                      + 학생 일괄 등록 (엑셀)
-                    </button>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
@@ -200,7 +200,7 @@ function App() {
                   </div>
                   <div>
                     <label className="text-xs font-bold text-[#64748B] block mb-1">교사 성함</label>
-                    <input type="text" defaultValue="김교사" className="w-full border border-[#DCE3EA] p-2.5 rounded-lg text-sm" />
+                    <input type="text" defaultValue={isLoggedIn ? '김교사' : ''} placeholder="선생님 성함을 입력하세요" className="w-full border border-[#DCE3EA] p-2.5 rounded-lg text-sm" />
                   </div>
                 </div>
               </div>
@@ -215,18 +215,16 @@ function App() {
           className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="suggestion-modal-title"
         >
           <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-[#DCE3EA]">
             <div className="flex justify-between items-center border-b border-[#F6F8FB] pb-3">
-              <h3 id="suggestion-modal-title" className="font-bold text-base text-[#0F172A] flex items-center gap-2">
+              <h3 className="font-bold text-base text-[#0F172A] flex items-center gap-2">
                 <MessageSquarePlus className="w-5 h-5 text-[#0F6CBD]" />
                 <span>선생님 제안함</span>
               </h3>
               <button
                 onClick={() => setIsOpenSuggestion(false)}
                 className="p-1 text-[#64748B] hover:text-[#0F172A] rounded-lg min-w-[32px] min-h-[32px] flex items-center justify-center"
-                aria-label="닫기"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -236,7 +234,6 @@ function App() {
               <div className="py-8 text-center space-y-2">
                 <CheckCircle2 className="w-10 h-10 text-[#16803C] mx-auto animate-bounce" />
                 <p className="text-base font-bold text-[#0F172A]">소중한 제안이 전달되었습니다!</p>
-                <p className="text-xs text-[#64748B]">선생님의 아이디어를 검토해 기능 개발에 적극 반영하겠습니다.</p>
               </div>
             ) : (
               <form onSubmit={handleSendSuggestion} className="space-y-4">

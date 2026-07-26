@@ -20,7 +20,7 @@ export interface ActiveTask {
   progressPercent?: number;
 }
 
-export type SidebarTab = 'home' | 'in_progress' | 'completed' | 'roster' | 'settings';
+export type SidebarTab = 'home' | 'in_progress' | 'settings';
 
 export interface StudentInfo {
   id: number | string;

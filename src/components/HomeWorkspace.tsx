@@ -1,109 +1,32 @@
 import React, { useState } from 'react';
 import { 
-  Search, Bell, Clock, ArrowRight, X 
+  Search, Bell, LogIn, LogOut, X 
 } from 'lucide-react';
-import type { SchoolTool, SidebarTab } from '../types/schooldoc';
+import type { SchoolTool, SidebarTab, ActiveTask } from '../types/schooldoc';
 import { ToolCard } from './ToolCard';
 
 interface HomeWorkspaceProps {
-  activeTab: SidebarTab;
   setActiveTab: (tab: SidebarTab) => void;
+  allToolsMap: Record<string, SchoolTool>;
+  activeTasks: ActiveTask[];
+  isLoggedIn: boolean;
+  onToggleLogin: () => void;
   onSelectTool: (toolId: string) => void;
   onOpenMobileMenu: () => void;
 }
 
 export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
-  activeTab,
   setActiveTab,
+  allToolsMap,
+  activeTasks,
+  isLoggedIn,
+  onToggleLogin,
   onSelectTool,
   onOpenMobileMenu,
 }) => {
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // 10 Core Services matched EXACTLY with user specification
-  const allTools: SchoolTool[] = [
-    {
-      id: 'student-lookup',
-      name: '학생 결과 안내',
-      desc: '엑셀을 올리고 학생별 결과를 안전하게 안내합니다.',
-      iconName: 'shield-check',
-      status: 'ready',
-    },
-    {
-      id: 'notice-collect',
-      name: '가정통신문 수합',
-      desc: '가정통신문의 응답과 보호자 서명을 온라인으로 받습니다.',
-      iconName: 'file-signature',
-      status: 'in_progress',
-      statusText: '응답 28/30명 (미응답 2명)',
-      activeCount: 28,
-      totalCount: 30,
-    },
-    {
-      id: 'registry-sign',
-      name: '등록부 서명',
-      desc: '회의와 행사 참석자의 서명을 받아 등록부를 완성합니다.',
-      iconName: 'clipboard-list',
-      status: 'in_progress',
-      statusText: '서명 완료 18/20명',
-      activeCount: 18,
-      totalCount: 20,
-    },
-    {
-      id: 'data-collect',
-      name: '자료 수합',
-      desc: '필요한 제출 항목을 만들고 파일과 응답을 한곳에서 받습니다.',
-      iconName: 'inbox',
-      status: 'ready',
-    },
-    {
-      id: 'doc-sign',
-      name: '문서 서명',
-      desc: 'PDF의 서명 위치를 지정하고 비대면 서명을 받습니다.',
-      iconName: 'file-pen',
-      status: 'ready',
-    },
-    {
-      id: 'receipt-auto',
-      name: '영수증 정리',
-      desc: '영수증을 촬영하면 금액과 상호명을 인식해 표로 정리합니다.',
-      iconName: 'receipt',
-      status: 'in_progress',
-      statusText: '검토 필요 3건',
-      warningCount: 3,
-    },
-    {
-      id: 'cert-collect',
-      name: '이수증 수합',
-      desc: '연수 이수증을 모으고 연수명과 이수 시간을 자동 집계합니다.',
-      iconName: 'award',
-      status: 'ready',
-    },
-    {
-      id: 'special-room',
-      name: '특별실 예약',
-      desc: '특별실의 사용 가능 시간을 확인하고 예약합니다.',
-      iconName: 'calendar-clock',
-      status: 'ready',
-      statusText: '오늘 예약 4건',
-    },
-    {
-      id: 'lost-found',
-      name: '분실물 관리',
-      desc: '습득물 사진과 장소를 등록하고 반환 상태를 관리합니다.',
-      iconName: 'package-search',
-      status: 'ready',
-      statusText: '보관 중 6건',
-    },
-    {
-      id: 'item-rent',
-      name: '물품 대여',
-      desc: '공용 물품의 대여자와 반납 예정일을 관리합니다.',
-      iconName: 'package-check',
-      status: 'ready',
-      statusText: '대여 중 7건',
-    },
-  ];
+  const allTools = Object.values(allToolsMap);
 
   // Filter tools based on search
   const filteredTools = allTools.filter((tool) => {
@@ -115,13 +38,10 @@ export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
     );
   });
 
-  // Tasks in progress (max 3)
-  const tasksInProgress = allTools.filter(t => t.status === 'in_progress' || t.statusText).slice(0, 3);
-
   return (
     <div className="w-full max-w-7xl mx-auto space-y-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       
-      {/* Top Bar: Clean & Uncluttered Header */}
+      {/* Top Bar: Clean Header with Auth Button */}
       <div className="flex items-center justify-between border-b border-[#DCE3EA] pb-4">
         {/* Mobile Hamburger Menu Toggle */}
         <button
@@ -138,22 +58,41 @@ export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
           </span>
         </div>
 
-        {/* Notification & User Profile */}
+        {/* Top Right Actions: Auth State (로그인 / 김교사 선생님) */}
         <div className="flex items-center gap-3">
           <button
             className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2 text-[#64748B] hover:text-[#0F172A] hover:bg-[#F6F8FB] rounded-lg relative transition-colors focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]"
-            aria-label="알림 2건 존재함"
+            aria-label="알림 목록"
           >
             <Bell className="w-5 h-5" />
-            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#B42318] rounded-full"></span>
           </button>
 
-          <div className="flex items-center gap-2 bg-[#F6F8FB] border border-[#DCE3EA] px-3.5 py-1.5 rounded-full min-h-[44px]">
-            <div className="w-6 h-6 rounded-full bg-[#0F6CBD] text-white flex items-center justify-center text-xs font-bold">
-              김
+          {isLoggedIn ? (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 bg-[#F6F8FB] border border-[#DCE3EA] px-3.5 py-1.5 rounded-full min-h-[44px]">
+                <div className="w-6 h-6 rounded-full bg-[#0F6CBD] text-white flex items-center justify-center text-xs font-bold">
+                  김
+                </div>
+                <span className="text-sm font-semibold text-[#0F172A]">김교사 선생님</span>
+              </div>
+              <button
+                onClick={onToggleLogin}
+                className="text-xs font-semibold text-[#64748B] hover:text-[#B42318] p-2 flex items-center gap-1 rounded-lg min-h-[44px]"
+                title="로그아웃"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">로그아웃</span>
+              </button>
             </div>
-            <span className="text-sm font-semibold text-[#0F172A]">김교사 선생님</span>
-          </div>
+          ) : (
+            <button
+              onClick={onToggleLogin}
+              className="bg-[#0F6CBD] hover:bg-[#0F5B9E] text-white font-semibold text-xs px-4 py-2.5 rounded-lg transition shadow-xs flex items-center gap-1.5 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>로그인</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -191,49 +130,38 @@ export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
         </div>
       </section>
 
-      {/* In Progress Section (진행 영역: 최대 3개 표시) */}
-      {activeTab === 'home' && !searchQuery && tasksInProgress.length > 0 && (
+      {/* In Progress Section (실제로 진행 중인 데이터가 있을 때만 출력!) */}
+      {activeTasks.length > 0 && !searchQuery && (
         <section className="space-y-4 pt-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-[#0F172A] flex items-center gap-2">
-              <Clock className="w-5 h-5 text-[#0F6CBD]" />
-              <span>진행 중인 업무</span>
-            </h2>
+            <h2 className="text-lg font-bold text-[#0F172A]">진행 중인 업무</h2>
             <button
               onClick={() => setActiveTab('in_progress')}
-              className="text-xs font-semibold text-[#0F6CBD] hover:text-[#0F5B9E] flex items-center gap-1 min-h-[44px] px-2 focus:outline-none focus:ring-2 focus:ring-[#0F6CBD] rounded-lg"
+              className="text-xs font-semibold text-[#0F6CBD] hover:text-[#0F5B9E]"
             >
-              <span>전체 보기</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              전체 보기 ↗
             </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {tasksInProgress.map((task) => (
+            {activeTasks.map((task) => (
               <div
                 key={task.id}
-                onClick={() => onSelectTool(task.id)}
-                className="bg-[#EFF6FC] border border-[#0F6CBD]/20 rounded-xl p-4 flex flex-col justify-between hover:border-[#0F6CBD] transition-all cursor-pointer group shadow-xs min-h-[120px]"
+                onClick={() => onSelectTool(task.toolId)}
+                className="bg-[#EFF6FC] border border-[#0F6CBD]/20 rounded-xl p-4 flex flex-col justify-between hover:border-[#0F6CBD] transition cursor-pointer"
               >
                 <div>
-                  <span className="text-xs font-bold text-[#0F6CBD] block mb-1">
-                    {task.name}
-                  </span>
-                  <p className="text-sm font-semibold text-[#0F172A] line-clamp-1">
-                    {task.statusText}
-                  </p>
+                  <span className="text-xs font-bold text-[#0F6CBD]">{task.toolName}</span>
+                  <p className="text-sm font-semibold text-[#0F172A] mt-1">{task.title}</p>
                 </div>
-                <div className="flex items-center justify-between text-xs font-semibold text-[#0F6CBD] pt-2">
-                  <span>작성 진행 확인</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </div>
+                <span className="text-xs font-semibold text-[#0F6CBD] pt-2">상세 보기 ↗</span>
               </div>
             ))}
           </div>
         </section>
       )}
 
-      {/* Tools Area (도구 영역: 10개 카드를 직접 표시) */}
+      {/* Tools Area (10개 카드를 직접 표시) */}
       <section className="space-y-4 pt-2">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-[#0F172A]">
@@ -245,9 +173,6 @@ export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
           <div className="bg-white rounded-xl p-12 text-center border border-[#DCE3EA] space-y-3">
             <p className="text-base font-semibold text-[#334155]">
               "{searchQuery}"에 해당되는 도구를 찾지 못했습니다.
-            </p>
-            <p className="text-xs text-[#64748B]">
-              가정통신문, 성적, 특별실, 이수증 등 다른 키워드로 검색해 보세요.
             </p>
           </div>
         ) : (
