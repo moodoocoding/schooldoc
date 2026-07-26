@@ -1,149 +1,119 @@
 import React from 'react';
-import { Mail, CheckSquare, Settings, Home, ChevronRight, User } from 'lucide-react';
+import { Home, Clock, CheckCircle2, Users, Settings, MessageSquarePlus, X } from 'lucide-react';
+import type { SidebarTab } from '../types/schooldoc';
 
 interface SidebarProps {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
-  activeToolId: string | null;
-  setActiveToolId: (toolId: string | null) => void;
+  activeTab: SidebarTab;
+  setActiveTab: (tab: SidebarTab) => void;
+  isOpenMobile: boolean;
+  setIsOpenMobile: (open: boolean) => void;
+  onOpenSuggestionModal: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,
-  activeToolId,
-  setActiveToolId,
+  isOpenMobile,
+  setIsOpenMobile,
+  onOpenSuggestionModal,
 }) => {
-  const categories = [
-    {
-      id: 'collect',
-      label: '수합 & 서명',
-      icon: Mail,
-      color: 'text-blue-600',
-      tools: [
-        { id: 'letter-collect', name: '가정통신문 수합' },
-        { id: 'sig-collect', name: '등록부 서명 수합' },
-        { id: 'data-collect', name: '올인원 자료 수합' },
-        { id: 'doc-sign', name: '문서 서명' },
-        { id: 'cert-collect', name: '연수 이수증 수합' },
-      ],
-    },
-    {
-      id: 'evaluation',
-      label: '평가 & 조회',
-      icon: CheckSquare,
-      color: 'text-blue-650 text-blue-600',
-      tools: [
-        { id: 'student-lookup', name: '개별 데이터 조회' },
-        { id: 'life-record', name: '생기부 세특 작성' },
-        { id: 'eval-plan', name: '수행평가 계획 수립' },
-      ],
-    },
-    {
-      id: 'admin',
-      label: '행정 & 관리',
-      icon: Settings,
-      color: 'text-slate-600',
-      tools: [
-        { id: 'receipt-auto', name: '영수증 자동 정리' },
-        { id: 'special-room', name: '특별실 사용 신청' },
-        { id: 'lost-found', name: '분실물 관리' },
-        { id: 'item-rental', name: '물품 대여 관리' },
-      ],
-    },
+  const navItems: { id: SidebarTab; label: string; icon: React.FC<{ className?: string }> }[] = [
+    { id: 'home', label: '홈', icon: Home },
+    { id: 'in_progress', label: '진행 중', icon: Clock },
+    { id: 'completed', label: '완료', icon: CheckCircle2 },
+    { id: 'roster', label: '학급 명단', icon: Users },
+    { id: 'settings', label: '설정', icon: Settings },
   ];
 
-  const handleToolClick = (catId: string, toolId: string) => {
-    setActiveTab(catId);
-    setActiveToolId(toolId);
-  };
-
-  return (
-    <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800 h-screen sticky top-0 flex-shrink-0 z-20">
-      {/* Brand Header */}
-      <div className="h-16 flex items-center px-6 border-b border-slate-800 gap-3">
-        <div 
-          onClick={() => { setActiveTab('home'); setActiveToolId(null); }}
-          className="flex items-center gap-2.5 cursor-pointer group"
+  const sidebarContent = (
+    <div className="flex flex-col h-full bg-[#FFFFFF] border-r border-[#DCE3EA] w-64 select-none">
+      {/* Header / Logo */}
+      <div className="h-16 flex items-center justify-between px-6 border-b border-[#DCE3EA]">
+        <button
+          onClick={() => {
+            setActiveTab('home');
+            setIsOpenMobile(false);
+          }}
+          className="flex items-center gap-2.5 group focus:outline-none focus:ring-2 focus:ring-[#0F6CBD] rounded-lg p-1"
+          aria-label="스쿨독 홈으로 이동"
         >
-          <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center text-white font-extrabold text-xs shadow-md">
+          <div className="w-8 h-8 bg-[#0F6CBD] rounded-lg flex items-center justify-center text-white font-extrabold text-sm shadow-xs group-hover:bg-[#0F5B9E] transition-colors">
             SD
           </div>
-          <span className="font-bold text-sm text-white tracking-tight group-hover:text-blue-400 transition-colors">
+          <span className="font-extrabold text-lg text-[#0F172A] tracking-tight">
             스쿨독
           </span>
-        </div>
+        </button>
+
+        {/* Mobile Close Button */}
+        <button
+          onClick={() => setIsOpenMobile(false)}
+          className="md:hidden p-2 text-[#64748B] hover:text-[#0F172A] hover:bg-[#F6F8FB] rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center"
+          aria-label="메뉴 닫기"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
-      {/* Navigation Links */}
-      <div className="flex-1 overflow-y-auto py-6 px-4 space-y-7 scrollbar-none">
-        
-        {/* Home Button */}
-        <div>
-          <button
-            onClick={() => { setActiveTab('home'); setActiveToolId(null); }}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'home'
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-900/30'
-                : 'hover:bg-slate-800 hover:text-white'
-            }`}
-          >
-            <Home className="w-4 h-4" />
-            <span>메인 대시보드</span>
-          </button>
-        </div>
-
-        {/* Categorized Tools Menu */}
-        {categories.map((cat) => {
-          const Icon = cat.icon;
+      {/* Main Status-Based Navigation List */}
+      <nav className="flex-1 py-6 px-3 space-y-1.5 overflow-y-auto" aria-label="주 메뉴">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeTab === item.id;
           return (
-            <div key={cat.id} className="space-y-2">
-              <div 
-                onClick={() => { setActiveTab(cat.id); setActiveToolId(null); }}
-                className="flex items-center justify-between px-3 py-1.5 cursor-pointer text-slate-500 hover:text-slate-350 transition-colors group"
-              >
-                <div className="flex items-center gap-2">
-                  <Icon className="w-3.5 h-3.5" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">{cat.label}</span>
-                </div>
-                <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-
-              <div className="space-y-0.5 pl-2">
-                {cat.tools.map((tool) => {
-                  const isToolActive = activeToolId === tool.id;
-                  return (
-                    <button
-                      key={tool.id}
-                      onClick={() => handleToolClick(cat.id, tool.id)}
-                      className={`w-full text-left px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-                        isToolActive
-                          ? 'bg-slate-800 text-blue-400 font-bold'
-                          : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                      }`}
-                    >
-                      {tool.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <button
+              key={item.id}
+              onClick={() => {
+                setActiveTab(item.id);
+                setIsOpenMobile(false);
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all min-h-[44px] text-left ${
+                isActive
+                  ? 'bg-[#EFF6FC] text-[#0F6CBD] font-bold shadow-xs'
+                  : 'text-[#334155] hover:bg-[#F6F8FB] hover:text-[#0F172A]'
+              } focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]`}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              <Icon className={`w-5 h-5 ${isActive ? 'text-[#0F6CBD]' : 'text-[#64748B]'}`} />
+              <span>{item.label}</span>
+            </button>
           );
         })}
-      </div>
+      </nav>
 
-      {/* User Profile Info Footer */}
-      <div className="p-4 border-t border-slate-800 bg-slate-950/40">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-300">
-            <User className="w-4 h-4" />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-white">김교사 선생님</p>
-            <p className="text-[9px] text-slate-500 font-bold">스쿨독 정회원</p>
+      {/* Bottom Footer Link: 선생님 제안함 */}
+      <div className="p-4 border-t border-[#DCE3EA] bg-[#F6F8FB]">
+        <button
+          onClick={onOpenSuggestionModal}
+          className="w-full flex items-center gap-2 text-xs font-semibold text-[#64748B] hover:text-[#0F6CBD] transition-colors p-2 rounded-lg min-h-[44px] focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]"
+        >
+          <MessageSquarePlus className="w-4 h-4 text-[#0F6CBD]" />
+          <span>선생님 제안함</span>
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Persistent Sidebar */}
+      <aside className="hidden md:block w-64 h-screen sticky top-0 flex-shrink-0 z-30">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile Slide-Over Drawer */}
+      {isOpenMobile && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          <div
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsOpenMobile(false)}
+            aria-hidden="true"
+          />
+          <div className="relative flex-1 max-w-xs w-full bg-white shadow-2xl z-10">
+            {sidebarContent}
           </div>
         </div>
-      </div>
-    </aside>
+      )}
+    </>
   );
 };
