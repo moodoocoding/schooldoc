@@ -51,17 +51,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
         isHovered ? 'w-64' : 'w-16'
       } overflow-hidden`}
     >
-      {/* Header / Logo */}
-      <div className="h-16 flex items-center px-4 border-b border-[#DCE3EA] justify-between">
+      {/* Header / Brand Logo */}
+      <div className="h-16 flex items-center border-b border-[#DCE3EA] px-3">
         <button
           onClick={() => {
             setActiveTab('home');
             setIsOpenMobile(false);
           }}
-          className="flex items-center gap-3 group focus:outline-none rounded-lg"
+          className="w-full flex items-center gap-3 group focus:outline-none rounded-lg"
           aria-label="스쿨독 홈으로 이동"
         >
-          <div className="w-9 h-9 bg-[#0F6CBD] rounded-lg flex items-center justify-center text-white font-extrabold text-sm shadow-xs group-hover:bg-[#0F5B9E] transition-colors flex-shrink-0">
+          <div className="w-10 h-10 bg-[#0F6CBD] rounded-xl flex items-center justify-center text-white font-extrabold text-sm shadow-xs group-hover:bg-[#0F5B9E] transition-colors flex-shrink-0 mx-auto">
             SD
           </div>
           {isHovered && (
@@ -82,58 +82,58 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
-      {/* Navigation List */}
-      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto overflow-x-hidden">
+      {/* Main Navigation Area */}
+      <nav className="flex-1 py-4 px-2 space-y-2 overflow-y-auto overflow-x-hidden">
         {/* Fixed Top Items: 홈, 진행 중, 설정 */}
-        {mainNavs.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveTab(item.id);
-                setIsOpenMobile(false);
-              }}
-              className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-all min-h-[44px] ${
-                isActive
-                  ? 'bg-[#EFF6FC] text-[#0F6CBD] font-bold'
-                  : 'text-[#334155] hover:bg-[#F6F8FB] hover:text-[#0F172A]'
-              } focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]`}
-              title={!isHovered ? item.label : undefined}
-            >
-              <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-[#0F6CBD]' : 'text-[#64748B]'}`} />
-              {isHovered && <span className="whitespace-nowrap truncate">{item.label}</span>}
-            </button>
-          );
-        })}
-
-        {/* Section Indicator Divider Line (-) */}
-        <div className="my-3 px-2">
-          <div className="border-t border-[#DCE3EA] relative">
-            <span className="absolute left-1/2 -top-2.5 -translate-x-1/2 bg-[#FFFFFF] px-1.5 text-[10px] font-bold text-[#94A3B8]">
-              —
-            </span>
-          </div>
+        <div className="space-y-1.5">
+          {mainNavs.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  setIsOpenMobile(false);
+                }}
+                className={`w-full flex items-center gap-3.5 px-2.5 py-2.5 rounded-xl text-sm font-semibold transition-all min-h-[44px] ${
+                  isActive
+                    ? 'bg-[#EFF6FC] text-[#0F6CBD] font-bold'
+                    : 'text-[#334155] hover:bg-[#F6F8FB] hover:text-[#0F172A]'
+                } focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]`}
+                title={!isHovered ? item.label : undefined}
+              >
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mx-auto">
+                  <Icon className={`w-5 h-5 ${isActive ? 'text-[#0F6CBD]' : 'text-[#64748B]'}`} />
+                </div>
+                {isHovered && <span className="whitespace-nowrap truncate font-bold">{item.label}</span>}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Custom Quick Menu Section */}
-        <div className="space-y-1 pt-1">
-          <div className="flex items-center justify-between px-3 py-1">
-            {isHovered ? (
-              <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap flex items-center gap-1">
-                <Pin className="w-3 h-3 text-[#0F6CBD]" />
+        {/* Clean Divider Line (-) */}
+        <div className="py-2">
+          <div className="border-t border-[#DCE3EA] w-8 mx-auto"></div>
+        </div>
+
+        {/* Quick Menu Header & Add Button (+) */}
+        <div className="space-y-1.5">
+          <div className={`flex items-center ${isHovered ? 'justify-between px-2' : 'justify-center'} py-1`}>
+            {isHovered && (
+              <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap flex items-center gap-1.5">
+                <Pin className="w-3.5 h-3.5 text-[#0F6CBD]" />
                 <span>퀵 메뉴 ({quickMenuIds.length}/5)</span>
               </span>
-            ) : (
-              <span className="w-full text-center text-[10px] font-bold text-[#94A3B8]">—</span>
             )}
 
-            {/* Add Quick Menu Button (+) */}
+            {/* Quick Add Button (+) */}
             {quickMenuIds.length < 5 && (
               <button
                 onClick={() => setIsOpenQuickAddModal(true)}
-                className="w-7 h-7 rounded-lg bg-[#EFF6FC] text-[#0F6CBD] hover:bg-[#0F6CBD] hover:text-white flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]"
+                className={`rounded-xl bg-[#EFF6FC] text-[#0F6CBD] hover:bg-[#0F6CBD] hover:text-white flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-[#0F6CBD] ${
+                  isHovered ? 'w-7 h-7' : 'w-9 h-9 mx-auto'
+                }`}
                 title="퀵 메뉴 등록 (+)"
                 aria-label="퀵 메뉴 추가"
               >
@@ -142,59 +142,59 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
           </div>
 
-          {/* Quick Menu Items */}
-          {quickMenuIds.map((id) => {
-            const tool = allToolsMap[id];
-            if (!tool) return null;
-            const Icon = getToolIcon(tool.iconName);
-            return (
-              <div
-                key={id}
-                className="group relative flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-[#334155] hover:bg-[#EFF6FC] hover:text-[#0F6CBD] cursor-pointer transition-colors min-h-[40px]"
-                onClick={() => {
-                  onSelectTool(tool.id);
-                  setIsOpenMobile(false);
-                }}
-                title={!isHovered ? tool.name : undefined}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <Icon className="w-4 h-4 text-[#0F6CBD] flex-shrink-0" />
-                  {isHovered && <span className="truncate whitespace-nowrap font-medium">{tool.name}</span>}
+          {/* Registered Quick Menu Items */}
+          <div className="space-y-1">
+            {quickMenuIds.map((id) => {
+              const tool = allToolsMap[id];
+              if (!tool) return null;
+              const Icon = getToolIcon(tool.iconName);
+              return (
+                <div
+                  key={id}
+                  onClick={() => {
+                    onSelectTool(tool.id);
+                    setIsOpenMobile(false);
+                  }}
+                  className="group relative flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold text-[#334155] hover:bg-[#EFF6FC] hover:text-[#0F6CBD] cursor-pointer transition-colors min-h-[40px]"
+                  title={!isHovered ? tool.name : undefined}
+                >
+                  <div className="flex items-center gap-3 min-w-0 mx-auto w-full">
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mx-auto">
+                      <Icon className="w-4.5 h-4.5 text-[#0F6CBD]" />
+                    </div>
+                    {isHovered && <span className="truncate whitespace-nowrap font-semibold text-slate-800">{tool.name}</span>}
+                  </div>
+
+                  {isHovered && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRemoveQuickMenu(tool.id);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-[#64748B] hover:text-[#B42318] transition-opacity ml-1"
+                      title="퀵 메뉴 삭제"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
-
-                {isHovered && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRemoveQuickMenu(tool.id);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-[#64748B] hover:text-[#B42318] transition-opacity"
-                    title="퀵 메뉴 삭제"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            );
-          })}
-
-          {quickMenuIds.length === 0 && isHovered && (
-            <p className="text-[11px] text-[#94A3B8] px-3 py-2 leading-relaxed">
-              + 버튼을 눌러 자주 쓰는 도구를 퀵 메뉴로 등록하세요.
-            </p>
-          )}
+              );
+            })}
+          </div>
         </div>
       </nav>
 
       {/* Bottom Footer Link: 선생님 제안함 */}
-      <div className="p-3 border-t border-[#DCE3EA] bg-[#F6F8FB]">
+      <div className="p-2 border-t border-[#DCE3EA] bg-[#F6F8FB]">
         <button
           onClick={onOpenSuggestionModal}
-          className="w-full flex items-center gap-3 text-xs font-semibold text-[#64748B] hover:text-[#0F6CBD] transition-colors p-2 rounded-lg min-h-[40px] focus:outline-none"
+          className="w-full flex items-center gap-3 text-xs font-semibold text-[#64748B] hover:text-[#0F6CBD] transition-colors p-2 rounded-xl min-h-[44px] focus:outline-none"
           title={!isHovered ? '선생님 제안함' : undefined}
         >
-          <MessageSquarePlus className="w-4.5 h-4.5 text-[#0F6CBD] flex-shrink-0" />
-          {isHovered && <span className="whitespace-nowrap">선생님 제안함</span>}
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mx-auto">
+            <MessageSquarePlus className="w-5 h-5 text-[#0F6CBD]" />
+          </div>
+          {isHovered && <span className="whitespace-nowrap font-bold">선생님 제안함</span>}
         </button>
       </div>
     </div>
