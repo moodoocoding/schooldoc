@@ -47,7 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`flex flex-col h-full bg-[#FFFFFF] border-r border-[#DCE3EA] shadow-sm select-none transition-all duration-300 ease-in-out ${
+      className={`flex flex-col h-full bg-[#FFFFFF] border-r border-[#DCE3EA] shadow-lg select-none transition-all duration-300 ease-in-out ${
         isHovered ? 'w-64' : 'w-16'
       } overflow-hidden`}
     >
@@ -58,10 +58,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             setActiveTab('home');
             setIsOpenMobile(false);
           }}
-          className="w-full flex items-center gap-3 group focus:outline-none rounded-lg"
+          className="flex items-center gap-3 group focus:outline-none rounded-lg w-full text-left"
           aria-label="스쿨독 홈으로 이동"
         >
-          <div className="w-10 h-10 bg-[#0F6CBD] rounded-xl flex items-center justify-center text-white font-extrabold text-sm shadow-xs group-hover:bg-[#0F5B9E] transition-colors flex-shrink-0 mx-auto">
+          <div className="w-10 h-10 bg-[#0F6CBD] rounded-xl flex items-center justify-center text-white font-extrabold text-sm shadow-xs group-hover:bg-[#0F5B9E] transition-colors flex-shrink-0">
             SD
           </div>
           {isHovered && (
@@ -85,7 +85,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Main Navigation Area */}
       <nav className="flex-1 py-4 px-2 space-y-2 overflow-y-auto overflow-x-hidden">
         {/* Fixed Top Items: 홈, 진행 중, 설정 */}
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           {mainNavs.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -96,17 +96,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   setActiveTab(item.id);
                   setIsOpenMobile(false);
                 }}
-                className={`w-full flex items-center gap-3.5 px-2.5 py-2.5 rounded-xl text-sm font-semibold transition-all min-h-[44px] ${
+                className={`w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-semibold transition-all min-h-[44px] ${
                   isActive
                     ? 'bg-[#EFF6FC] text-[#0F6CBD] font-bold'
                     : 'text-[#334155] hover:bg-[#F6F8FB] hover:text-[#0F172A]'
-                } focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]`}
+                } focus:outline-none focus:ring-2 focus:ring-[#0F6CBD] text-left`}
                 title={!isHovered ? item.label : undefined}
               >
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mx-auto">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Icon className={`w-5 h-5 ${isActive ? 'text-[#0F6CBD]' : 'text-[#64748B]'}`} />
                 </div>
-                {isHovered && <span className="whitespace-nowrap truncate font-bold">{item.label}</span>}
+                {isHovered && (
+                  <span className="whitespace-nowrap font-bold text-sm text-[#0F172A] truncate">
+                    {item.label}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -114,12 +118,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Clean Divider Line (-) */}
         <div className="py-2">
-          <div className="border-t border-[#DCE3EA] w-8 mx-auto"></div>
+          <div className={`border-t border-[#DCE3EA] ${isHovered ? 'w-full px-2' : 'w-8 mx-auto'}`}></div>
         </div>
 
         {/* Quick Menu Header & Add Button (+) */}
-        <div className="space-y-1.5">
-          <div className={`flex items-center ${isHovered ? 'justify-between px-2' : 'justify-center'} py-1`}>
+        <div className="space-y-1">
+          <div className={`flex items-center justify-between ${isHovered ? 'px-3' : 'justify-center'} py-1`}>
             {isHovered && (
               <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap flex items-center gap-1.5">
                 <Pin className="w-3.5 h-3.5 text-[#0F6CBD]" />
@@ -155,14 +159,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onSelectTool(tool.id);
                     setIsOpenMobile(false);
                   }}
-                  className="group relative flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold text-[#334155] hover:bg-[#EFF6FC] hover:text-[#0F6CBD] cursor-pointer transition-colors min-h-[40px]"
+                  className="group relative flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold text-[#334155] hover:bg-[#EFF6FC] hover:text-[#0F6CBD] cursor-pointer transition-colors min-h-[40px] text-left"
                   title={!isHovered ? tool.name : undefined}
                 >
-                  <div className="flex items-center gap-3 min-w-0 mx-auto w-full">
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mx-auto">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
                       <Icon className="w-4.5 h-4.5 text-[#0F6CBD]" />
                     </div>
-                    {isHovered && <span className="truncate whitespace-nowrap font-semibold text-slate-800">{tool.name}</span>}
+                    {isHovered && (
+                      <span className="truncate whitespace-nowrap font-bold text-xs text-[#0F172A]">
+                        {tool.name}
+                      </span>
+                    )}
                   </div>
 
                   {isHovered && (
@@ -171,7 +179,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         e.stopPropagation();
                         onRemoveQuickMenu(tool.id);
                       }}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-[#64748B] hover:text-[#B42318] transition-opacity ml-1"
+                      className="opacity-0 group-hover:opacity-100 p-1 text-[#64748B] hover:text-[#B42318] transition-opacity ml-1 flex-shrink-0"
                       title="퀵 메뉴 삭제"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -188,13 +196,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="p-2 border-t border-[#DCE3EA] bg-[#F6F8FB]">
         <button
           onClick={onOpenSuggestionModal}
-          className="w-full flex items-center gap-3 text-xs font-semibold text-[#64748B] hover:text-[#0F6CBD] transition-colors p-2 rounded-xl min-h-[44px] focus:outline-none"
+          className="w-full flex items-center gap-3 text-xs font-semibold text-[#64748B] hover:text-[#0F6CBD] transition-colors p-2 rounded-xl min-h-[44px] focus:outline-none text-left"
           title={!isHovered ? '선생님 제안함' : undefined}
         >
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mx-auto">
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
             <MessageSquarePlus className="w-5 h-5 text-[#0F6CBD]" />
           </div>
-          {isHovered && <span className="whitespace-nowrap font-bold">선생님 제안함</span>}
+          {isHovered && <span className="whitespace-nowrap font-bold text-xs text-[#334155]">선생님 제안함</span>}
         </button>
       </div>
     </div>
