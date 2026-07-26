@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { HomeWorkspace } from './components/HomeWorkspace';
 import { ToolExecutionPage } from './components/ToolExecutionPage';
+import { SettingsPage } from './components/SettingsPage';
 import type { SidebarTab, SchoolTool, ActiveTask } from './types/schooldoc';
 import { MessageSquarePlus, X, CheckCircle2 } from 'lucide-react';
 
@@ -191,19 +192,10 @@ function App() {
             )}
 
             {activeTab === 'settings' && (
-              <div className="max-w-7xl mx-auto p-6 sm:p-8 space-y-6">
-                <h1 className="text-2xl font-extrabold text-[#0F172A]">스쿨독 환경 설정</h1>
-                <div className="bg-white p-8 rounded-xl border border-[#DCE3EA] space-y-4 max-w-xl">
-                  <div>
-                    <label className="text-xs font-bold text-[#64748B] block mb-1">소속 학교</label>
-                    <input type="text" defaultValue="한국초등학교" className="w-full border border-[#DCE3EA] p-2.5 rounded-lg text-sm" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-[#64748B] block mb-1">교사 성함</label>
-                    <input type="text" defaultValue={isLoggedIn ? '김교사' : ''} placeholder="선생님 성함을 입력하세요" className="w-full border border-[#DCE3EA] p-2.5 rounded-lg text-sm" />
-                  </div>
-                </div>
-              </div>
+              <SettingsPage
+                isLoggedIn={isLoggedIn}
+                onToggleLogin={() => setIsLoggedIn(!isLoggedIn)}
+              />
             )}
           </main>
         )}
