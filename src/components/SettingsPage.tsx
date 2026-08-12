@@ -3,16 +3,11 @@ import {
   User, Building2, Lock, Bell, Moon, Sun, 
   ShieldCheck, CheckCircle2, FileSignature, Upload
 } from 'lucide-react';
+import { useTeacherAuth } from '../auth/teacherAuth';
 
-interface SettingsPageProps {
-  isLoggedIn: boolean;
-  onToggleLogin: () => void;
-}
-
-export const SettingsPage: React.FC<SettingsPageProps> = ({
-  isLoggedIn,
-  onToggleLogin,
-}) => {
+export const SettingsPage: React.FC = () => {
+  const { configured, displayName, error, loading, signIn, user } = useTeacherAuth();
+  const isLoggedIn = Boolean(user);
   const [activeTab, setActiveTab] = useState<'profile' | 'signature' | 'security' | 'display'>('profile');
   const [schoolName, setSchoolName] = useState<string>('한국초등학교');
   const [teacherName, setTeacherName] = useState<string>('김교사');
@@ -21,6 +16,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [autoPurgeDays, setAutoPurgeDays] = useState<number>(90);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [fontSize, setFontSize] = useState<'normal' | 'large'>('normal');
+  const accountLabel = displayName || '교사 계정';
 
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,15 +42,16 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           {isLoggedIn ? (
             <div className="flex items-center gap-2 bg-[#E6F4EA] border border-[#16803C]/20 px-3.5 py-1.5 rounded-full">
               <ShieldCheck className="w-4 h-4 text-[#16803C]" />
-              <span className="text-xs font-bold text-[#16803C]">계정 인증됨 (김교사)</span>
+              <span className="max-w-56 truncate text-xs font-bold text-[#16803C]">계정 인증됨 ({accountLabel})</span>
             </div>
           ) : (
             <button
-              onClick={onToggleLogin}
-              className="flex items-center gap-2 bg-[#EFF6FC] hover:bg-[#0F6CBD] hover:text-white border border-[#0F6CBD]/30 px-4 py-2 rounded-lg text-xs font-bold text-[#0F6CBD] transition-colors"
+              onClick={() => void signIn('/')}
+              disabled={loading || !configured}
+              className="flex items-center gap-2 bg-[#EFF6FC] hover:bg-[#0F6CBD] hover:text-white border border-[#0F6CBD]/30 px-4 py-2 rounded-lg text-xs font-bold text-[#0F6CBD] transition-colors disabled:cursor-not-allowed disabled:bg-[#E2E8F0] disabled:text-[#64748B]"
             >
               <Lock className="w-4 h-4" />
-              <span>로그인하여 설정 열기</span>
+              <span>{configured ? 'Google로 로그인하여 설정 열기' : '로그인 설정 필요'}</span>
             </button>
           )}
         </div>
@@ -75,11 +72,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             </p>
           </div>
           <button
-            onClick={onToggleLogin}
-            className="bg-[#0F6CBD] hover:bg-[#0F5B9E] text-white font-bold text-sm px-6 py-2.5 rounded-lg shadow-xs transition"
+            onClick={() => void signIn('/')}
+            disabled={loading || !configured}
+            className="bg-[#0F6CBD] hover:bg-[#0F5B9E] text-white font-bold text-sm px-6 py-2.5 rounded-lg shadow-xs transition disabled:cursor-not-allowed disabled:bg-[#94A3B8]"
           >
-            스쿨독 원클릭 로그인하기
+            {loading ? '로그인 확인 중' : configured ? 'Google로 로그인하기' : '관리자에게 로그인 설정 요청하기'}
           </button>
+          {error ? <p role="alert" className="text-xs font-semibold text-[#B42318]">{error}</p> : null}
         </div>
       )}
 

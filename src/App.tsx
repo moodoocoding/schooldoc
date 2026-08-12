@@ -15,7 +15,6 @@ function AdminApp() {
   const [activeTab, setActiveTab] = useState<SidebarTab>('home');
   const [activeToolId, setActiveToolId] = useState<string | null>(null);
   const [isOpenMobile, setIsOpenMobile] = useState<boolean>(false);
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [quickMenuIds, setQuickMenuIds] = useState<string[]>(['notice-collect', 'cert-collect']);
   const [activeTasks] = useState<ActiveTask[]>([]);
   const [isOpenSuggestion, setIsOpenSuggestion] = useState<boolean>(false);
@@ -171,8 +170,6 @@ function AdminApp() {
                 setActiveTab={setActiveTab}
                 allToolsMap={allToolsMap}
                 activeTasks={activeTasks}
-                isLoggedIn={isLoggedIn}
-                onToggleLogin={() => setIsLoggedIn(!isLoggedIn)}
                 onSelectTool={handleSelectTool}
                 onOpenMobileMenu={() => setIsOpenMobile(true)}
               />
@@ -213,10 +210,7 @@ function AdminApp() {
             )}
 
             {activeTab === 'settings' && (
-              <SettingsPage
-                isLoggedIn={isLoggedIn}
-                onToggleLogin={() => setIsLoggedIn(!isLoggedIn)}
-              />
+              <SettingsPage />
             )}
           </main>
         )}
