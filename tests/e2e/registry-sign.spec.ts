@@ -11,6 +11,8 @@ test('제목 행 아래의 성명과 소속 헤더를 찾아 엑셀 명단을 �
 
   await page.getByLabel(/문서 제목/).fill('엑셀 명단 파싱 검증');
   await page.getByRole('button', { name: '다음' }).click();
+  await expect(page.getByRole('columnheader', { name: '서명', exact: true })).toBeVisible();
+  await expect(page.getByLabel('1번 참석자 서명 칸')).toBeVisible();
 
   const text = String;
   const workbook = await writeXlsxFile([
@@ -48,6 +50,7 @@ test('제목 행 아래의 성명과 소속 헤더를 찾아 엑셀 명단을 �
   await expect(page.getByLabel('1번 참석자 소속')).toHaveValue('새봄초등학교');
   await expect(page.getByLabel('2번 참석자 성명')).toHaveValue('이도윤');
   await expect(page.getByLabel('2번 참석자 소속')).toHaveValue('한빛중학교');
+  await expect(page.getByLabel('2번 참석자 서명 칸')).toBeVisible();
 });
 
 test('등록부를 만들고 모바일에서 서명한 뒤 결과물을 내려받는다', async ({ page }) => {

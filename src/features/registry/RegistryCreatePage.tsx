@@ -302,12 +302,13 @@ export function RegistryCreatePage() {
                 </div>
 
                 <div className="mt-4 overflow-x-auto border-y border-[#DCE3EA]">
-                  <table className="w-full min-w-[620px] border-collapse text-sm">
+                  <table className="w-full min-w-[740px] border-collapse text-sm">
                     <thead className="bg-[#F6F8FB] text-xs font-bold text-[#334155]">
                       <tr>
                         <th className="w-14 px-3 py-3 text-center">연번</th>
                         <th className="min-w-40 px-3 py-3 text-left">성명</th>
                         {columns.map((column) => <th key={column.id} className="min-w-44 px-3 py-3 text-left">{column.label}</th>)}
+                        <th className="w-32 px-3 py-3 text-center">서명</th>
                         <th className="w-12"><span className="sr-only">삭제</span></th>
                       </tr>
                     </thead>
@@ -319,6 +320,9 @@ export function RegistryCreatePage() {
                           {columns.map((column) => (
                             <td key={column.id} className="px-3 py-2"><input className={inputClass} value={participant.values[column.id] ?? ''} onChange={(event) => updateParticipant(index, column.id, event.target.value)} placeholder={column.label} aria-label={`${index + 1}번 참석자 ${column.label}`} /></td>
                           ))}
+                          <td className="w-32 px-3 py-2 text-center" aria-label={`${index + 1}번 참석자 서명 칸`}>
+                            <span aria-hidden="true" className="inline-block h-10 w-24 border-b border-[#CBD5E1]" />
+                          </td>
                           <td className="px-1 py-2">
                             <button type="button" onClick={() => setParticipants((current) => current.filter((_, participantIndex) => participantIndex !== index))} className="flex h-10 w-10 items-center justify-center rounded-lg text-[#94A3B8] hover:bg-[#FEF3F2] hover:text-[#B42318]" aria-label={`${index + 1}번 참석자 삭제`}><Trash2 className="h-4 w-4" /></button>
                           </td>
