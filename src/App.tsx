@@ -1,12 +1,17 @@
 import { useState } from 'react';
+import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { HomeWorkspace } from './components/HomeWorkspace';
 import { ToolExecutionPage } from './components/ToolExecutionPage';
 import { SettingsPage } from './components/SettingsPage';
+import { PublicRegistrySignPage } from './features/registry/PublicRegistrySignPage';
+import { RegistryWorkspace } from './features/registry/RegistryWorkspace';
 import type { SidebarTab, SchoolTool, ActiveTask } from './types/schooldoc';
 import { MessageSquarePlus, X, CheckCircle2 } from 'lucide-react';
 
-function App() {
+function AdminApp() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<SidebarTab>('home');
   const [activeToolId, setActiveToolId] = useState<string | null>(null);
   const [isOpenMobile, setIsOpenMobile] = useState<boolean>(false);
@@ -92,6 +97,17 @@ function App() {
   };
 
   const selectedTool = activeToolId ? allToolsMap[activeToolId] : null;
+  const isRegistryRoute = location.pathname.startsWith('/tools/registry-sign');
+
+  const handleSelectTool = (toolId: string) => {
+    if (toolId === 'registry-sign') {
+      setActiveToolId(null);
+      navigate('/tools/registry-sign');
+      return;
+    }
+    navigate('/');
+    setActiveToolId(toolId);
+  };
 
   const handleAddQuickMenu = (toolId: string) => {
     if (quickMenuIds.length >= 5) return;
@@ -123,10 +139,11 @@ function App() {
         setActiveTab={(tab) => {
           setActiveTab(tab);
           setActiveToolId(null);
+          navigate('/');
         }}
         quickMenuIds={quickMenuIds}
         allToolsMap={allToolsMap}
-        onSelectTool={(id) => setActiveToolId(id)}
+        onSelectTool={handleSelectTool}
         onAddQuickMenu={handleAddQuickMenu}
         onRemoveQuickMenu={handleRemoveQuickMenu}
         isOpenMobile={isOpenMobile}
@@ -136,7 +153,11 @@ function App() {
 
       {/* Right Workspace Main Content */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-        {selectedTool ? (
+        {isRegistryRoute ? (
+          <main className="p-4 sm:p-8">
+            <RegistryWorkspace />
+          </main>
+        ) : selectedTool ? (
           <main className="p-4 sm:p-8">
             <ToolExecutionPage
               tool={selectedTool}
@@ -152,7 +173,7 @@ function App() {
                 activeTasks={activeTasks}
                 isLoggedIn={isLoggedIn}
                 onToggleLogin={() => setIsLoggedIn(!isLoggedIn)}
-                onSelectTool={(id) => setActiveToolId(id)}
+                onSelectTool={handleSelectTool}
                 onOpenMobileMenu={() => setIsOpenMobile(true)}
               />
             )}
@@ -260,6 +281,15 @@ function App() {
         </div>
       )}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/s/registry/:token" element={<PublicRegistrySignPage />} />
+      <Route path="*" element={<AdminApp />} />
+    </Routes>
   );
 }
 

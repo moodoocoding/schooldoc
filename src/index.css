@@ -11,6 +11,11 @@
     @apply bg-white text-slate-900 antialiased;
     font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif !important;
   }
+
+  :where(button, a, input, textarea, select, [tabindex]):focus-visible {
+    outline: 3px solid #0f6cbd;
+    outline-offset: 2px;
+  }
 }
 
 /* Custom scrollbar */
@@ -35,4 +40,31 @@
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .registry-print-root,
+  .registry-print-root * {
+    visibility: visible;
+  }
+
+  .registry-print-root {
+    position: absolute;
+    inset: 0;
+  }
+
+  .registry-print-page {
+    box-shadow: none !important;
+    break-after: page;
+    page-break-after: always;
+  }
 }
