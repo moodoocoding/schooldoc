@@ -5,6 +5,7 @@ import {
   maskName,
   maskValue,
   paginateRegistryParticipants,
+  parseExcelRows,
   parsePastedRows,
 } from '../../src/features/registry/registryUtils';
 import type { RegistryColumn, RegistryParticipant } from '../../src/features/registry/types';
@@ -38,6 +39,58 @@ describe('parsePastedRows', () => {
     expect(parsePastedRows('김하늘\n이도윤', [])).toEqual([
       { name: '김하늘', values: {} },
       { name: '이도윤', values: {} },
+    ]);
+  });
+});
+
+describe('parseExcelRows', () => {
+  it('제목과 안내 행 다음에 있는 실제 헤더를 찾아 열 순서와 무관하게 매핑한다', () => {
+    const rows = [
+      ['2026학년도 교직원 연수 등록부'],
+      ['일시: 2026. 8. 13.', null, '장소: 미래교육실'],
+      [],
+      ['연번', '소속', '성 명', '서명'],
+      [1, '새봄초등학교', '김하늘', null],
+      [2, '한빛중학교', '이도윤', null],
+    ];
+
+    expect(parseExcelRows(rows, [columns[0]])).toEqual([
+      { name: '김하늘', values: { affiliation: '새봄초등학교' } },
+      { name: '이도윤', values: { affiliation: '한빛중학교' } },
+    ]);
+  });
+
+  it('이름과 소속 열의 별칭을 인식하고 엑셀에 없는 구성 열은 비워 둔다', () => {
+    const rows = [
+      ['학교명', '직책', '이름(필수)'],
+      ['새봄초등학교', '교사', '김하늘'],
+    ];
+
+    expect(parseExcelRows(rows, columns)).toEqual([
+      {
+        name: '김하늘',
+        values: { affiliation: '새봄초등학교', role: '교사' },
+      },
+    ]);
+    expect(parseExcelRows(rows, [...columns, { id: 'phone', label: '연락처' }])).toEqual([
+      {
+        name: '김하늘',
+        values: { affiliation: '새봄초등학교', role: '교사', phone: '' },
+      },
+    ]);
+  });
+
+  it('여러 페이지에서 반복되는 헤더 행을 참석자로 가져오지 않는다', () => {
+    const rows = [
+      ['성명', '소속'],
+      ['김하늘', '새봄초등학교'],
+      ['성명', '소속'],
+      ['이도윤', '한빛중학교'],
+    ];
+
+    expect(parseExcelRows(rows, [columns[0]])).toEqual([
+      { name: '김하늘', values: { affiliation: '새봄초등학교' } },
+      { name: '이도윤', values: { affiliation: '한빛중학교' } },
     ]);
   });
 });

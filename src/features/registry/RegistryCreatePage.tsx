@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createRegistry } from './registryService';
-import { createColumn, createParticipant, parsePastedRows } from './registryUtils';
+import { createColumn, createParticipant, parseExcelRows, parsePastedRows } from './registryUtils';
 import { RegistryPrintSheet } from './RegistryPrintSheet';
 import type { Registry, RegistryColumn, RegistryDraft, RegistryLayout, RegistryMode } from './types';
 
@@ -110,21 +110,7 @@ export function RegistryCreatePage() {
     try {
       const { readSheet } = await import('read-excel-file/web-worker');
       const rows = await readSheet(file);
-      const firstRow = (rows[0] ?? []).map((cell) => String(cell ?? '').trim());
-      const nameIndex = firstRow.findIndex((cell) => /^(성명|이름|name)$/i.test(cell));
-      const hasHeader = nameIndex >= 0;
-      const dataRows = hasHeader ? rows.slice(1) : rows;
-      const resolvedNameIndex = hasHeader ? nameIndex : Math.max(0, firstRow.length - 1);
-      const columnIndexes = columns.map((column, index) => {
-        if (!hasHeader) return index;
-        const matched = firstRow.findIndex((cell) => cell === column.label);
-        return matched >= 0 ? matched : index;
-      });
-      const imported = dataRows.map((row) => createParticipant(
-        columns,
-        String(row[resolvedNameIndex] ?? '').trim(),
-        columnIndexes.map((index) => String(row[index] ?? '').trim()),
-      )).filter((participant) => participant.name);
+      const imported = parseExcelRows(rows, columns);
       if (imported.length === 0) {
         setError('엑셀에서 참석자 이름을 찾지 못했습니다. 성명 열을 확인해 주세요.');
         return;
@@ -298,7 +284,7 @@ export function RegistryCreatePage() {
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <h2 className="text-lg font-bold text-[#0F172A]">참석자 명단</h2>
-                    <p className="mt-1 text-xs text-[#526174]">엑셀 첫 행에 성명과 열 이름이 있으면 자동으로 맞춥니다.</p>
+                    <p className="mt-1 text-xs text-[#526174]">엑셀에서 성명과 열 이름이 있는 행을 찾아 자동으로 맞춥니다.</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button type="button" onClick={() => excelInputRef.current?.click()} className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-[#DCE3EA] px-4 text-sm font-bold text-[#334155] hover:bg-[#F6F8FB]">

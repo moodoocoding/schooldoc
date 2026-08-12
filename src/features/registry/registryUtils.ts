@@ -16,6 +16,78 @@ export const createParticipant = (
   values: Object.fromEntries(columns.map((column, index) => [column.id, initialValues[index] ?? ''])),
 });
 
+const normalizeExcelHeader = (value: unknown) => String(value ?? '')
+  .normalize('NFKC')
+  .trim()
+  .toLocaleLowerCase('ko-KR')
+  .replace(/\([^)]*\)|\[[^\]]*\]/g, '')
+  .replace(/[\s._·\-:/\\]+/g, '');
+
+const NAME_HEADERS = new Set([
+  '성명',
+  '이름',
+  'name',
+  '참석자명',
+  '참가자명',
+  '교직원명',
+]);
+
+const excelColumnHeaders = (label: string) => {
+  const normalized = normalizeExcelHeader(label);
+  const aliases = new Set([normalized]);
+  if (normalized === '소속') {
+    ['소속기관', '기관', '기관명', '학교', '학교명'].forEach((alias) => aliases.add(alias));
+  }
+  if (normalized === '직위') {
+    ['직급', '직책'].forEach((alias) => aliases.add(alias));
+  }
+  return aliases;
+};
+
+export const parseExcelRows = (
+  rows: readonly (readonly unknown[])[],
+  columns: RegistryColumn[],
+) => {
+  const headerCandidates = rows.slice(0, 50).map((row, rowIndex) => {
+    const headers = row.map(normalizeExcelHeader);
+    const nameIndex = headers.findIndex((header) => NAME_HEADERS.has(header));
+    const columnIndexes = columns.map((column) => {
+      const aliases = excelColumnHeaders(column.label);
+      return headers.findIndex((header, index) => index !== nameIndex && aliases.has(header));
+    });
+    return {
+      rowIndex,
+      nameIndex,
+      columnIndexes,
+      score: nameIndex < 0 ? -1 : columnIndexes.filter((index) => index >= 0).length,
+    };
+  });
+  const header = headerCandidates.reduce<(typeof headerCandidates)[number] | undefined>(
+    (best, candidate) => candidate.score > (best?.score ?? -1) ? candidate : best,
+    undefined,
+  );
+
+  if (header && header.nameIndex >= 0) {
+    return rows.slice(header.rowIndex + 1)
+      .map((row) => createParticipant(
+        columns,
+        String(row[header.nameIndex] ?? '').trim(),
+        header.columnIndexes.map((index) => index < 0 ? '' : String(row[index] ?? '').trim()),
+      ))
+      .filter((participant) => participant.name && !NAME_HEADERS.has(normalizeExcelHeader(participant.name)));
+  }
+
+  return rows.map((row) => {
+    const cells = row.map((cell) => String(cell ?? '').trim());
+    const nameIndex = cells.length > columns.length ? cells.length - 1 : 0;
+    return createParticipant(
+      columns,
+      cells[nameIndex] ?? '',
+      cells.filter((_, index) => index !== nameIndex),
+    );
+  }).filter((participant) => participant.name);
+};
+
 export const maskName = (name: string) => {
   if (name.length <= 1) return '*';
   if (name.length === 2) return `${name[0]}*`;

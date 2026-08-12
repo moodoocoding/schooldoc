@@ -1,4 +1,54 @@
 import { expect, test } from '@playwright/test';
+import writeXlsxFile from 'write-excel-file/node';
+
+test('제목 행 아래의 성명과 소속 헤더를 찾아 엑셀 명단을 불러온다', async ({ page }) => {
+  await page.goto('/tools/registry-sign/new');
+  await page.evaluate(() => {
+    localStorage.removeItem('schooldoc_registry_v1');
+    sessionStorage.clear();
+  });
+  await page.reload();
+
+  await page.getByLabel(/문서 제목/).fill('엑셀 명단 파싱 검증');
+  await page.getByRole('button', { name: '다음' }).click();
+
+  const text = String;
+  const workbook = await writeXlsxFile([
+    [{ value: '2026학년도 교직원 연수 등록부', type: text }],
+    [
+      { value: '일시: 2026. 8. 13.', type: text },
+      { value: '장소: 미래교육실', type: text },
+    ],
+    [],
+    [
+      { value: '연번', type: text },
+      { value: '소속', type: text },
+      { value: '성 명', type: text },
+      { value: '서명', type: text },
+    ],
+    [
+      { value: 1, type: Number },
+      { value: '새봄초등학교', type: text },
+      { value: '김하늘', type: text },
+    ],
+    [
+      { value: 2, type: Number },
+      { value: '한빛중학교', type: text },
+      { value: '이도윤', type: text },
+    ],
+  ]).toBuffer();
+
+  await page.locator('input[type="file"]').setInputFiles({
+    name: '참석자-명단.xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    buffer: workbook,
+  });
+
+  await expect(page.getByLabel('1번 참석자 성명')).toHaveValue('김하늘');
+  await expect(page.getByLabel('1번 참석자 소속')).toHaveValue('새봄초등학교');
+  await expect(page.getByLabel('2번 참석자 성명')).toHaveValue('이도윤');
+  await expect(page.getByLabel('2번 참석자 소속')).toHaveValue('한빛중학교');
+});
 
 test('등록부를 만들고 모바일에서 서명한 뒤 결과물을 내려받는다', async ({ page }) => {
   const runtimeErrors: string[] = [];
