@@ -95,7 +95,7 @@ export function SignatureCanvas({ onChange }: SignatureCanvasProps) {
           aria-label="서명 입력 영역"
           aria-describedby="signature-canvas-help"
         >
-          서명을 직접 그리는 입력 영역입니다. 키보드를 사용한다면 사진 선택을 이용해 주세요.
+          서명을 직접 그리는 입력 영역입니다.
         </canvas>
         <div className="pointer-events-none absolute inset-x-5 top-1/2 border-t border-[#DCE3EA]" />
         <div className="pointer-events-none absolute inset-y-5 left-1/2 border-l border-[#DCE3EA]" />

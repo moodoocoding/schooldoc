@@ -86,13 +86,10 @@ test('서명 대화상자가 키보드 포커스를 고정하고 닫은 뒤 선�
     expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true);
   }
 
-  const drawTab = page.getByRole('tab', { name: '직접 서명' });
-  await drawTab.focus();
-  await page.keyboard.press('ArrowRight');
-  await expect(page.getByRole('tab', { name: '사진 촬영' })).toBeFocused();
-  await expect(page.getByRole('tabpanel', { name: '사진 촬영' })).toBeVisible();
-  await page.keyboard.press('Home');
-  await expect(drawTab).toBeFocused();
+  await expect(page.getByRole('heading', { name: '직접 서명' })).toBeVisible();
+  await expect(page.getByLabel('서명 입력 영역')).toBeVisible();
+  await expect(page.getByRole('tab')).toHaveCount(0);
+  await expect(page.locator('input[type="file"]')).toHaveCount(0);
 
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
