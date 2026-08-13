@@ -6,17 +6,28 @@ import { ConsentFieldEditor } from './ConsentFieldEditor';
 import { ConsentRecipientsStep } from './ConsentRecipientsStep';
 import { ConsentShareStep } from './ConsentShareStep';
 import { addConsentLocalDraft, getConsentLocalDraft, hashConsentPassword, updateConsentLocalDraft } from './consentFormsLocalStore';
-import type { ConsentDocumentAnalysis, ConsentFieldDraft, ConsentRecipientDraft, ConsentRecipientMode, ConsentShareSettings } from './types';
+import { createRemoteConsentForm, getRemoteConsentForm, getRemoteConsentSourceFile, updateRemoteConsentForm } from './consentFormsRepository';
+import { isConsentFormsDemoMode } from './consentFormsConfig';
+import type { ConsentDocumentAnalysis, ConsentFieldDraft, ConsentLocalDraft, ConsentRecipientDraft, ConsentRecipientMode, ConsentShareSettings } from './types';
 
 const formatBytes = (bytes: number) => bytes < 1024 * 1024
   ? `${Math.max(1, Math.round(bytes / 1024))}KB`
   : `${(bytes / 1024 / 1024).toFixed(1)}MB`;
 
+const fileToDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result ?? ''));
+  reader.onerror = () => reject(new Error('원본 PDF를 준비하지 못했습니다.'));
+  reader.readAsDataURL(file);
+});
+
 export function ConsentFormsCreatePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('edit') ?? '';
-  const editDraft = editId ? getConsentLocalDraft(editId) : null;
+  const localEditDraft = editId && isConsentFormsDemoMode ? getConsentLocalDraft(editId) : null;
+  const [remoteEditDraft, setRemoteEditDraft] = useState<ConsentLocalDraft | null>(null);
+  const editDraft = localEditDraft ?? remoteEditDraft;
   const inputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(editDraft?.title ?? '');
   const [description, setDescription] = useState(editDraft?.description ?? '');
@@ -27,6 +38,7 @@ export function ConsentFormsCreatePage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [step, setStep] = useState<'document' | 'fields' | 'recipients' | 'sharing'>('document');
   const [fields, setFields] = useState<ConsentFieldDraft[]>(editDraft?.fields ?? []);
   const [recipientMode, setRecipientMode] = useState<ConsentRecipientMode>(editDraft?.recipientMode ?? 'named');
@@ -60,6 +72,36 @@ export function ConsentFormsCreatePage() {
     }
   };
 
+  useEffect(() => {
+    if (!editId || isConsentFormsDemoMode) return;
+    let active = true;
+    const load = async () => {
+      setAnalyzing(true);
+      setError('');
+      try {
+        const form = await getRemoteConsentForm(editId);
+        if (!form) throw new Error('수정할 가정통신문을 찾을 수 없습니다.');
+        const file = await getRemoteConsentSourceFile(form);
+        const nextAnalysis = await analyzeConsentDocument(file);
+        if (!active) return;
+        setRemoteEditDraft(form);
+        setTitle(form.title);
+        setDescription(form.description);
+        setFields(form.fields);
+        setRecipientMode(form.recipientMode);
+        setShareSettings({ deadline: form.deadline, passwordEnabled: form.passwordEnabled, password: '', allowResubmission: form.allowResubmission });
+        setSourceFile(file);
+        setFileName(file.name);
+        setAnalysis(nextAnalysis);
+        setObjectUrl(URL.createObjectURL(file));
+      } catch (loadError) {
+        if (active) setError(loadError instanceof Error ? loadError.message : '수합을 불러오지 못했습니다.');
+      } finally { if (active) setAnalyzing(false); }
+    };
+    void load();
+    return () => { active = false; };
+  }, [editId]);
+
   const resetFile = () => {
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     setObjectUrl('');
@@ -81,14 +123,34 @@ export function ConsentFormsCreatePage() {
 
   if (step === 'recipients') return <ConsentRecipientsStep mode={recipientMode} recipients={recipients} onModeChange={setRecipientMode} onRecipientsChange={setRecipients} onBack={() => setStep('fields')} onNext={() => setStep('sharing')} />;
 
-  if (step === 'sharing' && analysis) return <ConsentShareStep title={title} fileName={analysis.fileName} fieldCount={fields.length} recipientMode={recipientMode} recipientCount={editDraft?.recipientCount ?? recipients.length} settings={shareSettings} hasExistingPassword={Boolean(editDraft?.passwordHash)} onSettingsChange={setShareSettings} onBack={() => setStep(editDraft ? 'fields' : 'recipients')} onCreate={async () => {
-    const passwordHash = shareSettings.passwordEnabled ? shareSettings.password.trim() ? await hashConsentPassword(shareSettings.password.trim()) : editDraft?.passwordHash ?? '' : '';
-    if (editDraft) {
-      updateConsentLocalDraft(editDraft.id, { title, fileName: analysis.fileName, fieldCount: fields.length, description, fields, deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled, passwordHash: passwordHash || editDraft.passwordHash, allowResubmission: shareSettings.allowResubmission });
-      navigate(`/tools/consent-forms/${editDraft.id}`);
-    } else {
-      addConsentLocalDraft({ id: crypto.randomUUID(), title, fileName: analysis.fileName, fieldCount: fields.length, recipientMode, recipientCount: recipientMode === 'named' ? recipients.length : 0, createdAt: new Date().toISOString(), description, fields, publicToken: crypto.randomUUID(), deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled, passwordHash, allowResubmission: shareSettings.allowResubmission, responseCount: 0, status: 'open' });
-      navigate('/tools/consent-forms');
+  if (step === 'sharing' && analysis && sourceFile) return <ConsentShareStep title={title} fileName={analysis.fileName} fieldCount={fields.length} recipientMode={recipientMode} recipientCount={editDraft?.recipientCount ?? recipients.length} settings={shareSettings} hasExistingPassword={Boolean(editDraft?.passwordHash)} saving={saving} error={error} onSettingsChange={setShareSettings} onBack={() => setStep(editDraft ? 'fields' : 'recipients')} onCreate={async () => {
+    if (saving) return;
+    setSaving(true);
+    setError('');
+    try {
+      if (!isConsentFormsDemoMode) {
+        if (editDraft) {
+          await updateRemoteConsentForm(editDraft.id, { title: title.trim() || editDraft.title, description: description.trim(), fields, pageCount: analysis.pageCount, fileName: sourceFile.name, sourceFile, deadline: shareSettings.deadline, allowResubmission: shareSettings.allowResubmission, passwordEnabled: shareSettings.passwordEnabled, password: shareSettings.password });
+          navigate(`/tools/consent-forms/${editDraft.id}`);
+        } else {
+          const created = await createRemoteConsentForm({ title, description, fields, recipientMode, recipientCount: recipients.length, settings: shareSettings, sourceFile });
+          if (!created) throw new Error('생성한 가정통신문을 확인하지 못했습니다.');
+          navigate(`/tools/consent-forms/${created.id}`);
+        }
+        return;
+      }
+      const passwordHash = shareSettings.passwordEnabled ? shareSettings.password.trim() ? await hashConsentPassword(shareSettings.password.trim()) : editDraft?.passwordHash ?? '' : '';
+      if (editDraft) {
+        updateConsentLocalDraft(editDraft.id, { title, fileName: analysis.fileName, fieldCount: fields.length, description, fields, pageCount: analysis.pageCount, deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled, passwordHash: passwordHash || editDraft.passwordHash, allowResubmission: shareSettings.allowResubmission, sourcePdfDataUrl: await fileToDataUrl(sourceFile) });
+        navigate(`/tools/consent-forms/${editDraft.id}`);
+      } else {
+        addConsentLocalDraft({ id: crypto.randomUUID(), title, fileName: analysis.fileName, fieldCount: fields.length, recipientMode, recipientCount: recipientMode === 'named' ? recipients.length : 0, createdAt: new Date().toISOString(), description, fields, publicToken: crypto.randomUUID(), deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled, passwordHash, allowResubmission: shareSettings.allowResubmission, responseCount: 0, status: 'open', pageCount: analysis.pageCount, sourcePdfDataUrl: await fileToDataUrl(sourceFile) });
+        navigate('/tools/consent-forms');
+      }
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : '가정통신문 수합을 만들지 못했습니다.');
+    } finally {
+      setSaving(false);
     }
   }} />;
 

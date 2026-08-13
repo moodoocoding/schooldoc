@@ -5,3 +5,6 @@ static_files = [
   "./functions/registry-pdf/assets/NanumGothic-Bold.ttf",
   "./functions/registry-pdf/assets/OFL.txt",
 ]
+
+[functions.consent-forms-public]
+verify_jwt = false

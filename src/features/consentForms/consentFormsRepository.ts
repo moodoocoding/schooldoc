@@ -1,0 +1,163 @@
+import { supabase } from '../../utils/supabaseClient';
+import type { ConsentFieldDraft, ConsentLocalDraft, ConsentRecipientMode, ConsentShareSettings } from './types';
+
+const DOCUMENT_BUCKET = 'consent-documents';
+const client = () => {
+  if (!supabase) throw new Error('Supabase 연결 정보가 없습니다.');
+  return supabase;
+};
+const fail = (message: string, error?: { message?: string } | null): never => {
+  throw new Error(error?.message ? `${message}: ${error.message}` : message);
+};
+
+interface ConsentFormRow {
+  id: string;
+  public_token: string;
+  title: string;
+  file_name: string;
+  source_path: string;
+  description: string;
+  fields: ConsentFieldDraft[];
+  recipient_mode: ConsentRecipientMode;
+  recipient_count: number;
+  deadline: string | null;
+  password_digest: string | null;
+  allow_resubmission: boolean;
+  response_count: number;
+  status: 'open' | 'closed';
+  created_at: string;
+  page_count: number;
+}
+
+const formColumns = 'id, public_token, title, file_name, source_path, description, fields, page_count, recipient_mode, recipient_count, deadline, password_digest, allow_resubmission, response_count, status, created_at';
+const mapForm = (row: ConsentFormRow): ConsentLocalDraft => ({
+  id: row.id,
+  title: row.title,
+  fileName: row.file_name,
+  fieldCount: row.fields.length,
+  recipientMode: row.recipient_mode,
+  recipientCount: row.recipient_count,
+  createdAt: row.created_at,
+  description: row.description,
+  fields: row.fields,
+  publicToken: row.public_token,
+  deadline: row.deadline ?? '',
+  passwordEnabled: Boolean(row.password_digest),
+  passwordHash: row.password_digest ?? '',
+  allowResubmission: row.allow_resubmission,
+  responseCount: row.response_count,
+  status: row.status,
+  sourcePath: row.source_path,
+  pageCount: row.page_count,
+});
+
+export const listRemoteConsentForms = async () => {
+  const { data, error } = await client().from('consent_forms').select(formColumns).order('created_at', { ascending: false });
+  if (error) fail('가정통신문 목록을 불러오지 못했습니다', error);
+  return ((data ?? []) as ConsentFormRow[]).map(mapForm);
+};
+
+export const getRemoteConsentForm = async (id: string) => {
+  const { data, error } = await client().from('consent_forms').select(formColumns).eq('id', id).maybeSingle();
+  if (error) fail('가정통신문을 불러오지 못했습니다', error);
+  return data ? mapForm(data as ConsentFormRow) : null;
+};
+
+export const getRemoteConsentSourceFile = async (form: ConsentLocalDraft) => {
+  if (!form.sourcePath) throw new Error('원본 PDF 경로가 없습니다.');
+  const signed = await client().storage.from(DOCUMENT_BUCKET).createSignedUrl(form.sourcePath, 10 * 60);
+  const signedUrl = signed.data?.signedUrl;
+  if (signed.error) fail('원본 PDF 주소를 만들지 못했습니다', signed.error);
+  if (!signedUrl) throw new Error('원본 PDF 주소를 만들지 못했습니다.');
+  const response = await fetch(signedUrl);
+  if (!response.ok) throw new Error('원본 PDF를 내려받지 못했습니다.');
+  return new File([await response.blob()], form.fileName, { type: 'application/pdf' });
+};
+
+export const createRemoteConsentForm = async ({
+  title, description, fields, recipientMode, recipientCount, settings, sourceFile,
+}: {
+  title: string;
+  description: string;
+  fields: ConsentFieldDraft[];
+  recipientMode: ConsentRecipientMode;
+  recipientCount: number;
+  settings: ConsentShareSettings;
+  sourceFile: File;
+}) => {
+  const { data: authData, error: authError } = await client().auth.getUser();
+  if (authError) fail('로그인 정보를 확인하지 못했습니다', authError);
+  if (!authData.user) throw new Error('Google 로그인이 필요합니다.');
+  const id = crypto.randomUUID();
+  const sourcePath = `${authData.user.id}/${id}/source.pdf`;
+  const { data, error } = await client().from('consent_forms').insert({
+    id,
+    owner_id: authData.user.id,
+    title: title.trim(),
+    file_name: sourceFile.name,
+    source_path: sourcePath,
+    description: description.trim(),
+    fields,
+    page_count: Math.max(1, ...fields.map((field) => field.pageIndex + 1)),
+    recipient_mode: recipientMode,
+    recipient_count: recipientMode === 'named' ? recipientCount : 0,
+    deadline: settings.deadline || null,
+    allow_resubmission: settings.allowResubmission,
+  }).select(formColumns).single();
+  if (error || !data) fail('가정통신문 수합을 만들지 못했습니다', error);
+  try {
+    const upload = await client().storage.from(DOCUMENT_BUCKET).upload(sourcePath, sourceFile, { contentType: 'application/pdf', upsert: false });
+    if (upload.error) fail('원본 PDF를 저장하지 못했습니다', upload.error);
+    if (settings.passwordEnabled && settings.password.trim()) {
+      const passwordResult = await client().rpc('set_consent_form_password', { p_form_id: id, p_password: settings.password.trim() });
+      if (passwordResult.error) fail('공개 비밀번호를 설정하지 못했습니다', passwordResult.error);
+    }
+  } catch (creationError) {
+    await client().storage.from(DOCUMENT_BUCKET).remove([sourcePath]);
+    await client().from('consent_forms').delete().eq('id', id);
+    throw creationError;
+  }
+  return getRemoteConsentForm(id);
+};
+
+export const updateRemoteConsentForm = async (id: string, patch: {
+  title?: string;
+  deadline?: string;
+  allowResubmission?: boolean;
+  status?: 'open' | 'closed';
+  passwordEnabled?: boolean;
+  password?: string;
+  description?: string;
+  fields?: ConsentFieldDraft[];
+  pageCount?: number;
+  fileName?: string;
+  sourceFile?: File;
+}) => {
+  const values: Record<string, unknown> = {};
+  if (patch.title !== undefined) values.title = patch.title;
+  if (patch.deadline !== undefined) values.deadline = patch.deadline || null;
+  if (patch.allowResubmission !== undefined) values.allow_resubmission = patch.allowResubmission;
+  if (patch.status !== undefined) values.status = patch.status;
+  if (patch.description !== undefined) values.description = patch.description;
+  if (patch.fields !== undefined) values.fields = patch.fields;
+  if (patch.pageCount !== undefined) values.page_count = patch.pageCount;
+  if (patch.fileName !== undefined) values.file_name = patch.fileName;
+  if (Object.keys(values).length) {
+    const { error } = await client().from('consent_forms').update(values).eq('id', id);
+    if (error) fail('수합 설정을 저장하지 못했습니다', error);
+  }
+  if (patch.passwordEnabled === false) {
+    const result = await client().rpc('clear_consent_form_password', { p_form_id: id });
+    if (result.error) fail('공개 비밀번호를 해제하지 못했습니다', result.error);
+  } else if (patch.passwordEnabled && patch.password?.trim()) {
+    const result = await client().rpc('set_consent_form_password', { p_form_id: id, p_password: patch.password.trim() });
+    if (result.error) fail('공개 비밀번호를 설정하지 못했습니다', result.error);
+  }
+  if (patch.sourceFile) {
+    const form = await getRemoteConsentForm(id);
+    if (!form?.sourcePath) throw new Error('원본 PDF 저장 경로를 찾지 못했습니다.');
+    const upload = await client().storage.from(DOCUMENT_BUCKET).update(form.sourcePath, patch.sourceFile, { contentType: 'application/pdf', upsert: true });
+    if (upload.error) fail('원본 PDF를 갱신하지 못했습니다', upload.error);
+  }
+  return getRemoteConsentForm(id);
+};

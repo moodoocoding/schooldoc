@@ -54,4 +54,22 @@ export interface ConsentLocalDraft {
   allowResubmission: boolean;
   responseCount: number;
   status: 'open' | 'closed';
+  pageCount?: number;
+  sourcePath?: string;
+  sourcePdfDataUrl?: string;
+}
+
+export interface ConsentPublicMetadata {
+  title: string;
+  description: string;
+  passwordRequired: boolean;
+  status: 'open' | 'closed';
+  deadline: string;
+}
+
+export interface ConsentPublicDocument extends ConsentPublicMetadata {
+  fields: ConsentFieldDraft[];
+  sourceUrl: string;
+  allowResubmission: boolean;
+  pageCount: number;
 }

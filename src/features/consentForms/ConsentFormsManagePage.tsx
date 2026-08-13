@@ -1,13 +1,18 @@
 import { ArrowLeft, Check, Copy, ExternalLink, FilePenLine, LockKeyhole, PauseCircle, PlayCircle, QrCode, Save, Settings2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getConsentLocalDraft, hashConsentPassword, updateConsentLocalDraft } from './consentFormsLocalStore';
+import { isConsentFormsDemoMode } from './consentFormsConfig';
+import { getRemoteConsentForm, updateRemoteConsentForm } from './consentFormsRepository';
+import type { ConsentLocalDraft } from './types';
 
 export function ConsentFormsManagePage() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
-  const [draft, setDraft] = useState(() => getConsentLocalDraft(id));
+  const [draft, setDraft] = useState<ConsentLocalDraft | null>(() => isConsentFormsDemoMode ? getConsentLocalDraft(id) : null);
+  const [loading, setLoading] = useState(!isConsentFormsDemoMode);
+  const [loadError, setLoadError] = useState('');
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(draft?.title ?? '');
   const [deadline, setDeadline] = useState(draft?.deadline ?? '');
@@ -16,10 +21,34 @@ export function ConsentFormsManagePage() {
   const [newPassword, setNewPassword] = useState('');
   const [copied, setCopied] = useState(false);
 
-  if (!draft) return <div className="mx-auto max-w-xl py-20 text-center"><h1 className="text-xl font-extrabold">수합을 찾을 수 없습니다</h1><button type="button" onClick={() => navigate('/tools/consent-forms')} className="mt-5 min-h-[44px] rounded-lg border border-[#C8D0DA] px-4 text-sm font-bold">목록으로</button></div>;
+  useEffect(() => {
+    if (isConsentFormsDemoMode) return;
+    let active = true;
+    getRemoteConsentForm(id).then((form) => {
+      if (!active) return;
+      setDraft(form);
+      setTitle(form?.title ?? '');
+      setDeadline(form?.deadline ?? '');
+      setAllowResubmission(form?.allowResubmission ?? false);
+      setPasswordEnabled(form?.passwordEnabled ?? false);
+    }).catch((error) => {
+      if (active) setLoadError(error instanceof Error ? error.message : '수합을 불러오지 못했습니다.');
+    }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [id]);
+
+  if (loading) return <div className="py-20 text-center text-sm font-semibold text-[#526174]">수합을 불러오고 있습니다.</div>;
+  if (!draft) return <div className="mx-auto max-w-xl py-20 text-center"><h1 className="text-xl font-extrabold">수합을 찾을 수 없습니다</h1>{loadError ? <p className="mt-3 text-sm font-semibold text-[#B42318]">{loadError}</p> : null}<button type="button" onClick={() => navigate('/tools/consent-forms')} className="mt-5 min-h-[44px] rounded-lg border border-[#C8D0DA] px-4 text-sm font-bold">목록으로</button></div>;
   const publicLink = `${window.location.origin}/s/consent/${draft.publicToken}`;
 
   const save = async () => {
+    if (!isConsentFormsDemoMode) {
+      const updated = await updateRemoteConsentForm(draft.id, { title: title.trim() || draft.title, deadline, allowResubmission, passwordEnabled, password: newPassword });
+      if (updated) setDraft(updated);
+      setNewPassword('');
+      setEditing(false);
+      return;
+    }
     const passwordHash = passwordEnabled && newPassword.trim() ? await hashConsentPassword(newPassword.trim()) : passwordEnabled ? draft.passwordHash : '';
     const updated = updateConsentLocalDraft(draft.id, { title: title.trim() || draft.title, deadline, allowResubmission, passwordEnabled, passwordHash });
     if (updated) setDraft(updated);
@@ -27,7 +56,12 @@ export function ConsentFormsManagePage() {
     setEditing(false);
   };
 
-  const toggleStatus = () => {
+  const toggleStatus = async () => {
+    if (!isConsentFormsDemoMode) {
+      const updated = await updateRemoteConsentForm(draft.id, { status: draft.status === 'open' ? 'closed' : 'open' });
+      if (updated) setDraft(updated);
+      return;
+    }
     const updated = updateConsentLocalDraft(draft.id, { status: draft.status === 'open' ? 'closed' : 'open' });
     if (updated) setDraft(updated);
   };

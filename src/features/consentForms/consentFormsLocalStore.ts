@@ -19,6 +19,9 @@ const normalizeDraft = (value: Partial<ConsentLocalDraft>): ConsentLocalDraft =>
   allowResubmission: value.allowResubmission ?? false,
   responseCount: value.responseCount ?? 0,
   status: value.status ?? 'open',
+  pageCount: value.pageCount ?? Math.max(1, ...(value.fields ?? []).map((field) => field.pageIndex + 1)),
+  sourcePath: value.sourcePath,
+  sourcePdfDataUrl: value.sourcePdfDataUrl,
 });
 
 export const getConsentLocalDrafts = (): ConsentLocalDraft[] => {
