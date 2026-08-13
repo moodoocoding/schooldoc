@@ -69,8 +69,8 @@ Deno.serve(async (request) => {
     if (!['metadata', 'document', 'submit'].includes(action) || !uuidPattern.test(token)) throw new HttpError(400, '요청 형식이 올바르지 않습니다.');
     await rateLimit(request, token, action);
     const form = await getForm(token);
-    ensureOpen(form);
     if (action === 'metadata') return json(200, { form: metadata(form) });
+    ensureOpen(form);
     await verifyPassword(form, body.password);
     if (action === 'document') {
       const signed = await db.storage.from('consent-documents').createSignedUrl(form.source_path, 60 * 60);

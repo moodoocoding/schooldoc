@@ -25,6 +25,10 @@ const retryLoad = async <T,>(operation: () => Promise<T>, attempts = 3): Promise
       return await operation();
     } catch (error) {
       lastError = error;
+      const status = typeof error === 'object' && error !== null && 'status' in error
+        ? Number((error as { status?: number }).status)
+        : undefined;
+      if (status && status < 500) throw error;
       if (attempt < attempts - 1) {
         await new Promise((resolve) => window.setTimeout(resolve, 700 * (attempt + 1)));
       }
