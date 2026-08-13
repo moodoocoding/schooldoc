@@ -22,7 +22,7 @@ import {
   regenerateStudentResultPersonalToken,
   replyToStudentDispute,
   setStudentResultEventStatus,
-} from './studentResultsStore';
+} from './studentResultsService';
 import { resultStatusLabel } from './studentResultsUtils';
 import { StudentResultConfirmDialog } from './StudentResultConfirmDialog';
 import { useStudentResultEvent } from './useStudentResults';
@@ -55,7 +55,7 @@ export function StudentResultsManagePage() {
   const { resultId } = useParams();
   const { user } = useTeacherAuth();
   const ownerId = studentResultsOwnerId(user?.id);
-  const { data: event } = useStudentResultEvent(resultId);
+  const { data: event, loading, error, refresh } = useStudentResultEvent(resultId);
   const [view, setView] = useState<ManageView>('status');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [query, setQuery] = useState('');
@@ -66,10 +66,11 @@ export function StudentResultsManagePage() {
   const [selectedRecipientIds, setSelectedRecipientIds] = useState<Set<string>>(new Set());
   const [pendingTokenReset, setPendingTokenReset] = useState<{ id: string; name: string } | null>(null);
 
+  if (loading) return <div className="py-20 text-center text-sm font-semibold text-[#526174]">결과 안내를 불러오는 중입니다.</div>;
   if (!event) {
     return (
       <div className="py-20 text-center">
-        <p className="font-bold">결과 안내를 찾을 수 없습니다.</p>
+        <p className="font-bold">{error || '결과 안내를 찾을 수 없습니다.'}</p>
         <button type="button" onClick={() => navigate('/tools/student-results')} className="mt-4 text-sm font-bold text-[#0F6CBD]">목록으로</button>
       </div>
     );
@@ -131,10 +132,11 @@ export function StudentResultsManagePage() {
     });
     navigate(`/tools/student-results/${event.id}/qr-print?${params.toString()}`);
   };
-  const resetPersonalToken = () => {
+  const resetPersonalToken = async () => {
     if (!ownerId || !pendingTokenReset) return;
-    const updated = regenerateStudentResultPersonalToken(ownerId, event.id, pendingTokenReset.id);
-    setNotice(updated ? `${pendingTokenReset.name} 학생의 개인 링크를 재발급했습니다.` : '개인 링크를 재발급하지 못했습니다.');
+    await regenerateStudentResultPersonalToken(ownerId, event.id, pendingTokenReset.id);
+    await refresh();
+    setNotice(`${pendingTokenReset.name} 학생의 개인 링크를 재발급했습니다.`);
     setPendingTokenReset(null);
   };
 
@@ -143,12 +145,12 @@ export function StudentResultsManagePage() {
       <header className="border-b border-[#DCE3EA] pb-5">
         <div className="flex items-center justify-between gap-3">
           <button type="button" onClick={() => navigate('/tools/student-results')} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg px-2 text-sm font-semibold text-[#334155] hover:bg-white hover:text-[#0F6CBD]"><ArrowLeft className="h-5 w-5" />목록으로</button>
-          <button type="button" onClick={() => ownerId && setStudentResultEventStatus(ownerId, event.id, event.status === 'open' ? 'closed' : 'open')} className="min-h-[40px] shrink-0 rounded-lg border border-[#C8D0DA] bg-white px-4 text-xs font-bold">{event.status === 'open' ? '안내 종료' : '안내 다시 열기'}</button>
+          <button type="button" onClick={() => { if (ownerId) void setStudentResultEventStatus(ownerId, event.id, event.status === 'open' ? 'closed' : 'open').then(refresh); }} className="min-h-[40px] shrink-0 rounded-lg border border-[#C8D0DA] bg-white px-4 text-xs font-bold">{event.status === 'open' ? '안내 종료' : '안내 다시 열기'}</button>
         </div>
         <div className="mt-4 max-w-5xl">
           <div className="flex flex-wrap items-center gap-2">
             <span className={`rounded-md px-2.5 py-1 text-xs font-bold ${event.status === 'open' ? 'bg-[#E6F4EA] text-[#126B32]' : 'bg-[#EEF1F4] text-[#526174]'}`}>{event.status === 'open' ? '안내 중' : '종료'}</span>
-            <span className="text-xs text-[#64748B]">로컬 데이터</span>
+            <span className="text-xs text-[#64748B]">보호된 학생 데이터</span>
           </div>
           <h1 className="mt-2 break-words text-xl font-extrabold leading-snug text-[#0F172A] sm:text-2xl">{event.title}</h1>
           {event.description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-[#526174]">{event.description}</p> : null}
@@ -194,7 +196,7 @@ export function StudentResultsManagePage() {
                     <td className="border-b border-[#EEF1F4] p-3"><span className={`inline-flex rounded-md px-2 py-1 text-xs font-bold ${statusStyle(recipient.status)}`}>{resultStatusLabel(recipient.status)}</span></td>
                     <td className="border-b border-[#EEF1F4] p-3 text-xs text-[#526174]"><Clock3 className="mr-1 inline h-3.5 w-3.5" />{formatActivityAt(activityAt(recipient))}</td>
                     <td className="border-b border-[#EEF1F4] p-3">
-                      {recipient.dispute ? <div className="max-w-sm"><p className="text-xs text-[#334155]"><MessageSquareText className="mr-1 inline h-3.5 w-3.5" />{recipient.dispute.message}</p>{recipient.dispute.teacherReply ? <p className="mt-2 text-xs font-semibold text-[#0F6CBD]">답변: {recipient.dispute.teacherReply}</p> : <div className="mt-2 flex gap-2"><input value={reply[recipient.id] ?? ''} onChange={(changeEvent) => setReply((current) => ({ ...current, [recipient.id]: changeEvent.target.value }))} className="min-h-[36px] min-w-0 flex-1 rounded-md border border-[#C8D0DA] px-2 text-xs" placeholder="교사 답변" /><button type="button" disabled={!reply[recipient.id]?.trim()} onClick={() => ownerId && replyToStudentDispute(ownerId, event.id, recipient.id, reply[recipient.id])} className="rounded-md bg-[#0F6CBD] px-3 text-xs font-bold text-white disabled:opacity-40">답변</button></div>}</div> : <span className="text-xs text-[#94A3B8]">없음</span>}
+                      {recipient.dispute ? <div className="max-w-sm"><p className="text-xs text-[#334155]"><MessageSquareText className="mr-1 inline h-3.5 w-3.5" />{recipient.dispute.message}</p>{recipient.dispute.teacherReply ? <p className="mt-2 text-xs font-semibold text-[#0F6CBD]">답변: {recipient.dispute.teacherReply}</p> : <div className="mt-2 flex gap-2"><input value={reply[recipient.id] ?? ''} onChange={(changeEvent) => setReply((current) => ({ ...current, [recipient.id]: changeEvent.target.value }))} className="min-h-[36px] min-w-0 flex-1 rounded-md border border-[#C8D0DA] px-2 text-xs" placeholder="교사 답변" /><button type="button" disabled={!reply[recipient.id]?.trim()} onClick={() => { if (ownerId) void replyToStudentDispute(ownerId, event.id, recipient.id, reply[recipient.id]).then(refresh); }} className="rounded-md bg-[#0F6CBD] px-3 text-xs font-bold text-white disabled:opacity-40">답변</button></div>}</div> : <span className="text-xs text-[#94A3B8]">없음</span>}
                     </td>
                   </tr>
                 ))}</tbody>

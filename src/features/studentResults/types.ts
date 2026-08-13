@@ -65,3 +65,12 @@ export interface AuthenticatedStudentResult {
   event: Pick<StudentResultEvent, 'id' | 'publicToken' | 'title' | 'description' | 'status' | 'allowConfirmation' | 'allowDispute' | 'columns'>;
   recipient: ResultRecipient;
 }
+
+export interface PublicStudentResult extends Omit<AuthenticatedStudentResult, 'recipient'> {
+  recipient: Omit<ResultRecipient, 'verificationCode' | 'personalToken'>;
+}
+
+export interface PublicStudentResultSession {
+  sessionToken: string;
+  result: PublicStudentResult;
+}

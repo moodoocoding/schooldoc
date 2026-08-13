@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import { studentResultsOwnerId } from './studentResultsConfig';
 import { analyzeStudentResultFile, type StudentResultImportAnalysis } from './studentResultsImport';
-import { createStudentResultEvent } from './studentResultsStore';
+import { createStudentResultEvent } from './studentResultsService';
 import { getStudentResultValidationIssue, makeEmptyRecipient } from './studentResultsUtils';
 import type { ResultColumn, ResultRecipientDraft, StudentResultDraft } from './types';
 
@@ -40,6 +40,7 @@ export function StudentResultsCreatePage() {
   const [pendingImportFileName, setPendingImportFileName] = useState('');
   const [pendingImport, setPendingImport] = useState<StudentResultImportAnalysis | null>(null);
   const [preImportSnapshot, setPreImportSnapshot] = useState<FormSnapshot | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const addColumn = () => {
     const column: EditableResultColumn = {
@@ -136,7 +137,7 @@ export function StudentResultsCreatePage() {
     });
   };
 
-  const submit = (event: React.FormEvent) => {
+  const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     const ownerId = studentResultsOwnerId(user?.id);
     if (!ownerId) return;
@@ -159,12 +160,15 @@ export function StudentResultsCreatePage() {
       return;
     }
     try {
+      setSaving(true);
       setError('');
       setErrorFieldId('');
-      const created = createStudentResultEvent(ownerId, draft);
+      const created = await createStudentResultEvent(ownerId, draft);
       navigate(`/tools/student-results/${created.id}`);
     } catch (creationError) {
       setError(creationError instanceof Error ? creationError.message : '결과 안내를 만들지 못했습니다.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -378,7 +382,7 @@ export function StudentResultsCreatePage() {
 
       <div className="flex justify-end gap-3">
         <button type="button" onClick={() => navigate('/tools/student-results')} className="min-h-[44px] rounded-lg border border-[#C8D0DA] px-5 text-sm font-bold">취소</button>
-        <button type="submit" className="min-h-[44px] rounded-lg bg-[#0F6CBD] px-6 text-sm font-bold text-white hover:bg-[#0B5B9F]">결과 안내 만들기</button>
+        <button type="submit" disabled={saving} className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[#0F6CBD] px-6 text-sm font-bold text-white hover:bg-[#0B5B9F] disabled:cursor-wait disabled:bg-[#AAB7C4]">{saving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}{saving ? '저장 중' : '결과 안내 만들기'}</button>
       </div>
     </form>
   );

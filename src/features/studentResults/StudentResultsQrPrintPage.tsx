@@ -12,15 +12,16 @@ export function StudentResultsQrPrintPage() {
   const navigate = useNavigate();
   const { resultId } = useParams();
   const [searchParams] = useSearchParams();
-  const { data: event } = useStudentResultEvent(resultId);
+  const { data: event, loading, error } = useStudentResultEvent(resultId);
   const pagesRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState('');
 
+  if (loading) return <div className="py-20 text-center text-sm font-semibold text-[#526174]">QR 자료를 불러오는 중입니다.</div>;
   if (!event) {
     return (
       <div className="py-20 text-center">
-        <p className="font-bold">결과 안내를 찾을 수 없습니다.</p>
+        <p className="font-bold">{error || '결과 안내를 찾을 수 없습니다.'}</p>
         <button type="button" onClick={() => navigate('/tools/student-results')} className="mt-4 text-sm font-bold text-[#0F6CBD]">목록으로</button>
       </div>
     );
