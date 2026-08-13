@@ -27,5 +27,5 @@ export function StudentResultsAuthGate({ children }: { children: ReactNode }) {
     );
   }
 
-  return <><div className="mx-auto mb-5 flex w-full max-w-7xl items-center justify-end gap-3 border-b border-[#DCE3EA] pb-3"><span className="truncate text-xs font-semibold text-[#526174]">{displayName}</span><button type="button" onClick={() => void signOut()} className="flex h-9 w-9 items-center justify-center rounded-lg text-[#526174] hover:bg-white hover:text-[#0F6CBD]" aria-label="로그아웃" title="로그아웃"><LogOut className="h-4 w-4" /></button></div>{children}</>;
+  return <><div className="mx-auto mb-2 flex min-h-[40px] w-full max-w-7xl items-center justify-end gap-2"><span className="max-w-48 truncate text-xs font-semibold text-[#526174]">{displayName}</span><button type="button" onClick={() => void signOut()} className="flex h-10 w-10 items-center justify-center rounded-lg text-[#526174] hover:bg-white hover:text-[#0F6CBD]" aria-label="로그아웃" title="로그아웃"><LogOut className="h-4 w-4" /></button></div>{children}</>;
 }

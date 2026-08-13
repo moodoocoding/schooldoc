@@ -140,19 +140,20 @@ export function StudentResultsManagePage() {
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 pb-12">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#DCE3EA] pb-4">
-        <button type="button" onClick={() => navigate('/tools/student-results')} className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-2 text-sm font-semibold text-[#334155] hover:bg-white hover:text-[#0F6CBD]"><ArrowLeft className="h-5 w-5" />목록으로</button>
-        <button type="button" onClick={() => ownerId && setStudentResultEventStatus(ownerId, event.id, event.status === 'open' ? 'closed' : 'open')} className="min-h-[40px] rounded-lg border border-[#C8D0DA] bg-white px-4 text-xs font-bold">{event.status === 'open' ? '안내 종료' : '안내 다시 열기'}</button>
-      </div>
-
-      <div>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className={`rounded-md px-2.5 py-1 text-xs font-bold ${event.status === 'open' ? 'bg-[#E6F4EA] text-[#126B32]' : 'bg-[#EEF1F4] text-[#526174]'}`}>{event.status === 'open' ? '안내 중' : '종료'}</span>
-          <span className="text-xs text-[#64748B]">로컬 데이터</span>
+      <header className="border-b border-[#DCE3EA] pb-5">
+        <div className="flex items-center justify-between gap-3">
+          <button type="button" onClick={() => navigate('/tools/student-results')} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg px-2 text-sm font-semibold text-[#334155] hover:bg-white hover:text-[#0F6CBD]"><ArrowLeft className="h-5 w-5" />목록으로</button>
+          <button type="button" onClick={() => ownerId && setStudentResultEventStatus(ownerId, event.id, event.status === 'open' ? 'closed' : 'open')} className="min-h-[40px] shrink-0 rounded-lg border border-[#C8D0DA] bg-white px-4 text-xs font-bold">{event.status === 'open' ? '안내 종료' : '안내 다시 열기'}</button>
         </div>
-        <h1 className="mt-3 text-2xl font-extrabold">{event.title}</h1>
-        {event.description ? <p className="mt-2 text-sm text-[#526174]">{event.description}</p> : null}
-      </div>
+        <div className="mt-4 max-w-5xl">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`rounded-md px-2.5 py-1 text-xs font-bold ${event.status === 'open' ? 'bg-[#E6F4EA] text-[#126B32]' : 'bg-[#EEF1F4] text-[#526174]'}`}>{event.status === 'open' ? '안내 중' : '종료'}</span>
+            <span className="text-xs text-[#64748B]">로컬 데이터</span>
+          </div>
+          <h1 className="mt-2 break-words text-xl font-extrabold leading-snug text-[#0F172A] sm:text-2xl">{event.title}</h1>
+          {event.description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-[#526174]">{event.description}</p> : null}
+        </div>
+      </header>
 
       <div role="tablist" aria-label="학생 결과 관리 보기" className="inline-grid grid-cols-2 rounded-lg border border-[#C8D0DA] bg-white p-1">
         <button type="button" role="tab" aria-selected={view === 'status'} onClick={() => setView('status')} className={`min-h-[40px] rounded-md px-5 text-sm font-bold ${view === 'status' ? 'bg-[#0F6CBD] text-white' : 'text-[#526174] hover:bg-[#F6F8FB]'}`}>현황</button>
