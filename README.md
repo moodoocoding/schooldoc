@@ -1,32 +1,64 @@
-# React + TypeScript + Vite
+# SchoolDoc
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+SchoolDoc은 교사가 반복해서 처리하는 안내, 수합, 서명, 예약 업무를 한곳에서 관리하기 위한
+웹 애플리케이션입니다. 교사용 관리 화면과 학생·참여자용 공개 화면을 분리하고, 모바일 조회와
+A4/PDF 출력을 함께 지원하는 것을 목표로 합니다.
 
-Currently, two official plugins are available:
+## 현재 구현 범위
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- 등록부 서명: 참석자 명단 작성·엑셀 가져오기, 공개 서명 링크, 서명 현황, PDF 출력
+- 학생 결과 안내: 엑셀 결과 분석, 학생별 조회·확인·이의, 교사 답변, 개인 QR PDF
+- 교사용 Google 로그인과 사용자별 데이터 격리 기반
 
-## React Compiler
+나머지 업무 도구는 순차적으로 구현합니다.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 개발 환경
 
-## Expanding the Oxlint configuration
+- React 19, TypeScript, Vite
+- Tailwind CSS
+- Supabase
+- Vitest, Playwright
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+프로덕션 빌드와 기본 검증은 다음 명령으로 실행합니다.
+
+```bash
+npm run build
+npm run lint
+npm test
+npm run test:e2e
+```
+
+Supabase 연결 정보는 저장소에 커밋하지 않는 `.env.local`에 설정합니다.
+
+```dotenv
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_PUBLISHABLE_KEY=...
+```
+
+## 제품 원칙
+
+- 교사가 반복 업무를 빠르고 실수 없이 끝낼 수 있어야 합니다.
+- 학생과 참여자는 회원가입 없이 필요한 한 가지 행동에 집중할 수 있어야 합니다.
+- 개인정보와 개인 링크는 화면, QR, 파일에서 필요한 범위만 노출합니다.
+- 모바일 공개 화면과 데스크톱 관리 화면을 각각의 사용 맥락에 맞게 설계합니다.
+- 화면 미리보기와 A4/PDF 결과의 정보 구조와 레이아웃을 일치시킵니다.
+- 접근성, 키보드 탐색, 오류 복구와 빈 상태를 완료 조건에 포함합니다.
+
+## UX/UI 전문가 페르소나
+
+기능을 설계하거나 화면을 검토할 때 [UX/UI 전문가 페르소나](pro/ux-ui-expert.md)를 기준으로
+사용합니다. 이 페르소나는 교사용 업무 도구의 정보 구조, 작업 효율, 오류 예방, 접근성,
+반응형 화면과 인쇄 결과를 일관된 순서로 검토하고 실행 가능한 개선안을 제시합니다.
+
+화면 변경은 다음 질문을 우선 확인합니다.
+
+1. 사용자가 지금 해야 할 행동을 바로 알아볼 수 있는가?
+2. 가장 자주 쓰는 흐름의 클릭과 입력을 줄였는가?
+3. 실수했을 때 원인을 이해하고 복구할 수 있는가?
+4. 개인정보가 필요한 사람과 화면에만 보이는가?
+5. 모바일, 데스크톱, A4/PDF에서 정보가 잘리거나 겹치지 않는가?

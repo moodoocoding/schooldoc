@@ -6,6 +6,8 @@ import { ToolExecutionPage } from './components/ToolExecutionPage';
 import { SettingsPage } from './components/SettingsPage';
 import { PublicRegistrySignPage } from './features/registry/PublicRegistrySignPage';
 import { RegistryWorkspace } from './features/registry/RegistryWorkspace';
+import { PublicStudentResultPage } from './features/studentResults/PublicStudentResultPage';
+import { StudentResultsWorkspace } from './features/studentResults/StudentResultsWorkspace';
 import type { SidebarTab, SchoolTool, ActiveTask } from './types/schooldoc';
 import { MessageSquarePlus, X, CheckCircle2 } from 'lucide-react';
 
@@ -97,11 +99,12 @@ function AdminApp() {
 
   const selectedTool = activeToolId ? allToolsMap[activeToolId] : null;
   const isRegistryRoute = location.pathname.startsWith('/tools/registry-sign');
+  const isStudentResultsRoute = location.pathname.startsWith('/tools/student-results');
 
   const handleSelectTool = (toolId: string) => {
-    if (toolId === 'registry-sign') {
+    if (toolId === 'registry-sign' || toolId === 'student-lookup') {
       setActiveToolId(null);
-      navigate('/tools/registry-sign');
+      navigate(toolId === 'registry-sign' ? '/tools/registry-sign' : '/tools/student-results');
       return;
     }
     navigate('/');
@@ -152,9 +155,9 @@ function AdminApp() {
 
       {/* Right Workspace Main Content */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-        {isRegistryRoute ? (
+        {isRegistryRoute || isStudentResultsRoute ? (
           <main className="min-w-0 overflow-x-hidden p-4 sm:p-8">
-            <RegistryWorkspace />
+            {isRegistryRoute ? <RegistryWorkspace /> : <StudentResultsWorkspace />}
           </main>
         ) : selectedTool ? (
           <main className="p-4 sm:p-8">
@@ -282,6 +285,7 @@ function App() {
   return (
     <Routes>
       <Route path="/s/registry/:token" element={<PublicRegistrySignPage />} />
+      <Route path="/s/results/:token" element={<PublicStudentResultPage />} />
       <Route path="*" element={<AdminApp />} />
     </Routes>
   );

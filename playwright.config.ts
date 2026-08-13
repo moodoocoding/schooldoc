@@ -20,6 +20,7 @@ export default defineConfig({
     command: 'npm run dev -- --host 127.0.0.1 --port 4173',
     env: {
       VITE_REGISTRY_DEMO_MODE: 'true',
+      VITE_STUDENT_RESULTS_DEMO_MODE: 'true',
     },
     url: 'http://127.0.0.1:4173/tools/registry-sign',
     reuseExistingServer: true,

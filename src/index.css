@@ -47,7 +47,9 @@
 }
 
 .registry-print-page,
-.registry-print-page * {
+.registry-print-page *,
+.student-result-qr-print-page,
+.student-result-qr-print-page * {
   letter-spacing: 0 !important;
   font-kerning: none;
   font-variant-ligatures: none;
@@ -64,7 +66,9 @@
   }
 
   .registry-print-root,
-  .registry-print-root * {
+  .registry-print-root *,
+  .student-result-qr-print-root,
+  .student-result-qr-print-root * {
     visibility: visible;
   }
 
@@ -73,9 +77,21 @@
     inset: 0;
   }
 
-  .registry-print-page {
+  .student-result-qr-print-root {
+    position: absolute;
+    inset: 0;
+    width: 794px;
+  }
+
+  .registry-print-page,
+  .student-result-qr-print-page {
     box-shadow: none !important;
     break-after: page;
     page-break-after: always;
+  }
+
+  .student-result-qr-print-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
   }
 }
