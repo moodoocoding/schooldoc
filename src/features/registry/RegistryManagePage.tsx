@@ -149,6 +149,10 @@ export function RegistryManagePage() {
     if (pages.length === 0) return;
     setIsExporting(true);
     try {
+      await document.fonts?.ready;
+      await Promise.all(pages.flatMap((page) => (
+        Array.from(page.querySelectorAll('img')).map((image) => image.decode().catch(() => undefined))
+      )));
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import('html2canvas'),
         import('jspdf'),
@@ -159,9 +163,23 @@ export function RegistryManagePage() {
           scale: 2,
           backgroundColor: '#ffffff',
           useCORS: true,
+          logging: false,
+          width: 794,
+          height: 1123,
+          windowWidth: 794,
+          windowHeight: 1123,
+          onclone: (clonedDocument) => {
+            clonedDocument.querySelectorAll<HTMLElement>('.registry-print-preview').forEach((preview) => {
+              preview.style.transform = 'none';
+            });
+            clonedDocument.querySelectorAll<HTMLElement>('.registry-print-page').forEach((page) => {
+              page.style.transform = 'none';
+              page.style.boxShadow = 'none';
+            });
+          },
         });
         if (index > 0) pdf.addPage('a4', 'portrait');
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297, undefined, 'FAST');
       }
       pdf.save(fileName(registry.title, 'pdf'));
     } finally {
@@ -338,7 +356,7 @@ export function RegistryManagePage() {
         </div>
 
         <div tabIndex={0} role="region" aria-label="등록부 인쇄 미리보기" className="mt-6 h-[720px] overflow-auto rounded-lg bg-[#E8ECF1] p-5">
-          <div ref={printRef} className="w-max origin-top-left scale-[0.72] sm:scale-[0.8] xl:scale-[0.86]">
+          <div ref={printRef} className="registry-print-preview w-max origin-top-left scale-[0.72] sm:scale-[0.8] xl:scale-[0.86]">
             <RegistryPrintSheet registry={registry} />
           </div>
         </div>

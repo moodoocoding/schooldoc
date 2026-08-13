@@ -106,6 +106,47 @@ test('등록부를 만들고 모바일에서 서명한 뒤 결과물을 내려�
   const participantRow = page.getByRole('row', { name: /테스트교사/ });
   await expect(participantRow.getByText('완료', { exact: true })).toBeVisible();
 
+  const printLayout = await page.locator('.registry-print-page').first().evaluate((printPage) => {
+    const tables = Array.from(printPage.querySelectorAll('table'));
+    return tables.map((table) => {
+      const rowHeights = Array.from(table.querySelectorAll('tbody tr'))
+        .map((row) => (row as HTMLElement).offsetHeight);
+      const firstRowCells = Array.from(table.querySelectorAll('tbody tr:first-child td'));
+      const cellWidths = firstRowCells.map((cell) => (cell as HTMLElement).offsetWidth);
+      const signatureCell = firstRowCells.at(-1)?.getBoundingClientRect();
+      const signatureImage = table.querySelector('tbody img')?.getBoundingClientRect();
+      return {
+        rowHeights,
+        cellWidths,
+        signatureFitsCell: !signatureCell || !signatureImage || (
+          signatureImage.width <= signatureCell.width
+          && signatureImage.height <= signatureCell.height
+        ),
+      };
+    });
+  });
+
+  expect(printLayout).toHaveLength(2);
+  for (const table of printLayout) {
+    expect(Math.max(...table.rowHeights) - Math.min(...table.rowHeights)).toBeLessThan(1);
+    expect(table.cellWidths[0]).toBeCloseTo(34, 0);
+    expect(table.cellWidths[1]).toBeCloseTo(70, 0);
+    expect(table.cellWidths.at(-1)).toBeCloseTo(88, 0);
+    expect(table.signatureFitsCell).toBe(true);
+  }
+  const headerSpacing = await page.locator('.registry-print-page').first().evaluate((printPage) => (
+    Array.from(printPage.querySelectorAll('p')).slice(0, 2).map((paragraph) => ({
+      letterSpacing: getComputedStyle(paragraph).letterSpacing,
+      fontKerning: getComputedStyle(paragraph).fontKerning,
+      fits: paragraph.scrollWidth <= paragraph.clientWidth,
+    }))
+  ));
+  for (const header of headerSpacing) {
+    expect(['0px', 'normal']).toContain(header.letterSpacing);
+    expect(header.fontKerning).toBe('none');
+    expect(header.fits).toBe(true);
+  }
+
   const excelDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: '엑셀 다운로드' }).click();
   await expect((await excelDownload).suggestedFilename()).toBe('E2E 교직원 연수 등록부.xlsx');

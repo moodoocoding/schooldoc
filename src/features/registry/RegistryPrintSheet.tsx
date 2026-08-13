@@ -12,36 +12,51 @@ function RegistryTable({
   compact,
 }: RegistryPrintSheetProps & { participants: RegistryParticipant[]; rowsPerColumn: number; compact: boolean }) {
   const rows = Array.from({ length: rowsPerColumn }, (_, index) => participants[index] ?? null);
+  const numberWidth = compact ? 34 : 52;
+  const nameWidth = compact ? 70 : 116;
+  const signatureWidth = compact ? 88 : 150;
 
   return (
     <table className="h-full w-full table-fixed border-collapse text-[#111827]">
+      <colgroup>
+        <col style={{ width: numberWidth }} />
+        <col style={{ width: nameWidth }} />
+        {registry.columns.map((column) => <col key={column.id} />)}
+        <col style={{ width: signatureWidth }} />
+      </colgroup>
       <thead>
         <tr className={`h-11 bg-[#F1F4F7] font-bold ${compact ? 'text-[11px]' : 'text-[13px]'}`}>
-          <th className={`border border-[#8795A5] ${compact ? 'w-[34px]' : 'w-[52px]'}`}>연번</th>
-          <th className={`border border-[#8795A5] ${compact ? 'w-[70px]' : 'w-[116px]'}`}>성명</th>
+          <th className="border border-[#8795A5]">연번</th>
+          <th className="border border-[#8795A5]">성명</th>
           {registry.columns.map((column) => (
             <th key={column.id} className={`border border-[#8795A5] break-keep ${compact ? 'px-1' : 'px-2'}`}>{column.label}</th>
           ))}
-          <th className={`border border-[#8795A5] ${compact ? 'w-[88px]' : 'w-[150px]'}`}>서명</th>
+          <th className="border border-[#8795A5]">서명</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody className="h-full">
         {rows.map((participant, index) => (
-          <tr key={participant?.id ?? `empty-${index}`} className={`text-center ${compact ? 'text-[10px]' : 'text-[13px]'}`}>
-            <td className="border border-[#8795A5]">{participant?.rowNumber ?? ''}</td>
-            <td className={`border border-[#8795A5] break-keep font-semibold ${compact ? 'px-1' : 'px-2'}`}>{participant?.name ?? ''}</td>
+          <tr
+            key={participant?.id ?? `empty-${index}`}
+            className={`text-center ${compact ? 'text-[10px]' : 'text-[13px]'}`}
+            style={{ height: `${100 / rowsPerColumn}%` }}
+          >
+            <td className="overflow-hidden border border-[#8795A5]">{participant?.rowNumber ?? ''}</td>
+            <td className={`overflow-hidden border border-[#8795A5] break-keep font-semibold ${compact ? 'px-1' : 'px-2'}`}>{participant?.name ?? ''}</td>
             {registry.columns.map((column) => (
-              <td key={column.id} className={`border border-[#8795A5] break-keep ${compact ? 'px-1' : 'px-2'}`}>
+              <td key={column.id} className={`overflow-hidden border border-[#8795A5] break-keep ${compact ? 'px-1' : 'px-2'}`}>
                 {participant?.values[column.id] ?? ''}
               </td>
             ))}
-            <td className="border border-[#8795A5] p-1">
+            <td className="relative overflow-hidden border border-[#8795A5] p-0">
               {participant?.signature ? (
-                <img
-                  src={participant.signature.dataUrl}
-                  alt={`${participant.name} 서명`}
-                  className="mx-auto max-h-12 max-w-full object-contain"
-                />
+                <span className="absolute inset-1 flex items-center justify-center overflow-hidden">
+                  <img
+                    src={participant.signature.dataUrl}
+                    alt={`${participant.name} 서명`}
+                    className="block max-h-full max-w-full object-contain"
+                  />
+                </span>
               ) : null}
             </td>
           </tr>
@@ -67,9 +82,9 @@ export function RegistryPrintSheet({ registry }: RegistryPrintSheetProps) {
             <h1 className="whitespace-pre-wrap text-center text-[24px] font-extrabold text-[#0F172A]">
               {registry.title.trim().split(/\s+/).join('\u3000')}
             </h1>
-            <div className="mt-4 flex min-h-6 items-start justify-between gap-6 whitespace-pre-line text-[13px] text-[#334155]">
-              <p>{registry.leftHeader}</p>
-              <p className="text-right">{registry.rightHeader}</p>
+            <div className="mt-4 grid min-h-6 grid-cols-2 gap-6 text-[13px] leading-5 text-[#334155]">
+              <p className="whitespace-pre-wrap text-left tracking-normal">{registry.leftHeader}</p>
+              <p className="whitespace-pre-wrap text-right tracking-normal">{registry.rightHeader}</p>
             </div>
           </div>
 
