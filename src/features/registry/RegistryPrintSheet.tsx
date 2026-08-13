@@ -3,6 +3,7 @@ import type { Registry, RegistryParticipant } from './types';
 
 interface RegistryPrintSheetProps {
   registry: Registry;
+  pageIndex?: number;
 }
 
 function RegistryTable({
@@ -66,16 +67,19 @@ function RegistryTable({
   );
 }
 
-export function RegistryPrintSheet({ registry }: RegistryPrintSheetProps) {
+export function RegistryPrintSheet({ registry, pageIndex }: RegistryPrintSheetProps) {
   const { columns, rowsPerColumn } = getRegistryPageSettings(registry.layout);
   const pageSize = columns * rowsPerColumn;
   const pages = paginateRegistryParticipants(registry.participants, pageSize);
+  const visiblePages = pageIndex === undefined
+    ? pages.map((page, index) => ({ page, index }))
+    : [{ page: pages[Math.min(Math.max(pageIndex, 0), pages.length - 1)], index: Math.min(Math.max(pageIndex, 0), pages.length - 1) }];
 
   return (
     <div className="registry-print-root space-y-6">
-      {pages.map((page, pageIndex) => (
+      {visiblePages.map(({ page, index }) => (
         <section
-          key={`${registry.id}-page-${pageIndex + 1}`}
+          key={`${registry.id}-page-${index + 1}`}
           className="registry-print-page flex h-[1123px] w-[794px] flex-col bg-white px-[54px] py-[58px] shadow-lg"
         >
           <div className="border-t-4 border-[#0F6CBD] pt-4">
@@ -100,7 +104,7 @@ export function RegistryPrintSheet({ registry }: RegistryPrintSheetProps) {
             ))}
           </div>
 
-          <p className="pt-4 text-center text-[12px] text-[#526174]">- {pageIndex + 1} -</p>
+          <p className="pt-4 text-center text-[12px] text-[#526174]">- {index + 1} -</p>
         </section>
       ))}
     </div>

@@ -18,6 +18,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { RegistryConfirmDialog } from './RegistryConfirmDialog';
 import { isRegistryDemoMode } from './registryConfig';
 import { RegistryPrintSheet } from './RegistryPrintSheet';
+import { RegistryPagination } from './RegistryPagination';
 import {
   addParticipant,
   clearSignature,
@@ -25,7 +26,7 @@ import {
   removeParticipant,
   updateRegistry,
 } from './registryService';
-import { formatSignedAt } from './registryUtils';
+import { formatSignedAt, getRegistryPageSettings } from './registryUtils';
 import type { RegistryLayout } from './types';
 import { useRegistry } from './useRegistries';
 
@@ -35,6 +36,10 @@ type PendingAction = { kind: 'delete' | 'resign'; participantId: string; partici
 const inputClass = 'min-h-[44px] w-full rounded-lg border border-[#DCE3EA] bg-white px-3.5 text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#0F6CBD] focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]/15';
 
 const fileName = (title: string, extension: string) => `${title.replace(/[\\/:*?"<>|]/g, '_') || '등록부'}.${extension}`;
+const PARTICIPANTS_PER_PAGE = 50;
+const waitForPaint = () => new Promise<void>((resolve) => {
+  window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
+});
 
 export function RegistryManagePage() {
   const { registryId } = useParams();
@@ -50,8 +55,11 @@ export function RegistryManagePage() {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [actionError, setActionError] = useState('');
   const [isMutating, setIsMutating] = useState(false);
+  const [participantPage, setParticipantPage] = useState(1);
+  const [printPage, setPrintPage] = useState(1);
+  const [renderAllPrintPages, setRenderAllPrintPages] = useState(false);
 
-  const visibleParticipants = useMemo(() => {
+  const filteredParticipants = useMemo(() => {
     if (!registry) return [];
     const keyword = query.trim().toLocaleLowerCase('ko-KR');
     return registry.participants.filter((participant) => {
@@ -93,6 +101,15 @@ export function RegistryManagePage() {
 
   const signedCount = registry.participants.filter((participant) => participant.signature).length;
   const publicUrl = `${window.location.origin}/s/registry/${registry.publicToken}`;
+  const participantPageCount = Math.max(1, Math.ceil(filteredParticipants.length / PARTICIPANTS_PER_PAGE));
+  const safeParticipantPage = Math.min(participantPage, participantPageCount);
+  const visibleParticipants = filteredParticipants.slice(
+    (safeParticipantPage - 1) * PARTICIPANTS_PER_PAGE,
+    safeParticipantPage * PARTICIPANTS_PER_PAGE,
+  );
+  const printSettings = getRegistryPageSettings(registry.layout);
+  const printPageCount = Math.max(1, Math.ceil(registry.participants.length / (printSettings.columns * printSettings.rowsPerColumn)));
+  const safePrintPage = Math.min(printPage, printPageCount);
 
   const copyPublicUrl = async () => {
     await navigator.clipboard.writeText(publicUrl);
@@ -108,6 +125,7 @@ export function RegistryManagePage() {
       await addParticipant(registry.id, { name: newName.trim(), values: newValues });
       setNewName('');
       setNewValues({});
+      setParticipantPage(Math.ceil((registry.participants.length + 1) / PARTICIPANTS_PER_PAGE));
       await refresh();
     } catch (mutationError) {
       setActionError(mutationError instanceof Error ? mutationError.message : '참석자를 추가하지 못했습니다.');
@@ -163,6 +181,8 @@ export function RegistryManagePage() {
         return;
       }
 
+      setRenderAllPrintPages(true);
+      await waitForPaint();
       const pages = Array.from(printRef.current?.querySelectorAll<HTMLElement>('.registry-print-page') ?? []);
       if (pages.length === 0) return;
       await document.fonts?.ready;
@@ -201,6 +221,7 @@ export function RegistryManagePage() {
     } catch (exportError) {
       setActionError(exportError instanceof Error ? exportError.message : 'PDF를 만들지 못했습니다.');
     } finally {
+      setRenderAllPrintPages(false);
       setIsExporting(false);
     }
   };
@@ -223,7 +244,7 @@ export function RegistryManagePage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] space-y-6 pb-16">
+    <div className="mx-auto min-w-0 w-full max-w-[1500px] space-y-6 overflow-x-hidden pb-16">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#DCE3EA] pb-4">
         <button type="button" onClick={() => navigate('/tools/registry-sign')} className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-2 text-sm font-semibold text-[#334155] hover:bg-white hover:text-[#0F6CBD]">
           <ArrowLeft className="h-5 w-5" /> 등록부 목록
@@ -286,7 +307,7 @@ export function RegistryManagePage() {
         </div>
       </section>
 
-      <section className="border-y border-[#DCE3EA] bg-white">
+      <section className="min-w-0 border-y border-[#DCE3EA] bg-white">
         <div className="flex flex-col gap-4 px-4 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-lg font-extrabold text-[#0F172A]">참석자 명단</h2>
@@ -295,11 +316,11 @@ export function RegistryManagePage() {
           <div className="flex flex-col gap-2 sm:flex-row">
             <label className="relative block">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#526174]" />
-              <input className={`${inputClass} pl-9 sm:w-56`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="이름 또는 소속 검색" aria-label="참석자 이름 또는 소속 검색" />
+              <input className={`${inputClass} pl-9 sm:w-56`} value={query} onChange={(event) => { setQuery(event.target.value); setParticipantPage(1); }} placeholder="이름 또는 소속 검색" aria-label="참석자 이름 또는 소속 검색" />
             </label>
             <div className="grid grid-cols-3 rounded-lg border border-[#DCE3EA] bg-[#F6F8FB] p-1">
               {(['all', 'signed', 'pending'] as Filter[]).map((option) => (
-                <button key={option} type="button" onClick={() => setFilter(option)} aria-pressed={filter === option} className={`min-h-[36px] rounded-md px-3 text-xs font-bold ${filter === option ? 'bg-white text-[#0F6CBD] shadow-sm' : 'text-[#526174]'}`}>
+                <button key={option} type="button" onClick={() => { setFilter(option); setParticipantPage(1); }} aria-pressed={filter === option} className={`min-h-[36px] rounded-md px-3 text-xs font-bold ${filter === option ? 'bg-white text-[#0F6CBD] shadow-sm' : 'text-[#526174]'}`}>
                   {{ all: '전체', signed: '완료', pending: '미서명' }[option]}
                 </button>
               ))}
@@ -307,7 +328,7 @@ export function RegistryManagePage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto border-t border-[#DCE3EA]">
+        <div className="w-full min-w-0 max-w-full overflow-x-auto border-t border-[#DCE3EA]">
           <table className="w-full min-w-[760px] border-collapse text-sm">
             <thead className="bg-[#F6F8FB] text-xs font-bold text-[#334155]">
               <tr>
@@ -345,6 +366,7 @@ export function RegistryManagePage() {
             </tbody>
           </table>
         </div>
+        <RegistryPagination currentPage={safeParticipantPage} pageSize={PARTICIPANTS_PER_PAGE} totalItems={filteredParticipants.length} onPageChange={setParticipantPage} label="참석자 명단 페이지" />
 
         <div className="border-t border-[#DCE3EA] bg-[#F8FAFC] px-4 py-5 sm:px-6">
           <h3 className="text-sm font-bold text-[#334155]">참석자 추가</h3>
@@ -363,7 +385,7 @@ export function RegistryManagePage() {
             <p className="mt-1 text-xs text-[#526174]">서명 결과가 반영된 등록부를 PDF 또는 엑셀로 저장합니다.</p>
             <div className="mt-4 grid grid-cols-4 rounded-lg border border-[#DCE3EA] bg-[#F6F8FB] p-1">
               {([10, 15, 20, 30] as RegistryLayout[]).map((option) => (
-                <button key={option} type="button" disabled={isMutating} onClick={() => void handleUpdate({ layout: option })} aria-pressed={registry.layout === option} className={`min-h-[40px] rounded-md px-3 text-xs font-bold disabled:opacity-50 ${registry.layout === option ? 'bg-white text-[#0F6CBD] shadow-sm' : 'text-[#526174]'}`}>{option <= 15 ? `1단 ${option}` : `2단 ${option}`}</button>
+                <button key={option} type="button" disabled={isMutating} onClick={() => { setPrintPage(1); void handleUpdate({ layout: option }); }} aria-pressed={registry.layout === option} className={`min-h-[40px] rounded-md px-3 text-xs font-bold disabled:opacity-50 ${registry.layout === option ? 'bg-white text-[#0F6CBD] shadow-sm' : 'text-[#526174]'}`}>{option <= 15 ? `1단 ${option}` : `2단 ${option}`}</button>
               ))}
             </div>
           </div>
@@ -375,9 +397,10 @@ export function RegistryManagePage() {
 
         <div tabIndex={0} role="region" aria-label="등록부 인쇄 미리보기" className="mt-6 h-[720px] overflow-auto rounded-lg bg-[#E8ECF1] p-5">
           <div ref={printRef} className="registry-print-preview w-max origin-top-left scale-[0.72] sm:scale-[0.8] xl:scale-[0.86]">
-            <RegistryPrintSheet registry={registry} />
+            <RegistryPrintSheet registry={registry} pageIndex={renderAllPrintPages ? undefined : safePrintPage - 1} />
           </div>
         </div>
+        <RegistryPagination currentPage={safePrintPage} pageSize={1} totalItems={printPageCount} onPageChange={setPrintPage} label="인쇄 미리보기 페이지" itemLabel="쪽" showItemRange={false} />
       </section>
 
       {pendingAction ? (

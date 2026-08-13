@@ -12,11 +12,13 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createRegistry } from './registryService';
-import { createColumn, createParticipant, parseExcelRows, parsePastedRows } from './registryUtils';
+import { createColumn, createParticipant, getRegistryPageSettings, parseExcelRows, parsePastedRows } from './registryUtils';
 import { RegistryPrintSheet } from './RegistryPrintSheet';
+import { RegistryPagination } from './RegistryPagination';
 import type { Registry, RegistryColumn, RegistryDraft, RegistryLayout, RegistryMode } from './types';
 
 const STEPS = ['기본 정보', '표와 명단', '인쇄 미리보기', '공유 설정'];
+const PARTICIPANTS_PER_PAGE = 50;
 
 const inputClass = 'min-h-[44px] w-full rounded-lg border border-[#DCE3EA] bg-white px-3.5 text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#0F6CBD] focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]/15';
 
@@ -38,8 +40,17 @@ export function RegistryCreatePage() {
   const [pasteText, setPasteText] = useState('');
   const [error, setError] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [participantPage, setParticipantPage] = useState(1);
+  const [previewPage, setPreviewPage] = useState(1);
 
   const cleanParticipants = participants.filter((participant) => participant.name.trim());
+  const participantPageCount = Math.max(1, Math.ceil(participants.length / PARTICIPANTS_PER_PAGE));
+  const safeParticipantPage = Math.min(participantPage, participantPageCount);
+  const participantPageStart = (safeParticipantPage - 1) * PARTICIPANTS_PER_PAGE;
+  const visibleParticipants = participants.slice(participantPageStart, participantPageStart + PARTICIPANTS_PER_PAGE);
+  const printSettings = getRegistryPageSettings(layout);
+  const previewPageCount = Math.max(1, Math.ceil(cleanParticipants.length / (printSettings.columns * printSettings.rowsPerColumn)));
+  const safePreviewPage = Math.min(previewPage, previewPageCount);
 
   const previewRegistry: Registry = {
     id: 'preview',
@@ -53,7 +64,7 @@ export function RegistryCreatePage() {
     allowWalkIn,
     publicPassword: publicPassword || undefined,
     columns,
-    participants: cleanParticipants.map((participant, index) => ({
+    participants: (step === 3 ? cleanParticipants : []).map((participant, index) => ({
       ...participant,
       id: `preview-${index}`,
       rowNumber: index + 1,
@@ -93,7 +104,10 @@ export function RegistryCreatePage() {
     }));
   };
 
-  const addParticipantRow = () => setParticipants((current) => [...current, createParticipant(columns)]);
+  const addParticipantRow = () => {
+    setParticipants((current) => [...current, createParticipant(columns)]);
+    setParticipantPage(Math.ceil((participants.length + 1) / PARTICIPANTS_PER_PAGE));
+  };
 
   const importPaste = () => {
     const imported = parsePastedRows(pasteText, columns);
@@ -102,6 +116,7 @@ export function RegistryCreatePage() {
       return;
     }
     setParticipants(imported);
+    setParticipantPage(1);
     setPasteText('');
     setError('');
   };
@@ -116,6 +131,7 @@ export function RegistryCreatePage() {
         return;
       }
       setParticipants(imported);
+      setParticipantPage(1);
       setError('');
     } catch (importError) {
       console.error('등록부 명단 엑셀을 읽지 못했습니다.', importError);
@@ -165,7 +181,7 @@ export function RegistryCreatePage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 pb-12">
+    <div className="mx-auto min-w-0 w-full max-w-7xl space-y-6 overflow-x-hidden pb-12">
       <div className="flex items-center justify-between border-b border-[#DCE3EA] pb-4">
         <button
           type="button"
@@ -206,7 +222,7 @@ export function RegistryCreatePage() {
         </div>
       </div>
 
-      <section className="border-y border-[#DCE3EA] bg-white px-4 py-6 sm:px-8 sm:py-8">
+      <section className="min-w-0 border-y border-[#DCE3EA] bg-white px-4 py-6 sm:px-8 sm:py-8">
         {step === 1 ? (
           <div className="mx-auto max-w-3xl space-y-7">
             <div>
@@ -255,7 +271,7 @@ export function RegistryCreatePage() {
         ) : null}
 
         {step === 2 ? (
-          <div className="space-y-8">
+          <div className="min-w-0 space-y-8">
             <div className="mx-auto max-w-4xl">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -280,7 +296,7 @@ export function RegistryCreatePage() {
             </div>
 
             {mode === 'fixed' ? (
-              <div className="border-t border-[#DCE3EA] pt-7">
+              <div className="min-w-0 border-t border-[#DCE3EA] pt-7">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <h2 className="text-lg font-bold text-[#0F172A]">참석자 명단</h2>
@@ -301,7 +317,7 @@ export function RegistryCreatePage() {
                   </div>
                 </div>
 
-                <div className="mt-4 overflow-x-auto border-y border-[#DCE3EA]">
+                <div className="mt-4 w-full min-w-0 max-w-full overflow-x-auto border-y border-[#DCE3EA]">
                   <table className="w-full min-w-[740px] border-collapse text-sm">
                     <thead className="bg-[#F6F8FB] text-xs font-bold text-[#334155]">
                       <tr>
@@ -313,24 +329,28 @@ export function RegistryCreatePage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {participants.map((participant, index) => (
-                        <tr key={index} className="border-t border-[#EEF1F4]">
-                          <td className="px-3 py-2 text-center text-[#526174]">{index + 1}</td>
-                          <td className="px-3 py-2"><input className={inputClass} value={participant.name} onChange={(event) => updateParticipant(index, 'name', event.target.value)} placeholder="성명" aria-label={`${index + 1}번 참석자 성명`} /></td>
-                          {columns.map((column) => (
-                            <td key={column.id} className="px-3 py-2"><input className={inputClass} value={participant.values[column.id] ?? ''} onChange={(event) => updateParticipant(index, column.id, event.target.value)} placeholder={column.label} aria-label={`${index + 1}번 참석자 ${column.label}`} /></td>
-                          ))}
-                          <td className="w-32 px-3 py-2 text-center" aria-label={`${index + 1}번 참석자 서명 칸`}>
-                            <span aria-hidden="true" className="inline-block h-10 w-24 border-b border-[#CBD5E1]" />
-                          </td>
-                          <td className="px-1 py-2">
-                            <button type="button" onClick={() => setParticipants((current) => current.filter((_, participantIndex) => participantIndex !== index))} className="flex h-10 w-10 items-center justify-center rounded-lg text-[#94A3B8] hover:bg-[#FEF3F2] hover:text-[#B42318]" aria-label={`${index + 1}번 참석자 삭제`}><Trash2 className="h-4 w-4" /></button>
-                          </td>
-                        </tr>
-                      ))}
+                      {visibleParticipants.map((participant, pageIndex) => {
+                        const index = participantPageStart + pageIndex;
+                        return (
+                          <tr key={index} className="border-t border-[#EEF1F4]">
+                            <td className="px-3 py-2 text-center text-[#526174]">{index + 1}</td>
+                            <td className="px-3 py-2"><input className={inputClass} value={participant.name} onChange={(event) => updateParticipant(index, 'name', event.target.value)} placeholder="성명" aria-label={`${index + 1}번 참석자 성명`} /></td>
+                            {columns.map((column) => (
+                              <td key={column.id} className="px-3 py-2"><input className={inputClass} value={participant.values[column.id] ?? ''} onChange={(event) => updateParticipant(index, column.id, event.target.value)} placeholder={column.label} aria-label={`${index + 1}번 참석자 ${column.label}`} /></td>
+                            ))}
+                            <td className="w-32 px-3 py-2 text-center" aria-label={`${index + 1}번 참석자 서명 칸`}>
+                              <span aria-hidden="true" className="inline-block h-10 w-24 border-b border-[#CBD5E1]" />
+                            </td>
+                            <td className="px-1 py-2">
+                              <button type="button" onClick={() => setParticipants((current) => current.filter((_, participantIndex) => participantIndex !== index))} className="flex h-10 w-10 items-center justify-center rounded-lg text-[#94A3B8] hover:bg-[#FEF3F2] hover:text-[#B42318]" aria-label={`${index + 1}번 참석자 삭제`}><Trash2 className="h-4 w-4" /></button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
+                <RegistryPagination currentPage={safeParticipantPage} pageSize={PARTICIPANTS_PER_PAGE} totalItems={participants.length} onPageChange={setParticipantPage} label="참석자 명단 페이지" />
 
                 <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_auto]">
                   <label className="grid gap-2 text-sm font-bold text-[#334155]">
@@ -370,8 +390,11 @@ export function RegistryCreatePage() {
             </div>
             <div tabIndex={0} role="region" aria-label="등록부 인쇄 미리보기" className="overflow-auto rounded-lg bg-[#E8ECF1] p-5">
               <div className="origin-top-left scale-[0.72] sm:scale-[0.82] xl:scale-[0.9]">
-                <RegistryPrintSheet registry={previewRegistry} />
+                <RegistryPrintSheet registry={previewRegistry} pageIndex={safePreviewPage - 1} />
               </div>
+            </div>
+            <div className="xl:col-start-2">
+              <RegistryPagination currentPage={safePreviewPage} pageSize={1} totalItems={previewPageCount} onPageChange={setPreviewPage} label="인쇄 미리보기 페이지" itemLabel="쪽" showItemRange={false} />
             </div>
           </div>
         ) : null}

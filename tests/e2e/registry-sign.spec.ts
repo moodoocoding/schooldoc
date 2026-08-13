@@ -1,6 +1,69 @@
 import { expect, test } from '@playwright/test';
 import writeXlsxFile from 'write-excel-file/node';
 
+test('500명 명단은 50명씩 편집하고 인쇄 미리보기는 한 페이지만 렌더링한다', async ({ page }) => {
+  await page.goto('/tools/registry-sign/new');
+  await page.evaluate(() => {
+    localStorage.removeItem('schooldoc_registry_v1');
+    sessionStorage.clear();
+  });
+  await page.reload();
+
+  await page.getByLabel(/문서 제목/).fill('500명 등록부 성능 검증');
+  await page.getByRole('button', { name: '다음', exact: true }).click();
+
+  const rows = Array.from({ length: 500 }, (_, index) => (
+    `검증학교${String(index + 1).padStart(3, '0')}\t검증교사${String(index + 1).padStart(3, '0')}`
+  )).join('\n');
+  await page.getByLabel(/표 붙여넣기/).fill(rows);
+  await page.getByRole('button', { name: '명단 반영' }).click();
+
+  await expect(page.getByRole('textbox', { name: '1번 참석자 성명', exact: true })).toHaveValue('검증교사001');
+  await expect(page.getByRole('textbox', { name: '51번 참석자 성명', exact: true })).toHaveCount(0);
+  await expect(page.locator('tbody tr')).toHaveCount(50);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileOverflow = await page.evaluate(() => {
+    const container = (() => {
+      const element = document.querySelector('table')?.parentElement;
+      if (!element) return null;
+      element.scrollLeft = 100;
+      return {
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+        scrollLeft: element.scrollLeft,
+        overflowX: getComputedStyle(element).overflowX,
+      };
+    })();
+    return { container };
+  });
+  expect(mobileOverflow.container?.overflowX).toBe('auto');
+  expect(mobileOverflow.container?.scrollWidth).toBeGreaterThan(mobileOverflow.container?.clientWidth ?? 0);
+  expect(mobileOverflow.container?.scrollLeft).toBeGreaterThan(0);
+  await page.mouse.move(10, 100);
+  await page.mouse.wheel(1_000, 0);
+  await page.waitForTimeout(100);
+  expect(await page.evaluate(() => window.scrollX)).toBe(0);
+  await page.getByLabel('참석자 명단 페이지 선택').selectOption('10');
+  await expect(page.getByRole('textbox', { name: '500번 참석자 성명', exact: true })).toHaveValue('검증교사500');
+  await expect(page.getByRole('textbox', { name: '1번 참석자 성명', exact: true })).toHaveCount(0);
+
+  await page.getByRole('button', { name: '다음', exact: true }).click();
+  await expect(page.locator('.registry-print-page')).toHaveCount(1);
+  await page.getByLabel('인쇄 미리보기 페이지 선택').selectOption('50');
+  await expect(page.locator('.registry-print-page')).toHaveCount(1);
+  await expect(page.locator('.registry-print-page')).toContainText('- 50 -');
+  await expect(page.locator('.registry-print-page')).toContainText('검증교사500');
+
+  await page.getByRole('button', { name: '다음', exact: true }).click();
+  await page.getByRole('button', { name: '등록부 생성' }).click();
+  await expect(page).toHaveURL(/\/tools\/registry-sign\/[^/]+$/);
+  await expect(page.locator('.registry-print-page')).toHaveCount(1);
+  await page.getByLabel('참석자 명단 페이지 선택').selectOption('10');
+  const manageList = page.locator('section').filter({ has: page.getByRole('heading', { name: '참석자 명단' }) });
+  await expect(manageList.getByRole('row', { name: /검증교사500/ })).toBeVisible();
+  await expect(manageList.getByRole('row', { name: /검증교사001/ })).toHaveCount(0);
+});
+
 test('제목 행 아래의 성명과 소속 헤더를 찾아 엑셀 명단을 불러온다', async ({ page }) => {
   await page.goto('/tools/registry-sign/new');
   await page.evaluate(() => {
