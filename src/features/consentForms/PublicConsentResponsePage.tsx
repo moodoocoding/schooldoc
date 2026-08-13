@@ -18,6 +18,21 @@ const completed = (field: ConsentFieldDraft, value: string | undefined) => (
   field.kind === 'checkbox' ? value === 'true' : Boolean(value)
 );
 
+const retryLoad = async <T,>(operation: () => Promise<T>, attempts = 3): Promise<T> => {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts - 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 700 * (attempt + 1)));
+      }
+    }
+  }
+  throw lastError;
+};
+
 function CenterMessage({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return <main className="grid min-h-screen place-items-center bg-[#F3F5F7] p-5"><div className="w-full max-w-md border-y border-[#DCE3EA] bg-white px-6 py-12 text-center">{icon}<h1 className="mt-4 text-xl font-extrabold">{title}</h1><p className="mt-2 text-sm leading-6 text-[#526174]">{description}</p></div></main>;
 }
@@ -56,12 +71,12 @@ export function PublicConsentResponsePage() {
           if (active) { setDocument(nextDocument); setPdfFile(file); }
           return;
         }
-        const nextMetadata = await getConsentPublicMetadata(token);
+        const nextMetadata = await retryLoad(() => getConsentPublicMetadata(token));
         if (!active) return;
         setMetadata(nextMetadata);
         if (!nextMetadata.passwordRequired) {
-          const nextDocument = await getConsentPublicDocument(token);
-          const file = await asFile(nextDocument.sourceUrl, nextDocument.title);
+          const nextDocument = await retryLoad(() => getConsentPublicDocument(token));
+          const file = await retryLoad(() => asFile(nextDocument.sourceUrl, nextDocument.title));
           if (active) { setDocument(nextDocument); setPdfFile(file); }
         }
       } catch (loadError) {
