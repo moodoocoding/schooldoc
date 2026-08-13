@@ -227,8 +227,8 @@ const createPdf = async (
     Deno.readFile(new URL('./assets/NanumGothic-Bold.ttf', import.meta.url)),
   ]);
   const [regularFont, boldFont] = await Promise.all([
-    pdf.embedFont(regularBytes, { subset: true }),
-    pdf.embedFont(boldBytes, { subset: true }),
+    pdf.embedFont(regularBytes),
+    pdf.embedFont(boldBytes),
   ]);
   const signatures = await loadSignatureImages(pdf, signatureRows);
   const settings = getPdfPageSettings(registry.layout);
