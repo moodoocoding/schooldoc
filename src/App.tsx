@@ -8,6 +8,8 @@ import { PublicRegistrySignPage } from './features/registry/PublicRegistrySignPa
 import { RegistryWorkspace } from './features/registry/RegistryWorkspace';
 import { PublicStudentResultPage } from './features/studentResults/PublicStudentResultPage';
 import { StudentResultsWorkspace } from './features/studentResults/StudentResultsWorkspace';
+import { ConsentFormsWorkspace } from './features/consentForms/ConsentFormsWorkspace';
+import { PublicConsentResponsePage } from './features/consentForms/PublicConsentResponsePage';
 import type { SidebarTab, SchoolTool, ActiveTask } from './types/schooldoc';
 import { MessageSquarePlus, X, CheckCircle2 } from 'lucide-react';
 
@@ -100,11 +102,12 @@ function AdminApp() {
   const selectedTool = activeToolId ? allToolsMap[activeToolId] : null;
   const isRegistryRoute = location.pathname.startsWith('/tools/registry-sign');
   const isStudentResultsRoute = location.pathname.startsWith('/tools/student-results');
+  const isConsentFormsRoute = location.pathname.startsWith('/tools/consent-forms');
 
   const handleSelectTool = (toolId: string) => {
-    if (toolId === 'registry-sign' || toolId === 'student-lookup') {
+    if (toolId === 'registry-sign' || toolId === 'student-lookup' || toolId === 'notice-collect') {
       setActiveToolId(null);
-      navigate(toolId === 'registry-sign' ? '/tools/registry-sign' : '/tools/student-results');
+      navigate(toolId === 'registry-sign' ? '/tools/registry-sign' : toolId === 'student-lookup' ? '/tools/student-results' : '/tools/consent-forms');
       return;
     }
     navigate('/');
@@ -155,9 +158,9 @@ function AdminApp() {
 
       {/* Right Workspace Main Content */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-        {isRegistryRoute || isStudentResultsRoute ? (
+        {isRegistryRoute || isStudentResultsRoute || isConsentFormsRoute ? (
           <main className="min-w-0 overflow-x-hidden p-4 sm:p-8">
-            {isRegistryRoute ? <RegistryWorkspace /> : <StudentResultsWorkspace />}
+            {isRegistryRoute ? <RegistryWorkspace /> : isStudentResultsRoute ? <StudentResultsWorkspace /> : <ConsentFormsWorkspace />}
           </main>
         ) : selectedTool ? (
           <main className="p-4 sm:p-8">
@@ -286,6 +289,7 @@ function App() {
     <Routes>
       <Route path="/s/registry/:token" element={<PublicRegistrySignPage />} />
       <Route path="/s/results/:token" element={<PublicStudentResultPage />} />
+      <Route path="/s/consent/:token" element={<PublicConsentResponsePage />} />
       <Route path="*" element={<AdminApp />} />
     </Routes>
   );
