@@ -21,6 +21,7 @@ import { RegistryPrintSheet } from './RegistryPrintSheet';
 import {
   addParticipant,
   clearSignature,
+  createRegistryPdf,
   removeParticipant,
   updateRegistry,
 } from './registryService';
@@ -145,10 +146,25 @@ export function RegistryManagePage() {
   };
 
   const exportPdf = async () => {
-    const pages = Array.from(printRef.current?.querySelectorAll<HTMLElement>('.registry-print-page') ?? []);
-    if (pages.length === 0) return;
     setIsExporting(true);
+    setActionError('');
     try {
+      if (!isRegistryDemoMode) {
+        const blob = await createRegistryPdf(registry.id);
+        if (!blob) throw new Error('PDF 파일을 받지 못했습니다.');
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = fileName(registry.title, 'pdf');
+        document.body.append(anchor);
+        anchor.click();
+        anchor.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        return;
+      }
+
+      const pages = Array.from(printRef.current?.querySelectorAll<HTMLElement>('.registry-print-page') ?? []);
+      if (pages.length === 0) return;
       await document.fonts?.ready;
       await Promise.all(pages.flatMap((page) => (
         Array.from(page.querySelectorAll('img')).map((image) => image.decode().catch(() => undefined))
@@ -182,6 +198,8 @@ export function RegistryManagePage() {
         pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297, undefined, 'FAST');
       }
       pdf.save(fileName(registry.title, 'pdf'));
+    } catch (exportError) {
+      setActionError(exportError instanceof Error ? exportError.message : 'PDF를 만들지 못했습니다.');
     } finally {
       setIsExporting(false);
     }

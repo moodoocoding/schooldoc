@@ -341,6 +341,28 @@ export const clearRemoteSignature = async (registryId: string, participantId: st
   notify();
 };
 
+export const createRemoteRegistryPdf = async (registryId: string) => {
+  const { data, error } = await client().functions.invoke('registry-pdf', {
+    body: { registryId },
+  });
+  if (error) {
+    const context = error.context as Response | undefined;
+    if (context) {
+      try {
+        const response = await context.clone().json() as { error?: string };
+        if (response.error) throw new Error(response.error);
+      } catch (contextError) {
+        if (contextError instanceof Error && contextError.message !== 'Unexpected end of JSON input') throw contextError;
+      }
+    }
+    fail('PDF를 만들지 못했습니다', error);
+  }
+  if (!(data instanceof Blob) || data.type !== 'application/pdf') {
+    throw new Error('PDF 서버 응답 형식이 올바르지 않습니다.');
+  }
+  return data;
+};
+
 export const subscribeRemoteRegistries = (listener: () => void) => {
   const onLocalChange = () => listener();
   window.addEventListener(CHANGE_EVENT, onLocalChange);

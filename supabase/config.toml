@@ -1,0 +1,7 @@
+[functions.registry-pdf]
+verify_jwt = true
+static_files = [
+  "./functions/registry-pdf/assets/NanumGothic-Regular.ttf",
+  "./functions/registry-pdf/assets/NanumGothic-Bold.ttf",
+  "./functions/registry-pdf/assets/OFL.txt",
+]

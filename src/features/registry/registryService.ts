@@ -43,6 +43,11 @@ export const clearSignature = async (registryId: string, participantId: string) 
   else await remote.clearRemoteSignature(registryId, participantId);
 };
 
+export const createRegistryPdf = async (registryId: string) => {
+  if (isRegistryDemoMode) return null;
+  return remote.createRemoteRegistryPdf(registryId);
+};
+
 export const subscribeRegistries = (listener: () => void) => (
   isRegistryDemoMode
     ? local.subscribeRegistries(listener)
