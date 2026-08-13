@@ -22,6 +22,17 @@ export const paginatePdfRows = <T>(rows: T[], pageSize: number) => {
   return pages;
 };
 
+export const chunkPdfRows = <T>(rows: T[], chunkSize: number) => {
+  if (!Number.isInteger(chunkSize) || chunkSize < 1) {
+    throw new RangeError('PDF 배치 크기는 1 이상의 정수여야 합니다.');
+  }
+  const chunks: T[][] = [];
+  for (let index = 0; index < rows.length; index += chunkSize) {
+    chunks.push(rows.slice(index, index + chunkSize));
+  }
+  return chunks;
+};
+
 export const getPdfColumnWidths = (
   tableWidth: number,
   compact: boolean,

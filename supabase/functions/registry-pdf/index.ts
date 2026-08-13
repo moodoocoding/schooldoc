@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8';
 import fontkit from 'npm:@pdf-lib/fontkit@1.1.1';
 import { PDFDocument, PDFImage, PDFFont, PDFPage, rgb } from 'npm:pdf-lib@1.17.1';
-import { fitPdfFontSize, getPdfColumnWidths, getPdfPageSettings, paginatePdfRows } from './layout.ts';
+import { chunkPdfRows, fitPdfFontSize, getPdfColumnWidths, getPdfPageSettings, paginatePdfRows } from './layout.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -198,17 +198,22 @@ const loadSignatureImages = async (
   rows: SignatureRow[],
 ) => {
   const images = new Map<string, PDFImage>();
-  for (const row of rows) {
-    const { data, error } = await db.storage.from('registry-signatures').download(row.storage_path);
-    if (error || !data) continue;
-    const bytes = new Uint8Array(await data.arrayBuffer());
-    try {
-      const image = data.type === 'image/jpeg' || row.storage_path.toLowerCase().endsWith('.jpg')
-        ? await pdf.embedJpg(bytes)
-        : await pdf.embedPng(bytes);
-      images.set(row.participant_id, image);
-    } catch {
-      console.warn('Unsupported registry signature image skipped', row.storage_path);
+  for (const batch of chunkPdfRows(rows, 8)) {
+    const downloads = await Promise.all(batch.map(async (row) => {
+      const { data, error } = await db.storage.from('registry-signatures').download(row.storage_path);
+      return { row, data: error ? null : data };
+    }));
+    for (const { row, data } of downloads) {
+      if (!data) continue;
+      const bytes = new Uint8Array(await data.arrayBuffer());
+      try {
+        const image = data.type === 'image/jpeg' || row.storage_path.toLowerCase().endsWith('.jpg')
+          ? await pdf.embedJpg(bytes)
+          : await pdf.embedPng(bytes);
+        images.set(row.participant_id, image);
+      } catch {
+        console.warn('Unsupported registry signature image skipped', row.storage_path);
+      }
     }
   }
   return images;

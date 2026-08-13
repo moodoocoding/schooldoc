@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import {
+  chunkPdfRows,
   fitPdfFontSize,
   getPdfColumnWidths,
   getPdfPageSettings,
@@ -17,6 +18,12 @@ describe('등록부 서버 PDF 레이아웃', () => {
   test('참석자를 페이지 단위로 나누고 빈 등록부도 한 페이지를 만든다', () => {
     expect(paginatePdfRows([], 20)).toEqual([[]]);
     expect(paginatePdfRows([1, 2, 3, 4, 5], 2)).toEqual([[1, 2], [3, 4], [5]]);
+  });
+
+  test('서명 다운로드 항목을 제한된 크기의 배치로 나눈다', () => {
+    expect(chunkPdfRows([1, 2, 3, 4, 5], 2)).toEqual([[1, 2], [3, 4], [5]]);
+    expect(chunkPdfRows([], 8)).toEqual([]);
+    expect(() => chunkPdfRows([1], 0)).toThrow(RangeError);
   });
 
   test('고정 열과 입력 열의 합이 정확히 표 너비가 된다', () => {
