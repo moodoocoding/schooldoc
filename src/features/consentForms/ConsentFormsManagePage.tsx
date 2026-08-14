@@ -3,7 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getConsentLocalDraft, hashConsentPassword, updateConsentLocalDraft } from './consentFormsLocalStore';
-import { isConsentFormsDemoMode } from './consentFormsConfig';
+import { getConsentPublicOrigin, isConsentFormsDemoMode } from './consentFormsConfig';
 import { getRemoteConsentForm, updateRemoteConsentForm } from './consentFormsRepository';
 import type { ConsentLocalDraft } from './types';
 
@@ -39,7 +39,7 @@ export function ConsentFormsManagePage() {
 
   if (loading) return <div className="py-20 text-center text-sm font-semibold text-[#526174]">수합을 불러오고 있습니다.</div>;
   if (!draft) return <div className="mx-auto max-w-xl py-20 text-center"><h1 className="text-xl font-extrabold">수합을 찾을 수 없습니다</h1>{loadError ? <p className="mt-3 text-sm font-semibold text-[#B42318]">{loadError}</p> : null}<button type="button" onClick={() => navigate('/tools/consent-forms')} className="mt-5 min-h-[44px] rounded-lg border border-[#C8D0DA] px-4 text-sm font-bold">목록으로</button></div>;
-  const publicLink = `${window.location.origin}/s/consent/${draft.publicToken}`;
+  const publicLink = `${getConsentPublicOrigin()}/s/consent/${draft.publicToken}`;
 
   const save = async () => {
     if (!isConsentFormsDemoMode) {
