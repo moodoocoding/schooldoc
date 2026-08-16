@@ -447,3 +447,80 @@ test('명단 없는 수합의 개인 QR 화면은 배부할 명단이 없다고 
   await expect(page.getByRole('heading', { name: '배부할 명단이 없습니다' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'PDF 다운로드' })).toBeDisabled();
 });
+
+test('결과 표 내려받기와 응답 링크 재발급을 제공한다', async ({ page }) => {
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+  pdf.text('Notice', 20, 25);
+  await page.goto('/tools/consent-forms/new');
+  await page.getByLabel('가정통신문 PDF 파일').setInputFiles({
+    name: 'sheet.pdf', mimeType: 'application/pdf', buffer: Buffer.from(pdf.output('arraybuffer')),
+  });
+  await page.getByRole('textbox', { name: '제목' }).fill('결과 표 동의서');
+  await page.getByRole('button', { name: '확인 후 필드 배치' }).click();
+  await page.getByRole('button', { name: '텍스트', exact: true }).click();
+  await page.getByRole('textbox', { name: '표시 이름' }).fill('보호자 의견');
+  await page.getByRole('button', { name: '필드 배치 완료' }).click();
+  await page.getByLabel('명단 없이 받기').check();
+  await page.getByRole('button', { name: '다음: 공유 설정' }).click();
+  await page.getByRole('button', { name: '수합 만들기' }).click();
+  await page.getByRole('button', { name: '관리·공유' }).click();
+  const manageUrl = page.url();
+
+  const beforeLink = await page.getByLabel('응답 화면 열기').getAttribute('href');
+  await page.goto(beforeLink!);
+  await page.getByRole('textbox', { name: '보호자 의견' }).fill('참가합니다');
+  await page.getByRole('button', { name: '작성 완료' }).click();
+  await expect(page.getByRole('heading', { name: '응답을 제출했습니다' })).toBeVisible();
+
+  await page.goto(manageUrl);
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: '결과 표(xlsx)' }).click();
+  expect((await download).suggestedFilename()).toBe('결과 표 동의서_응답.xlsx');
+
+  // 링크를 재발급하면 이전 주소는 더 이상 쓰이지 않는다.
+  await page.getByRole('button', { name: '응답 링크 재발급' }).click();
+  await expect(page.getByRole('alertdialog')).toContainText('이미 배부한 개인 링크가 모두 열리지 않습니다');
+  await page.getByRole('alertdialog').getByRole('button', { name: '링크 재발급' }).click();
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  const afterLink = await page.getByLabel('응답 화면 열기').getAttribute('href');
+  expect(afterLink).not.toBe(beforeLink);
+
+  await page.goto(beforeLink!);
+  await expect(page.getByRole('heading', { name: '가정통신문을 찾을 수 없습니다' })).toBeVisible();
+});
+
+test('확대해도 필드의 상대 위치가 유지된다', async ({ page }) => {
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+  pdf.text('Notice', 20, 25);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/tools/consent-forms/new');
+  await page.getByLabel('가정통신문 PDF 파일').setInputFiles({
+    name: 'zoom.pdf', mimeType: 'application/pdf', buffer: Buffer.from(pdf.output('arraybuffer')),
+  });
+  await page.getByRole('button', { name: '확인 후 필드 배치' }).click();
+  await page.getByRole('button', { name: '텍스트', exact: true }).click();
+
+  const ratioOf = async () => {
+    const canvas = await page.getByTestId('consent-field-canvas').boundingBox();
+    const field = await page.getByRole('button', { name: '텍스트 필드', exact: true }).boundingBox();
+    if (!canvas || !field) throw new Error('측정에 실패했습니다.');
+    return {
+      x: (field.x - canvas.x) / canvas.width,
+      y: (field.y - canvas.y) / canvas.height,
+      width: field.width / canvas.width,
+    };
+  };
+
+  const before = await ratioOf();
+  await page.getByRole('button', { name: '확대' }).click();
+  await page.getByRole('button', { name: '확대' }).click();
+  await expect(page.getByRole('button', { name: '쪽 맞춤으로 되돌리기' })).toContainText('150%');
+
+  const after = await ratioOf();
+  expect(after.x).toBeCloseTo(before.x, 2);
+  expect(after.y).toBeCloseTo(before.y, 2);
+  expect(after.width).toBeCloseTo(before.width, 2);
+
+  await page.getByRole('button', { name: '쪽 맞춤으로 되돌리기' }).click();
+  await expect(page.getByRole('button', { name: '쪽 맞춤으로 되돌리기' })).toContainText('100%');
+});

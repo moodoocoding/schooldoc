@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, ArrowLeft, ArrowRight, CalendarDays, CheckSquare, ChevronLeft, ChevronRight, Copy, GripVertical, PenLine, Plus, Redo2, Sparkles, Trash2, Type, Undo2, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, CalendarDays, CheckSquare, ChevronLeft, ChevronRight, Copy, GripVertical, PenLine, Plus, Redo2, Sparkles, Trash2, Type, Undo2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { ConsentPdfPage } from './ConsentPdfPage';
 import { alignmentGuides, cloneFieldsToPage, fieldStyle, findAvailableFieldPosition, getConsentFieldLayoutIssues, pageAspectRatio, resolveConsentFieldOverlaps, snapFieldPosition } from './consentFieldLayout';
 import type { ConsentDocumentAnalysis, ConsentFieldDraft, ConsentFieldKind } from './types';
@@ -37,6 +37,7 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
   const [clipboard, setClipboard] = useState<ConsentFieldDraft[]>([]);
   const [guides, setGuides] = useState<{ vertical: number[]; horizontal: number[] }>({ vertical: [], horizontal: [] });
   const [toast, setToast] = useState('');
+  const [zoom, setZoom] = useState(1);
   const resizeRef = useRef<{ field: ConsentFieldDraft; corner: 'nw' | 'ne' | 'sw' | 'se'; startX: number; startY: number; bounds: DOMRect } | null>(null);
   const history = useRef<{ past: ConsentFieldDraft[][]; future: ConsentFieldDraft[][] }>({ past: [], future: [] });
   const [historyDepth, setHistoryDepth] = useState({ past: 0, future: 0 });
@@ -300,17 +301,21 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
       </section>
 
       <div className="grid gap-4 pb-16 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <section className="min-w-0 bg-[#E9EDF2] p-3 sm:p-6">
+        <section className="min-w-0 overflow-auto bg-[#E9EDF2] p-3 sm:p-6">
           <div className="mb-3 flex flex-wrap items-center justify-center gap-1.5">
             <button type="button" disabled={pageIndex === 0} onClick={() => setPageIndex((value) => value - 1)} className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white text-[#334155] disabled:opacity-30" aria-label="이전 쪽"><ChevronLeft className="h-5 w-5" /></button>
             <input type="number" min={1} max={analysis.pageCount} value={pageIndex + 1} onChange={(event) => { const page = Math.round(Number(event.target.value)); if (Number.isFinite(page)) setPageIndex(Math.max(0, Math.min(analysis.pageCount - 1, page - 1))); }} data-allow-field-shortcuts="true" className="h-10 w-16 rounded-lg border border-[#C8D0DA] bg-white text-center text-xs font-bold tabular-nums" aria-label="쪽 번호" />
             <span className="mr-1 text-xs font-semibold tabular-nums text-[#526174]">/ {analysis.pageCount}쪽</span>
             <button type="button" disabled={pageIndex + 1 >= analysis.pageCount} onClick={() => setPageIndex((value) => value + 1)} className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white text-[#334155] disabled:opacity-30" aria-label="다음 쪽"><ChevronRight className="h-5 w-5" /></button>
+            <span className="mx-1 hidden h-5 w-px bg-[#CBD5E1] sm:block" />
+            <button type="button" disabled={zoom <= 0.5} onClick={() => setZoom((value) => Math.max(0.5, Math.round((value - 0.25) * 100) / 100))} className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white text-[#334155] disabled:opacity-30" aria-label="축소"><ZoomOut className="h-4 w-4" /></button>
+            <button type="button" onClick={() => setZoom(1)} className="inline-flex h-10 min-w-[56px] items-center justify-center rounded-lg bg-white text-[11px] font-bold tabular-nums text-[#334155]" aria-label="쪽 맞춤으로 되돌리기" title="쪽 맞춤">{Math.round(zoom * 100)}%</button>
+            <button type="button" disabled={zoom >= 3} onClick={() => setZoom((value) => Math.min(3, Math.round((value + 0.25) * 100) / 100))} className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white text-[#334155] disabled:opacity-30" aria-label="확대"><ZoomIn className="h-4 w-4" /></button>
             {pagesWithFields.length > 0 ? <><span className="mx-1 hidden h-5 w-px bg-[#CBD5E1] sm:block" />
               <button type="button" disabled={!pagesWithFields.some((page) => page < pageIndex)} onClick={() => goToFieldPage(-1)} className="inline-flex min-h-[40px] items-center gap-1 rounded-lg bg-white px-2.5 text-[11px] font-bold text-[#334155] disabled:opacity-30" title="필드가 있는 이전 쪽"><ChevronLeft className="h-3.5 w-3.5" />필드 쪽</button>
               <button type="button" disabled={!pagesWithFields.some((page) => page > pageIndex)} onClick={() => goToFieldPage(1)} className="inline-flex min-h-[40px] items-center gap-1 rounded-lg bg-white px-2.5 text-[11px] font-bold text-[#334155] disabled:opacity-30" title="필드가 있는 다음 쪽">필드 쪽<ChevronRight className="h-3.5 w-3.5" /></button></> : null}
           </div>
-          <div data-testid="consent-field-canvas" data-field-canvas style={{ aspectRatio: pageRatio, ...({ '--page-fit': `max(360px, calc((100vh - 540px) * ${pageRatio}))` } as React.CSSProperties) }} className="relative mx-auto w-full max-w-[794px] overflow-hidden bg-white shadow-[0_8px_28px_rgba(15,23,42,0.16)] lg:max-w-[min(794px,var(--page-fit))]">
+          <div data-testid="consent-field-canvas" data-field-canvas style={{ aspectRatio: pageRatio, ...({ '--page-fit': `calc(max(360px, calc((100vh - 540px) * ${pageRatio})) * ${zoom})` } as React.CSSProperties) }} className="relative mx-auto w-full max-w-[794px] overflow-hidden bg-white shadow-[0_8px_28px_rgba(15,23,42,0.16)] lg:max-w-[var(--page-fit)]">
             <ConsentPdfPage file={file} pageNumber={pageIndex + 1} />
             {guides.vertical.map((at) => <span key={`v-${at}`} aria-hidden className="pointer-events-none absolute top-0 z-30 h-full border-l border-dashed border-[#D92D20]" style={{ left: `${at}%` }} />)}
             {guides.horizontal.map((at) => <span key={`h-${at}`} aria-hidden className="pointer-events-none absolute left-0 z-30 w-full border-t border-dashed border-[#D92D20]" style={{ top: `${at}%` }} />)}

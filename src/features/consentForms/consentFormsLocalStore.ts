@@ -75,6 +75,12 @@ export const addConsentLocalResponse = (id: string, values: Record<string, strin
   updateConsentLocalDraft(id, { responseCount: draft.responseCount + 1 });
 };
 
+export const reissueConsentLocalToken = (id: string) => {
+  const publicToken = crypto.randomUUID();
+  updateConsentLocalDraft(id, { publicToken });
+  return publicToken;
+};
+
 export const deleteConsentLocalDraft = (id: string) => {
   const remaining = getConsentLocalDrafts().filter((draft) => draft.id !== id);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(remaining));

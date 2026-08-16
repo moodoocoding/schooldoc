@@ -21,3 +21,19 @@ export const consentQrSheetFileName = (title: string) => (
 export const countSubmitted = (recipients: ConsentRecipientRecord[]) => (
   recipients.filter((recipient) => recipient.submittedAt).length
 );
+
+export type ConsentRecipientFilter = 'all' | 'submitted' | 'pending';
+
+/** 명단이 길어지면 목록만으로는 독촉 대상을 못 찾는다. 상태와 이름·식별값으로 추린다. */
+export const filterRecipients = (
+  recipients: ConsentRecipientRecord[],
+  filter: ConsentRecipientFilter,
+  query: string,
+) => {
+  const keyword = query.trim();
+  return recipients.filter((recipient) => {
+    if (filter === 'submitted' && !recipient.submittedAt) return false;
+    if (filter === 'pending' && recipient.submittedAt) return false;
+    return !keyword || recipient.name.includes(keyword) || recipient.studentKey.includes(keyword);
+  });
+};

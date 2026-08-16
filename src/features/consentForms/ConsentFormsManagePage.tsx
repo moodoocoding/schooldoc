@@ -1,13 +1,15 @@
-import { ArrowLeft, Check, Copy, Download, ImageDown, ExternalLink, FilePenLine, Inbox, LoaderCircle, LockKeyhole, PauseCircle, PlayCircle, QrCode, Save, Settings2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, Copy, Download, ImageDown, ExternalLink, FilePenLine, Inbox, LoaderCircle, LockKeyhole, PauseCircle, PlayCircle, QrCode, RefreshCw, Save, Settings2, Sheet, Trash2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { RegistryConfirmDialog } from '../registry/RegistryConfirmDialog';
-import { deleteConsentLocalDraft, getConsentLocalDraft, hashConsentPassword, listConsentLocalResponses, updateConsentLocalDraft } from './consentFormsLocalStore';
+import { deleteConsentLocalDraft, getConsentLocalDraft, hashConsentPassword, listConsentLocalResponses, reissueConsentLocalToken, updateConsentLocalDraft } from './consentFormsLocalStore';
 import { getConsentPublicOrigin, isConsentFormsDemoMode } from './consentFormsConfig';
-import { deleteRemoteConsentForm, getRemoteConsentForm, getRemoteConsentSourceFile, listRemoteConsentResponses, updateRemoteConsentForm } from './consentFormsRepository';
+import { deleteRemoteConsentForm, getRemoteConsentForm, getRemoteConsentSourceFile, listRemoteConsentResponses, reissueConsentPublicToken, updateRemoteConsentForm } from './consentFormsRepository';
 import { consentQrFileName, consentResponseFileName, consentResponsesFileName, downloadBlob, formatConsentValue, renderConsentResponsePdf, renderConsentResponsesPdf, svgToPngBlob } from './consentResponseRender';
 import { isRecipientsUnavailable, listConsentRecipients } from './consentRecipientsApi';
+import { downloadConsentResponsesExcel } from './consentResponsesExcel';
+import { filterRecipients, type ConsentRecipientFilter } from './consentRecipientSheet';
 import type { ConsentLocalDraft, ConsentRecipientRecord, ConsentResponseRecord } from './types';
 
 const submittedLabel = (value: string) => {
@@ -43,6 +45,10 @@ export function ConsentFormsManagePage() {
   const [recipients, setRecipients] = useState<ConsentRecipientRecord[]>([]);
   const [recipientsNotice, setRecipientsNotice] = useState('');
   const [copiedRecipient, setCopiedRecipient] = useState('');
+  const [recipientQuery, setRecipientQuery] = useState('');
+  const [recipientFilter, setRecipientFilter] = useState<ConsentRecipientFilter>('all');
+  const [confirmingReissue, setConfirmingReissue] = useState(false);
+  const [reissuing, setReissuing] = useState(false);
   const [qrError, setQrError] = useState('');
   const qrRef = useRef<HTMLDivElement>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -144,6 +150,21 @@ export function ConsentFormsManagePage() {
     }
   };
 
+  const reissueLink = async () => {
+    if (reissuing) return;
+    setReissuing(true);
+    setResponseError('');
+    try {
+      const publicToken = isConsentFormsDemoMode ? reissueConsentLocalToken(draft.id) : await reissueConsentPublicToken(draft.id);
+      setDraft({ ...draft, publicToken });
+      setConfirmingReissue(false);
+    } catch (error) {
+      setResponseError(error instanceof Error ? error.message : '응답 링크를 재발급하지 못했습니다.');
+    } finally {
+      setReissuing(false);
+    }
+  };
+
   const deleteForm = async () => {
     if (deleting) return;
     setDeleting(true);
@@ -173,6 +194,16 @@ export function ConsentFormsManagePage() {
 
   const recipientOf = (response: ConsentResponseRecord) => recipients.find((entry) => entry.responseId === response.id) ?? null;
   const submittedCount = recipients.filter((entry) => entry.submittedAt).length;
+  const visibleRecipients = filterRecipients(recipients, recipientFilter, recipientQuery);
+
+  const exportExcel = async () => {
+    setResponseError('');
+    try {
+      await downloadConsentResponsesExcel(draft.title, draft.fields, responses, recipients);
+    } catch (error) {
+      setResponseError(error instanceof Error ? error.message : '결과 표를 만들지 못했습니다.');
+    }
+  };
 
   const summarize = (response: ConsentResponseRecord) => draft.fields
     .map((field) => {
@@ -212,7 +243,7 @@ export function ConsentFormsManagePage() {
     </section>
 
     <section aria-label="제출 현황" className="border-y border-[#DCE3EA] bg-white px-4 py-4 sm:px-5">
-      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-sm font-bold">제출 현황<span className="ml-2 text-xs font-semibold text-[#64748B]">{responses.length}건</span></h2><p className="mt-1 text-xs text-[#64748B]">응답을 원본 가정통신문 위에 합성한 PDF로 내려받습니다.</p></div>{responses.length > 0 ? <button type="button" disabled={Boolean(bulkProgress) || Boolean(downloadingId)} onClick={() => void downloadAllResponses()} className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-lg bg-[#0F6CBD] px-4 text-xs font-bold text-white hover:bg-[#0B5B9F] disabled:bg-[#AAB7C4]">{bulkProgress ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}{bulkProgress ? `합치는 중 ${bulkProgress}` : '전체 PDF 내려받기'}</button> : null}</div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-sm font-bold">제출 현황<span className="ml-2 text-xs font-semibold text-[#64748B]">{responses.length}건</span></h2><p className="mt-1 text-xs text-[#64748B]">응답을 원본 가정통신문 위에 합성한 PDF로 내려받습니다.</p></div>{responses.length > 0 ? <button type="button" onClick={() => void exportExcel()} className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-lg border border-[#C8D0DA] px-3 text-xs font-bold text-[#334155] hover:border-[#0F6CBD] hover:text-[#0F6CBD]"><Sheet className="h-4 w-4" />결과 표(xlsx)</button> : null}{responses.length > 0 ? <button type="button" disabled={Boolean(bulkProgress) || Boolean(downloadingId)} onClick={() => void downloadAllResponses()} className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-lg bg-[#0F6CBD] px-4 text-xs font-bold text-white hover:bg-[#0B5B9F] disabled:bg-[#AAB7C4]">{bulkProgress ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}{bulkProgress ? `합치는 중 ${bulkProgress}` : '전체 PDF 내려받기'}</button> : null}</div>
       {responseError ? <p role="alert" className="mt-3 border-l-2 border-[#B42318] bg-[#FEF2F2] px-3 py-2.5 text-xs font-semibold leading-5 text-[#B42318]">{responseError}</p> : null}
       {responsesLoading
         ? <p className="mt-4 flex items-center gap-2 text-xs font-semibold text-[#526174]"><LoaderCircle className="h-4 w-4 animate-spin text-[#0F6CBD]" />제출된 응답을 불러오고 있습니다.</p>
@@ -227,7 +258,16 @@ export function ConsentFormsManagePage() {
 
     {recipients.length > 0 ? <section aria-label="명단 제출 현황" className="border-y border-[#DCE3EA] bg-white px-4 py-4 sm:px-5">
       <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-sm font-bold">명단 제출 현황<span className="ml-2 text-xs font-semibold text-[#64748B]">{submittedCount} / {recipients.length}명</span></h2><p className="mt-1 text-xs text-[#64748B]">보호자마다 다른 개인 링크가 발급되어 누가 제출했는지 확인할 수 있습니다.</p></div><button type="button" onClick={() => navigate(`/tools/consent-forms/${draft.id}/qr`)} className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD] hover:bg-[#EFF6FC]"><QrCode className="h-4 w-4" />개인 QR 배부 자료</button></div>
-      <ul className="mt-4 divide-y divide-[#EEF1F4] border-y border-[#EEF1F4]">{recipients.map((recipient) => {
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <label className="min-w-0 flex-1"><span className="sr-only">이름 또는 식별값으로 찾기</span><input value={recipientQuery} onChange={(event) => setRecipientQuery(event.target.value)} placeholder="이름 또는 학번으로 찾기" className="min-h-[40px] w-full min-w-[160px] rounded-lg border border-[#C8D0DA] px-3 text-xs" /></label>
+        <div className="flex shrink-0 gap-1" role="group" aria-label="제출 상태 filter">
+          {([['all', '전체'], ['pending', '미제출'], ['submitted', '제출']] as const).map(([value, label]) => (
+            <button key={value} type="button" aria-pressed={recipientFilter === value} onClick={() => setRecipientFilter(value)} className={`min-h-[40px] rounded-lg border px-3 text-xs font-bold ${recipientFilter === value ? 'border-[#0F6CBD] bg-[#EFF6FC] text-[#0F6CBD]' : 'border-[#C8D0DA] text-[#334155]'}`}>{label}</button>
+          ))}
+        </div>
+      </div>
+      {visibleRecipients.length === 0 ? <p className="mt-4 border border-dashed border-[#C8D0DA] py-8 text-center text-xs font-semibold text-[#64748B]">조건에 맞는 대상이 없습니다.</p> : null}
+      <ul className="mt-4 divide-y divide-[#EEF1F4] border-y border-[#EEF1F4]">{visibleRecipients.map((recipient) => {
         const personalLink = `${publicLink}?r=${recipient.token}`;
         return <li key={recipient.id} className="flex flex-wrap items-center gap-3 py-3">
           <span className={`inline-flex min-w-[52px] justify-center rounded-md px-2 py-1 text-[11px] font-bold ${recipient.submittedAt ? 'bg-[#E6F4EA] text-[#126B32]' : 'bg-[#FEF3F2] text-[#B42318]'}`}>{recipient.submittedAt ? '제출' : '미제출'}</span>
@@ -239,9 +279,16 @@ export function ConsentFormsManagePage() {
     {recipientsNotice ? <p role="status" className="border-l-2 border-[#E6A700] bg-[#FFF9ED] px-3 py-2.5 text-xs font-semibold leading-5 text-[#76520E]">{recipientsNotice}</p> : null}
 
     <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-      <section className="border-y border-[#DCE3EA] bg-white px-4 py-4 sm:px-5"><h2 className="text-sm font-bold">응답 링크</h2><p className="mt-1 text-xs text-[#64748B]">보호자에게 링크를 보내거나 오른쪽 QR을 배부하세요.</p><div className="mt-3 flex gap-2"><input readOnly value={publicLink} className="min-h-[42px] min-w-0 flex-1 rounded-lg border border-[#C8D0DA] bg-[#F6F8FB] px-3 text-xs" /><button type="button" onClick={async () => { await navigator.clipboard.writeText(publicLink); setCopied(true); window.setTimeout(() => setCopied(false), 1500); }} className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg border border-[#C8D0DA] text-[#0F6CBD]" aria-label="응답 링크 복사" title="링크 복사">{copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}</button><a href={publicLink} target="_blank" rel="noreferrer" className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg border border-[#C8D0DA] text-[#0F6CBD]" aria-label="응답 화면 열기" title="새 창에서 열기"><ExternalLink className="h-4 w-4" /></a></div>{draft.passwordEnabled ? <p className="mt-3 flex items-center gap-2 text-xs text-[#526174]"><LockKeyhole className="h-4 w-4 text-[#0F6CBD]" />비밀번호로 보호된 링크입니다.</p> : null}{draft.recipientMode === 'named' ? <p className="mt-4 border-l-2 border-[#E6A700] bg-[#FFF9ED] px-3 py-2.5 text-xs leading-5 text-[#76520E]">현재 로컬 모드에서는 공용 링크만 제공합니다. 대상별 제출 매칭은 서버 저장 연결 후 사용할 수 있습니다.</p> : null}</section>
+      <section className="border-y border-[#DCE3EA] bg-white px-4 py-4 sm:px-5"><h2 className="text-sm font-bold">응답 링크</h2><p className="mt-1 text-xs text-[#64748B]">보호자에게 링크를 보내거나 오른쪽 QR을 배부하세요.</p><div className="mt-3 flex gap-2"><input readOnly value={publicLink} className="min-h-[42px] min-w-0 flex-1 rounded-lg border border-[#C8D0DA] bg-[#F6F8FB] px-3 text-xs" /><button type="button" onClick={async () => { await navigator.clipboard.writeText(publicLink); setCopied(true); window.setTimeout(() => setCopied(false), 1500); }} className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg border border-[#C8D0DA] text-[#0F6CBD]" aria-label="응답 링크 복사" title="링크 복사">{copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}</button><a href={publicLink} target="_blank" rel="noreferrer" className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg border border-[#C8D0DA] text-[#0F6CBD]" aria-label="응답 화면 열기" title="새 창에서 열기"><ExternalLink className="h-4 w-4" /></a><button type="button" onClick={() => setConfirmingReissue(true)} className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg border border-[#C8D0DA] text-[#526174] hover:border-[#B42318] hover:text-[#B42318]" aria-label="응답 링크 재발급" title="링크 재발급"><RefreshCw className="h-4 w-4" /></button></div>{draft.passwordEnabled ? <p className="mt-3 flex items-center gap-2 text-xs text-[#526174]"><LockKeyhole className="h-4 w-4 text-[#0F6CBD]" />비밀번호로 보호된 링크입니다.</p> : null}{draft.recipientMode === 'named' ? <p className="mt-4 border-l-2 border-[#E6A700] bg-[#FFF9ED] px-3 py-2.5 text-xs leading-5 text-[#76520E]">현재 로컬 모드에서는 공용 링크만 제공합니다. 대상별 제출 매칭은 서버 저장 연결 후 사용할 수 있습니다.</p> : null}</section>
       <aside className="border-y border-[#DCE3EA] bg-white px-4 py-4 text-center"><div className="mb-3 flex items-center justify-center gap-2 text-xs font-bold"><QrCode className="h-4 w-4 text-[#0F6CBD]" />응답 QR 코드</div><div ref={qrRef} className="inline-block border border-[#DCE3EA] bg-white p-2"><QRCodeSVG value={publicLink} size={176} level="M" includeMargin aria-label="가정통신문 응답 링크 QR 코드" /></div><p className="mx-auto mt-2 max-w-[210px] text-[11px] leading-4 text-[#64748B]">응답 링크만 포함합니다.</p><button type="button" onClick={() => void downloadQrImage()} className="mx-auto mt-3 inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD] hover:bg-[#EFF6FC]"><ImageDown className="h-4 w-4" />QR 이미지 저장</button>{qrError ? <p role="alert" className="mt-2 text-[11px] font-semibold text-[#B42318]">{qrError}</p> : null}</aside>
     </div>
+    {confirmingReissue ? <RegistryConfirmDialog
+      title="응답 링크를 재발급할까요?"
+      description="이전 링크와 QR, 이미 배부한 개인 링크가 모두 열리지 않습니다. 새 링크를 다시 배부해야 합니다."
+      confirmLabel={reissuing ? '재발급 중' : '링크 재발급'}
+      onCancel={() => { if (!reissuing) setConfirmingReissue(false); }}
+      onConfirm={() => void reissueLink()}
+    /> : null}
     {confirmingDelete ? <RegistryConfirmDialog
       title="가정통신문 수합을 삭제할까요?"
       description={`“${draft.title}”의 원본 PDF와 제출된 응답 ${draft.responseCount}건이 모두 삭제됩니다. 되돌릴 수 없습니다.`}

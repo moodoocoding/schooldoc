@@ -218,6 +218,15 @@ export const createRemoteConsentForm = async ({
   return getRemoteConsentForm(id);
 };
 
+/** 링크가 엉뚱한 곳으로 퍼졌을 때 쓰는 재발급. 이전 주소와 QR은 즉시 무효가 된다. */
+export const reissueConsentPublicToken = async (id: string) => {
+  const { data, error } = await client()
+    .from('consent_forms').update({ public_token: crypto.randomUUID() }).eq('id', id)
+    .select('public_token').single();
+  if (error || !data) fail('응답 링크를 재발급하지 못했습니다', error);
+  return (data as { public_token: string }).public_token;
+};
+
 export const updateRemoteConsentForm = async (id: string, patch: {
   title?: string;
   deadline?: string;
