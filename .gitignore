@@ -16,6 +16,9 @@ playwright-report
 test-results
 supabase/.temp/
 
+# 운영 비밀값 메모. 저장소에 올리지 않는다.
+SECRETS.local.md
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
