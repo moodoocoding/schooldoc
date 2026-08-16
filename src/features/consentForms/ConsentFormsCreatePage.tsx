@@ -9,6 +9,7 @@ import { addConsentLocalDraft, getConsentLocalDraft, hashConsentPassword, update
 import { createRemoteConsentForm, getRemoteConsentForm, getRemoteConsentSourceFile, updateRemoteConsentForm } from './consentFormsRepository';
 import { isConsentFormsDemoMode } from './consentFormsConfig';
 import { clearConsentDraft, loadConsentDraft, restoredStep, saveConsentDraft, savedAtLabel } from './consentDraftStore';
+import { isRecipientsUnavailable, replaceConsentRecipients } from './consentRecipientsApi';
 import type { ConsentDocumentAnalysis, ConsentFieldDraft, ConsentLocalDraft, ConsentRecipientDraft, ConsentRecipientMode, ConsentShareSettings } from './types';
 
 const formatBytes = (bytes: number) => bytes < 1024 * 1024
@@ -180,6 +181,14 @@ export function ConsentFormsCreatePage() {
         } else {
           const created = await createRemoteConsentForm({ title, description, fields, pageSizes: analysis.pageSizes, recipientMode, recipientCount: recipients.length, settings: shareSettings, sourceFile });
           if (!created) throw new Error('생성한 가정통신문을 확인하지 못했습니다.');
+          // 명단 저장은 곁들이는 기능이다. 준비가 안 된 환경에서도 수합 자체는 만들어져야 한다.
+          if (recipientMode === 'named' && recipients.length) {
+            try {
+              await replaceConsentRecipients(created.id, recipients.map(({ name, identifier }) => ({ name, studentKey: identifier })));
+            } catch (recipientError) {
+              if (!isRecipientsUnavailable(recipientError)) throw recipientError;
+            }
+          }
           await clearConsentDraft();
           navigate(`/tools/consent-forms/${created.id}`);
         }

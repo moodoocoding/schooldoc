@@ -69,6 +69,18 @@ export interface ConsentPublicMetadata {
   passwordRequired: boolean;
   status: 'open' | 'closed';
   deadline: string;
+  /** 개인 링크로 들어온 경우에만 채워지는 가림 이름. 예: 김○○ */
+  recipientHint?: string;
+  recipientSubmitted?: boolean;
+}
+
+export interface ConsentRecipientRecord {
+  id: string;
+  token: string;
+  name: string;
+  studentKey: string;
+  responseId: string | null;
+  submittedAt: string | null;
 }
 
 export interface ConsentResponseRecord {
@@ -76,6 +88,7 @@ export interface ConsentResponseRecord {
   submittedAt: string;
   /** 필드 ID별 응답 값. 서명 필드는 이미지 URL 또는 data URL을 담는다. */
   values: Record<string, string>;
+  recipientId?: string | null;
 }
 
 export interface ConsentPublicDocument extends ConsentPublicMetadata {
@@ -84,4 +97,6 @@ export interface ConsentPublicDocument extends ConsentPublicMetadata {
   allowResubmission: boolean;
   pageCount: number;
   pageSizes: ConsentPageSize[];
+  recipientName?: string;
+  recipientSubmitted?: boolean;
 }

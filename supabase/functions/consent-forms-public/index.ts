@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8';
+import { consentCrypto, type ConsentRecipientIdentity } from '../_shared/consentCrypto.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -56,6 +57,29 @@ const verifyPassword = async (form: FormRow, password: unknown) => {
   if (result.error) throw result.error;
   if (!result.data) throw new HttpError(401, '비밀번호가 맞지 않습니다.');
 };
+interface RecipientRow {
+  id: string; form_id: string; identity_ciphertext: string; display_hint: string;
+  response_id: string | null; submitted_at: string | null;
+}
+
+/** 개인 링크로 들어온 경우에만 수신자를 찾는다. 공용 링크는 지금까지처럼 익명으로 받는다. */
+const getRecipient = async (form: FormRow, value: unknown) => {
+  if (typeof value !== 'string' || !uuidPattern.test(value)) return null;
+  const result = await db.from('consent_recipients')
+    .select('id, form_id, identity_ciphertext, display_hint, response_id, submitted_at')
+    .eq('token', value).maybeSingle();
+  if (result.error) throw result.error;
+  const recipient = result.data as RecipientRow | null;
+  if (!recipient || recipient.form_id !== form.id) throw new HttpError(404, '이 링크의 수신자를 찾을 수 없습니다.');
+  return recipient;
+};
+
+const recipientName = async (recipient: RecipientRow) => {
+  if (!consentCrypto.isConfigured()) return recipient.display_hint;
+  const identity = await consentCrypto.decryptPayload<ConsentRecipientIdentity>(recipient.identity_ciphertext);
+  return identity.name;
+};
+
 const metadata = (form: FormRow) => ({ title: form.title, description: form.description, passwordRequired: Boolean(form.password_digest), status: form.status, deadline: form.deadline ?? '' });
 const validateFields = (form: FormRow) => {
   if (!Array.isArray(form.fields) || form.fields.length > 200) throw new HttpError(422, '응답 필드 설정을 확인해 주세요.');
@@ -94,7 +118,10 @@ Deno.serve(async (request) => {
     if (!['metadata', 'document', 'submit'].includes(action) || !uuidPattern.test(token)) throw new HttpError(400, '요청 형식이 올바르지 않습니다.');
     await rateLimit(request, token, action);
     const form = await getForm(token);
-    if (action === 'metadata') return json(200, { form: metadata(form) });
+    const recipient = await getRecipient(form, body.recipientToken);
+    if (action === 'metadata') {
+      return json(200, { form: { ...metadata(form), recipientHint: recipient?.display_hint ?? '', recipientSubmitted: Boolean(recipient?.submitted_at) } });
+    }
     ensureOpen(form);
     validateFields(form);
     await verifyPassword(form, body.password);
@@ -104,7 +131,7 @@ Deno.serve(async (request) => {
       // 425를 받은 화면은 오류 대신 준비 안내를 띄우고 스스로 다시 시도한다.
       if (signed.error && notFound(signed.error)) throw new HttpError(425, DOCUMENT_PREPARING);
       if (signed.error || !signed.data?.signedUrl) throw new HttpError(500, '원본 PDF를 불러오지 못했습니다.');
-      return json(200, { form: { ...metadata(form), fields: form.fields, sourceUrl: signed.data.signedUrl, allowResubmission: form.allow_resubmission, pageCount: form.page_count, pageSizes: form.page_sizes?.length ? form.page_sizes : Array.from({ length: form.page_count }, () => ({ width: 210, height: 297 })) } });
+      return json(200, { form: { ...metadata(form), fields: form.fields, sourceUrl: signed.data.signedUrl, allowResubmission: form.allow_resubmission, pageCount: form.page_count, pageSizes: form.page_sizes?.length ? form.page_sizes : Array.from({ length: form.page_count }, () => ({ width: 210, height: 297 })), recipientName: recipient ? await recipientName(recipient) : '', recipientSubmitted: Boolean(recipient?.submitted_at) } });
     }
 
     if (!body.values || typeof body.values !== 'object' || Array.isArray(body.values)) throw new HttpError(400, '응답 형식이 올바르지 않습니다.');
@@ -125,8 +152,10 @@ Deno.serve(async (request) => {
         cleanValues[id] = value;
       }
     }
+    if (recipient?.submitted_at && !form.allow_resubmission) throw new HttpError(409, '이미 제출한 가정통신문입니다. 담당자에게 문의해 주세요.');
+
     const responseId = crypto.randomUUID();
-    const inserted = await db.from('consent_responses').insert({ id: responseId, form_id: form.id, values: cleanValues });
+    const inserted = await db.from('consent_responses').insert({ id: responseId, form_id: form.id, values: cleanValues, recipient_id: recipient?.id ?? null });
     if (inserted.error) throw inserted.error;
     const uploaded: string[] = [];
     try {
@@ -137,6 +166,11 @@ Deno.serve(async (request) => {
         uploaded.push(path);
         const row = await db.from('consent_response_signatures').insert({ response_id: responseId, field_id: signature.fieldId, storage_path: path });
         if (row.error) throw row.error;
+      }
+      if (recipient) {
+        const linked = await db.from('consent_recipients')
+          .update({ response_id: responseId, submitted_at: new Date().toISOString() }).eq('id', recipient.id);
+        if (linked.error) throw linked.error;
       }
       const count = await db.rpc('increment_consent_response_count', { p_form_id: form.id });
       if (count.error) throw count.error;

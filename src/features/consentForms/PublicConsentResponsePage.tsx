@@ -1,6 +1,6 @@
 import { AlertCircle, Check, CheckCircle2, LoaderCircle, LockKeyhole, PenLine, Send, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { SignatureCanvas } from '../registry/SignatureCanvas';
 import { ConsentPdfPage } from './ConsentPdfPage';
 import { DocumentPreparingError, retryLoad } from './consentDocumentReady';
@@ -28,6 +28,8 @@ function CenterMessage({ icon, title, description }: { icon: React.ReactNode; ti
 
 export function PublicConsentResponsePage() {
   const { token = '' } = useParams();
+  const [searchParams] = useSearchParams();
+  const recipientToken = searchParams.get('r') ?? '';
   const localDraft = useMemo(() => isConsentFormsDemoMode ? getConsentLocalDraftByToken(token) : null, [token]);
   const [metadata, setMetadata] = useState<ConsentPublicMetadata | null>(localDraft ? {
     title: localDraft.title, description: localDraft.description, passwordRequired: localDraft.passwordEnabled,
@@ -62,12 +64,12 @@ export function PublicConsentResponsePage() {
           if (active) { setDocument(nextDocument); setPdfFile(file); }
           return;
         }
-        const nextMetadata = await retryLoad(() => getConsentPublicMetadata(token));
+        const nextMetadata = await retryLoad(() => getConsentPublicMetadata(token, recipientToken));
         if (!active) return;
         setMetadata(nextMetadata);
         if (!nextMetadata.passwordRequired) {
           const notePreparing = () => { if (active) setPreparing(true); };
-          const nextDocument = await retryLoad(() => getConsentPublicDocument(token), { attempts: 15, onPreparing: notePreparing });
+          const nextDocument = await retryLoad(() => getConsentPublicDocument(token, '', recipientToken), { attempts: 15, onPreparing: notePreparing });
           const file = await retryLoad(() => asFile(nextDocument.sourceUrl, nextDocument.title), { attempts: 15, onPreparing: notePreparing });
           if (active) { setDocument(nextDocument); setPdfFile(file); setPreparing(false); }
         }
@@ -82,7 +84,7 @@ export function PublicConsentResponsePage() {
     };
     void load();
     return () => { active = false; };
-  }, [localDraft, token]);
+  }, [localDraft, recipientToken, token]);
 
   const requiredFields = useMemo(() => document?.fields.filter((field) => field.required) ?? [], [document]);
   const completedCount = requiredFields.filter((field) => completed(field, values[field.id])).length;
@@ -100,7 +102,7 @@ export function PublicConsentResponsePage() {
         setPdfFile(await asFile(nextDocument.sourceUrl, nextDocument.title));
       } else {
         const notePreparing = () => setPreparing(true);
-        const nextDocument = await retryLoad(() => getConsentPublicDocument(token, password), { attempts: 15, onPreparing: notePreparing });
+        const nextDocument = await retryLoad(() => getConsentPublicDocument(token, password, recipientToken), { attempts: 15, onPreparing: notePreparing });
         setDocument(nextDocument);
         setPdfFile(await retryLoad(() => asFile(nextDocument.sourceUrl, nextDocument.title), { attempts: 15, onPreparing: notePreparing }));
         setPreparing(false);
@@ -130,7 +132,7 @@ export function PublicConsentResponsePage() {
     setError('');
     try {
       if (localDraft) addConsentLocalResponse(localDraft.id, values);
-      else await submitConsentPublicResponse(token, password, values);
+      else await submitConsentPublicResponse(token, password, values, recipientToken);
       setSubmitted(true);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : '응답을 제출하지 못했습니다.');
@@ -151,7 +153,7 @@ export function PublicConsentResponsePage() {
 
   return <main className="min-h-screen bg-[#E6E9ED] pb-28 text-[#0F172A]">
     <header className="sticky top-0 z-40 border-b border-[#DCE3EA] bg-white/95 px-4 py-3 backdrop-blur">
-      <div className="mx-auto flex max-w-[940px] items-center justify-between gap-4"><div className="min-w-0"><p className="text-[11px] font-bold text-[#0F6CBD]">가정통신문 응답</p><h1 className="truncate text-sm font-extrabold sm:text-base">{document.title}</h1></div><div className="shrink-0 text-right"><span className="text-[11px] font-semibold text-[#64748B]">필수 항목</span><strong className="ml-2 text-sm tabular-nums text-[#0F6CBD]">{completedCount}/{requiredFields.length}</strong></div></div>
+      <div className="mx-auto flex max-w-[940px] items-center justify-between gap-4"><div className="min-w-0"><p className="text-[11px] font-bold text-[#0F6CBD]">{document.recipientName ? `${document.recipientName} 학생 보호자용` : '가정통신문 응답'}</p><h1 className="truncate text-sm font-extrabold sm:text-base">{document.title}</h1></div><div className="shrink-0 text-right"><span className="text-[11px] font-semibold text-[#64748B]">필수 항목</span><strong className="ml-2 text-sm tabular-nums text-[#0F6CBD]">{completedCount}/{requiredFields.length}</strong></div></div>
     </header>
     {document.description ? <section className="mx-auto max-w-[940px] border-b border-[#DCE3EA] bg-white px-4 py-3 text-xs leading-5 text-[#526174] sm:px-6">{document.description}</section> : null}
     <form onSubmit={(event) => void submit(event)}>

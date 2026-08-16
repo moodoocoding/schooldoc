@@ -29,14 +29,16 @@ const invoke = async <T>(body: Record<string, unknown>) => {
   return data as T;
 };
 
-export const getConsentPublicMetadata = async (token: string) => (
-  await invoke<{ form: ConsentPublicMetadata }>({ action: 'metadata', token })
+export const getConsentPublicMetadata = async (token: string, recipientToken = '') => (
+  await invoke<{ form: ConsentPublicMetadata }>({ action: 'metadata', token, recipientToken })
 ).form;
 
-export const getConsentPublicDocument = async (token: string, password = '') => (
-  await invoke<{ form: ConsentPublicDocument }>({ action: 'document', token, password })
+export const getConsentPublicDocument = async (token: string, password = '', recipientToken = '') => (
+  await invoke<{ form: ConsentPublicDocument }>({ action: 'document', token, password, recipientToken })
 ).form;
 
-export const submitConsentPublicResponse = async (token: string, password: string, values: Record<string, string>) => {
-  await invoke({ action: 'submit', token, password, values });
+export const submitConsentPublicResponse = async (
+  token: string, password: string, values: Record<string, string>, recipientToken = '',
+) => {
+  await invoke({ action: 'submit', token, password, values, recipientToken });
 };

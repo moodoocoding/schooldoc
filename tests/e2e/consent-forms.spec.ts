@@ -389,3 +389,39 @@ test('새로고침해도 올린 원본과 배치한 필드를 복구한다', asy
   await page.reload();
   await expect(page.getByText('문서 분석 완료')).toHaveCount(0);
 });
+
+test('개인 링크로 들어오면 누구의 문서인지 알려주고 제출을 그 사람에게 연결한다', async ({ page }) => {
+  const source = new jsPDF({ unit: 'mm', format: 'a4' });
+  source.text('Consent', 20, 20);
+  let submitted: Record<string, unknown> | null = null;
+
+  await page.route('https://source.test/personal.pdf', (route) => route.fulfill({
+    status: 200, contentType: 'application/pdf', body: Buffer.from(source.output('arraybuffer')),
+  }));
+  await page.route('**/functions/v1/consent-forms-public', async (route) => {
+    const body = JSON.parse(route.request().postData() ?? '{}');
+    const base = { title: '현장체험학습 동의서', description: '', passwordRequired: false, status: 'open', deadline: '' };
+    if (body.action === 'metadata') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ form: { ...base, recipientHint: '김○○', recipientSubmitted: false } }) });
+    }
+    if (body.action === 'document') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ form: {
+        ...base, fields: [{ id: 'f1', kind: 'text', label: '보호자 의견', required: true, pageIndex: 0, x: 10, y: 20, width: 40, height: 8 }],
+        sourceUrl: 'https://source.test/personal.pdf', allowResubmission: false, pageCount: 1,
+        pageSizes: [{ width: 595, height: 842 }], recipientName: '김학생', recipientSubmitted: false,
+      } }) });
+    }
+    submitted = body;
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ submitted: true }) });
+  });
+
+  await page.goto('/s/consent/33333333-3333-4333-8333-333333333333?r=44444444-4444-4444-8444-444444444444');
+  await expect(page.getByText('김학생 학생 보호자용')).toBeVisible();
+
+  await page.getByRole('textbox', { name: '보호자 의견' }).fill('참가합니다');
+  await page.getByRole('button', { name: '작성 완료' }).click();
+  await expect(page.getByRole('heading', { name: '응답을 제출했습니다' })).toBeVisible();
+
+  // 제출이 개인 링크의 수신자와 함께 전달돼야 누가 냈는지 이어붙일 수 있다.
+  expect(submitted).toMatchObject({ action: 'submit', recipientToken: '44444444-4444-4444-8444-444444444444' });
+});

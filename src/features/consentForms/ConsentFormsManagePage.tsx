@@ -7,7 +7,8 @@ import { deleteConsentLocalDraft, getConsentLocalDraft, hashConsentPassword, lis
 import { getConsentPublicOrigin, isConsentFormsDemoMode } from './consentFormsConfig';
 import { deleteRemoteConsentForm, getRemoteConsentForm, getRemoteConsentSourceFile, listRemoteConsentResponses, updateRemoteConsentForm } from './consentFormsRepository';
 import { consentQrFileName, consentResponseFileName, consentResponsesFileName, downloadBlob, formatConsentValue, renderConsentResponsePdf, renderConsentResponsesPdf, svgToPngBlob } from './consentResponseRender';
-import type { ConsentLocalDraft, ConsentResponseRecord } from './types';
+import { isRecipientsUnavailable, listConsentRecipients } from './consentRecipientsApi';
+import type { ConsentLocalDraft, ConsentRecipientRecord, ConsentResponseRecord } from './types';
 
 const submittedLabel = (value: string) => {
   const date = new Date(value);
@@ -39,6 +40,9 @@ export function ConsentFormsManagePage() {
   const [responseError, setResponseError] = useState('');
   const [downloadingId, setDownloadingId] = useState('');
   const [bulkProgress, setBulkProgress] = useState('');
+  const [recipients, setRecipients] = useState<ConsentRecipientRecord[]>([]);
+  const [recipientsNotice, setRecipientsNotice] = useState('');
+  const [copiedRecipient, setCopiedRecipient] = useState('');
   const [qrError, setQrError] = useState('');
   const qrRef = useRef<HTMLDivElement>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -50,6 +54,16 @@ export function ConsentFormsManagePage() {
       return;
     }
     let active = true;
+    if (!isConsentFormsDemoMode) {
+      listConsentRecipients(id)
+        .then((rows) => { if (active) setRecipients(rows); })
+        .catch((error) => {
+          if (!active) return;
+          setRecipientsNotice(isRecipientsUnavailable(error)
+            ? '명단 기능이 아직 준비되지 않아 공용 링크만 사용합니다.'
+            : error instanceof Error ? error.message : '명단을 불러오지 못했습니다.');
+        });
+    }
     listRemoteConsentResponses(id)
       .then((rows) => { if (active) setResponses(rows); })
       .catch((error) => { if (active) setResponseError(error instanceof Error ? error.message : '응답을 불러오지 못했습니다.'); })
@@ -102,7 +116,8 @@ export function ConsentFormsManagePage() {
     try {
       const file = await sourceFileOf(draft);
       const blob = await renderConsentResponsePdf({ file, fields: draft.fields, response });
-      downloadBlob(blob, consentResponseFileName(draft.title, index + 1));
+      const named = recipientOf(response);
+      downloadBlob(blob, consentResponseFileName(named ? `${draft.title}_${named.name}` : draft.title, index + 1));
     } catch (error) {
       setResponseError(error instanceof Error ? error.message : '응답 PDF를 만들지 못했습니다.');
     } finally {
@@ -156,6 +171,9 @@ export function ConsentFormsManagePage() {
     }
   };
 
+  const recipientOf = (response: ConsentResponseRecord) => recipients.find((entry) => entry.responseId === response.id) ?? null;
+  const submittedCount = recipients.filter((entry) => entry.submittedAt).length;
+
   const summarize = (response: ConsentResponseRecord) => draft.fields
     .map((field) => {
       const value = response.values[field.id] ?? '';
@@ -202,10 +220,23 @@ export function ConsentFormsManagePage() {
           ? <div className="mt-4 border border-dashed border-[#C8D0DA] py-10 text-center"><Inbox className="mx-auto h-7 w-7 text-[#94A3B8]" /><p className="mt-3 text-sm font-bold">아직 제출된 응답이 없습니다</p><p className="mt-1.5 text-xs text-[#64748B]">응답 링크나 QR을 배부하면 여기에 쌓입니다.</p></div>
           : <ul className="mt-4 divide-y divide-[#EEF1F4] border-y border-[#EEF1F4]">{responses.map((response, index) => <li key={response.id} className="flex flex-wrap items-center gap-3 py-3">
             <span className="w-7 shrink-0 text-xs font-bold tabular-nums text-[#64748B]">{index + 1}</span>
-            <div className="min-w-0 flex-1"><p className="text-xs font-bold tabular-nums text-[#334155]">{submittedLabel(response.submittedAt)}</p><p className="mt-1 truncate text-xs text-[#64748B]" title={summarize(response)}>{summarize(response) || '입력된 값이 없습니다.'}</p></div>
+            <div className="min-w-0 flex-1"><p className="flex flex-wrap items-center gap-2 text-xs font-bold text-[#334155]">{recipientOf(response) ? <span className="rounded bg-[#EFF6FC] px-1.5 py-0.5 text-[11px] text-[#0F6CBD]">{recipientOf(response)?.name}</span> : null}<span className="tabular-nums">{submittedLabel(response.submittedAt)}</span></p><p className="mt-1 truncate text-xs text-[#64748B]" title={summarize(response)}>{summarize(response) || '입력된 값이 없습니다.'}</p></div>
             <button type="button" disabled={Boolean(downloadingId) || Boolean(bulkProgress)} onClick={() => void downloadResponse(response, index)} className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD] hover:bg-[#EFF6FC] disabled:border-[#C8D0DA] disabled:text-[#94A3B8]" aria-label={`${index + 1}번째 응답 PDF 내려받기`}>{downloadingId === response.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}{downloadingId === response.id ? '만드는 중' : 'PDF'}</button>
           </li>)}</ul>}
     </section>
+
+    {recipients.length > 0 ? <section aria-label="명단 제출 현황" className="border-y border-[#DCE3EA] bg-white px-4 py-4 sm:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-sm font-bold">명단 제출 현황<span className="ml-2 text-xs font-semibold text-[#64748B]">{submittedCount} / {recipients.length}명</span></h2><p className="mt-1 text-xs text-[#64748B]">보호자마다 다른 개인 링크가 발급되어 누가 제출했는지 확인할 수 있습니다.</p></div></div>
+      <ul className="mt-4 divide-y divide-[#EEF1F4] border-y border-[#EEF1F4]">{recipients.map((recipient) => {
+        const personalLink = `${publicLink}?r=${recipient.token}`;
+        return <li key={recipient.id} className="flex flex-wrap items-center gap-3 py-3">
+          <span className={`inline-flex min-w-[52px] justify-center rounded-md px-2 py-1 text-[11px] font-bold ${recipient.submittedAt ? 'bg-[#E6F4EA] text-[#126B32]' : 'bg-[#FEF3F2] text-[#B42318]'}`}>{recipient.submittedAt ? '제출' : '미제출'}</span>
+          <div className="min-w-0 flex-1"><p className="text-xs font-bold text-[#334155]">{recipient.name}{recipient.studentKey ? <span className="ml-2 font-semibold text-[#64748B]">{recipient.studentKey}</span> : null}</p><p className="mt-1 text-[11px] tabular-nums text-[#64748B]">{recipient.submittedAt ? submittedLabel(recipient.submittedAt) : '아직 제출하지 않았습니다.'}</p></div>
+          <button type="button" onClick={async () => { await navigator.clipboard.writeText(personalLink); setCopiedRecipient(recipient.id); window.setTimeout(() => setCopiedRecipient(''), 1500); }} className="inline-flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-lg border border-[#C8D0DA] px-2.5 text-[11px] font-bold text-[#334155] hover:border-[#0F6CBD] hover:text-[#0F6CBD]" aria-label={`${recipient.name} 개인 링크 복사`}>{copiedRecipient === recipient.id ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}개인 링크</button>
+        </li>;
+      })}</ul>
+    </section> : null}
+    {recipientsNotice ? <p role="status" className="border-l-2 border-[#E6A700] bg-[#FFF9ED] px-3 py-2.5 text-xs font-semibold leading-5 text-[#76520E]">{recipientsNotice}</p> : null}
 
     <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
       <section className="border-y border-[#DCE3EA] bg-white px-4 py-4 sm:px-5"><h2 className="text-sm font-bold">응답 링크</h2><p className="mt-1 text-xs text-[#64748B]">보호자에게 링크를 보내거나 오른쪽 QR을 배부하세요.</p><div className="mt-3 flex gap-2"><input readOnly value={publicLink} className="min-h-[42px] min-w-0 flex-1 rounded-lg border border-[#C8D0DA] bg-[#F6F8FB] px-3 text-xs" /><button type="button" onClick={async () => { await navigator.clipboard.writeText(publicLink); setCopied(true); window.setTimeout(() => setCopied(false), 1500); }} className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg border border-[#C8D0DA] text-[#0F6CBD]" aria-label="응답 링크 복사" title="링크 복사">{copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}</button><a href={publicLink} target="_blank" rel="noreferrer" className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg border border-[#C8D0DA] text-[#0F6CBD]" aria-label="응답 화면 열기" title="새 창에서 열기"><ExternalLink className="h-4 w-4" /></a></div>{draft.passwordEnabled ? <p className="mt-3 flex items-center gap-2 text-xs text-[#526174]"><LockKeyhole className="h-4 w-4 text-[#0F6CBD]" />비밀번호로 보호된 링크입니다.</p> : null}{draft.recipientMode === 'named' ? <p className="mt-4 border-l-2 border-[#E6A700] bg-[#FFF9ED] px-3 py-2.5 text-xs leading-5 text-[#76520E]">현재 로컬 모드에서는 공용 링크만 제공합니다. 대상별 제출 매칭은 서버 저장 연결 후 사용할 수 있습니다.</p> : null}</section>
