@@ -292,3 +292,67 @@ test('원본이 늦게 도착해도 오류 화면이 스치지 않는다', async
   clearInterval(watcher);
   expect(errorFlashes).toEqual([]);
 });
+
+test('단축키로 필드를 복사해 다른 쪽에 붙여넣고 되돌린다', async ({ page }) => {
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+  for (let index = 0; index < 4; index += 1) {
+    if (index) pdf.addPage();
+    pdf.text(`Notice page ${index + 1}`, 20, 25);
+  }
+  await page.goto('/tools/consent-forms/new');
+  await page.getByLabel('가정통신문 PDF 파일').setInputFiles({
+    name: 'multi.pdf', mimeType: 'application/pdf', buffer: Buffer.from(pdf.output('arraybuffer')),
+  });
+  await page.getByRole('textbox', { name: '제목' }).fill('여러 쪽 동의서');
+  await page.getByRole('button', { name: '확인 후 필드 배치' }).click();
+
+  await page.getByRole('button', { name: '서명', exact: true }).click();
+  await page.getByRole('textbox', { name: '표시 이름' }).fill('보호자 서명');
+  const placed = page.getByRole('region', { name: '배치된 필드' });
+  await expect(placed.getByRole('button', { name: /보호자 서명/ })).toContainText('1쪽');
+
+  // 3쪽으로 이동해 붙여넣으면 그 쪽에 복사본이 생긴다.
+  // 이름 입력란에서 포커스를 빼야 단축키가 동작한다.
+  await page.getByRole('button', { name: '보호자 서명 필드', exact: true }).click();
+  await page.keyboard.press('ControlOrMeta+c');
+  await page.getByLabel('쪽 번호').fill('3');
+  await page.keyboard.press('ControlOrMeta+v');
+  await expect(placed.getByRole('button', { name: /보호자 서명/ })).toHaveCount(2);
+  await expect(placed.getByRole('button', { name: /보호자 서명/ }).nth(1)).toContainText('3쪽');
+
+  // 되돌리면 복사본만 사라진다.
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(placed.getByRole('button', { name: /보호자 서명/ })).toHaveCount(1);
+
+  // 다시 실행하면 복원된다.
+  await page.keyboard.press('ControlOrMeta+Shift+z');
+  await expect(placed.getByRole('button', { name: /보호자 서명/ })).toHaveCount(2);
+});
+
+test('필드 목록에서 해당 쪽으로 이동하고 쪽 번호로 건너뛴다', async ({ page }) => {
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+  for (let index = 0; index < 8; index += 1) {
+    if (index) pdf.addPage();
+    pdf.text(`Notice page ${index + 1}`, 20, 25);
+  }
+  await page.goto('/tools/consent-forms/new');
+  await page.getByLabel('가정통신문 PDF 파일').setInputFiles({
+    name: 'long.pdf', mimeType: 'application/pdf', buffer: Buffer.from(pdf.output('arraybuffer')),
+  });
+  await page.getByRole('textbox', { name: '제목' }).fill('긴 동의서');
+  await page.getByRole('button', { name: '확인 후 필드 배치' }).click();
+
+  // 화살표를 반복해 누르지 않고 곧바로 6쪽으로 간다.
+  await page.getByLabel('쪽 번호').fill('6');
+  await expect(page.getByLabel('쪽 번호')).toHaveValue('6');
+  await page.getByRole('button', { name: '텍스트', exact: true }).click();
+  await page.getByRole('textbox', { name: '표시 이름' }).fill('보호자 의견');
+
+  await page.getByLabel('쪽 번호').fill('1');
+  await expect(page.getByLabel('쪽 번호')).toHaveValue('1');
+
+  // 목록에서 누르면 그 필드가 있는 쪽으로 돌아간다.
+  await page.getByRole('region', { name: '배치된 필드' }).getByRole('button', { name: /보호자 의견/ }).click();
+  await expect(page.getByLabel('쪽 번호')).toHaveValue('6');
+  await expect(page.getByRole('button', { name: '보호자 의견 필드', exact: true })).toBeVisible();
+});

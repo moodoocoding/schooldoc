@@ -56,9 +56,12 @@ export const findAvailableFieldPosition = (
 ) => {
   const maxX = Math.max(FIELD_EDGE_PADDING, 100 - FIELD_EDGE_PADDING - size.width);
   const maxY = Math.max(FIELD_EDGE_PADDING, 100 - FIELD_EDGE_PADDING - size.height);
+  // size에 x·y가 들어와도 탐색 좌표를 덮어쓰지 않도록 폭·높이만 꺼내 쓴다.
+  const { width, height } = size;
+  const pageIndex = pageFields[0]?.pageIndex ?? 0;
   for (let y = 12; y <= maxY; y += 2) {
     for (let x = 10; x <= maxX; x += 2) {
-      const candidate = { id: '', kind: 'text' as const, label: '', required: false, pageIndex: pageFields[0]?.pageIndex ?? 0, x, y, ...size };
+      const candidate = { id: '', kind: 'text' as const, label: '', required: false, pageIndex, x, y, width, height };
       if (!pageFields.some((field) => fieldsOverlap(candidate, field, FIELD_GAP))) return { x, y };
     }
   }
@@ -100,3 +103,60 @@ export const fieldRect = (field: ConsentFieldDraft, pageWidth: number, pageHeigh
   width: (field.width / 100) * pageWidth,
   height: (field.height / 100) * pageHeight,
 });
+
+/** 붙여넣기·복제용. 새 id를 부여하고 대상 쪽의 빈 자리에 놓는다. */
+export const cloneFieldsToPage = (
+  pageFields: ConsentFieldDraft[],
+  sources: ConsentFieldDraft[],
+  pageIndex: number,
+  newId: () => string = () => crypto.randomUUID(),
+) => {
+  const placed = [...pageFields];
+  return sources.map((source) => {
+    const position = findAvailableFieldPosition(placed, source);
+    const clone = { ...source, id: newId(), pageIndex, ...position };
+    placed.push(clone);
+    return clone;
+  });
+};
+
+export const SNAP_THRESHOLD = 0.8;
+
+const edgesX = (field: Pick<ConsentFieldDraft, 'x' | 'width'>) => [field.x, field.x + field.width / 2, field.x + field.width];
+const edgesY = (field: Pick<ConsentFieldDraft, 'y' | 'height'>) => [field.y, field.y + field.height / 2, field.y + field.height];
+
+const snapAxis = (start: number, size: number, targets: number[], threshold: number) => {
+  const offsets = [0, size / 2, size];
+  let best: { value: number; distance: number } | null = null;
+  targets.forEach((target) => {
+    offsets.forEach((offset) => {
+      const candidate = target - offset;
+      const distance = Math.abs(candidate - start);
+      if (distance <= threshold && (!best || distance < best.distance)) best = { value: candidate, distance };
+    });
+  });
+  return best ? (best as { value: number }).value : start;
+};
+
+/** 끌고 있는 필드를 같은 쪽의 다른 필드와 쪽 중앙·가장자리에 붙인다. */
+export const snapFieldPosition = (
+  moving: Pick<ConsentFieldDraft, 'width' | 'height'>,
+  others: ConsentFieldDraft[],
+  x: number,
+  y: number,
+  threshold = SNAP_THRESHOLD,
+) => ({
+  x: snapAxis(x, moving.width, [0, 50, 100, ...others.flatMap(edgesX)], threshold),
+  y: snapAxis(y, moving.height, [0, 50, 100, ...others.flatMap(edgesY)], threshold),
+});
+
+/** 실제로 맞춰진 선만 그린다. 끌고 있는 동안 어디에 정렬됐는지 보여주기 위함이다. */
+export const alignmentGuides = (field: ConsentFieldDraft, others: ConsentFieldDraft[], tolerance = 0.05) => {
+  const matches = (values: number[], targets: number[]) => targets
+    .filter((target) => values.some((value) => Math.abs(value - target) <= tolerance))
+    .filter((target, index, all) => all.indexOf(target) === index);
+  return {
+    vertical: matches(edgesX(field), [0, 50, 100, ...others.flatMap(edgesX)]),
+    horizontal: matches(edgesY(field), [0, 50, 100, ...others.flatMap(edgesY)]),
+  };
+};
