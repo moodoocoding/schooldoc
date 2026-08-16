@@ -20,6 +20,7 @@ interface FormRow {
   id: string; title: string; description: string; source_path: string; fields: Array<Record<string, unknown>>;
   deadline: string | null; password_digest: string | null; allow_resubmission: boolean; status: 'open' | 'closed';
   page_count: number;
+  page_sizes: Array<{ width: number; height: number }> | null;
 }
 
 const hash = async (value: string) => {
@@ -33,7 +34,7 @@ const rateLimit = async (request: Request, token: string, action: string) => {
   if (!result.data) throw new HttpError(429, '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.');
 };
 const getForm = async (token: string) => {
-  const result = await db.from('consent_forms').select('id,title,description,source_path,fields,page_count,deadline,password_digest,allow_resubmission,status').eq('public_token', token).maybeSingle();
+  const result = await db.from('consent_forms').select('id,title,description,source_path,fields,page_count,page_sizes,deadline,password_digest,allow_resubmission,status').eq('public_token', token).maybeSingle();
   if (result.error) throw result.error;
   if (!result.data) throw new HttpError(404, '가정통신문을 찾을 수 없습니다.');
   return result.data as FormRow;
@@ -49,6 +50,23 @@ const verifyPassword = async (form: FormRow, password: unknown) => {
   if (!result.data) throw new HttpError(401, '비밀번호가 맞지 않습니다.');
 };
 const metadata = (form: FormRow) => ({ title: form.title, description: form.description, passwordRequired: Boolean(form.password_digest), status: form.status, deadline: form.deadline ?? '' });
+const validateFields = (form: FormRow) => {
+  if (!Array.isArray(form.fields) || form.fields.length > 200) throw new HttpError(422, '응답 필드 설정을 확인해 주세요.');
+  const ids = new Set<string>();
+  for (const field of form.fields) {
+    const id = typeof field.id === 'string' ? field.id : '';
+    const kind = typeof field.kind === 'string' ? field.kind : '';
+    const label = typeof field.label === 'string' ? field.label.trim() : '';
+    const pageIndex = typeof field.pageIndex === 'number' ? field.pageIndex : -1;
+    const values = [field.x, field.y, field.width, field.height];
+    if (!id || ids.has(id) || !['text', 'checkbox', 'date', 'signature'].includes(kind)) throw new HttpError(422, '응답 필드 설정을 확인해 주세요.');
+    if (!label || label.length > 80 || !Number.isInteger(pageIndex) || pageIndex < 0 || pageIndex >= form.page_count) throw new HttpError(422, '응답 필드 설정을 확인해 주세요.');
+    if (!values.every((value) => typeof value === 'number' && Number.isFinite(value))) throw new HttpError(422, '응답 필드 좌표를 확인해 주세요.');
+    const [x, y, width, height] = values as number[];
+    if (x < 0 || y < 0 || width < 10 || height < 4 || x + width > 100 || y + height > 100) throw new HttpError(422, '응답 필드 좌표를 확인해 주세요.');
+    ids.add(id);
+  }
+};
 
 const parseSignature = (value: string) => {
   if (value.length > 800_000) throw new HttpError(400, '서명 이미지가 너무 큽니다.');
@@ -71,11 +89,12 @@ Deno.serve(async (request) => {
     const form = await getForm(token);
     if (action === 'metadata') return json(200, { form: metadata(form) });
     ensureOpen(form);
+    validateFields(form);
     await verifyPassword(form, body.password);
     if (action === 'document') {
       const signed = await db.storage.from('consent-documents').createSignedUrl(form.source_path, 60 * 60);
       if (signed.error || !signed.data?.signedUrl) throw new HttpError(500, '원본 PDF를 불러오지 못했습니다.');
-      return json(200, { form: { ...metadata(form), fields: form.fields, sourceUrl: signed.data.signedUrl, allowResubmission: form.allow_resubmission, pageCount: form.page_count } });
+      return json(200, { form: { ...metadata(form), fields: form.fields, sourceUrl: signed.data.signedUrl, allowResubmission: form.allow_resubmission, pageCount: form.page_count, pageSizes: form.page_sizes?.length ? form.page_sizes : Array.from({ length: form.page_count }, () => ({ width: 210, height: 297 })) } });
     }
 
     if (!body.values || typeof body.values !== 'object' || Array.isArray(body.values)) throw new HttpError(400, '응답 형식이 올바르지 않습니다.');

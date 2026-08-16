@@ -1,6 +1,7 @@
-import type { ConsentLocalDraft } from './types';
+import type { ConsentLocalDraft, ConsentResponseRecord } from './types';
 
 const STORAGE_KEY = 'schooldoc:consent-forms:drafts';
+const RESPONSE_KEY = 'schooldoc:consent-forms:responses';
 
 const normalizeDraft = (value: Partial<ConsentLocalDraft>): ConsentLocalDraft => ({
   id: value.id ?? crypto.randomUUID(),
@@ -50,9 +51,28 @@ export const updateConsentLocalDraft = (id: string, patch: Partial<ConsentLocalD
   return updated.find((draft) => draft.id === id) ?? null;
 };
 
-export const countConsentLocalResponse = (id: string) => {
+interface StoredResponse extends ConsentResponseRecord { formId: string }
+
+const readStoredResponses = (): StoredResponse[] => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(RESPONSE_KEY) ?? '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+export const listConsentLocalResponses = (formId: string): ConsentResponseRecord[] => readStoredResponses()
+  .filter((response) => response.formId === formId)
+  .map(({ id, submittedAt, values }) => ({ id, submittedAt, values }))
+  .sort((a, b) => a.submittedAt.localeCompare(b.submittedAt));
+
+export const addConsentLocalResponse = (id: string, values: Record<string, string>) => {
   const draft = getConsentLocalDraft(id);
-  if (draft) updateConsentLocalDraft(id, { responseCount: draft.responseCount + 1 });
+  if (!draft) return;
+  const response: StoredResponse = { id: crypto.randomUUID(), formId: id, submittedAt: new Date().toISOString(), values };
+  localStorage.setItem(RESPONSE_KEY, JSON.stringify([...readStoredResponses(), response]));
+  updateConsentLocalDraft(id, { responseCount: draft.responseCount + 1 });
 };
 
 export const hashConsentPassword = async (password: string) => {

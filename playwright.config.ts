@@ -22,6 +22,7 @@ export default defineConfig({
       VITE_REGISTRY_DEMO_MODE: 'true',
       VITE_STUDENT_RESULTS_DEMO_MODE: 'true',
       VITE_CONSENT_FORMS_DEMO_MODE: 'true',
+      VITE_PUBLIC_APP_URL: 'http://127.0.0.1:4173',
     },
     url: 'http://127.0.0.1:4173/tools/registry-sign',
     reuseExistingServer: true,

@@ -1,7 +1,9 @@
 import { supabase } from '../../utils/supabaseClient';
-import type { ConsentFieldDraft, ConsentLocalDraft, ConsentRecipientMode, ConsentShareSettings } from './types';
+import { getConsentFieldLayoutIssues } from './consentFieldLayout';
+import type { ConsentFieldDraft, ConsentLocalDraft, ConsentPageSize, ConsentRecipientMode, ConsentResponseRecord, ConsentShareSettings } from './types';
 
 const DOCUMENT_BUCKET = 'consent-documents';
+const SIGNATURE_BUCKET = 'consent-signatures';
 const client = () => {
   if (!supabase) throw new Error('Supabase 연결 정보가 없습니다.');
   return supabase;
@@ -27,9 +29,10 @@ interface ConsentFormRow {
   status: 'open' | 'closed';
   created_at: string;
   page_count: number;
+  page_sizes: ConsentPageSize[] | null;
 }
 
-const formColumns = 'id, public_token, title, file_name, source_path, description, fields, page_count, recipient_mode, recipient_count, deadline, password_digest, allow_resubmission, response_count, status, created_at';
+const formColumns = 'id, public_token, title, file_name, source_path, description, fields, page_count, page_sizes, recipient_mode, recipient_count, deadline, password_digest, allow_resubmission, response_count, status, created_at';
 const mapForm = (row: ConsentFormRow): ConsentLocalDraft => ({
   id: row.id,
   title: row.title,
@@ -49,6 +52,7 @@ const mapForm = (row: ConsentFormRow): ConsentLocalDraft => ({
   status: row.status,
   sourcePath: row.source_path,
   pageCount: row.page_count,
+  pageSizes: row.page_sizes?.length ? row.page_sizes : Array.from({ length: row.page_count }, () => ({ width: 210, height: 297 })),
 });
 
 export const listRemoteConsentForms = async () => {
@@ -74,17 +78,54 @@ export const getRemoteConsentSourceFile = async (form: ConsentLocalDraft) => {
   return new File([await response.blob()], form.fileName, { type: 'application/pdf' });
 };
 
+export const listRemoteConsentResponses = async (formId: string): Promise<ConsentResponseRecord[]> => {
+  const { data, error } = await client()
+    .from('consent_responses').select('id, values, submitted_at')
+    .eq('form_id', formId).order('submitted_at', { ascending: true });
+  if (error) fail('제출된 응답을 불러오지 못했습니다', error);
+  const rows = (data ?? []) as Array<{ id: string; values: Record<string, string> | null; submitted_at: string }>;
+  if (!rows.length) return [];
+
+  const signatureRows = await client()
+    .from('consent_response_signatures').select('response_id, field_id, storage_path')
+    .in('response_id', rows.map((row) => row.id));
+  if (signatureRows.error) fail('서명 이미지를 불러오지 못했습니다', signatureRows.error);
+  const signatures = (signatureRows.data ?? []) as Array<{ response_id: string; field_id: string; storage_path: string }>;
+
+  const urlByPath = new Map<string, string>();
+  if (signatures.length) {
+    const signed = await client().storage.from(SIGNATURE_BUCKET)
+      .createSignedUrls(signatures.map((signature) => signature.storage_path), 60 * 60);
+    if (signed.error) fail('서명 이미지 주소를 만들지 못했습니다', signed.error);
+    (signed.data ?? []).forEach((entry) => {
+      if (entry.path && entry.signedUrl) urlByPath.set(entry.path, entry.signedUrl);
+    });
+  }
+
+  return rows.map((row) => {
+    const values = { ...(row.values ?? {}) };
+    signatures.filter((signature) => signature.response_id === row.id).forEach((signature) => {
+      const url = urlByPath.get(signature.storage_path);
+      if (url) values[signature.field_id] = url;
+    });
+    return { id: row.id, submittedAt: row.submitted_at, values };
+  });
+};
+
 export const createRemoteConsentForm = async ({
-  title, description, fields, recipientMode, recipientCount, settings, sourceFile,
+  title, description, fields, pageSizes, recipientMode, recipientCount, settings, sourceFile,
 }: {
   title: string;
   description: string;
   fields: ConsentFieldDraft[];
+  pageSizes: ConsentPageSize[];
   recipientMode: ConsentRecipientMode;
   recipientCount: number;
   settings: ConsentShareSettings;
   sourceFile: File;
 }) => {
+  const layoutIssues = getConsentFieldLayoutIssues(fields, pageSizes.length);
+  if (layoutIssues.length) throw new Error(layoutIssues[0].message);
   const { data: authData, error: authError } = await client().auth.getUser();
   if (authError) fail('로그인 정보를 확인하지 못했습니다', authError);
   if (!authData.user) throw new Error('Google 로그인이 필요합니다.');
@@ -98,7 +139,8 @@ export const createRemoteConsentForm = async ({
     source_path: sourcePath,
     description: description.trim(),
     fields,
-    page_count: Math.max(1, ...fields.map((field) => field.pageIndex + 1)),
+    page_count: pageSizes.length,
+    page_sizes: pageSizes,
     recipient_mode: recipientMode,
     recipient_count: recipientMode === 'named' ? recipientCount : 0,
     deadline: settings.deadline || null,
@@ -130,6 +172,7 @@ export const updateRemoteConsentForm = async (id: string, patch: {
   description?: string;
   fields?: ConsentFieldDraft[];
   pageCount?: number;
+  pageSizes?: ConsentPageSize[];
   fileName?: string;
   sourceFile?: File;
 }) => {
@@ -141,7 +184,13 @@ export const updateRemoteConsentForm = async (id: string, patch: {
   if (patch.description !== undefined) values.description = patch.description;
   if (patch.fields !== undefined) values.fields = patch.fields;
   if (patch.pageCount !== undefined) values.page_count = patch.pageCount;
+  if (patch.pageSizes !== undefined) values.page_sizes = patch.pageSizes;
   if (patch.fileName !== undefined) values.file_name = patch.fileName;
+  if (patch.fields !== undefined) {
+    const pageCount = patch.pageCount ?? patch.pageSizes?.length ?? (await getRemoteConsentForm(id))?.pageCount ?? 1;
+    const layoutIssues = getConsentFieldLayoutIssues(patch.fields, pageCount);
+    if (layoutIssues.length) throw new Error(layoutIssues[0].message);
+  }
   if (Object.keys(values).length) {
     const { error } = await client().from('consent_forms').update(values).eq('id', id);
     if (error) fail('수합 설정을 저장하지 못했습니다', error);

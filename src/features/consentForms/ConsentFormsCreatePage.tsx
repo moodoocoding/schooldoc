@@ -130,10 +130,10 @@ export function ConsentFormsCreatePage() {
     try {
       if (!isConsentFormsDemoMode) {
         if (editDraft) {
-          await updateRemoteConsentForm(editDraft.id, { title: title.trim() || editDraft.title, description: description.trim(), fields, pageCount: analysis.pageCount, fileName: sourceFile.name, sourceFile, deadline: shareSettings.deadline, allowResubmission: shareSettings.allowResubmission, passwordEnabled: shareSettings.passwordEnabled, password: shareSettings.password });
+          await updateRemoteConsentForm(editDraft.id, { title: title.trim() || editDraft.title, description: description.trim(), fields, pageCount: analysis.pageCount, pageSizes: analysis.pageSizes, fileName: sourceFile.name, sourceFile, deadline: shareSettings.deadline, allowResubmission: shareSettings.allowResubmission, passwordEnabled: shareSettings.passwordEnabled, password: shareSettings.password });
           navigate(`/tools/consent-forms/${editDraft.id}`);
         } else {
-          const created = await createRemoteConsentForm({ title, description, fields, recipientMode, recipientCount: recipients.length, settings: shareSettings, sourceFile });
+          const created = await createRemoteConsentForm({ title, description, fields, pageSizes: analysis.pageSizes, recipientMode, recipientCount: recipients.length, settings: shareSettings, sourceFile });
           if (!created) throw new Error('생성한 가정통신문을 확인하지 못했습니다.');
           navigate(`/tools/consent-forms/${created.id}`);
         }
@@ -141,10 +141,10 @@ export function ConsentFormsCreatePage() {
       }
       const passwordHash = shareSettings.passwordEnabled ? shareSettings.password.trim() ? await hashConsentPassword(shareSettings.password.trim()) : editDraft?.passwordHash ?? '' : '';
       if (editDraft) {
-        updateConsentLocalDraft(editDraft.id, { title, fileName: analysis.fileName, fieldCount: fields.length, description, fields, pageCount: analysis.pageCount, deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled, passwordHash: passwordHash || editDraft.passwordHash, allowResubmission: shareSettings.allowResubmission, sourcePdfDataUrl: await fileToDataUrl(sourceFile) });
+        updateConsentLocalDraft(editDraft.id, { title, fileName: analysis.fileName, fieldCount: fields.length, description, fields, pageCount: analysis.pageCount, pageSizes: analysis.pageSizes, deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled, passwordHash: passwordHash || editDraft.passwordHash, allowResubmission: shareSettings.allowResubmission, sourcePdfDataUrl: await fileToDataUrl(sourceFile) });
         navigate(`/tools/consent-forms/${editDraft.id}`);
       } else {
-        addConsentLocalDraft({ id: crypto.randomUUID(), title, fileName: analysis.fileName, fieldCount: fields.length, recipientMode, recipientCount: recipientMode === 'named' ? recipients.length : 0, createdAt: new Date().toISOString(), description, fields, publicToken: crypto.randomUUID(), deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled, passwordHash, allowResubmission: shareSettings.allowResubmission, responseCount: 0, status: 'open', pageCount: analysis.pageCount, sourcePdfDataUrl: await fileToDataUrl(sourceFile) });
+        addConsentLocalDraft({ id: crypto.randomUUID(), title, fileName: analysis.fileName, fieldCount: fields.length, recipientMode, recipientCount: recipientMode === 'named' ? recipients.length : 0, createdAt: new Date().toISOString(), description, fields, publicToken: crypto.randomUUID(), deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled, passwordHash, allowResubmission: shareSettings.allowResubmission, responseCount: 0, status: 'open', pageCount: analysis.pageCount, pageSizes: analysis.pageSizes, sourcePdfDataUrl: await fileToDataUrl(sourceFile) });
         navigate('/tools/consent-forms');
       }
     } catch (saveError) {

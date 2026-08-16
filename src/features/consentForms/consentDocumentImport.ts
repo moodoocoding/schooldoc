@@ -21,10 +21,15 @@ export const analyzeConsentDocument = async (file: File): Promise<ConsentDocumen
     throw new Error('PDF를 읽지 못했습니다. 손상되거나 암호화된 파일인지 확인해 주세요.');
   }
   const pageTexts: string[] = [];
-  for (let pageNumber = 1; pageNumber <= Math.min(document.numPages, 3); pageNumber += 1) {
+  const pageSizes: Array<{ width: number; height: number }> = [];
+  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
     const page = await document.getPage(pageNumber);
-    const content = await page.getTextContent();
-    pageTexts.push(content.items.flatMap((item) => ('str' in item ? [item.str] : [])).join(' '));
+    const viewport = page.getViewport({ scale: 1 });
+    pageSizes.push({ width: viewport.width, height: viewport.height });
+    if (pageNumber <= 3) {
+      const content = await page.getTextContent();
+      pageTexts.push(content.items.flatMap((item) => ('str' in item ? [item.str] : [])).join(' '));
+    }
   }
   let metadataTitle = '';
   try {
@@ -43,6 +48,7 @@ export const analyzeConsentDocument = async (file: File): Promise<ConsentDocumen
     pageCountLabel: `${document.numPages}쪽`,
     textPreview,
     warnings: textPreview ? [] : ['텍스트가 없는 스캔 PDF입니다. 원본 화면을 확인해 주세요.'],
+    pageSizes,
   };
 };
 

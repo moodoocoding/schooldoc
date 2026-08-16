@@ -3,8 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { SignatureCanvas } from '../registry/SignatureCanvas';
 import { ConsentPdfPage } from './ConsentPdfPage';
+import { fieldStyle, pageAspectRatio } from './consentFieldLayout';
 import { isConsentFormsDemoMode } from './consentFormsConfig';
-import { countConsentLocalResponse, getConsentLocalDraftByToken, hashConsentPassword } from './consentFormsLocalStore';
+import { addConsentLocalResponse, getConsentLocalDraftByToken, hashConsentPassword } from './consentFormsLocalStore';
 import { getConsentPublicDocument, getConsentPublicMetadata, submitConsentPublicResponse } from './consentFormsPublicApi';
 import type { ConsentFieldDraft, ConsentPublicDocument, ConsentPublicMetadata } from './types';
 
@@ -70,6 +71,7 @@ export function PublicConsentResponsePage() {
             status: localDraft.status, deadline: localDraft.deadline, fields: localDraft.fields,
             sourceUrl: localDraft.sourcePdfDataUrl, allowResubmission: localDraft.allowResubmission,
             pageCount: localDraft.pageCount ?? 1,
+            pageSizes: localDraft.pageSizes ?? Array.from({ length: localDraft.pageCount ?? 1 }, () => ({ width: 210, height: 297 })),
           };
           const file = await asFile(nextDocument.sourceUrl, nextDocument.title);
           if (active) { setDocument(nextDocument); setPdfFile(file); }
@@ -104,7 +106,7 @@ export function PublicConsentResponsePage() {
       if (localDraft) {
         if (await hashConsentPassword(password) !== localDraft.passwordHash) throw new Error('비밀번호가 맞지 않습니다.');
         if (!localDraft.sourcePdfDataUrl) throw new Error('이 수합에는 원본 PDF가 저장되지 않았습니다. 새 수합을 만들어 주세요.');
-        const nextDocument: ConsentPublicDocument = { title: localDraft.title, description: localDraft.description, passwordRequired: true, status: localDraft.status, deadline: localDraft.deadline, fields: localDraft.fields, sourceUrl: localDraft.sourcePdfDataUrl, allowResubmission: localDraft.allowResubmission, pageCount: localDraft.pageCount ?? 1 };
+        const nextDocument: ConsentPublicDocument = { title: localDraft.title, description: localDraft.description, passwordRequired: true, status: localDraft.status, deadline: localDraft.deadline, fields: localDraft.fields, sourceUrl: localDraft.sourcePdfDataUrl, allowResubmission: localDraft.allowResubmission, pageCount: localDraft.pageCount ?? 1, pageSizes: localDraft.pageSizes ?? Array.from({ length: localDraft.pageCount ?? 1 }, () => ({ width: 210, height: 297 })) };
         setDocument(nextDocument);
         setPdfFile(await asFile(nextDocument.sourceUrl, nextDocument.title));
       } else {
@@ -135,7 +137,7 @@ export function PublicConsentResponsePage() {
     setSubmitting(true);
     setError('');
     try {
-      if (localDraft) countConsentLocalResponse(localDraft.id);
+      if (localDraft) addConsentLocalResponse(localDraft.id, values);
       else await submitConsentPublicResponse(token, password, values);
       setSubmitted(true);
     } catch (submitError) {
@@ -160,12 +162,13 @@ export function PublicConsentResponsePage() {
       <div className="mx-auto max-w-[940px] space-y-5 px-2 py-4 sm:px-5 sm:py-6">
         {Array.from({ length: document.pageCount }, (_, pageIndex) => {
           const pageFields = document.fields.filter((field) => field.pageIndex === pageIndex);
-          return <section key={pageIndex} aria-label={`${pageIndex + 1}쪽`} className="relative mx-auto aspect-[210/297] w-full max-w-[794px] overflow-hidden bg-white shadow-[0_5px_20px_rgba(15,23,42,0.18)]">
+          const pageSize = document.pageSizes[pageIndex];
+          return <section key={pageIndex} aria-label={`${pageIndex + 1}쪽`} style={{ aspectRatio: pageAspectRatio(pageSize?.width, pageSize?.height) }} className="relative mx-auto w-full max-w-[794px] overflow-hidden bg-white shadow-[0_5px_20px_rgba(15,23,42,0.18)]">
             <ConsentPdfPage file={pdfFile} pageNumber={pageIndex + 1} />
             {pageFields.map((field) => {
               const value = values[field.id] ?? '';
               const common = `absolute z-20 overflow-hidden border-2 bg-white/95 shadow-sm outline-none transition focus-within:ring-2 focus-within:ring-[#0F6CBD]/30 ${completed(field, value) ? 'border-[#16803C]' : 'border-[#0F6CBD]'}`;
-              const style = { left: `${field.x}%`, top: `${field.y}%`, width: `${field.width}%`, height: `${field.height}%` };
+              const style = fieldStyle(field);
               if (field.kind === 'checkbox') return <label key={field.id} style={style} className={`${common} flex cursor-pointer items-center gap-1 px-1 text-[9px] font-bold sm:gap-2 sm:px-2 sm:text-xs`}><input id={`consent-response-${field.id}`} type="checkbox" checked={value === 'true'} onChange={(event) => setValues((current) => ({ ...current, [field.id]: event.target.checked ? 'true' : '' }))} className="h-4 w-4 shrink-0 accent-[#0F6CBD]" /><span className="truncate">{field.label}{field.required ? ' *' : ''}</span></label>;
               if (field.kind === 'signature') return <button key={field.id} id={`consent-response-${field.id}`} type="button" style={style} onClick={() => setSignatureField(field)} className={`${common} flex items-center justify-center p-1 text-[9px] font-bold text-[#0F6CBD] sm:text-xs`}>{value ? <img src={value} alt={`${field.label} 서명`} className="h-full w-full object-contain" /> : <><PenLine className="mr-1 h-3 w-3" />{field.label}{field.required ? ' *' : ''}</>}</button>;
               return <label key={field.id} style={style} className={common}><span className="sr-only">{field.label}{field.required ? ' 필수' : ''}</span><input id={`consent-response-${field.id}`} type={field.kind === 'date' ? 'date' : 'text'} value={value} onChange={(event) => setValues((current) => ({ ...current, [field.id]: event.target.value }))} placeholder={`${field.label}${field.required ? ' *' : ''}`} className="h-full w-full bg-transparent px-1 text-[9px] font-semibold outline-none sm:px-2 sm:text-xs" /></label>;

@@ -6,7 +6,10 @@ export interface ConsentDocumentAnalysis {
   pageCountLabel: string;
   textPreview: string;
   warnings: string[];
+  pageSizes: ConsentPageSize[];
 }
+
+export interface ConsentPageSize { width: number; height: number }
 
 export type ConsentFieldKind = 'text' | 'checkbox' | 'date' | 'signature';
 
@@ -55,6 +58,7 @@ export interface ConsentLocalDraft {
   responseCount: number;
   status: 'open' | 'closed';
   pageCount?: number;
+  pageSizes?: ConsentPageSize[];
   sourcePath?: string;
   sourcePdfDataUrl?: string;
 }
@@ -67,9 +71,17 @@ export interface ConsentPublicMetadata {
   deadline: string;
 }
 
+export interface ConsentResponseRecord {
+  id: string;
+  submittedAt: string;
+  /** 필드 ID별 응답 값. 서명 필드는 이미지 URL 또는 data URL을 담는다. */
+  values: Record<string, string>;
+}
+
 export interface ConsentPublicDocument extends ConsentPublicMetadata {
   fields: ConsentFieldDraft[];
   sourceUrl: string;
   allowResubmission: boolean;
   pageCount: number;
+  pageSizes: ConsentPageSize[];
 }

@@ -55,6 +55,14 @@ test('PDF 가정통신문의 페이지와 원본 미리보기를 표시한다', 
 
   await page.getByRole('button', { name: '체크박스', exact: true }).click();
   await expect(page.getByRole('button', { name: '체크박스 필드', exact: true })).toBeVisible();
+  const checkboxField = await page.getByRole('button', { name: '체크박스 필드', exact: true }).boundingBox();
+  const resizedTextField = await textField.boundingBox();
+  expect(checkboxField && resizedTextField && (
+    checkboxField.x >= resizedTextField.x + resizedTextField.width
+    || checkboxField.x + checkboxField.width <= resizedTextField.x
+    || checkboxField.y >= resizedTextField.y + resizedTextField.height
+    || checkboxField.y + checkboxField.height <= resizedTextField.y
+  )).toBe(true);
   await expect(page.getByRole('button', { name: '단일 선택', exact: true })).toHaveCount(0);
   const desktopCanvas = await page.getByTestId('consent-field-canvas').boundingBox();
   const desktopSettings = await page.getByTestId('consent-field-settings').boundingBox();
@@ -127,6 +135,7 @@ test('PDF 가정통신문의 페이지와 원본 미리보기를 표시한다', 
   await expect(page.getByLabel('가정통신문 응답 링크 QR 코드')).toBeVisible();
   const responseLink = await page.getByLabel('응답 화면 열기').getAttribute('href');
   expect(responseLink).toContain('/s/consent/');
+  const managePageUrl = page.url();
   await page.goto(responseLink!);
   await expect(page.getByRole('heading', { name: '수정된 현장체험학습 동의서' })).toBeVisible();
   await expect(page.locator('section[aria-label="1쪽"] canvas')).toBeVisible();
@@ -141,4 +150,27 @@ test('PDF 가정통신문의 페이지와 원본 미리보기를 표시한다', 
 
   const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
   expect(hasHorizontalOverflow).toBe(false);
+
+  await page.goto(managePageUrl);
+  const submissions = page.getByRole('region', { name: '제출 현황' });
+  await expect(submissions.getByText('1건')).toBeVisible();
+  await expect(submissions).toContainText('참가 의견: 참가합니다');
+  await expect(submissions).toContainText('체크박스: 예');
+  const download = page.waitForEvent('download');
+  await submissions.getByRole('button', { name: '1번째 응답 PDF 내려받기' }).click();
+  expect((await download).suggestedFilename()).toBe('수정된 현장체험학습 동의서_응답001.pdf');
+});
+
+test('가로 PDF 페이지 비율을 필드 편집기에 유지한다', async ({ page }) => {
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
+  pdf.text('Landscape consent', 20, 20);
+  await page.goto('/tools/consent-forms/new');
+  await page.getByLabel('가정통신문 PDF 파일').setInputFiles({
+    name: 'landscape-consent.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from(pdf.output('arraybuffer')),
+  });
+  await page.getByRole('button', { name: '확인 후 필드 배치' }).click();
+  const canvas = await page.getByTestId('consent-field-canvas').boundingBox();
+  expect(canvas?.width).toBeGreaterThan(canvas?.height ?? Number.POSITIVE_INFINITY);
 });

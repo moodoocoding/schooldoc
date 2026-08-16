@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, CalendarDays, CheckSquare, ChevronLeft, ChevronRight, GripVertical, PenLine, Plus, Trash2, Type, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, CalendarDays, CheckSquare, ChevronLeft, ChevronRight, GripVertical, PenLine, Plus, Sparkles, Trash2, Type, X } from 'lucide-react';
 import { ConsentPdfPage } from './ConsentPdfPage';
+import { fieldStyle, findAvailableFieldPosition, getConsentFieldLayoutIssues, pageAspectRatio, resolveConsentFieldOverlaps } from './consentFieldLayout';
 import type { ConsentDocumentAnalysis, ConsentFieldDraft, ConsentFieldKind } from './types';
 
 const fieldOptions: Array<{ kind: ConsentFieldKind; label: string; icon: typeof Type }> = [
@@ -33,17 +34,20 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
   const resizeRef = useRef<{ field: ConsentFieldDraft; corner: 'nw' | 'ne' | 'sw' | 'se'; startX: number; startY: number; bounds: DOMRect } | null>(null);
   const selected = fields.find((field) => field.id === selectedId) ?? null;
   const pageFields = fields.filter((field) => field.pageIndex === pageIndex);
-  const invalidField = fields.find((field) => !field.label.trim() || field.x + field.width > 100 || field.y + field.height > 100);
-  const canContinue = fields.length > 0 && !invalidField;
+  const layoutIssues = getConsentFieldLayoutIssues(fields, analysis.pageCount);
+  const overlappingIds = new Set(layoutIssues.filter((issue) => issue.type === 'overlap').flatMap((issue) => issue.fieldIds));
+  const pageHasOverlap = pageFields.some((field) => overlappingIds.has(field.id));
+  const canContinue = fields.length > 0 && layoutIssues.length === 0;
+  const pageSize = analysis.pageSizes[pageIndex];
 
   const addField = (kind: ConsentFieldKind) => {
     const size = defaultSize(kind);
-    const offset = (pageFields.length % 6) * 3;
+    const position = findAvailableFieldPosition(pageFields, size);
     const field: ConsentFieldDraft = {
       id: crypto.randomUUID(), kind,
       label: fieldOptions.find((option) => option.kind === kind)?.label ?? '응답',
       required: true, pageIndex,
-      x: Math.min(64, 12 + offset), y: Math.min(82, 18 + offset),
+      ...position,
       ...size,
     };
     onFieldsChange([...fields, field]);
@@ -173,15 +177,16 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
       <div><p className="text-xs font-bold text-[#0F6CBD]">새 가정통신문 수합</p><h1 className="mt-1 text-2xl font-extrabold">응답 필드 배치</h1><p className="mt-2 text-sm text-[#526174]">필드를 추가한 뒤 드래그로 이동하고 모서리를 잡아 크기를 조절하세요.</p></div>
 
       <section className="border-y border-[#DCE3EA] bg-white px-4 py-4">
-        <div className="flex flex-wrap items-center gap-2"><span className="mr-1 text-xs font-bold text-[#334155]">필드 추가</span>{fieldOptions.map(({ kind, label, icon: Icon }) => <button key={kind} type="button" onClick={() => addField(kind)} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-[#C8D0DA] px-3 text-xs font-bold text-[#334155] hover:border-[#0F6CBD] hover:text-[#0F6CBD]"><Plus className="h-3.5 w-3.5" /><Icon className="h-4 w-4" />{label}</button>)}<span className="ml-auto text-xs font-semibold text-[#64748B]">배치됨 {fields.length}개</span></div>
+        <div className="flex flex-wrap items-center gap-2"><span className="mr-1 text-xs font-bold text-[#334155]">필드 추가</span>{fieldOptions.map(({ kind, label, icon: Icon }) => <button key={kind} type="button" onClick={() => addField(kind)} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-[#C8D0DA] px-3 text-xs font-bold text-[#334155] hover:border-[#0F6CBD] hover:text-[#0F6CBD]"><Plus className="h-3.5 w-3.5" /><Icon className="h-4 w-4" />{label}</button>)}{pageHasOverlap ? <button type="button" onClick={() => onFieldsChange(resolveConsentFieldOverlaps(fields, pageIndex))} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-[#E6A700] bg-[#FFF9ED] px-3 text-xs font-bold text-[#76520E]"><Sparkles className="h-4 w-4" />겹침 자동 해제</button> : null}<span className="ml-auto text-xs font-semibold text-[#64748B]">배치됨 {fields.length}개</span></div>
+        {pageHasOverlap ? <p role="alert" className="mt-3 flex items-start gap-2 border-t border-[#F5D08A] pt-3 text-xs font-semibold leading-5 text-[#9A6700]"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />겹치는 입력란은 응답자가 작성하기 어렵습니다. 위치를 조정하거나 자동 해제를 사용하세요.</p> : null}
       </section>
 
       <div className="grid gap-4 pb-16 lg:grid-cols-[minmax(0,1fr)_280px]">
         <section className="min-w-0 bg-[#E9EDF2] p-3 sm:p-6">
           <div className="mb-3 flex items-center justify-between"><button type="button" disabled={pageIndex === 0} onClick={() => setPageIndex((value) => value - 1)} className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white text-[#334155] disabled:opacity-30" aria-label="이전 페이지"><ChevronLeft className="h-5 w-5" /></button><strong className="text-xs text-[#526174]">{pageIndex + 1} / {analysis.pageCount}</strong><button type="button" disabled={pageIndex + 1 >= analysis.pageCount} onClick={() => setPageIndex((value) => value + 1)} className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white text-[#334155] disabled:opacity-30" aria-label="다음 페이지"><ChevronRight className="h-5 w-5" /></button></div>
-          <div data-testid="consent-field-canvas" data-field-canvas className="relative mx-auto aspect-[210/297] w-full max-w-[794px] overflow-hidden bg-white shadow-[0_8px_28px_rgba(15,23,42,0.16)]">
+          <div data-testid="consent-field-canvas" data-field-canvas style={{ aspectRatio: pageAspectRatio(pageSize?.width, pageSize?.height) }} className="relative mx-auto w-full max-w-[794px] overflow-hidden bg-white shadow-[0_8px_28px_rgba(15,23,42,0.16)]">
             <ConsentPdfPage file={file} pageNumber={pageIndex + 1} />
-            {pageFields.map((field) => <div key={field.id} role="button" tabIndex={0} onPointerDown={(event) => startDrag(event, field)} onClick={() => setSelectedId(field.id)} onKeyDown={(event) => moveFieldByKeyboard(event, field)} style={{ left: `${field.x}%`, top: `${field.y}%`, width: `${field.width}%`, height: `${field.height}%` }} className={`absolute z-20 flex min-h-7 touch-none items-center justify-center overflow-visible border-2 bg-white/90 px-1 text-[10px] font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]/35 ${field.id === selectedId ? 'border-[#0F6CBD] text-[#0F6CBD]' : 'border-[#64748B] text-[#334155]'}`} aria-label={`${field.label} 필드`} aria-describedby="field-keyboard-help"><GripVertical className="mr-0.5 h-3 w-3 shrink-0" />{field.kind === 'checkbox' ? <span className="mr-1 h-3 w-3 shrink-0 border border-current bg-white" /> : null}<span className="truncate">{field.required ? '* ' : ''}{field.label}</span>{field.id === selectedId ? <>{(['nw', 'ne', 'sw', 'se'] as const).map((corner) => <button key={corner} type="button" data-resize-handle={corner} onMouseDown={(event) => startMouseResize(event, field, corner)} onPointerDown={(event) => startResize(event, field, corner)} onPointerMove={resizeField} onPointerUp={finishResize} onPointerCancel={finishResize} onClick={(event) => event.stopPropagation()} className={`absolute h-11 w-11 touch-none bg-transparent before:absolute before:left-1/2 before:top-1/2 before:h-3 before:w-3 before:-translate-x-1/2 before:-translate-y-1/2 before:rounded-full before:border-2 before:border-white before:bg-[#0F6CBD] before:shadow-sm ${corner === 'nw' ? '-left-[22px] -top-[22px] cursor-nwse-resize' : corner === 'ne' ? '-right-[22px] -top-[22px] cursor-nesw-resize' : corner === 'sw' ? '-bottom-[22px] -left-[22px] cursor-nesw-resize' : '-bottom-[22px] -right-[22px] cursor-nwse-resize'}`} aria-label={`${field.label} 필드 ${resizeCornerLabel[corner]} 크기 조절`} title={`${resizeCornerLabel[corner]} 크기 조절`} />)}</> : null}</div>)}
+            {pageFields.map((field) => <div key={field.id} role="button" tabIndex={0} aria-invalid={overlappingIds.has(field.id)} onPointerDown={(event) => startDrag(event, field)} onClick={() => setSelectedId(field.id)} onKeyDown={(event) => moveFieldByKeyboard(event, field)} style={fieldStyle(field)} className={`absolute z-20 flex min-h-7 touch-none items-center justify-center overflow-visible border-2 bg-white/90 px-1 text-[10px] font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]/35 ${overlappingIds.has(field.id) ? 'border-[#D92D20] text-[#B42318]' : field.id === selectedId ? 'border-[#0F6CBD] text-[#0F6CBD]' : 'border-[#64748B] text-[#334155]'}`} aria-label={`${field.label} 필드${overlappingIds.has(field.id) ? ' 겹침 오류' : ''}`} aria-describedby="field-keyboard-help"><GripVertical className="mr-0.5 h-3 w-3 shrink-0" />{field.kind === 'checkbox' ? <span className="mr-1 h-3 w-3 shrink-0 border border-current bg-white" /> : null}<span className="truncate">{field.required ? '* ' : ''}{field.label}</span>{field.id === selectedId ? <>{(['nw', 'ne', 'sw', 'se'] as const).map((corner) => <button key={corner} type="button" data-resize-handle={corner} onMouseDown={(event) => startMouseResize(event, field, corner)} onPointerDown={(event) => startResize(event, field, corner)} onPointerMove={resizeField} onPointerUp={finishResize} onPointerCancel={finishResize} onClick={(event) => event.stopPropagation()} className={`absolute h-11 w-11 touch-none bg-transparent before:absolute before:left-1/2 before:top-1/2 before:h-3 before:w-3 before:-translate-x-1/2 before:-translate-y-1/2 before:rounded-full before:border-2 before:border-white before:bg-[#0F6CBD] before:shadow-sm ${corner === 'nw' ? '-left-[22px] -top-[22px] cursor-nwse-resize' : corner === 'ne' ? '-right-[22px] -top-[22px] cursor-nesw-resize' : corner === 'sw' ? '-bottom-[22px] -left-[22px] cursor-nesw-resize' : '-bottom-[22px] -right-[22px] cursor-nwse-resize'}`} aria-label={`${field.label} 필드 ${resizeCornerLabel[corner]} 크기 조절`} title={`${resizeCornerLabel[corner]} 크기 조절`} />)}</> : null}</div>)}
             <p id="field-keyboard-help" className="sr-only">방향키로 이동하고 Alt와 방향키로 크기를 조절하며 Delete 키로 삭제합니다.</p>
           </div>
         </section>
@@ -192,7 +197,7 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
         </aside>
       </div>
       <div className="sticky bottom-0 z-20 flex items-center justify-between gap-3 border-t border-[#DCE3EA] bg-[#F6F8FB]/95 py-3 backdrop-blur">
-        <p className={`hidden text-xs sm:block ${invalidField ? 'font-semibold text-[#B42318]' : 'text-[#526174]'}`}>{invalidField ? '필드의 표시 이름과 문서 경계를 확인하세요.' : fields.length > 0 ? `응답 필드 ${fields.length}개가 배치되었습니다.` : '문서에 응답 필드를 하나 이상 배치하세요.'}</p>
+        <p className={`hidden text-xs sm:block ${layoutIssues.length ? 'font-semibold text-[#B42318]' : 'text-[#526174]'}`}>{layoutIssues.length ? layoutIssues[0].message : fields.length > 0 ? `응답 필드 ${fields.length}개가 배치되었습니다.` : '문서에 응답 필드를 하나 이상 배치하세요.'}</p>
         <button type="button" disabled={!canContinue} onClick={onNext} className="ml-auto inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[#0F6CBD] px-5 text-sm font-bold text-white hover:bg-[#0B5B9F] disabled:bg-[#AAB7C4]">필드 배치 완료<ArrowRight className="h-4 w-4" /></button>
       </div>
     </div>
