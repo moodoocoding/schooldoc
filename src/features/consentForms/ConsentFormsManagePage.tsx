@@ -1,10 +1,11 @@
-import { ArrowLeft, Check, Copy, Download, ImageDown, ExternalLink, FilePenLine, Inbox, LoaderCircle, LockKeyhole, PauseCircle, PlayCircle, QrCode, Save, Settings2 } from 'lucide-react';
+import { ArrowLeft, Check, Copy, Download, ImageDown, ExternalLink, FilePenLine, Inbox, LoaderCircle, LockKeyhole, PauseCircle, PlayCircle, QrCode, Save, Settings2, Trash2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getConsentLocalDraft, hashConsentPassword, listConsentLocalResponses, updateConsentLocalDraft } from './consentFormsLocalStore';
+import { RegistryConfirmDialog } from '../registry/RegistryConfirmDialog';
+import { deleteConsentLocalDraft, getConsentLocalDraft, hashConsentPassword, listConsentLocalResponses, updateConsentLocalDraft } from './consentFormsLocalStore';
 import { getConsentPublicOrigin, isConsentFormsDemoMode } from './consentFormsConfig';
-import { getRemoteConsentForm, getRemoteConsentSourceFile, listRemoteConsentResponses, updateRemoteConsentForm } from './consentFormsRepository';
+import { deleteRemoteConsentForm, getRemoteConsentForm, getRemoteConsentSourceFile, listRemoteConsentResponses, updateRemoteConsentForm } from './consentFormsRepository';
 import { consentQrFileName, consentResponseFileName, consentResponsesFileName, downloadBlob, formatConsentValue, renderConsentResponsePdf, renderConsentResponsesPdf, svgToPngBlob } from './consentResponseRender';
 import type { ConsentLocalDraft, ConsentResponseRecord } from './types';
 
@@ -40,6 +41,8 @@ export function ConsentFormsManagePage() {
   const [bulkProgress, setBulkProgress] = useState('');
   const [qrError, setQrError] = useState('');
   const qrRef = useRef<HTMLDivElement>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (isConsentFormsDemoMode) {
@@ -126,6 +129,22 @@ export function ConsentFormsManagePage() {
     }
   };
 
+  const deleteForm = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    setResponseError('');
+    try {
+      if (isConsentFormsDemoMode) deleteConsentLocalDraft(draft.id);
+      else await deleteRemoteConsentForm(draft.id);
+      navigate('/tools/consent-forms');
+    } catch (error) {
+      setResponseError(error instanceof Error ? error.message : '가정통신문을 삭제하지 못했습니다.');
+      setConfirmingDelete(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const downloadQrImage = async () => {
     setQrError('');
     try {
@@ -162,6 +181,7 @@ export function ConsentFormsManagePage() {
       <button type="button" onClick={() => setEditing((value) => !value)} className={`inline-flex min-h-[40px] items-center gap-2 rounded-lg px-3 text-xs font-bold ${editing ? 'bg-[#EFF6FC] text-[#0F6CBD]' : 'text-[#334155] hover:bg-[#EFF6FC] hover:text-[#0F6CBD]'}`}><Settings2 className="h-4 w-4" />설정 수정</button>
       <span className="hidden h-5 w-px bg-[#DCE3EA] sm:block" />
       <button type="button" onClick={toggleStatus} className={`inline-flex min-h-[40px] items-center gap-2 rounded-lg px-3 text-xs font-bold ${draft.status === 'open' ? 'text-[#B42318] hover:bg-[#FEF2F2]' : 'text-[#126B32] hover:bg-[#E6F4EA]'}`}>{draft.status === 'open' ? <PauseCircle className="h-4 w-4" /> : <PlayCircle className="h-4 w-4" />}{draft.status === 'open' ? '수합 종료' : '수합 재개'}</button>
+      <button type="button" onClick={() => setConfirmingDelete(true)} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg px-3 text-xs font-bold text-[#B42318] hover:bg-[#FEF2F2] sm:ml-auto"><Trash2 className="h-4 w-4" />수합 삭제</button>
     </nav>
 
     {editing ? <section className="border-y border-[#DCE3EA] bg-white px-5 py-5"><h2 className="text-sm font-bold">수합 설정 수정</h2><div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="text-xs font-bold">제목<input value={title} onChange={(event) => setTitle(event.target.value)} className="mt-2 min-h-[44px] w-full rounded-lg border border-[#C8D0DA] px-3 text-sm font-normal" /></label><label className="text-xs font-bold">응답 기한<input type="date" value={deadline} onChange={(event) => setDeadline(event.target.value)} className="mt-2 min-h-[44px] w-full rounded-lg border border-[#C8D0DA] px-3 text-sm font-normal" /></label></div><div className="mt-4 grid gap-2 sm:grid-cols-2"><label className="flex min-h-[44px] items-center gap-3 text-sm font-bold"><input type="checkbox" checked={allowResubmission} onChange={(event) => setAllowResubmission(event.target.checked)} className="h-4 w-4" />제출 후 수정 허용</label><label className="flex min-h-[44px] items-center gap-3 text-sm font-bold"><input type="checkbox" checked={passwordEnabled} onChange={(event) => setPasswordEnabled(event.target.checked)} className="h-4 w-4" />공개 링크 비밀번호 사용</label></div>{passwordEnabled ? <label className="mt-3 block max-w-sm text-xs font-bold">새 비밀번호<input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder={draft.passwordHash ? '변경할 때만 입력' : '4자 이상 입력'} className="mt-2 min-h-[44px] w-full rounded-lg border border-[#C8D0DA] px-3 text-sm font-normal" /></label> : null}<div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setEditing(false)} className="min-h-[44px] rounded-lg px-4 text-sm font-bold">취소</button><button type="button" disabled={passwordEnabled && !draft.passwordHash && newPassword.trim().length < 4} onClick={() => void save()} className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[#0F6CBD] px-4 text-sm font-bold text-white disabled:bg-[#AAB7C4]"><Save className="h-4 w-4" />저장</button></div></section> : null}
@@ -191,5 +211,12 @@ export function ConsentFormsManagePage() {
       <section className="border-y border-[#DCE3EA] bg-white px-4 py-4 sm:px-5"><h2 className="text-sm font-bold">응답 링크</h2><p className="mt-1 text-xs text-[#64748B]">보호자에게 링크를 보내거나 오른쪽 QR을 배부하세요.</p><div className="mt-3 flex gap-2"><input readOnly value={publicLink} className="min-h-[42px] min-w-0 flex-1 rounded-lg border border-[#C8D0DA] bg-[#F6F8FB] px-3 text-xs" /><button type="button" onClick={async () => { await navigator.clipboard.writeText(publicLink); setCopied(true); window.setTimeout(() => setCopied(false), 1500); }} className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg border border-[#C8D0DA] text-[#0F6CBD]" aria-label="응답 링크 복사" title="링크 복사">{copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}</button><a href={publicLink} target="_blank" rel="noreferrer" className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg border border-[#C8D0DA] text-[#0F6CBD]" aria-label="응답 화면 열기" title="새 창에서 열기"><ExternalLink className="h-4 w-4" /></a></div>{draft.passwordEnabled ? <p className="mt-3 flex items-center gap-2 text-xs text-[#526174]"><LockKeyhole className="h-4 w-4 text-[#0F6CBD]" />비밀번호로 보호된 링크입니다.</p> : null}{draft.recipientMode === 'named' ? <p className="mt-4 border-l-2 border-[#E6A700] bg-[#FFF9ED] px-3 py-2.5 text-xs leading-5 text-[#76520E]">현재 로컬 모드에서는 공용 링크만 제공합니다. 대상별 제출 매칭은 서버 저장 연결 후 사용할 수 있습니다.</p> : null}</section>
       <aside className="border-y border-[#DCE3EA] bg-white px-4 py-4 text-center"><div className="mb-3 flex items-center justify-center gap-2 text-xs font-bold"><QrCode className="h-4 w-4 text-[#0F6CBD]" />응답 QR 코드</div><div ref={qrRef} className="inline-block border border-[#DCE3EA] bg-white p-2"><QRCodeSVG value={publicLink} size={176} level="M" includeMargin aria-label="가정통신문 응답 링크 QR 코드" /></div><p className="mx-auto mt-2 max-w-[210px] text-[11px] leading-4 text-[#64748B]">응답 링크만 포함합니다.</p><button type="button" onClick={() => void downloadQrImage()} className="mx-auto mt-3 inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD] hover:bg-[#EFF6FC]"><ImageDown className="h-4 w-4" />QR 이미지 저장</button>{qrError ? <p role="alert" className="mt-2 text-[11px] font-semibold text-[#B42318]">{qrError}</p> : null}</aside>
     </div>
+    {confirmingDelete ? <RegistryConfirmDialog
+      title="가정통신문 수합을 삭제할까요?"
+      description={`“${draft.title}”의 원본 PDF와 제출된 응답 ${draft.responseCount}건이 모두 삭제됩니다. 되돌릴 수 없습니다.`}
+      confirmLabel={deleting ? '삭제 중' : '수합 삭제'}
+      onCancel={() => { if (!deleting) setConfirmingDelete(false); }}
+      onConfirm={() => void deleteForm()}
+    /> : null}
   </div>;
 }

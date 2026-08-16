@@ -75,6 +75,12 @@ export const addConsentLocalResponse = (id: string, values: Record<string, strin
   updateConsentLocalDraft(id, { responseCount: draft.responseCount + 1 });
 };
 
+export const deleteConsentLocalDraft = (id: string) => {
+  const remaining = getConsentLocalDrafts().filter((draft) => draft.id !== id);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(remaining));
+  localStorage.setItem(RESPONSE_KEY, JSON.stringify(readStoredResponses().filter((response) => response.formId !== id)));
+};
+
 export const hashConsentPassword = async (password: string) => {
   const bytes = new TextEncoder().encode(password);
   const digest = await crypto.subtle.digest('SHA-256', bytes);

@@ -182,3 +182,34 @@ test('가로 PDF 페이지 비율을 필드 편집기에 유지한다', async ({
   const canvas = await page.getByTestId('consent-field-canvas').boundingBox();
   expect(canvas?.width).toBeGreaterThan(canvas?.height ?? Number.POSITIVE_INFINITY);
 });
+
+test('실수로 만든 수합을 확인창을 거쳐 삭제한다', async ({ page }) => {
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+  pdf.text('Mistaken consent', 20, 20);
+  await page.goto('/tools/consent-forms/new');
+  await page.getByLabel('가정통신문 PDF 파일').setInputFiles({
+    name: 'mistake.pdf', mimeType: 'application/pdf', buffer: Buffer.from(pdf.output('arraybuffer')),
+  });
+  await page.getByRole('textbox', { name: '제목' }).fill('잘못 만든 수합');
+  await page.getByRole('button', { name: '확인 후 필드 배치' }).click();
+  await page.getByRole('button', { name: '텍스트', exact: true }).click();
+  await page.getByRole('button', { name: '필드 배치 완료' }).click();
+  await page.getByLabel('명단 없이 받기').check();
+  await page.getByRole('button', { name: '다음: 공유 설정' }).click();
+  await page.getByRole('button', { name: '수합 만들기' }).click();
+  await expect(page.getByRole('heading', { name: '가정통신문 수합' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '잘못 만든 수합' })).toBeVisible();
+
+  // 취소하면 목록에 그대로 남는다.
+  await page.getByRole('button', { name: '잘못 만든 수합 삭제' }).click();
+  const confirmDialog = page.getByRole('alertdialog');
+  await expect(confirmDialog).toContainText('되돌릴 수 없습니다');
+  await confirmDialog.getByRole('button', { name: '취소' }).click();
+  await expect(page.getByRole('heading', { name: '잘못 만든 수합' })).toBeVisible();
+
+  await page.getByRole('button', { name: '잘못 만든 수합 삭제' }).click();
+  await confirmDialog.getByRole('button', { name: '수합 삭제' }).click();
+  await expect(page.getByRole('heading', { name: '아직 가정통신문 수합이 없습니다' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '아직 가정통신문 수합이 없습니다' })).toBeVisible();
+});

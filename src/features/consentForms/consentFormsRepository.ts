@@ -112,6 +112,33 @@ export const listRemoteConsentResponses = async (formId: string): Promise<Consen
   });
 };
 
+/**
+ * 수합을 삭제한다. 응답·서명 행은 on delete cascade로 정리되지만
+ * Storage 객체는 남으므로 원본 PDF와 서명 이미지를 먼저 지운다.
+ */
+export const deleteRemoteConsentForm = async (id: string) => {
+  const form = await getRemoteConsentForm(id);
+  if (!form) throw new Error('가정통신문을 찾지 못했습니다.');
+
+  const signatureRows = await client()
+    .from('consent_response_signatures').select('storage_path, consent_responses!inner(form_id)')
+    .eq('consent_responses.form_id', id);
+  if (signatureRows.error) fail('서명 이미지를 정리하지 못했습니다', signatureRows.error);
+  const signaturePaths = ((signatureRows.data ?? []) as Array<{ storage_path: string }>)
+    .map((row) => row.storage_path);
+  if (signaturePaths.length) {
+    const removed = await client().storage.from(SIGNATURE_BUCKET).remove(signaturePaths);
+    if (removed.error) fail('서명 이미지를 삭제하지 못했습니다', removed.error);
+  }
+  if (form.sourcePath) {
+    const removed = await client().storage.from(DOCUMENT_BUCKET).remove([form.sourcePath]);
+    if (removed.error) fail('원본 PDF를 삭제하지 못했습니다', removed.error);
+  }
+
+  const { error } = await client().from('consent_forms').delete().eq('id', id);
+  if (error) fail('가정통신문을 삭제하지 못했습니다', error);
+};
+
 export const createRemoteConsentForm = async ({
   title, description, fields, pageSizes, recipientMode, recipientCount, settings, sourceFile,
 }: {
