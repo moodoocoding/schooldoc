@@ -114,71 +114,136 @@ const drawSignature = (context: CanvasRenderingContext2D, image: ImageBitmap, re
   );
 };
 
-/** 응답 한 건을 원본 PDF 위에 합성해 PDF Blob으로 돌려준다. */
-export const renderConsentResponsePdf = async ({ file, fields, response }: {
-  file: File;
-  fields: ConsentFieldDraft[];
-  response: ConsentResponseRecord;
-}) => {
-  const [pdfjs, { jsPDF }] = await Promise.all([import('pdfjs-dist'), import('jspdf')]);
+const openDocument = async (file: File) => {
+  const pdfjs = await import('pdfjs-dist');
   pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
-  const source = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  return pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+};
 
+/** 원본 페이지는 응답마다 다시 그릴 필요가 없으므로 한 번만 렌더해 재사용한다. */
+const renderBasePage = async (source: Awaited<ReturnType<typeof openDocument>>, pageNumber: number) => {
+  const page = await source.getPage(pageNumber);
+  const viewport = page.getViewport({ scale: RENDER_SCALE });
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.floor(viewport.width);
+  canvas.height = Math.floor(viewport.height);
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('PDF 합성 화면을 준비하지 못했습니다.');
+  context.fillStyle = '#FFFFFF';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  await page.render({ canvas, canvasContext: context, viewport }).promise;
+  return canvas;
+};
+
+const loadSignatures = async (fields: ConsentFieldDraft[], response: ConsentResponseRecord) => {
   const signatures = new Map<string, ImageBitmap>();
   for (const field of fields) {
     const value = response.values[field.id];
     if (field.kind === 'signature' && value) signatures.set(field.id, await loadImage(value));
   }
+  return signatures;
+};
 
-  let pdf: InstanceType<typeof jsPDF> | null = null;
-  try {
-    for (let pageNumber = 1; pageNumber <= source.numPages; pageNumber += 1) {
-      const page = await source.getPage(pageNumber);
-      const viewport = page.getViewport({ scale: RENDER_SCALE });
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.floor(viewport.width);
-      canvas.height = Math.floor(viewport.height);
-      const context = canvas.getContext('2d');
-      if (!context) throw new Error('PDF 합성 화면을 준비하지 못했습니다.');
-      context.fillStyle = '#FFFFFF';
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      await page.render({ canvas, canvasContext: context, viewport }).promise;
-
-      fields.filter((field) => field.pageIndex === pageNumber - 1).forEach((field) => {
-        const value = response.values[field.id] ?? '';
-        if (!value) return;
-        const rect = fieldRect(field, canvas.width, canvas.height);
-        if (field.kind === 'signature') {
-          const image = signatures.get(field.id);
-          if (image) drawSignature(context, image, rect);
-          return;
-        }
-        if (field.kind === 'checkbox') {
-          if (value === 'true') drawCheckbox(context, field.label, rect);
-          return;
-        }
-        drawText(context, formatConsentValue(field, value), rect);
-      });
-
-      const pageWidth = canvas.width / RENDER_SCALE;
-      const pageHeight = canvas.height / RENDER_SCALE;
-      const orientation = pageWidth > pageHeight ? 'landscape' : 'portrait';
-      if (pdf) pdf.addPage([pageWidth, pageHeight], orientation);
-      else pdf = new jsPDF({ unit: 'pt', format: [pageWidth, pageHeight], orientation, compress: true });
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
+const drawPageValues = (
+  context: CanvasRenderingContext2D,
+  fields: ConsentFieldDraft[],
+  response: ConsentResponseRecord,
+  signatures: Map<string, ImageBitmap>,
+  pageIndex: number,
+  pageWidth: number,
+  pageHeight: number,
+) => {
+  fields.filter((field) => field.pageIndex === pageIndex).forEach((field) => {
+    const value = response.values[field.id] ?? '';
+    if (!value) return;
+    const rect = fieldRect(field, pageWidth, pageHeight);
+    if (field.kind === 'signature') {
+      const image = signatures.get(field.id);
+      if (image) drawSignature(context, image, rect);
+      return;
     }
-  } finally {
-    signatures.forEach((image) => image.close());
+    if (field.kind === 'checkbox') {
+      if (value === 'true') drawCheckbox(context, field.label, rect);
+      return;
+    }
+    drawText(context, formatConsentValue(field, value), rect);
+  });
+};
+
+/**
+ * 응답들을 원본 PDF 위에 합성해 하나의 PDF Blob으로 돌려준다.
+ * 응답 한 건이 원본 전체 쪽수를 차지하므로 결과는 응답 순서대로 이어 붙는다.
+ */
+export const renderConsentResponsesPdf = async ({ file, fields, responses, onProgress }: {
+  file: File;
+  fields: ConsentFieldDraft[];
+  responses: ConsentResponseRecord[];
+  onProgress?: (done: number, total: number) => void;
+}) => {
+  if (!responses.length) throw new Error('내려받을 응답이 없습니다.');
+  const [source, { jsPDF }] = await Promise.all([openDocument(file), import('jspdf')]);
+  if (!source.numPages) throw new Error('원본 PDF에서 페이지를 찾지 못했습니다.');
+
+  const basePages: HTMLCanvasElement[] = [];
+  for (let pageNumber = 1; pageNumber <= source.numPages; pageNumber += 1) {
+    basePages.push(await renderBasePage(source, pageNumber));
   }
 
+  const work = document.createElement('canvas');
+  let pdf: InstanceType<typeof jsPDF> | null = null;
+  try {
+    for (let index = 0; index < responses.length; index += 1) {
+      const response = responses[index];
+      onProgress?.(index, responses.length);
+      const signatures = await loadSignatures(fields, response);
+      try {
+        basePages.forEach((base, pageIndex) => {
+          // 크기를 다시 지정하면 캔버스가 초기화되므로 작업용 캔버스 하나를 계속 재사용한다.
+          work.width = base.width;
+          work.height = base.height;
+          const context = work.getContext('2d');
+          if (!context) throw new Error('PDF 합성 화면을 준비하지 못했습니다.');
+          context.drawImage(base, 0, 0);
+          drawPageValues(context, fields, response, signatures, pageIndex, work.width, work.height);
+
+          const pageWidth = work.width / RENDER_SCALE;
+          const pageHeight = work.height / RENDER_SCALE;
+          const orientation = pageWidth > pageHeight ? 'landscape' : 'portrait';
+          if (pdf) pdf.addPage([pageWidth, pageHeight], orientation);
+          else pdf = new jsPDF({ unit: 'pt', format: [pageWidth, pageHeight], orientation, compress: true });
+          pdf.addImage(work.toDataURL('image/png'), 'PNG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
+        });
+      } finally {
+        signatures.forEach((image) => image.close());
+      }
+    }
+  } finally {
+    basePages.forEach((canvas) => { canvas.width = 0; canvas.height = 0; });
+    work.width = 0;
+    work.height = 0;
+  }
+
+  onProgress?.(responses.length, responses.length);
   if (!pdf) throw new Error('원본 PDF에서 페이지를 찾지 못했습니다.');
-  return pdf.output('blob');
+  return (pdf as InstanceType<typeof jsPDF>).output('blob');
 };
 
-export const consentResponseFileName = (title: string, index: number) => {
-  const safeTitle = title.replace(/[\\/:*?"<>|]/g, '_').trim().slice(0, 60) || '가정통신문';
-  return `${safeTitle}_응답${String(index).padStart(3, '0')}.pdf`;
-};
+/** 응답 한 건을 원본 PDF 위에 합성해 PDF Blob으로 돌려준다. */
+export const renderConsentResponsePdf = ({ file, fields, response }: {
+  file: File;
+  fields: ConsentFieldDraft[];
+  response: ConsentResponseRecord;
+}) => renderConsentResponsesPdf({ file, fields, responses: [response] });
+
+const safeFileTitle = (title: string) => title.replace(/[\\/:*?"<>|]/g, '_').trim().slice(0, 60) || '가정통신문';
+
+export const consentResponseFileName = (title: string, index: number) => (
+  `${safeFileTitle(title)}_응답${String(index).padStart(3, '0')}.pdf`
+);
+
+export const consentResponsesFileName = (title: string, count: number) => (
+  `${safeFileTitle(title)}_응답모음_${count}건.pdf`
+);
 
 export const downloadBlob = (blob: Blob, fileName: string) => {
   const url = URL.createObjectURL(blob);

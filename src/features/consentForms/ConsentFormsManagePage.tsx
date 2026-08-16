@@ -5,7 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { getConsentLocalDraft, hashConsentPassword, listConsentLocalResponses, updateConsentLocalDraft } from './consentFormsLocalStore';
 import { getConsentPublicOrigin, isConsentFormsDemoMode } from './consentFormsConfig';
 import { getRemoteConsentForm, getRemoteConsentSourceFile, listRemoteConsentResponses, updateRemoteConsentForm } from './consentFormsRepository';
-import { consentResponseFileName, downloadBlob, formatConsentValue, renderConsentResponsePdf } from './consentResponseRender';
+import { consentResponseFileName, consentResponsesFileName, downloadBlob, formatConsentValue, renderConsentResponsePdf, renderConsentResponsesPdf } from './consentResponseRender';
 import type { ConsentLocalDraft, ConsentResponseRecord } from './types';
 
 const submittedLabel = (value: string) => {
@@ -37,6 +37,7 @@ export function ConsentFormsManagePage() {
   const [responsesLoading, setResponsesLoading] = useState(!isConsentFormsDemoMode);
   const [responseError, setResponseError] = useState('');
   const [downloadingId, setDownloadingId] = useState('');
+  const [bulkProgress, setBulkProgress] = useState('');
 
   useEffect(() => {
     if (isConsentFormsDemoMode) {
@@ -104,6 +105,25 @@ export function ConsentFormsManagePage() {
     }
   };
 
+  const downloadAllResponses = async () => {
+    setBulkProgress(`0 / ${responses.length}`);
+    setResponseError('');
+    try {
+      const file = await sourceFileOf(draft);
+      const blob = await renderConsentResponsesPdf({
+        file,
+        fields: draft.fields,
+        responses,
+        onProgress: (done, total) => setBulkProgress(`${done} / ${total}`),
+      });
+      downloadBlob(blob, consentResponsesFileName(draft.title, responses.length));
+    } catch (error) {
+      setResponseError(error instanceof Error ? error.message : '응답 PDF를 만들지 못했습니다.');
+    } finally {
+      setBulkProgress('');
+    }
+  };
+
   const summarize = (response: ConsentResponseRecord) => draft.fields
     .map((field) => {
       const value = response.values[field.id] ?? '';
@@ -141,8 +161,7 @@ export function ConsentFormsManagePage() {
     </section>
 
     <section aria-label="제출 현황" className="border-y border-[#DCE3EA] bg-white px-4 py-4 sm:px-5">
-      <div className="flex items-center justify-between gap-3"><h2 className="text-sm font-bold">제출 현황</h2><span className="text-xs font-semibold text-[#64748B]">{responses.length}건</span></div>
-      <p className="mt-1 text-xs text-[#64748B]">응답을 원본 가정통신문 위에 합성한 PDF로 내려받습니다.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-sm font-bold">제출 현황<span className="ml-2 text-xs font-semibold text-[#64748B]">{responses.length}건</span></h2><p className="mt-1 text-xs text-[#64748B]">응답을 원본 가정통신문 위에 합성한 PDF로 내려받습니다.</p></div>{responses.length > 0 ? <button type="button" disabled={Boolean(bulkProgress) || Boolean(downloadingId)} onClick={() => void downloadAllResponses()} className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-lg bg-[#0F6CBD] px-4 text-xs font-bold text-white hover:bg-[#0B5B9F] disabled:bg-[#AAB7C4]">{bulkProgress ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}{bulkProgress ? `합치는 중 ${bulkProgress}` : '전체 PDF 내려받기'}</button> : null}</div>
       {responseError ? <p role="alert" className="mt-3 border-l-2 border-[#B42318] bg-[#FEF2F2] px-3 py-2.5 text-xs font-semibold leading-5 text-[#B42318]">{responseError}</p> : null}
       {responsesLoading
         ? <p className="mt-4 flex items-center gap-2 text-xs font-semibold text-[#526174]"><LoaderCircle className="h-4 w-4 animate-spin text-[#0F6CBD]" />제출된 응답을 불러오고 있습니다.</p>
@@ -151,7 +170,7 @@ export function ConsentFormsManagePage() {
           : <ul className="mt-4 divide-y divide-[#EEF1F4] border-y border-[#EEF1F4]">{responses.map((response, index) => <li key={response.id} className="flex flex-wrap items-center gap-3 py-3">
             <span className="w-7 shrink-0 text-xs font-bold tabular-nums text-[#64748B]">{index + 1}</span>
             <div className="min-w-0 flex-1"><p className="text-xs font-bold tabular-nums text-[#334155]">{submittedLabel(response.submittedAt)}</p><p className="mt-1 truncate text-xs text-[#64748B]" title={summarize(response)}>{summarize(response) || '입력된 값이 없습니다.'}</p></div>
-            <button type="button" disabled={Boolean(downloadingId)} onClick={() => void downloadResponse(response, index)} className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD] hover:bg-[#EFF6FC] disabled:border-[#C8D0DA] disabled:text-[#94A3B8]" aria-label={`${index + 1}번째 응답 PDF 내려받기`}>{downloadingId === response.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}{downloadingId === response.id ? '만드는 중' : 'PDF'}</button>
+            <button type="button" disabled={Boolean(downloadingId) || Boolean(bulkProgress)} onClick={() => void downloadResponse(response, index)} className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD] hover:bg-[#EFF6FC] disabled:border-[#C8D0DA] disabled:text-[#94A3B8]" aria-label={`${index + 1}번째 응답 PDF 내려받기`}>{downloadingId === response.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}{downloadingId === response.id ? '만드는 중' : 'PDF'}</button>
           </li>)}</ul>}
     </section>
 

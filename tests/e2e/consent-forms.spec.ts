@@ -159,6 +159,10 @@ test('PDF 가정통신문의 페이지와 원본 미리보기를 표시한다', 
   const download = page.waitForEvent('download');
   await submissions.getByRole('button', { name: '1번째 응답 PDF 내려받기' }).click();
   expect((await download).suggestedFilename()).toBe('수정된 현장체험학습 동의서_응답001.pdf');
+
+  const bulkDownload = page.waitForEvent('download');
+  await submissions.getByRole('button', { name: '전체 PDF 내려받기' }).click();
+  expect((await bulkDownload).suggestedFilename()).toBe('수정된 현장체험학습 동의서_응답모음_1건.pdf');
 });
 
 test('가로 PDF 페이지 비율을 필드 편집기에 유지한다', async ({ page }) => {
