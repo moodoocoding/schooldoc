@@ -144,6 +144,9 @@ export function PublicConsentResponsePage() {
   if (metadata.status === 'closed' || deadlinePassed) return <CenterMessage icon={<LockKeyhole className="mx-auto h-8 w-8 text-[#64748B]" />} title="응답이 종료되었습니다" description="추가 제출이 필요하면 담당자에게 문의해 주세요." />;
   if (metadata.passwordRequired && !document) return <main className="grid min-h-screen place-items-center bg-[#F3F5F7] p-5"><form className="w-full max-w-md border-y border-[#DCE3EA] bg-white px-6 py-8" onSubmit={(event) => void unlock(event)}><LockKeyhole className="h-8 w-8 text-[#0F6CBD]" /><h1 className="mt-4 text-xl font-extrabold">문서 비밀번호 입력</h1><p className="mt-2 text-sm text-[#526174]">{metadata.title}</p><label className="mt-6 block text-sm font-bold">비밀번호<input type="password" autoFocus value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 min-h-[48px] w-full rounded-lg border border-[#C8D0DA] px-3 font-normal" /></label>{error ? <p role="alert" className="mt-3 text-sm font-semibold text-[#B42318]">{error}</p> : null}<button type="submit" disabled={loading} className="mt-5 min-h-[48px] w-full rounded-lg bg-[#0F6CBD] text-sm font-bold text-white disabled:bg-[#AAB7C4]">{loading ? '문서 여는 중' : '문서 확인하기'}</button></form></main>;
   if (submitted) return <CenterMessage icon={<CheckCircle2 className="mx-auto h-11 w-11 text-[#126B32]" />} title="응답을 제출했습니다" description="담당자에게 응답 완료 상태가 전달됩니다." />;
+  // 안내 정보가 먼저 도착하고 원본은 뒤늦게 도착한다.
+  // 이 사이를 오류로 단정하면 정상 대기 중에 오류 화면이 스친다.
+  if (loading) return <CenterMessage icon={<LoaderCircle className="mx-auto h-8 w-8 animate-spin text-[#0F6CBD]" />} title="가정통신문을 불러오는 중입니다" description="원본 문서를 여는 중입니다. 잠시만 기다려 주세요." />;
   if (!document || !pdfFile) return <CenterMessage icon={<AlertCircle className="mx-auto h-8 w-8 text-[#B42318]" />} title="원본 PDF를 열지 못했습니다" description={error || '페이지를 새로고침하거나 담당자에게 문의해 주세요.'} />;
 
   return <main className="min-h-screen bg-[#E6E9ED] pb-28 text-[#0F172A]">

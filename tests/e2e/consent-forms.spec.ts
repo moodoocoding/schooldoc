@@ -254,3 +254,41 @@ test('원본이 준비 중이면 오류 대신 준비 화면을 띄우고 준비
   await expect(page.getByRole('heading', { name: '가정통신문을 준비하고 있습니다' })).toBeHidden({ timeout: 15_000 });
   expect(calls).toBeGreaterThanOrEqual(3);
 });
+
+test('원본이 늦게 도착해도 오류 화면이 스치지 않는다', async ({ page }) => {
+  const source = new jsPDF({ unit: 'mm', format: 'a4' });
+  source.text('Consent', 20, 20);
+  await page.route('https://source.test/slow.pdf', (route) => route.fulfill({
+    status: 200, contentType: 'application/pdf', body: Buffer.from(source.output('arraybuffer')),
+  }));
+  await page.route('**/functions/v1/consent-forms-public', async (route) => {
+    const body = JSON.parse(route.request().postData() ?? '{}');
+    if (body.action === 'metadata') {
+      return route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({ form: { title: '느린 동의서', description: '', passwordRequired: false, status: 'open', deadline: '' } }),
+      });
+    }
+    // 안내 정보보다 원본이 한참 뒤에 도착하는 상황을 만든다.
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+    return route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ form: {
+        title: '느린 동의서', description: '', passwordRequired: false, status: 'open', deadline: '',
+        fields: [], sourceUrl: 'https://source.test/slow.pdf', allowResubmission: false, pageCount: 1,
+        pageSizes: [{ width: 595, height: 842 }],
+      } }),
+    });
+  });
+
+  const errorFlashes: string[] = [];
+  await page.goto('/s/consent/22222222-2222-4222-8222-222222222222');
+  // 원본을 기다리는 동안 오류가 아니라 로딩 안내가 보여야 한다.
+  await expect(page.getByRole('heading', { name: '가정통신문을 불러오는 중입니다' })).toBeVisible();
+  const watcher = setInterval(async () => {
+    if (await page.getByRole('heading', { name: '원본 PDF를 열지 못했습니다' }).count()) errorFlashes.push('보임');
+  }, 100);
+  await expect(page.getByRole('heading', { name: '느린 동의서' })).toBeVisible({ timeout: 15_000 });
+  clearInterval(watcher);
+  expect(errorFlashes).toEqual([]);
+});
