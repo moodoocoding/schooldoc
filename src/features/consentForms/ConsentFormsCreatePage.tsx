@@ -8,6 +8,7 @@ import { ConsentShareStep } from './ConsentShareStep';
 import { addConsentLocalDraft, getConsentLocalDraft, hashConsentPassword, updateConsentLocalDraft } from './consentFormsLocalStore';
 import { createRemoteConsentForm, getRemoteConsentForm, getRemoteConsentSourceFile, updateRemoteConsentForm } from './consentFormsRepository';
 import { isConsentFormsDemoMode } from './consentFormsConfig';
+import { clearConsentDraft, loadConsentDraft, restoredStep, saveConsentDraft, savedAtLabel } from './consentDraftStore';
 import type { ConsentDocumentAnalysis, ConsentFieldDraft, ConsentLocalDraft, ConsentRecipientDraft, ConsentRecipientMode, ConsentShareSettings } from './types';
 
 const formatBytes = (bytes: number) => bytes < 1024 * 1024
@@ -44,6 +45,8 @@ export function ConsentFormsCreatePage() {
   const [recipientMode, setRecipientMode] = useState<ConsentRecipientMode>(editDraft?.recipientMode ?? 'named');
   const [recipients, setRecipients] = useState<ConsentRecipientDraft[]>([]);
   const [shareSettings, setShareSettings] = useState<ConsentShareSettings>({ deadline: editDraft?.deadline ?? '', passwordEnabled: editDraft?.passwordEnabled ?? false, password: '', allowResubmission: editDraft?.allowResubmission ?? false });
+  const [restoredAt, setRestoredAt] = useState('');
+  const restoredRef = useRef(false);
 
   useEffect(() => () => { if (objectUrl) URL.revokeObjectURL(objectUrl); }, [objectUrl]);
 
@@ -72,10 +75,48 @@ export function ConsentFormsCreatePage() {
     }
   };
 
+  // 만들던 내용 복구. 원격 불러오기보다 먼저 확인해 사용자의 최신 작업을 덮어쓰지 않는다.
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const draft = await loadConsentDraft();
+      if (!active || !draft || draft.editId !== editId) return;
+      const file = new File([draft.file], draft.fileName, { type: 'application/pdf' });
+      restoredRef.current = true;
+      setTitle(draft.title);
+      setDescription(draft.description);
+      setFields(draft.fields);
+      setAnalysis(draft.analysis);
+      setSourceFile(file);
+      setFileName(draft.fileName);
+      setObjectUrl(URL.createObjectURL(file));
+      setRecipientMode(draft.recipientMode);
+      setShareSettings({ deadline: draft.deadline, passwordEnabled: draft.passwordEnabled, password: '', allowResubmission: draft.allowResubmission });
+      setStep(restoredStep(draft));
+      setRestoredAt(draft.savedAt);
+    })();
+    return () => { active = false; };
+  }, [editId]);
+
+  // 작업 내용을 이어서 임시 보관한다. 잦은 저장을 막으려 잠시 모았다 쓴다.
+  useEffect(() => {
+    if (!analysis || !sourceFile) return;
+    const timer = window.setTimeout(() => {
+      void saveConsentDraft({
+        savedAt: new Date().toISOString(), editId, title, description, step, fields, analysis,
+        recipientMode, deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled,
+        allowResubmission: shareSettings.allowResubmission, fileName: fileName || analysis.fileName, file: sourceFile,
+      });
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [analysis, description, editId, fields, fileName, recipientMode, shareSettings, sourceFile, step, title]);
+
   useEffect(() => {
     if (!editId || isConsentFormsDemoMode) return;
     let active = true;
     const load = async () => {
+      const draft = await loadConsentDraft();
+      if (!active || restoredRef.current || draft?.editId === editId) return;
       setAnalyzing(true);
       setError('');
       try {
@@ -103,6 +144,9 @@ export function ConsentFormsCreatePage() {
   }, [editId]);
 
   const resetFile = () => {
+    void clearConsentDraft();
+    restoredRef.current = false;
+    setRestoredAt('');
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     setObjectUrl('');
     setAnalysis(null);
@@ -131,10 +175,12 @@ export function ConsentFormsCreatePage() {
       if (!isConsentFormsDemoMode) {
         if (editDraft) {
           await updateRemoteConsentForm(editDraft.id, { title: title.trim() || editDraft.title, description: description.trim(), fields, pageCount: analysis.pageCount, pageSizes: analysis.pageSizes, fileName: sourceFile.name, sourceFile, deadline: shareSettings.deadline, allowResubmission: shareSettings.allowResubmission, passwordEnabled: shareSettings.passwordEnabled, password: shareSettings.password });
+          await clearConsentDraft();
           navigate(`/tools/consent-forms/${editDraft.id}`);
         } else {
           const created = await createRemoteConsentForm({ title, description, fields, pageSizes: analysis.pageSizes, recipientMode, recipientCount: recipients.length, settings: shareSettings, sourceFile });
           if (!created) throw new Error('생성한 가정통신문을 확인하지 못했습니다.');
+          await clearConsentDraft();
           navigate(`/tools/consent-forms/${created.id}`);
         }
         return;
@@ -142,9 +188,11 @@ export function ConsentFormsCreatePage() {
       const passwordHash = shareSettings.passwordEnabled ? shareSettings.password.trim() ? await hashConsentPassword(shareSettings.password.trim()) : editDraft?.passwordHash ?? '' : '';
       if (editDraft) {
         updateConsentLocalDraft(editDraft.id, { title, fileName: analysis.fileName, fieldCount: fields.length, description, fields, pageCount: analysis.pageCount, pageSizes: analysis.pageSizes, deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled, passwordHash: passwordHash || editDraft.passwordHash, allowResubmission: shareSettings.allowResubmission, sourcePdfDataUrl: await fileToDataUrl(sourceFile) });
+        await clearConsentDraft();
         navigate(`/tools/consent-forms/${editDraft.id}`);
       } else {
         addConsentLocalDraft({ id: crypto.randomUUID(), title, fileName: analysis.fileName, fieldCount: fields.length, recipientMode, recipientCount: recipientMode === 'named' ? recipients.length : 0, createdAt: new Date().toISOString(), description, fields, publicToken: crypto.randomUUID(), deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled, passwordHash, allowResubmission: shareSettings.allowResubmission, responseCount: 0, status: 'open', pageCount: analysis.pageCount, pageSizes: analysis.pageSizes, sourcePdfDataUrl: await fileToDataUrl(sourceFile) });
+        await clearConsentDraft();
         navigate('/tools/consent-forms');
       }
     } catch (saveError) {
@@ -170,6 +218,7 @@ export function ConsentFormsCreatePage() {
           </section>
 
           <section className="border-y border-[#DCE3EA] bg-white px-4 py-5 sm:px-5">
+            {restoredAt ? <div role="status" className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-l-2 border-[#0F6CBD] bg-[#EFF6FC] px-3 py-2.5 text-xs leading-5 text-[#1E4E79]"><RotateCcw className="h-4 w-4 shrink-0" /><span>만들던 내용을 복구했습니다. <span className="font-semibold">{savedAtLabel(restoredAt)}</span>에 임시 보관된 작업입니다.</span><button type="button" onClick={resetFile} className="ml-auto min-h-[36px] rounded-lg border border-[#0F6CBD] px-3 font-bold text-[#0F6CBD] hover:bg-white">새로 시작</button></div> : null}
             <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold text-[#0F6CBD]">먼저 할 일</p><h2 className="mt-1 text-sm font-bold">원본 PDF 올리기</h2><p className="mt-1 text-xs text-[#64748B]">PDF · 최대 30MB</p></div>{analysis ? <button type="button" onClick={resetFile} className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-[#526174] hover:bg-[#F6F8FB]" aria-label="원본 파일 다시 선택" title="다시 선택"><RotateCcw className="h-4 w-4" /></button> : null}</div>
             <input ref={inputRef} type="file" accept={consentDocumentAccept} className="sr-only" onChange={(event) => void selectFile(event.target.files?.[0])} aria-label="가정통신문 PDF 파일" />
             {!analysis ? (

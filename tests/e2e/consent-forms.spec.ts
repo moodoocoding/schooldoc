@@ -356,3 +356,36 @@ test('필드 목록에서 해당 쪽으로 이동하고 쪽 번호로 건너뛴�
   await expect(page.getByLabel('쪽 번호')).toHaveValue('6');
   await expect(page.getByRole('button', { name: '보호자 의견 필드', exact: true })).toBeVisible();
 });
+
+test('새로고침해도 올린 원본과 배치한 필드를 복구한다', async ({ page }) => {
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+  pdf.addPage();
+  pdf.text('Notice', 20, 25);
+  await page.goto('/tools/consent-forms/new');
+  await page.getByLabel('가정통신문 PDF 파일').setInputFiles({
+    name: 'restore.pdf', mimeType: 'application/pdf', buffer: Buffer.from(pdf.output('arraybuffer')),
+  });
+  await page.getByRole('textbox', { name: '제목' }).fill('복구 확인 동의서');
+  await page.getByRole('button', { name: '확인 후 필드 배치' }).click();
+  await page.getByRole('button', { name: '텍스트', exact: true }).click();
+  await page.getByRole('textbox', { name: '표시 이름' }).fill('보호자 의견');
+  await expect(page.getByRole('button', { name: '보호자 의견 필드', exact: true })).toBeVisible();
+
+  // 임시 보관이 끝나길 기다린 뒤 새로고침한다.
+  await page.waitForTimeout(1_200);
+  await page.reload();
+
+  await expect(page.getByRole('button', { name: '보호자 의견 필드', exact: true })).toBeVisible();
+  await expect(page.getByTestId('consent-field-canvas').locator('canvas')).toBeVisible();
+  await expect(page.getByRole('region', { name: '배치된 필드' }).getByRole('button', { name: /보호자 의견/ })).toHaveCount(1);
+
+  // 처음 단계로 돌아가면 복구 안내와 새로 시작 버튼이 보인다.
+  await page.getByRole('button', { name: '원본 문서로' }).click();
+  await expect(page.getByRole('textbox', { name: '제목' })).toHaveValue('복구 확인 동의서');
+  await expect(page.getByRole('status')).toContainText('만들던 내용을 복구했습니다');
+
+  await page.getByRole('button', { name: '새로 시작' }).click();
+  await expect(page.getByText('문서 분석 완료')).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText('문서 분석 완료')).toHaveCount(0);
+});
