@@ -112,15 +112,27 @@ export const listRemoteConsentResponses = async (formId: string): Promise<Consen
   });
 };
 
+const STORAGE_PAGE = 1000;
+const REMOVE_CHUNK = 100;
+
+/** list는 한 번에 일부만 돌려주므로 끝까지 넘긴다. 응답이 많은 수합에서 빠뜨리지 않기 위함이다. */
+const listAllNames = async (prefix: string) => {
+  const names: string[] = [];
+  for (let offset = 0; ; offset += STORAGE_PAGE) {
+    const page = await client().storage.from(SIGNATURE_BUCKET).list(prefix, { limit: STORAGE_PAGE, offset });
+    if (page.error) fail('서명 이미지를 확인하지 못했습니다', page.error);
+    const entries = page.data ?? [];
+    entries.forEach((entry) => names.push(entry.name));
+    if (entries.length < STORAGE_PAGE) return names;
+  }
+};
+
 /** 버킷에 실제로 남아 있는 파일을 훑는다. DB 기록이 어긋나도 실체를 기준으로 지우기 위함이다. */
 const listSignaturePaths = async (formId: string) => {
-  const folders = await client().storage.from(SIGNATURE_BUCKET).list(formId);
-  if (folders.error) fail('서명 이미지를 확인하지 못했습니다', folders.error);
   const paths: string[] = [];
-  for (const folder of folders.data ?? []) {
-    const files = await client().storage.from(SIGNATURE_BUCKET).list(`${formId}/${folder.name}`);
-    if (files.error) fail('서명 이미지를 확인하지 못했습니다', files.error);
-    (files.data ?? []).forEach((file) => paths.push(`${formId}/${folder.name}/${file.name}`));
+  for (const folder of await listAllNames(formId)) {
+    const files = await listAllNames(`${formId}/${folder}`);
+    files.forEach((file) => paths.push(`${formId}/${folder}/${file}`));
   }
   return paths;
 };
@@ -136,8 +148,10 @@ export const deleteRemoteConsentForm = async (id: string) => {
 
   const signaturePaths = await listSignaturePaths(id);
   if (signaturePaths.length) {
-    const removed = await client().storage.from(SIGNATURE_BUCKET).remove(signaturePaths);
-    if (removed.error) fail('서명 이미지를 삭제하지 못했습니다', removed.error);
+    for (let index = 0; index < signaturePaths.length; index += REMOVE_CHUNK) {
+      const removed = await client().storage.from(SIGNATURE_BUCKET).remove(signaturePaths.slice(index, index + REMOVE_CHUNK));
+      if (removed.error) fail('서명 이미지를 삭제하지 못했습니다', removed.error);
+    }
     // 권한이 없으면 오류 없이 빈 목록만 돌아온다. 조용히 넘어가면 파일이 영구히 남는다.
     const remaining = await listSignaturePaths(id);
     if (remaining.length) throw new Error('서명 이미지를 삭제할 권한이 없어 수합을 지우지 않았습니다. 담당자에게 문의해 주세요.');
