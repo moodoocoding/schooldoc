@@ -1,11 +1,11 @@
-import { ArrowLeft, Check, Copy, Download, ExternalLink, FilePenLine, Inbox, LoaderCircle, LockKeyhole, PauseCircle, PlayCircle, QrCode, Save, Settings2 } from 'lucide-react';
+import { ArrowLeft, Check, Copy, Download, ImageDown, ExternalLink, FilePenLine, Inbox, LoaderCircle, LockKeyhole, PauseCircle, PlayCircle, QrCode, Save, Settings2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getConsentLocalDraft, hashConsentPassword, listConsentLocalResponses, updateConsentLocalDraft } from './consentFormsLocalStore';
 import { getConsentPublicOrigin, isConsentFormsDemoMode } from './consentFormsConfig';
 import { getRemoteConsentForm, getRemoteConsentSourceFile, listRemoteConsentResponses, updateRemoteConsentForm } from './consentFormsRepository';
-import { consentResponseFileName, consentResponsesFileName, downloadBlob, formatConsentValue, renderConsentResponsePdf, renderConsentResponsesPdf } from './consentResponseRender';
+import { consentQrFileName, consentResponseFileName, consentResponsesFileName, downloadBlob, formatConsentValue, renderConsentResponsePdf, renderConsentResponsesPdf, svgToPngBlob } from './consentResponseRender';
 import type { ConsentLocalDraft, ConsentResponseRecord } from './types';
 
 const submittedLabel = (value: string) => {
@@ -38,6 +38,8 @@ export function ConsentFormsManagePage() {
   const [responseError, setResponseError] = useState('');
   const [downloadingId, setDownloadingId] = useState('');
   const [bulkProgress, setBulkProgress] = useState('');
+  const [qrError, setQrError] = useState('');
+  const qrRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isConsentFormsDemoMode) {
@@ -124,6 +126,17 @@ export function ConsentFormsManagePage() {
     }
   };
 
+  const downloadQrImage = async () => {
+    setQrError('');
+    try {
+      const svg = qrRef.current?.querySelector('svg');
+      if (!svg) throw new Error('QR 코드를 찾지 못했습니다.');
+      downloadBlob(await svgToPngBlob(svg, 1024), consentQrFileName(draft.title));
+    } catch (error) {
+      setQrError(error instanceof Error ? error.message : 'QR 이미지를 저장하지 못했습니다.');
+    }
+  };
+
   const summarize = (response: ConsentResponseRecord) => draft.fields
     .map((field) => {
       const value = response.values[field.id] ?? '';
@@ -176,7 +189,7 @@ export function ConsentFormsManagePage() {
 
     <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
       <section className="border-y border-[#DCE3EA] bg-white px-4 py-4 sm:px-5"><h2 className="text-sm font-bold">응답 링크</h2><p className="mt-1 text-xs text-[#64748B]">보호자에게 링크를 보내거나 오른쪽 QR을 배부하세요.</p><div className="mt-3 flex gap-2"><input readOnly value={publicLink} className="min-h-[42px] min-w-0 flex-1 rounded-lg border border-[#C8D0DA] bg-[#F6F8FB] px-3 text-xs" /><button type="button" onClick={async () => { await navigator.clipboard.writeText(publicLink); setCopied(true); window.setTimeout(() => setCopied(false), 1500); }} className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg border border-[#C8D0DA] text-[#0F6CBD]" aria-label="응답 링크 복사" title="링크 복사">{copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}</button><a href={publicLink} target="_blank" rel="noreferrer" className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg border border-[#C8D0DA] text-[#0F6CBD]" aria-label="응답 화면 열기" title="새 창에서 열기"><ExternalLink className="h-4 w-4" /></a></div>{draft.passwordEnabled ? <p className="mt-3 flex items-center gap-2 text-xs text-[#526174]"><LockKeyhole className="h-4 w-4 text-[#0F6CBD]" />비밀번호로 보호된 링크입니다.</p> : null}{draft.recipientMode === 'named' ? <p className="mt-4 border-l-2 border-[#E6A700] bg-[#FFF9ED] px-3 py-2.5 text-xs leading-5 text-[#76520E]">현재 로컬 모드에서는 공용 링크만 제공합니다. 대상별 제출 매칭은 서버 저장 연결 후 사용할 수 있습니다.</p> : null}</section>
-      <aside className="border-y border-[#DCE3EA] bg-white px-4 py-4 text-center"><div className="mb-3 flex items-center justify-center gap-2 text-xs font-bold"><QrCode className="h-4 w-4 text-[#0F6CBD]" />응답 QR 코드</div><div className="inline-block border border-[#DCE3EA] bg-white p-2"><QRCodeSVG value={publicLink} size={176} level="M" includeMargin aria-label="가정통신문 응답 링크 QR 코드" /></div><p className="mx-auto mt-2 max-w-[210px] text-[11px] leading-4 text-[#64748B]">응답 링크만 포함합니다.</p></aside>
+      <aside className="border-y border-[#DCE3EA] bg-white px-4 py-4 text-center"><div className="mb-3 flex items-center justify-center gap-2 text-xs font-bold"><QrCode className="h-4 w-4 text-[#0F6CBD]" />응답 QR 코드</div><div ref={qrRef} className="inline-block border border-[#DCE3EA] bg-white p-2"><QRCodeSVG value={publicLink} size={176} level="M" includeMargin aria-label="가정통신문 응답 링크 QR 코드" /></div><p className="mx-auto mt-2 max-w-[210px] text-[11px] leading-4 text-[#64748B]">응답 링크만 포함합니다.</p><button type="button" onClick={() => void downloadQrImage()} className="mx-auto mt-3 inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD] hover:bg-[#EFF6FC]"><ImageDown className="h-4 w-4" />QR 이미지 저장</button>{qrError ? <p role="alert" className="mt-2 text-[11px] font-semibold text-[#B42318]">{qrError}</p> : null}</aside>
     </div>
   </div>;
 }

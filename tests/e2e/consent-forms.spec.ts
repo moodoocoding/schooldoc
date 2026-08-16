@@ -117,7 +117,7 @@ test('PDF 가정통신문의 페이지와 원본 미리보기를 표시한다', 
   await expect(page.getByRole('heading', { name: 'Field Trip Consent' })).toBeVisible();
   await page.getByRole('button', { name: '설정 수정' }).click();
   await page.getByRole('textbox', { name: '제목' }).fill('수정된 현장체험학습 동의서');
-  await page.getByRole('button', { name: '저장' }).click();
+  await page.getByRole('button', { name: '저장', exact: true }).click();
   await expect(page.getByRole('heading', { name: '수정된 현장체험학습 동의서' })).toBeVisible();
   await page.getByRole('button', { name: '원본·필드 수정' }).click();
   await page.getByLabel('가정통신문 PDF 파일').setInputFiles({
@@ -163,6 +163,10 @@ test('PDF 가정통신문의 페이지와 원본 미리보기를 표시한다', 
   const bulkDownload = page.waitForEvent('download');
   await submissions.getByRole('button', { name: '전체 PDF 내려받기' }).click();
   expect((await bulkDownload).suggestedFilename()).toBe('수정된 현장체험학습 동의서_응답모음_1건.pdf');
+
+  const qrDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'QR 이미지 저장' }).click();
+  expect((await qrDownload).suggestedFilename()).toBe('수정된 현장체험학습 동의서_응답QR.png');
 });
 
 test('가로 PDF 페이지 비율을 필드 편집기에 유지한다', async ({ page }) => {

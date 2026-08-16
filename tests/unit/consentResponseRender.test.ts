@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fieldRect } from '../../src/features/consentForms/consentFieldLayout';
-import { consentResponseFileName, consentResponsesFileName, fitTextLines, formatConsentValue } from '../../src/features/consentForms/consentResponseRender';
+import { consentQrFileName, consentResponseFileName, consentResponsesFileName, fitTextLines, formatConsentValue } from '../../src/features/consentForms/consentResponseRender';
 import type { ConsentFieldDraft } from '../../src/features/consentForms/types';
 
 /** 글자 하나를 글꼴 크기의 절반 너비로 계산하는 단순 측정기. */
@@ -49,6 +49,11 @@ describe('consent response render', () => {
     expect(consentResponseFileName('현장체험학습 동의서', 3)).toBe('현장체험학습 동의서_응답003.pdf');
     expect(consentResponseFileName('1/2학기: 안내', 1)).toBe('1_2학기_ 안내_응답001.pdf');
     expect(consentResponseFileName('   ', 1)).toBe('가정통신문_응답001.pdf');
+  });
+
+  it('QR 이미지 파일 이름을 만든다', () => {
+    expect(consentQrFileName('현장체험학습 동의서')).toBe('현장체험학습 동의서_응답QR.png');
+    expect(consentQrFileName('1/2학기: 안내')).toBe('1_2학기_ 안내_응답QR.png');
   });
 
   it('전체 모음 파일 이름에 건수를 적는다', () => {
