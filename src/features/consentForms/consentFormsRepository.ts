@@ -112,24 +112,37 @@ export const listRemoteConsentResponses = async (formId: string): Promise<Consen
   });
 };
 
+/** 버킷에 실제로 남아 있는 파일을 훑는다. DB 기록이 어긋나도 실체를 기준으로 지우기 위함이다. */
+const listSignaturePaths = async (formId: string) => {
+  const folders = await client().storage.from(SIGNATURE_BUCKET).list(formId);
+  if (folders.error) fail('서명 이미지를 확인하지 못했습니다', folders.error);
+  const paths: string[] = [];
+  for (const folder of folders.data ?? []) {
+    const files = await client().storage.from(SIGNATURE_BUCKET).list(`${formId}/${folder.name}`);
+    if (files.error) fail('서명 이미지를 확인하지 못했습니다', files.error);
+    (files.data ?? []).forEach((file) => paths.push(`${formId}/${folder.name}/${file.name}`));
+  }
+  return paths;
+};
+
 /**
- * 수합을 삭제한다. 응답·서명 행은 on delete cascade로 정리되지만
- * Storage 객체는 남으므로 원본 PDF와 서명 이미지를 먼저 지운다.
+ * 수합을 삭제한다. 응답·서명 행은 on delete cascade로 정리되지만 Storage 객체는 남는다.
+ * 게다가 삭제 정책이 consent_forms 행을 참조하므로, 행을 먼저 지우면 남은 파일을
+ * 두 번 다시 지울 수 없다. 따라서 파일을 먼저 지우고 실제로 지워졌는지 확인한 뒤에만 행을 지운다.
  */
 export const deleteRemoteConsentForm = async (id: string) => {
   const form = await getRemoteConsentForm(id);
   if (!form) throw new Error('가정통신문을 찾지 못했습니다.');
 
-  const signatureRows = await client()
-    .from('consent_response_signatures').select('storage_path, consent_responses!inner(form_id)')
-    .eq('consent_responses.form_id', id);
-  if (signatureRows.error) fail('서명 이미지를 정리하지 못했습니다', signatureRows.error);
-  const signaturePaths = ((signatureRows.data ?? []) as Array<{ storage_path: string }>)
-    .map((row) => row.storage_path);
+  const signaturePaths = await listSignaturePaths(id);
   if (signaturePaths.length) {
     const removed = await client().storage.from(SIGNATURE_BUCKET).remove(signaturePaths);
     if (removed.error) fail('서명 이미지를 삭제하지 못했습니다', removed.error);
+    // 권한이 없으면 오류 없이 빈 목록만 돌아온다. 조용히 넘어가면 파일이 영구히 남는다.
+    const remaining = await listSignaturePaths(id);
+    if (remaining.length) throw new Error('서명 이미지를 삭제할 권한이 없어 수합을 지우지 않았습니다. 담당자에게 문의해 주세요.');
   }
+
   if (form.sourcePath) {
     const removed = await client().storage.from(DOCUMENT_BUCKET).remove([form.sourcePath]);
     if (removed.error) fail('원본 PDF를 삭제하지 못했습니다', removed.error);
