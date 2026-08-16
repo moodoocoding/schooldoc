@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { SignatureCanvas } from '../registry/SignatureCanvas';
 import { ConsentPdfPage } from './ConsentPdfPage';
+import { DocumentPreparingError, retryLoad } from './consentDocumentReady';
 import { fieldStyle, pageAspectRatio } from './consentFieldLayout';
 import { isConsentFormsDemoMode } from './consentFormsConfig';
 import { addConsentLocalResponse, getConsentLocalDraftByToken, hashConsentPassword } from './consentFormsLocalStore';
@@ -11,6 +12,8 @@ import type { ConsentFieldDraft, ConsentPublicDocument, ConsentPublicMetadata } 
 
 const asFile = async (url: string, title: string) => {
   const response = await fetch(url);
+  // 서명 URL은 발급됐지만 객체가 아직 없으면 스토리지가 400/404로 답한다.
+  if (response.status === 400 || response.status === 404) throw new DocumentPreparingError();
   if (!response.ok) throw new Error('원본 PDF를 불러오지 못했습니다.');
   return new File([await response.blob()], `${title}.pdf`, { type: 'application/pdf' });
 };
@@ -18,25 +21,6 @@ const asFile = async (url: string, title: string) => {
 const completed = (field: ConsentFieldDraft, value: string | undefined) => (
   field.kind === 'checkbox' ? value === 'true' : Boolean(value)
 );
-
-const retryLoad = async <T,>(operation: () => Promise<T>, attempts = 3): Promise<T> => {
-  let lastError: unknown;
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    try {
-      return await operation();
-    } catch (error) {
-      lastError = error;
-      const status = typeof error === 'object' && error !== null && 'status' in error
-        ? Number((error as { status?: number }).status)
-        : undefined;
-      if (status && status < 500) throw error;
-      if (attempt < attempts - 1) {
-        await new Promise((resolve) => window.setTimeout(resolve, 700 * (attempt + 1)));
-      }
-    }
-  }
-  throw lastError;
-};
 
 function CenterMessage({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return <main className="grid min-h-screen place-items-center bg-[#F3F5F7] p-5"><div className="w-full max-w-md border-y border-[#DCE3EA] bg-white px-6 py-12 text-center">{icon}<h1 className="mt-4 text-xl font-extrabold">{title}</h1><p className="mt-2 text-sm leading-6 text-[#526174]">{description}</p></div></main>;
@@ -58,6 +42,7 @@ export function PublicConsentResponsePage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [signatureField, setSignatureField] = useState<ConsentFieldDraft | null>(null);
+  const [preparing, setPreparing] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -81,12 +66,16 @@ export function PublicConsentResponsePage() {
         if (!active) return;
         setMetadata(nextMetadata);
         if (!nextMetadata.passwordRequired) {
-          const nextDocument = await retryLoad(() => getConsentPublicDocument(token));
-          const file = await retryLoad(() => asFile(nextDocument.sourceUrl, nextDocument.title));
-          if (active) { setDocument(nextDocument); setPdfFile(file); }
+          const notePreparing = () => { if (active) setPreparing(true); };
+          const nextDocument = await retryLoad(() => getConsentPublicDocument(token), { attempts: 15, onPreparing: notePreparing });
+          const file = await retryLoad(() => asFile(nextDocument.sourceUrl, nextDocument.title), { attempts: 15, onPreparing: notePreparing });
+          if (active) { setDocument(nextDocument); setPdfFile(file); setPreparing(false); }
         }
       } catch (loadError) {
-        if (active) setError(loadError instanceof Error ? loadError.message : '가정통신문을 불러오지 못했습니다.');
+        if (active) {
+          setPreparing(false);
+          setError(loadError instanceof Error ? loadError.message : '가정통신문을 불러오지 못했습니다.');
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -110,11 +99,14 @@ export function PublicConsentResponsePage() {
         setDocument(nextDocument);
         setPdfFile(await asFile(nextDocument.sourceUrl, nextDocument.title));
       } else {
-        const nextDocument = await getConsentPublicDocument(token, password);
+        const notePreparing = () => setPreparing(true);
+        const nextDocument = await retryLoad(() => getConsentPublicDocument(token, password), { attempts: 15, onPreparing: notePreparing });
         setDocument(nextDocument);
-        setPdfFile(await asFile(nextDocument.sourceUrl, nextDocument.title));
+        setPdfFile(await retryLoad(() => asFile(nextDocument.sourceUrl, nextDocument.title), { attempts: 15, onPreparing: notePreparing }));
+        setPreparing(false);
       }
     } catch (unlockError) {
+      setPreparing(false);
       setError(unlockError instanceof Error ? unlockError.message : '문서를 열지 못했습니다.');
     } finally { setLoading(false); }
   };
@@ -145,6 +137,7 @@ export function PublicConsentResponsePage() {
     } finally { setSubmitting(false); }
   };
 
+  if (preparing && !document) return <CenterMessage icon={<LoaderCircle className="mx-auto h-8 w-8 animate-spin text-[#0F6CBD]" />} title="가정통신문을 준비하고 있습니다" description="원본 문서를 올리는 중입니다. 준비되면 자동으로 열립니다." />;
   if (loading && !metadata) return <CenterMessage icon={<LoaderCircle className="mx-auto h-8 w-8 animate-spin text-[#0F6CBD]" />} title="가정통신문을 불러오는 중입니다" description="잠시만 기다려 주세요." />;
   if (!metadata) return <CenterMessage icon={<AlertCircle className="mx-auto h-8 w-8 text-[#B42318]" />} title="가정통신문을 찾을 수 없습니다" description={error || '담당자에게 올바른 링크를 다시 요청해 주세요.'} />;
   const deadlinePassed = Boolean(metadata.deadline && metadata.deadline < new Date().toISOString().slice(0, 10));

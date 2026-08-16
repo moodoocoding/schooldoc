@@ -23,6 +23,13 @@ interface FormRow {
   page_sizes: Array<{ width: number; height: number }> | null;
 }
 
+const DOCUMENT_PREPARING = '가정통신문을 준비하고 있습니다. 잠시 후 자동으로 열립니다.';
+const notFound = (error: { message?: string; statusCode?: string | number } | null) => {
+  if (!error) return false;
+  const status = String(error.statusCode ?? '');
+  return status === '404' || /not[_\s]?found/i.test(error.message ?? '');
+};
+
 const hash = async (value: string) => {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -93,6 +100,9 @@ Deno.serve(async (request) => {
     await verifyPassword(form, body.password);
     if (action === 'document') {
       const signed = await db.storage.from('consent-documents').createSignedUrl(form.source_path, 60 * 60);
+      // 원본이 아직 올라오지 않은 상태는 실패가 아니라 준비 중이다.
+      // 425를 받은 화면은 오류 대신 준비 안내를 띄우고 스스로 다시 시도한다.
+      if (signed.error && notFound(signed.error)) throw new HttpError(425, DOCUMENT_PREPARING);
       if (signed.error || !signed.data?.signedUrl) throw new HttpError(500, '원본 PDF를 불러오지 못했습니다.');
       return json(200, { form: { ...metadata(form), fields: form.fields, sourceUrl: signed.data.signedUrl, allowResubmission: form.allow_resubmission, pageCount: form.page_count, pageSizes: form.page_sizes?.length ? form.page_sizes : Array.from({ length: form.page_count }, () => ({ width: 210, height: 297 })) } });
     }

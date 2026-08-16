@@ -158,25 +158,27 @@ export const createRemoteConsentForm = async ({
   if (!authData.user) throw new Error('Google 로그인이 필요합니다.');
   const id = crypto.randomUUID();
   const sourcePath = `${authData.user.id}/${id}/source.pdf`;
-  const { data, error } = await client().from('consent_forms').insert({
-    id,
-    owner_id: authData.user.id,
-    title: title.trim(),
-    file_name: sourceFile.name,
-    source_path: sourcePath,
-    description: description.trim(),
-    fields,
-    page_count: pageSizes.length,
-    page_sizes: pageSizes,
-    recipient_mode: recipientMode,
-    recipient_count: recipientMode === 'named' ? recipientCount : 0,
-    deadline: settings.deadline || null,
-    allow_resubmission: settings.allowResubmission,
-  }).select(formColumns).single();
-  if (error || !data) fail('가정통신문 수합을 만들지 못했습니다', error);
+  // 행이 먼저 생기면 공개 링크가 살아나는데 원본 PDF는 아직 없어서
+  // 그 사이에 링크를 연 보호자에게 오류가 보인다. 업로드를 먼저 끝낸다.
+  const upload = await client().storage.from(DOCUMENT_BUCKET).upload(sourcePath, sourceFile, { contentType: 'application/pdf', upsert: false });
+  if (upload.error) fail('원본 PDF를 저장하지 못했습니다', upload.error);
   try {
-    const upload = await client().storage.from(DOCUMENT_BUCKET).upload(sourcePath, sourceFile, { contentType: 'application/pdf', upsert: false });
-    if (upload.error) fail('원본 PDF를 저장하지 못했습니다', upload.error);
+    const { data, error } = await client().from('consent_forms').insert({
+      id,
+      owner_id: authData.user.id,
+      title: title.trim(),
+      file_name: sourceFile.name,
+      source_path: sourcePath,
+      description: description.trim(),
+      fields,
+      page_count: pageSizes.length,
+      page_sizes: pageSizes,
+      recipient_mode: recipientMode,
+      recipient_count: recipientMode === 'named' ? recipientCount : 0,
+      deadline: settings.deadline || null,
+      allow_resubmission: settings.allowResubmission,
+    }).select(formColumns).single();
+    if (error || !data) fail('가정통신문 수합을 만들지 못했습니다', error);
     if (settings.passwordEnabled && settings.password.trim()) {
       const passwordResult = await client().rpc('set_consent_form_password', { p_form_id: id, p_password: settings.password.trim() });
       if (passwordResult.error) fail('공개 비밀번호를 설정하지 못했습니다', passwordResult.error);

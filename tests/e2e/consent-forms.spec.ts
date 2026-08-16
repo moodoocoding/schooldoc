@@ -213,3 +213,44 @@ test('실수로 만든 수합을 확인창을 거쳐 삭제한다', async ({ pag
   await page.reload();
   await expect(page.getByRole('heading', { name: '아직 가정통신문 수합이 없습니다' })).toBeVisible();
 });
+
+test('원본이 준비 중이면 오류 대신 준비 화면을 띄우고 준비되면 자동으로 연다', async ({ page }) => {
+  let calls = 0;
+  const source = new jsPDF({ unit: 'mm', format: 'a4' });
+  source.text('Consent', 20, 20);
+  await page.route('https://source.test/source.pdf', (route) => route.fulfill({
+    status: 200, contentType: 'application/pdf', body: Buffer.from(source.output('arraybuffer')),
+  }));
+  // 데모 모드가 아닌 원격 경로를 흉내 낸다.
+  await page.route('**/functions/v1/consent-forms-public', async (route) => {
+    const body = JSON.parse(route.request().postData() ?? '{}');
+    if (body.action === 'metadata') {
+      return route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({ form: { title: '현장체험학습 동의서', description: '', passwordRequired: false, status: 'open', deadline: '' } }),
+      });
+    }
+    calls += 1;
+    if (calls < 3) {
+      return route.fulfill({
+        status: 425, contentType: 'application/json',
+        body: JSON.stringify({ error: '가정통신문을 준비하고 있습니다. 잠시 후 자동으로 열립니다.' }),
+      });
+    }
+    return route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ form: {
+        title: '현장체험학습 동의서', description: '', passwordRequired: false, status: 'open', deadline: '',
+        fields: [], sourceUrl: 'https://source.test/source.pdf', allowResubmission: false, pageCount: 1,
+        pageSizes: [{ width: 595, height: 842 }],
+      } }),
+    });
+  });
+
+  await page.goto('/s/consent/11111111-1111-4111-8111-111111111111');
+  await expect(page.getByRole('heading', { name: '가정통신문을 준비하고 있습니다' })).toBeVisible();
+  await expect(page.getByText('준비되면 자동으로 열립니다')).toBeVisible();
+  // 재시도가 성공하면 준비 화면이 사라진다.
+  await expect(page.getByRole('heading', { name: '가정통신문을 준비하고 있습니다' })).toBeHidden({ timeout: 15_000 });
+  expect(calls).toBeGreaterThanOrEqual(3);
+});
