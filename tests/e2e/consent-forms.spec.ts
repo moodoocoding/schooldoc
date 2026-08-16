@@ -425,3 +425,25 @@ test('개인 링크로 들어오면 누구의 문서인지 알려주고 제출�
   // 제출이 개인 링크의 수신자와 함께 전달돼야 누가 냈는지 이어붙일 수 있다.
   expect(submitted).toMatchObject({ action: 'submit', recipientToken: '44444444-4444-4444-8444-444444444444' });
 });
+
+test('명단 없는 수합의 개인 QR 화면은 배부할 명단이 없다고 안내한다', async ({ page }) => {
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+  pdf.text('Notice', 20, 25);
+  await page.goto('/tools/consent-forms/new');
+  await page.getByLabel('가정통신문 PDF 파일').setInputFiles({
+    name: 'qr.pdf', mimeType: 'application/pdf', buffer: Buffer.from(pdf.output('arraybuffer')),
+  });
+  await page.getByRole('textbox', { name: '제목' }).fill('공개 수합 동의서');
+  await page.getByRole('button', { name: '확인 후 필드 배치' }).click();
+  await page.getByRole('button', { name: '텍스트', exact: true }).click();
+  await page.getByRole('button', { name: '필드 배치 완료' }).click();
+  await page.getByLabel('명단 없이 받기').check();
+  await page.getByRole('button', { name: '다음: 공유 설정' }).click();
+  await page.getByRole('button', { name: '수합 만들기' }).click();
+  await page.getByRole('button', { name: '관리·공유' }).click();
+
+  await page.goto(`${page.url()}/qr`);
+  await expect(page.getByRole('heading', { name: '개인 QR 배부 자료' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '배부할 명단이 없습니다' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'PDF 다운로드' })).toBeDisabled();
+});

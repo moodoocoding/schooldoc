@@ -3,7 +3,8 @@ import { ConsentFormsAuthGate } from './ConsentFormsAuthGate';
 import { ConsentFormsCreatePage } from './ConsentFormsCreatePage';
 import { ConsentFormsListPage } from './ConsentFormsListPage';
 import { ConsentFormsManagePage } from './ConsentFormsManagePage';
+import { ConsentQrPrintPage } from './ConsentQrPrintPage';
 
 export function ConsentFormsWorkspace() {
-  return <ConsentFormsAuthGate><Routes><Route path="/tools/consent-forms" element={<ConsentFormsListPage />} /><Route path="/tools/consent-forms/new" element={<ConsentFormsCreatePage />} /><Route path="/tools/consent-forms/:id" element={<ConsentFormsManagePage />} /></Routes></ConsentFormsAuthGate>;
+  return <ConsentFormsAuthGate><Routes><Route path="/tools/consent-forms" element={<ConsentFormsListPage />} /><Route path="/tools/consent-forms/new" element={<ConsentFormsCreatePage />} /><Route path="/tools/consent-forms/:id" element={<ConsentFormsManagePage />} /><Route path="/tools/consent-forms/:id/qr" element={<ConsentQrPrintPage />} /></Routes></ConsentFormsAuthGate>;
 }

@@ -226,7 +226,7 @@ export function ConsentFormsManagePage() {
     </section>
 
     {recipients.length > 0 ? <section aria-label="명단 제출 현황" className="border-y border-[#DCE3EA] bg-white px-4 py-4 sm:px-5">
-      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-sm font-bold">명단 제출 현황<span className="ml-2 text-xs font-semibold text-[#64748B]">{submittedCount} / {recipients.length}명</span></h2><p className="mt-1 text-xs text-[#64748B]">보호자마다 다른 개인 링크가 발급되어 누가 제출했는지 확인할 수 있습니다.</p></div></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-sm font-bold">명단 제출 현황<span className="ml-2 text-xs font-semibold text-[#64748B]">{submittedCount} / {recipients.length}명</span></h2><p className="mt-1 text-xs text-[#64748B]">보호자마다 다른 개인 링크가 발급되어 누가 제출했는지 확인할 수 있습니다.</p></div><button type="button" onClick={() => navigate(`/tools/consent-forms/${draft.id}/qr`)} className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD] hover:bg-[#EFF6FC]"><QrCode className="h-4 w-4" />개인 QR 배부 자료</button></div>
       <ul className="mt-4 divide-y divide-[#EEF1F4] border-y border-[#EEF1F4]">{recipients.map((recipient) => {
         const personalLink = `${publicLink}?r=${recipient.token}`;
         return <li key={recipient.id} className="flex flex-wrap items-center gap-3 py-3">
