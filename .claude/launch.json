@@ -3,11 +3,15 @@
   "configurations": [
     {
       "name": "schooldoc-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--host", "127.0.0.1", "--port", "5174", "--strictPort"],
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--host", "127.0.0.1", "--port", "5174", "--strictPort"],
       "port": 5174,
       "url": "http://127.0.0.1:5174",
-      "autoPort": false
+      "autoPort": false,
+      "env": {
+        "VITE_CONSENT_FORMS_DEMO_MODE": "true",
+        "VITE_PUBLIC_APP_URL": "http://127.0.0.1:5174"
+      }
     }
   ]
 }
