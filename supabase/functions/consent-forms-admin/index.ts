@@ -188,6 +188,64 @@ Deno.serve(async (request) => {
       return json(200, { saved: rows.length });
     }
 
+    if (action === 'duplicate') {
+      const source = await db.from('consent_forms')
+        .select('title, file_name, source_path, description, fields, page_count, page_sizes, recipient_mode, recipient_count, allow_resubmission, retention_months')
+        .eq('id', formId).single();
+      if (source.error || !source.data) throw source.error ?? new HttpError(404, '복제할 가정통신문을 찾지 못했습니다.');
+
+      const copyId = crypto.randomUUID();
+      const copyPath = `${userId}/${copyId}/source.pdf`;
+      // 원본을 먼저 복사한다. 행이 먼저 생기면 원본 없는 링크가 살아나는 문제를 겪은 적이 있다.
+      const copied = await db.storage.from(DOCUMENT_BUCKET).copy(source.data.source_path, copyPath);
+      if (copied.error) throw copied.error;
+
+      try {
+        const title = `${String(source.data.title).trim() || '가정통신문'} 사본`.slice(0, 200);
+        const inserted = await db.from('consent_forms').insert({
+          id: copyId,
+          owner_id: userId,
+          title,
+          file_name: source.data.file_name,
+          source_path: copyPath,
+          description: source.data.description,
+          fields: source.data.fields,
+          page_count: source.data.page_count,
+          page_sizes: source.data.page_sizes,
+          recipient_mode: source.data.recipient_mode,
+          recipient_count: 0,
+          allow_resubmission: source.data.allow_resubmission,
+          retention_months: source.data.retention_months,
+          // 기한·비밀번호·받은 응답은 물려받지 않는다.
+          deadline: null,
+        });
+        if (inserted.error) throw inserted.error;
+
+        // 명단은 같은 키로 봉인돼 있어 복호 없이 암호문을 그대로 옮긴다.
+        // 개인 링크는 새로 발급해야 이전 배부물이 새 수합을 가리키지 않는다.
+        const roster = await db.from('consent_recipients')
+          .select('identity_ciphertext, name_lookup, display_hint').eq('form_id', formId);
+        if (roster.error) throw roster.error;
+        const people = roster.data ?? [];
+        if (people.length) {
+          const added = await db.from('consent_recipients').insert(people.map((person) => ({
+            form_id: copyId,
+            identity_ciphertext: person.identity_ciphertext,
+            name_lookup: person.name_lookup,
+            display_hint: person.display_hint,
+          })));
+          if (added.error) throw added.error;
+          const counted = await db.from('consent_forms').update({ recipient_count: people.length }).eq('id', copyId);
+          if (counted.error) throw counted.error;
+        }
+        return json(200, { id: copyId, title, recipientCount: people.length });
+      } catch (error) {
+        await db.storage.from(DOCUMENT_BUCKET).remove([copyPath]);
+        await db.from('consent_forms').delete().eq('id', copyId);
+        throw error;
+      }
+    }
+
     if (action === 'responses') {
       const result = await db.from('consent_responses')
         .select('id, values_ciphertext, submitted_at, recipient_id')
