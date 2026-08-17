@@ -95,11 +95,11 @@ describe.skipIf(!withForm)('공개 문서 응답 형태', () => {
     expect((form.pageSizes as unknown[]).length).toBe(form.pageCount);
   });
 
-  test('필수 항목을 비우면 제출이 거부된다', async () => {
-    const result = await callPublic({ action: 'submit', token: publicToken, values: {} });
-    // 필수 항목이 없는 수합이면 통과할 수 있으므로 자료를 만들지 않는 경우만 확인한다.
-    if (result.status === 200) return;
-    expect([400, 401, 409]).toContain(result.status);
+  test('형식이 어긋난 제출은 저장 전에 막힌다', async () => {
+    // 빈 값으로 보내면 필수 항목이 없는 수합에서는 실제 응답이 만들어진다.
+    // 어떤 설정에서도 저장에 이르지 않는 형식 오류로 확인한다.
+    const result = await callPublic({ action: 'submit', token: publicToken, values: '응답이 아님' });
+    expect([400, 401]).toContain(result.status);
   });
 });
 
