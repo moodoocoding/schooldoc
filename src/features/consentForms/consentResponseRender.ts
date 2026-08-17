@@ -73,10 +73,11 @@ const drawText = (context: CanvasRenderingContext2D, text: string, rect: ReturnT
   });
 };
 
-const drawCheckbox = (context: CanvasRenderingContext2D, label: string, rect: ReturnType<typeof fieldRect>) => {
+/** 원본 문서에 이미 뜻이 적혀 있으므로 표시만 그린다. 응답 화면과 같은 모습이어야 한다. */
+const drawCheckbox = (context: CanvasRenderingContext2D, rect: ReturnType<typeof fieldRect>) => {
   const padding = Math.min(rect.height * PADDING_RATIO, 6);
   const box = Math.min(rect.height - padding * 2, 18);
-  const boxLeft = rect.left + padding;
+  const boxLeft = rect.left + rect.width / 2 - box / 2;
   const boxTop = rect.top + rect.height / 2 - box / 2;
   context.strokeStyle = TEXT_COLOR;
   context.lineWidth = Math.max(box * 0.09, 1);
@@ -89,13 +90,6 @@ const drawCheckbox = (context: CanvasRenderingContext2D, label: string, rect: Re
   context.lineTo(boxLeft + box * 0.43, boxTop + box * 0.75);
   context.lineTo(boxLeft + box * 0.81, boxTop + box * 0.25);
   context.stroke();
-  if (!label) return;
-  drawText(context, label, {
-    left: boxLeft + box + padding,
-    top: rect.top,
-    width: Math.max(rect.width - box - padding * 3, 1),
-    height: rect.height,
-  });
 };
 
 const drawSignature = (context: CanvasRenderingContext2D, image: ImageBitmap, rect: ReturnType<typeof fieldRect>) => {
@@ -163,7 +157,7 @@ const drawPageValues = (
       return;
     }
     if (field.kind === 'checkbox') {
-      if (value === 'true') drawCheckbox(context, field.label, rect);
+      if (value === 'true') drawCheckbox(context, rect);
       return;
     }
     drawText(context, formatConsentValue(field, value), rect);
