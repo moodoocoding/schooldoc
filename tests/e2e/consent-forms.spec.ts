@@ -117,7 +117,7 @@ test('PDF 가정통신문의 페이지와 원본 미리보기를 표시한다', 
   await expect(page.getByRole('heading', { name: 'Field Trip Consent' })).toBeVisible();
   await page.getByRole('button', { name: '설정 수정' }).click();
   await page.getByRole('textbox', { name: '제목' }).fill('수정된 현장체험학습 동의서');
-  await page.getByRole('button', { name: '저장', exact: true }).click();
+  await page.getByRole('button', { name: '설정 저장' }).click();
   await expect(page.getByRole('heading', { name: '수정된 현장체험학습 동의서' })).toBeVisible();
   await page.getByRole('button', { name: '원본·필드 수정' }).click();
   await page.getByLabel('가정통신문 PDF 파일').setInputFiles({
@@ -152,7 +152,7 @@ test('PDF 가정통신문의 페이지와 원본 미리보기를 표시한다', 
   expect(hasHorizontalOverflow).toBe(false);
 
   await page.goto(managePageUrl);
-  const submissions = page.getByRole('region', { name: '제출 현황' });
+  const submissions = page.getByRole('region', { name: '받은 응답' });
   await expect(submissions.getByText('1건')).toBeVisible();
   await expect(submissions).toContainText('참가 의견: 참가합니다');
   await expect(submissions).toContainText('체크박스: 예');
@@ -208,7 +208,7 @@ test('실수로 만든 수합을 확인창을 거쳐 삭제한다', async ({ pag
   await expect(page.getByRole('heading', { name: '잘못 만든 수합' })).toBeVisible();
 
   await page.getByRole('button', { name: '잘못 만든 수합 삭제' }).click();
-  await confirmDialog.getByRole('button', { name: '수합 삭제' }).click();
+  await confirmDialog.getByRole('button', { name: '영구 삭제' }).click();
   await expect(page.getByRole('heading', { name: '아직 가정통신문 수합이 없습니다' })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('heading', { name: '아직 가정통신문 수합이 없습니다' })).toBeVisible();
@@ -514,15 +514,15 @@ test('확대해도 필드의 상대 위치가 유지된다', async ({ page }) =>
   const before = await ratioOf();
   await page.getByRole('button', { name: '확대' }).click();
   await page.getByRole('button', { name: '확대' }).click();
-  await expect(page.getByRole('button', { name: '쪽 맞춤으로 되돌리기' })).toContainText('150%');
+  await expect(page.getByRole('button', { name: '쪽 맞춤' })).toContainText('150%');
 
   const after = await ratioOf();
   expect(after.x).toBeCloseTo(before.x, 2);
   expect(after.y).toBeCloseTo(before.y, 2);
   expect(after.width).toBeCloseTo(before.width, 2);
 
-  await page.getByRole('button', { name: '쪽 맞춤으로 되돌리기' }).click();
-  await expect(page.getByRole('button', { name: '쪽 맞춤으로 되돌리기' })).toContainText('100%');
+  await page.getByRole('button', { name: '쪽 맞춤' }).click();
+  await expect(page.getByRole('button', { name: '쪽 맞춤' })).toContainText('100%');
 });
 
 test('여러 수합을 선택해 한 번에 지운다', async ({ page }) => {
@@ -561,4 +561,51 @@ test('여러 수합을 선택해 한 번에 지운다', async ({ page }) => {
   await page.reload();
   await expect(page.getByRole('heading', { name: '남겨둘 수합' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '정리 대상 하나' })).toHaveCount(0);
+});
+
+test('처리 중인 버튼은 다시 눌리지 않는다', async ({ page }) => {
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+  pdf.text('Notice', 20, 25);
+  await page.goto('/tools/consent-forms/new');
+  await page.getByLabel('가정통신문 PDF 파일').setInputFiles({
+    name: 'busy.pdf', mimeType: 'application/pdf', buffer: Buffer.from(pdf.output('arraybuffer')),
+  });
+  await page.getByRole('textbox', { name: '제목' }).fill('처리 중 확인 동의서');
+  await page.getByRole('button', { name: '확인 후 필드 배치' }).click();
+  await page.getByRole('button', { name: '텍스트', exact: true }).click();
+  await page.getByRole('textbox', { name: '표시 이름' }).fill('보호자 의견');
+  await page.getByRole('button', { name: '필드 배치 완료' }).click();
+  await page.getByLabel('명단 없이 받기').check();
+  await page.getByRole('button', { name: '다음: 공유 설정' }).click();
+  await page.getByRole('button', { name: '수합 만들기' }).click();
+  await page.getByRole('button', { name: '관리·공유' }).click();
+  const manageUrl = page.url();
+
+  const link = await page.getByLabel('응답 화면 열기').getAttribute('href');
+  await page.goto(link!);
+  await page.getByRole('textbox', { name: '보호자 의견' }).fill('참가합니다');
+  await page.getByRole('button', { name: '작성 완료' }).click();
+  await expect(page.getByRole('heading', { name: '응답을 제출했습니다' })).toBeVisible();
+  await page.goto(manageUrl);
+
+  // 이름이 겹치지 않아 확인창 안팎을 구분해 집을 수 있다.
+  await expect(page.getByRole('button', { name: '설정 저장' })).toHaveCount(0);
+  await page.getByRole('button', { name: '설정 수정' }).click();
+  await expect(page.getByRole('button', { name: '설정 저장' })).toBeVisible();
+  await page.getByRole('button', { name: '취소' }).click();
+
+  // 내려받기 버튼은 처리 중 문구로 바뀌며 중복 실행을 막는다.
+  const excelDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: '결과 표(xlsx)' }).click();
+  await excelDownload;
+
+  const qrDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'QR 이미지 저장' }).click();
+  await qrDownload;
+
+  // 삭제 확인창의 확정 버튼은 여는 버튼과 이름이 다르다.
+  await page.getByRole('button', { name: '수합 삭제' }).click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog.getByRole('button', { name: '영구 삭제' })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: '수합 삭제' })).toHaveCount(0);
 });

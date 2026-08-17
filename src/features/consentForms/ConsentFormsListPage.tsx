@@ -113,7 +113,7 @@ export function ConsentFormsListPage() {
     {pendingDelete ? <RegistryConfirmDialog
       title="가정통신문 수합을 삭제할까요?"
       description={`“${pendingDelete.title}”의 원본 PDF와 제출된 응답 ${pendingDelete.responseCount}건이 모두 삭제됩니다. 되돌릴 수 없습니다.`}
-      confirmLabel={deleting ? '삭제 중' : '수합 삭제'}
+      confirmLabel={deleting ? '삭제 중' : '영구 삭제'}
       onCancel={() => { if (!deleting) { setPendingDelete(null); setActionError(''); } }}
       onConfirm={() => void handleDelete()}
     /> : null}
