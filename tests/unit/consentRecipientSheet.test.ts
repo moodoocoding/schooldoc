@@ -6,6 +6,8 @@ import {
   countSubmitted,
   filterRecipients,
   paginateRecipients,
+  sheetRecipients,
+  sheetTitle,
 } from '../../src/features/consentForms/consentRecipientSheet';
 import type { ConsentRecipientRecord } from '../../src/features/consentForms/types';
 
@@ -74,5 +76,22 @@ describe('개인 QR 배부 자료', () => {
       { ...recipient('2', null), name: '김보호' },
     ];
     expect(filterRecipients(people, 'pending', '김').map((entry) => entry.id)).toEqual(['2']);
+  });
+
+  it('미제출자만 배부 대상으로 고른다', () => {
+    const people = [
+      { ...recipient('1', '2026-08-16T00:00:00.000Z'), name: '이학생' },
+      { ...recipient('2', null), name: '김학생' },
+      { ...recipient('3', null), name: '박학생' },
+    ];
+
+    expect(sheetRecipients(people, 'all')).toHaveLength(3);
+    expect(sheetRecipients(people, 'pending').map((entry) => entry.name)).toEqual(['김학생', '박학생']);
+  });
+
+  it('재배부본은 파일 이름으로 구분된다', () => {
+    expect(sheetTitle('현장체험학습 동의서', 'all')).toBe('현장체험학습 동의서');
+    expect(sheetTitle('현장체험학습 동의서', 'pending')).toBe('현장체험학습 동의서_미제출자');
+    expect(consentQrSheetFileName(sheetTitle('동의서', 'pending'))).toBe('동의서_미제출자_개인QR.pdf');
   });
 });

@@ -282,7 +282,10 @@ export function ConsentFormsManagePage() {
     </section>
 
     {recipients.length > 0 ? <section aria-label="명단 제출 현황" className="border-y border-[#DCE3EA] bg-white px-4 py-4 sm:px-5">
-      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-sm font-bold">명단 제출 현황<span className="ml-2 text-xs font-semibold text-[#64748B]">{submittedCount} / {recipients.length}명</span></h2><p className="mt-1 text-xs text-[#64748B]">보호자마다 다른 개인 링크가 발급되어 누가 제출했는지 확인할 수 있습니다.</p></div><button type="button" onClick={() => navigate(`/tools/consent-forms/${draft.id}/qr`)} className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD] hover:bg-[#EFF6FC]"><QrCode className="h-4 w-4" />개인 QR 배부 자료</button></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-sm font-bold">명단 제출 현황<span className="ml-2 text-xs font-semibold text-[#64748B]">{submittedCount} / {recipients.length}명</span></h2><p className="mt-1 text-xs text-[#64748B]">보호자마다 다른 개인 링크가 발급되어 누가 제출했는지 확인할 수 있습니다.</p></div><div className="flex shrink-0 flex-wrap gap-2">
+        <button type="button" onClick={() => navigate(`/tools/consent-forms/${draft.id}/qr`)} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD] hover:bg-[#EFF6FC]"><QrCode className="h-4 w-4" />개인 QR 배부 자료</button>
+        {submittedCount < recipients.length ? <button type="button" onClick={() => navigate(`/tools/consent-forms/${draft.id}/qr?target=pending`)} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-[#E6A700] bg-[#FFF9ED] px-3 text-xs font-bold text-[#76520E] hover:bg-[#FEF3C7]"><QrCode className="h-4 w-4" />미제출자 {recipients.length - submittedCount}명 재배부</button> : null}
+      </div></div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <label className="min-w-0 flex-1"><span className="sr-only">이름 또는 식별값으로 찾기</span><input value={recipientQuery} onChange={(event) => setRecipientQuery(event.target.value)} placeholder="이름 또는 학번으로 찾기" className="min-h-[40px] w-full min-w-[160px] rounded-lg border border-[#C8D0DA] px-3 text-xs" /></label>
         <div className="flex shrink-0 gap-1" role="group" aria-label="제출 상태 filter">

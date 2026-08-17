@@ -37,3 +37,15 @@ export const filterRecipients = (
     return !keyword || recipient.name.includes(keyword) || recipient.studentKey.includes(keyword);
   });
 };
+
+/** 배부 대상. 미제출자에게 다시 돌리는 것이 두 번째 쓰임이다. */
+export type ConsentSheetTarget = Extract<ConsentRecipientFilter, 'all' | 'pending'>;
+
+export const sheetRecipients = (recipients: ConsentRecipientRecord[], target: ConsentSheetTarget) => (
+  filterRecipients(recipients, target, '')
+);
+
+/** 재배부본은 파일 이름만 봐도 구분돼야 섞이지 않는다. */
+export const sheetTitle = (title: string, target: ConsentSheetTarget) => (
+  target === 'pending' ? `${title}_미제출자` : title
+);
