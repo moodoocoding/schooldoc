@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "test:integration:registry": "vitest run --config vitest.registry-integration.config.ts",
     "test:integration:registry-owner": "vitest run --config vitest.registry-owner.config.ts",
+    "test:integration:consent": "vitest run --config vitest.consent-integration.config.ts",
     "test:e2e": "playwright test",
     "test:all": "npm run test && npm run test:e2e"
   },
