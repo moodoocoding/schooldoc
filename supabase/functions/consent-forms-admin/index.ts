@@ -188,6 +188,67 @@ Deno.serve(async (request) => {
       return json(200, { saved: rows.length });
     }
 
+    if (action === 'responses') {
+      const result = await db.from('consent_responses')
+        .select('id, values, values_ciphertext, submitted_at, recipient_id')
+        .eq('form_id', formId).order('submitted_at', { ascending: true });
+      if (result.error) throw result.error;
+
+      const rows = result.data ?? [];
+      const responses = [];
+      for (const row of rows) {
+        // 이전 중에는 암호문과 평문이 섞인다. 암호문이 있으면 그것을 쓴다.
+        const values = row.values_ciphertext
+          ? await consentCrypto.decryptPayload<Record<string, string>>(row.values_ciphertext)
+          : (row.values ?? {});
+        responses.push({ id: row.id, submittedAt: row.submitted_at, values, recipientId: row.recipient_id });
+      }
+
+      // 서명은 비공개 버킷에 그대로 두고 짧은 열람 주소만 발급한다.
+      const signatureRows = rows.length
+        ? await db.from('consent_response_signatures').select('response_id, field_id, storage_path')
+          .in('response_id', rows.map((row) => row.id))
+        : { data: [], error: null };
+      if (signatureRows.error) throw signatureRows.error;
+      const signatures = signatureRows.data ?? [];
+      if (signatures.length) {
+        const signed = await db.storage.from(SIGNATURE_BUCKET)
+          .createSignedUrls(signatures.map((signature) => signature.storage_path), 60 * 60);
+        if (signed.error) throw signed.error;
+        const urlByPath = new Map<string, string>();
+        (signed.data ?? []).forEach((entry) => {
+          if (entry.path && entry.signedUrl) urlByPath.set(entry.path, entry.signedUrl);
+        });
+        signatures.forEach((signature) => {
+          const target = responses.find((response) => response.id === signature.response_id);
+          const url = urlByPath.get(signature.storage_path);
+          if (target && url) target.values[signature.field_id] = url;
+        });
+      }
+      return json(200, { responses });
+    }
+
+    /** 평문으로 남은 기존 응답을 나눠서 봉인한다. 끝나면 remaining이 0이 된다. */
+    if (action === 'encrypt-legacy') {
+      const pending = await db.from('consent_responses')
+        .select('id, values').eq('form_id', formId).is('values_ciphertext', null).limit(50);
+      if (pending.error) throw pending.error;
+
+      let migrated = 0;
+      for (const row of pending.data ?? []) {
+        const sealed = await consentCrypto.encryptPayload(row.values ?? {});
+        const updated = await db.from('consent_responses')
+          .update({ values_ciphertext: sealed, values: null }).eq('id', row.id);
+        if (updated.error) throw updated.error;
+        migrated += 1;
+      }
+
+      const left = await db.from('consent_responses')
+        .select('id', { count: 'exact', head: true }).eq('form_id', formId).is('values_ciphertext', null);
+      if (left.error) throw left.error;
+      return json(200, { migrated, remaining: left.count ?? 0 });
+    }
+
     if (action === 'list') {
       const result = await db.from('consent_recipients')
         .select('id, token, identity_ciphertext, display_hint, response_id, submitted_at, created_at')

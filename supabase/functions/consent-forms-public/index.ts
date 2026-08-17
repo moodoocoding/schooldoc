@@ -155,7 +155,14 @@ Deno.serve(async (request) => {
     if (recipient?.submitted_at && !form.allow_resubmission) throw new HttpError(409, '이미 제출한 가정통신문입니다. 담당자에게 문의해 주세요.');
 
     const responseId = crypto.randomUUID();
-    const inserted = await db.from('consent_responses').insert({ id: responseId, form_id: form.id, values: cleanValues, recipient_id: recipient?.id ?? null });
+    // 응답 본문은 평문으로 남기지 않는다. 복호는 소유자를 확인한 관리 함수만 한다.
+    if (!consentCrypto.isConfigured()) throw new HttpError(503, '서버 준비가 끝나지 않았습니다. 잠시 후 다시 시도해 주세요.');
+    const inserted = await db.from('consent_responses').insert({
+      id: responseId,
+      form_id: form.id,
+      values_ciphertext: await consentCrypto.encryptPayload(cleanValues),
+      recipient_id: recipient?.id ?? null,
+    });
     if (inserted.error) throw inserted.error;
     const uploaded: string[] = [];
     try {

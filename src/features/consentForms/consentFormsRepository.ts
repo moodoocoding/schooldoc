@@ -1,9 +1,8 @@
 import { supabase } from '../../utils/supabaseClient';
 import { getConsentFieldLayoutIssues } from './consentFieldLayout';
-import type { ConsentFieldDraft, ConsentLocalDraft, ConsentPageSize, ConsentRecipientMode, ConsentResponseRecord, ConsentShareSettings } from './types';
+import type { ConsentFieldDraft, ConsentLocalDraft, ConsentPageSize, ConsentRecipientMode, ConsentShareSettings } from './types';
 
 const DOCUMENT_BUCKET = 'consent-documents';
-const SIGNATURE_BUCKET = 'consent-signatures';
 const client = () => {
   if (!supabase) throw new Error('Supabase 연결 정보가 없습니다.');
   return supabase;
@@ -78,40 +77,6 @@ export const getRemoteConsentSourceFile = async (form: ConsentLocalDraft) => {
   const response = await fetch(signedUrl);
   if (!response.ok) throw new Error('원본 PDF를 내려받지 못했습니다.');
   return new File([await response.blob()], form.fileName, { type: 'application/pdf' });
-};
-
-export const listRemoteConsentResponses = async (formId: string): Promise<ConsentResponseRecord[]> => {
-  const { data, error } = await client()
-    .from('consent_responses').select('id, values, submitted_at')
-    .eq('form_id', formId).order('submitted_at', { ascending: true });
-  if (error) fail('제출된 응답을 불러오지 못했습니다', error);
-  const rows = (data ?? []) as Array<{ id: string; values: Record<string, string> | null; submitted_at: string }>;
-  if (!rows.length) return [];
-
-  const signatureRows = await client()
-    .from('consent_response_signatures').select('response_id, field_id, storage_path')
-    .in('response_id', rows.map((row) => row.id));
-  if (signatureRows.error) fail('서명 이미지를 불러오지 못했습니다', signatureRows.error);
-  const signatures = (signatureRows.data ?? []) as Array<{ response_id: string; field_id: string; storage_path: string }>;
-
-  const urlByPath = new Map<string, string>();
-  if (signatures.length) {
-    const signed = await client().storage.from(SIGNATURE_BUCKET)
-      .createSignedUrls(signatures.map((signature) => signature.storage_path), 60 * 60);
-    if (signed.error) fail('서명 이미지 주소를 만들지 못했습니다', signed.error);
-    (signed.data ?? []).forEach((entry) => {
-      if (entry.path && entry.signedUrl) urlByPath.set(entry.path, entry.signedUrl);
-    });
-  }
-
-  return rows.map((row) => {
-    const values = { ...(row.values ?? {}) };
-    signatures.filter((signature) => signature.response_id === row.id).forEach((signature) => {
-      const url = urlByPath.get(signature.storage_path);
-      if (url) values[signature.field_id] = url;
-    });
-    return { id: row.id, submittedAt: row.submitted_at, values };
-  });
 };
 
 export const createRemoteConsentForm = async ({

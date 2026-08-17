@@ -5,7 +5,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { RegistryConfirmDialog } from '../registry/RegistryConfirmDialog';
 import { deleteConsentLocalDraft, getConsentLocalDraft, hashConsentPassword, listConsentLocalResponses, reissueConsentLocalToken, updateConsentLocalDraft } from './consentFormsLocalStore';
 import { getConsentPublicOrigin, isConsentFormsDemoMode } from './consentFormsConfig';
-import { getRemoteConsentForm, getRemoteConsentSourceFile, listRemoteConsentResponses, reissueConsentPublicToken, updateRemoteConsentForm } from './consentFormsRepository';
+import { getRemoteConsentForm, getRemoteConsentSourceFile, reissueConsentPublicToken, updateRemoteConsentForm } from './consentFormsRepository';
+import { listConsentResponses } from './consentResponsesApi';
 import { consentQrFileName, consentResponseFileName, consentResponsesFileName, downloadBlob, formatConsentValue, renderConsentResponsePdf, renderConsentResponsesPdf, svgToPngBlob } from './consentResponseRender';
 import { isRecipientsUnavailable, listConsentRecipients } from './consentRecipientsApi';
 import { downloadConsentResponsesExcel } from './consentResponsesExcel';
@@ -73,7 +74,7 @@ export function ConsentFormsManagePage() {
             : error instanceof Error ? error.message : '명단을 불러오지 못했습니다.');
         });
     }
-    listRemoteConsentResponses(id)
+    listConsentResponses(id)
       .then((rows) => { if (active) setResponses(rows); })
       .catch((error) => { if (active) setResponseError(error instanceof Error ? error.message : '응답을 불러오지 못했습니다.'); })
       .finally(() => { if (active) setResponsesLoading(false); });
