@@ -59,6 +59,8 @@ export interface ConsentLocalDraft {
   status: 'open' | 'closed';
   pageCount?: number;
   pageSizes?: ConsentPageSize[];
+  /** 보관 개월. 지나면 정리 화면에 모이지만 자동으로 지워지지는 않는다. */
+  retentionMonths?: number;
   sourcePath?: string;
   sourcePdfDataUrl?: string;
 }

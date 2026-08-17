@@ -5,11 +5,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { RegistryConfirmDialog } from '../registry/RegistryConfirmDialog';
 import { deleteConsentLocalDraft, getConsentLocalDraft, hashConsentPassword, listConsentLocalResponses, reissueConsentLocalToken, updateConsentLocalDraft } from './consentFormsLocalStore';
 import { getConsentPublicOrigin, isConsentFormsDemoMode } from './consentFormsConfig';
-import { deleteRemoteConsentForm, getRemoteConsentForm, getRemoteConsentSourceFile, listRemoteConsentResponses, reissueConsentPublicToken, updateRemoteConsentForm } from './consentFormsRepository';
+import { getRemoteConsentForm, getRemoteConsentSourceFile, listRemoteConsentResponses, reissueConsentPublicToken, updateRemoteConsentForm } from './consentFormsRepository';
 import { consentQrFileName, consentResponseFileName, consentResponsesFileName, downloadBlob, formatConsentValue, renderConsentResponsePdf, renderConsentResponsesPdf, svgToPngBlob } from './consentResponseRender';
 import { isRecipientsUnavailable, listConsentRecipients } from './consentRecipientsApi';
 import { downloadConsentResponsesExcel } from './consentResponsesExcel';
 import { filterRecipients, type ConsentRecipientFilter } from './consentRecipientSheet';
+import { purgeConsentForms } from './consentPurgeApi';
+import { DEFAULT_RETENTION_MONTHS, retentionMonthsOf } from './consentPurgeSelection';
 import type { ConsentLocalDraft, ConsentRecipientRecord, ConsentResponseRecord } from './types';
 
 const submittedLabel = (value: string) => {
@@ -36,6 +38,7 @@ export function ConsentFormsManagePage() {
   const [allowResubmission, setAllowResubmission] = useState(draft?.allowResubmission ?? false);
   const [passwordEnabled, setPasswordEnabled] = useState(draft?.passwordEnabled ?? false);
   const [newPassword, setNewPassword] = useState('');
+  const [retentionMonths, setRetentionMonths] = useState(DEFAULT_RETENTION_MONTHS);
   const [copied, setCopied] = useState(false);
   const [responses, setResponses] = useState<ConsentResponseRecord[]>(() => isConsentFormsDemoMode ? listConsentLocalResponses(id) : []);
   const [responsesLoading, setResponsesLoading] = useState(!isConsentFormsDemoMode);
@@ -81,6 +84,7 @@ export function ConsentFormsManagePage() {
       setDeadline(form?.deadline ?? '');
       setAllowResubmission(form?.allowResubmission ?? false);
       setPasswordEnabled(form?.passwordEnabled ?? false);
+      if (form) setRetentionMonths(retentionMonthsOf(form));
     }).catch((error) => {
       if (active) setLoadError(error instanceof Error ? error.message : '수합을 불러오지 못했습니다.');
     }).finally(() => { if (active) setLoading(false); });
@@ -93,7 +97,7 @@ export function ConsentFormsManagePage() {
 
   const save = async () => {
     if (!isConsentFormsDemoMode) {
-      const updated = await updateRemoteConsentForm(draft.id, { title: title.trim() || draft.title, deadline, allowResubmission, passwordEnabled, password: newPassword });
+      const updated = await updateRemoteConsentForm(draft.id, { title: title.trim() || draft.title, deadline, allowResubmission, passwordEnabled, password: newPassword, retentionMonths });
       if (updated) setDraft(updated);
       setNewPassword('');
       setEditing(false);
@@ -171,7 +175,10 @@ export function ConsentFormsManagePage() {
     setResponseError('');
     try {
       if (isConsentFormsDemoMode) deleteConsentLocalDraft(draft.id);
-      else await deleteRemoteConsentForm(draft.id);
+      else {
+        const result = await purgeConsentForms([draft.id]);
+        if (result.failed.length) throw new Error(result.failed[0].error);
+      }
       navigate('/tools/consent-forms');
     } catch (error) {
       setResponseError(error instanceof Error ? error.message : '가정통신문을 삭제하지 못했습니다.');
@@ -233,7 +240,7 @@ export function ConsentFormsManagePage() {
       <button type="button" onClick={() => setConfirmingDelete(true)} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg px-3 text-xs font-bold text-[#B42318] hover:bg-[#FEF2F2] sm:ml-auto"><Trash2 className="h-4 w-4" />수합 삭제</button>
     </nav>
 
-    {editing ? <section className="border-y border-[#DCE3EA] bg-white px-5 py-5"><h2 className="text-sm font-bold">수합 설정 수정</h2><div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="text-xs font-bold">제목<input value={title} onChange={(event) => setTitle(event.target.value)} className="mt-2 min-h-[44px] w-full rounded-lg border border-[#C8D0DA] px-3 text-sm font-normal" /></label><label className="text-xs font-bold">응답 기한<input type="date" value={deadline} onChange={(event) => setDeadline(event.target.value)} className="mt-2 min-h-[44px] w-full rounded-lg border border-[#C8D0DA] px-3 text-sm font-normal" /></label></div><div className="mt-4 grid gap-2 sm:grid-cols-2"><label className="flex min-h-[44px] items-center gap-3 text-sm font-bold"><input type="checkbox" checked={allowResubmission} onChange={(event) => setAllowResubmission(event.target.checked)} className="h-4 w-4" />제출 후 수정 허용</label><label className="flex min-h-[44px] items-center gap-3 text-sm font-bold"><input type="checkbox" checked={passwordEnabled} onChange={(event) => setPasswordEnabled(event.target.checked)} className="h-4 w-4" />공개 링크 비밀번호 사용</label></div>{passwordEnabled ? <label className="mt-3 block max-w-sm text-xs font-bold">새 비밀번호<input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder={draft.passwordHash ? '변경할 때만 입력' : '4자 이상 입력'} className="mt-2 min-h-[44px] w-full rounded-lg border border-[#C8D0DA] px-3 text-sm font-normal" /></label> : null}<div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setEditing(false)} className="min-h-[44px] rounded-lg px-4 text-sm font-bold">취소</button><button type="button" disabled={passwordEnabled && !draft.passwordHash && newPassword.trim().length < 4} onClick={() => void save()} className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[#0F6CBD] px-4 text-sm font-bold text-white disabled:bg-[#AAB7C4]"><Save className="h-4 w-4" />저장</button></div></section> : null}
+    {editing ? <section className="border-y border-[#DCE3EA] bg-white px-5 py-5"><h2 className="text-sm font-bold">수합 설정 수정</h2><div className="mt-4 grid gap-4 sm:grid-cols-2"><label className="text-xs font-bold">제목<input value={title} onChange={(event) => setTitle(event.target.value)} className="mt-2 min-h-[44px] w-full rounded-lg border border-[#C8D0DA] px-3 text-sm font-normal" /></label><label className="text-xs font-bold">응답 기한<input type="date" value={deadline} onChange={(event) => setDeadline(event.target.value)} className="mt-2 min-h-[44px] w-full rounded-lg border border-[#C8D0DA] px-3 text-sm font-normal" /></label><label className="text-xs font-bold">보관 기간<span className="ml-2 font-semibold text-[#64748B]">지나면 정리 목록에 모입니다. 자동으로 지워지지 않습니다.</span><div className="mt-2 flex items-center gap-2"><input type="number" min="1" max="120" value={retentionMonths} onChange={(event) => setRetentionMonths(Math.max(1, Math.min(120, Math.round(Number(event.target.value)) || DEFAULT_RETENTION_MONTHS)))} className="min-h-[44px] w-24 rounded-lg border border-[#C8D0DA] px-3 text-sm font-normal tabular-nums" /><span className="text-sm font-semibold text-[#526174]">개월</span></div></label></div><div className="mt-4 grid gap-2 sm:grid-cols-2"><label className="flex min-h-[44px] items-center gap-3 text-sm font-bold"><input type="checkbox" checked={allowResubmission} onChange={(event) => setAllowResubmission(event.target.checked)} className="h-4 w-4" />제출 후 수정 허용</label><label className="flex min-h-[44px] items-center gap-3 text-sm font-bold"><input type="checkbox" checked={passwordEnabled} onChange={(event) => setPasswordEnabled(event.target.checked)} className="h-4 w-4" />공개 링크 비밀번호 사용</label></div>{passwordEnabled ? <label className="mt-3 block max-w-sm text-xs font-bold">새 비밀번호<input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder={draft.passwordHash ? '변경할 때만 입력' : '4자 이상 입력'} className="mt-2 min-h-[44px] w-full rounded-lg border border-[#C8D0DA] px-3 text-sm font-normal" /></label> : null}<div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setEditing(false)} className="min-h-[44px] rounded-lg px-4 text-sm font-bold">취소</button><button type="button" disabled={passwordEnabled && !draft.passwordHash && newPassword.trim().length < 4} onClick={() => void save()} className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[#0F6CBD] px-4 text-sm font-bold text-white disabled:bg-[#AAB7C4]"><Save className="h-4 w-4" />저장</button></div></section> : null}
 
     <section aria-label="수합 요약" className="grid grid-cols-2 border-y border-[#DCE3EA] bg-white sm:grid-cols-4">
       <div className="border-b border-r border-[#EEF1F4] px-4 py-3 sm:border-b-0"><span className="text-[11px] font-semibold text-[#64748B]">응답</span><strong className="mt-0.5 block text-xl tabular-nums">{draft.responseCount}건</strong></div>

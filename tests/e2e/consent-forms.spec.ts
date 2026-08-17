@@ -524,3 +524,41 @@ test('확대해도 필드의 상대 위치가 유지된다', async ({ page }) =>
   await page.getByRole('button', { name: '쪽 맞춤으로 되돌리기' }).click();
   await expect(page.getByRole('button', { name: '쪽 맞춤으로 되돌리기' })).toContainText('100%');
 });
+
+test('여러 수합을 선택해 한 번에 지운다', async ({ page }) => {
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+  pdf.text('Notice', 20, 25);
+  const buffer = Buffer.from(pdf.output('arraybuffer'));
+
+  for (const title of ['정리 대상 하나', '정리 대상 둘', '남겨둘 수합']) {
+    await page.goto('/tools/consent-forms/new');
+    await page.getByLabel('가정통신문 PDF 파일').setInputFiles({ name: 'bulk.pdf', mimeType: 'application/pdf', buffer });
+    await page.getByRole('textbox', { name: '제목' }).fill(title);
+    await page.getByRole('button', { name: '확인 후 필드 배치' }).click();
+    await page.getByRole('button', { name: '텍스트', exact: true }).click();
+    await page.getByRole('button', { name: '필드 배치 완료' }).click();
+    await page.getByLabel('명단 없이 받기').check();
+    await page.getByRole('button', { name: '다음: 공유 설정' }).click();
+    await page.getByRole('button', { name: '수합 만들기' }).click();
+    await expect(page.getByRole('heading', { name: title })).toBeVisible();
+  }
+
+  await page.getByLabel('정리 대상 하나 선택').check();
+  await page.getByLabel('정리 대상 둘 선택').check();
+  await expect(page.getByText('2개 선택')).toBeVisible();
+
+  await page.getByRole('button', { name: '선택 삭제' }).click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toContainText('선택한 수합 2개를 삭제할까요?');
+  await expect(dialog).toContainText('되돌릴 수 없습니다');
+  await dialog.getByRole('button', { name: '2개 삭제' }).click();
+
+  await expect(page.getByRole('status')).toContainText('2개를 지웠습니다');
+  await expect(page.getByRole('heading', { name: '정리 대상 하나' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: '정리 대상 둘' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: '남겨둘 수합' })).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '남겨둘 수합' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '정리 대상 하나' })).toHaveCount(0);
+});
