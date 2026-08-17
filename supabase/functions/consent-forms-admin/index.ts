@@ -190,17 +190,14 @@ Deno.serve(async (request) => {
 
     if (action === 'responses') {
       const result = await db.from('consent_responses')
-        .select('id, values, values_ciphertext, submitted_at, recipient_id')
+        .select('id, values_ciphertext, submitted_at, recipient_id')
         .eq('form_id', formId).order('submitted_at', { ascending: true });
       if (result.error) throw result.error;
 
       const rows = result.data ?? [];
       const responses = [];
       for (const row of rows) {
-        // 이전 중에는 암호문과 평문이 섞인다. 암호문이 있으면 그것을 쓴다.
-        const values = row.values_ciphertext
-          ? await consentCrypto.decryptPayload<Record<string, string>>(row.values_ciphertext)
-          : (row.values ?? {});
+        const values = await consentCrypto.decryptPayload<Record<string, string>>(row.values_ciphertext);
         responses.push({ id: row.id, submittedAt: row.submitted_at, values, recipientId: row.recipient_id });
       }
 
@@ -226,27 +223,6 @@ Deno.serve(async (request) => {
         });
       }
       return json(200, { responses });
-    }
-
-    /** 평문으로 남은 기존 응답을 나눠서 봉인한다. 끝나면 remaining이 0이 된다. */
-    if (action === 'encrypt-legacy') {
-      const pending = await db.from('consent_responses')
-        .select('id, values').eq('form_id', formId).is('values_ciphertext', null).limit(50);
-      if (pending.error) throw pending.error;
-
-      let migrated = 0;
-      for (const row of pending.data ?? []) {
-        const sealed = await consentCrypto.encryptPayload(row.values ?? {});
-        const updated = await db.from('consent_responses')
-          .update({ values_ciphertext: sealed, values: null }).eq('id', row.id);
-        if (updated.error) throw updated.error;
-        migrated += 1;
-      }
-
-      const left = await db.from('consent_responses')
-        .select('id', { count: 'exact', head: true }).eq('form_id', formId).is('values_ciphertext', null);
-      if (left.error) throw left.error;
-      return json(200, { migrated, remaining: left.count ?? 0 });
     }
 
     if (action === 'list') {

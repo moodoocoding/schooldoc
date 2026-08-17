@@ -9,8 +9,3 @@ import type { ConsentResponseRecord } from './types';
 export const listConsentResponses = async (formId: string) => (
   await invokeConsentAdmin<{ responses: ConsentResponseRecord[] }>({ action: 'responses', formId })
 ).responses;
-
-/** 평문으로 남은 기존 응답을 나눠서 봉인한다. remaining이 0이 될 때까지 반복 호출한다. */
-export const encryptLegacyConsentResponses = async (formId: string) => (
-  invokeConsentAdmin<{ migrated: number; remaining: number }>({ action: 'encrypt-legacy', formId })
-);
