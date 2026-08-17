@@ -108,9 +108,9 @@ export function ConsentQrPrintPage() {
           <div ref={pagesRef} className="mx-auto w-fit space-y-6 print:space-y-0">
             {pages.map((pageRecipients, pageIndex) => (
               <section key={pageIndex} data-testid="consent-qr-page" className="consent-qr-print-page flex h-[1123px] w-[794px] shrink-0 flex-col bg-white px-[48px] py-[42px] shadow-[0_8px_28px_rgba(15,23,42,0.16)]">
-                <header className="mb-5 border-b-2 border-[#0F6CBD] pb-4">
+                <header className="mb-5 border-b-2 border-[#334155] pb-4">
                   <div className="flex items-center justify-between gap-5">
-                    <div className="min-w-0"><p className="text-[12px] font-bold text-[#0F6CBD]">가정통신문 수합{target === 'pending' ? ' · 미제출자 재배부' : ''}</p><h2 className="mt-1 truncate text-[21px] font-extrabold text-[#0F172A]">{draft.title}</h2></div>
+                    <div className="min-w-0"><p className="text-[12px] font-bold text-[#334155]">가정통신문 수합{target === 'pending' ? ' · 미제출자 재배부' : ''}</p><h2 className="mt-1 truncate text-[21px] font-extrabold text-[#0F172A]">{draft.title}</h2></div>
                     <div className="flex shrink-0 items-center gap-2 text-[12px] font-bold text-[#526174]"><QrCode className="h-4 w-4" />개인 응답 QR</div>
                   </div>
                 </header>
@@ -119,7 +119,7 @@ export function ConsentQrPrintPage() {
                     const recipient = pageRecipients[slot];
                     if (!recipient) return <div key={`empty-${slot}`} aria-hidden="true" />;
                     return (
-                      <div key={recipient.id} className="flex items-center gap-3 border border-dashed border-[#C8D0DA] px-3 py-2">
+                      <div key={recipient.id} className="flex items-center gap-3 border border-dashed border-[#94A3B8] px-3 py-2">
                         <div className="shrink-0 border border-[#DCE3EA] bg-white p-1"><QRCodeSVG value={personalLink(recipient.token)} size={104} level="M" includeMargin={false} aria-label={`${recipient.name} 응답 QR 코드`} /></div>
                         <div className="min-w-0">
                           <p className="truncate text-[15px] font-extrabold text-[#0F172A]">{recipient.name}</p>
@@ -130,7 +130,7 @@ export function ConsentQrPrintPage() {
                     );
                   })}
                 </div>
-                <footer className="mt-4 flex items-center justify-between border-t border-[#EEF1F4] pt-3 text-[11px] text-[#64748B]"><span>개인 링크가 담겨 있으니 해당 보호자에게만 전달해 주세요.</span><span className="tabular-nums">{pageIndex + 1} / {pages.length}</span></footer>
+                <footer className="mt-4 flex items-center justify-between border-t border-[#EEF1F4] pt-3 text-[11px] text-[#64748B]"><span>점선을 따라 잘라 해당 보호자에게만 전달해 주세요. 개인 링크가 담겨 있습니다.</span><span className="tabular-nums">{pageIndex + 1} / {pages.length}</span></footer>
               </section>
             ))}
           </div>

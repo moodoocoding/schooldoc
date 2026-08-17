@@ -280,7 +280,7 @@ export function ConsentFormsManagePage() {
     <header className="flex items-center justify-between gap-3 border-b border-[#DCE3EA] pb-3"><button type="button" onClick={() => navigate('/tools/consent-forms')} className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-2 text-sm font-semibold text-[#334155] hover:bg-white hover:text-[#0F6CBD]"><ArrowLeft className="h-5 w-5" />목록으로</button><span className={`rounded-md px-2.5 py-1 text-xs font-bold ${draft.status === 'open' ? 'bg-[#E6F4EA] text-[#126B32]' : 'bg-[#EEF1F4] text-[#526174]'}`}>{draft.status === 'open' ? '수합 중' : '종료'}</span></header>
 
     <section className="min-w-0 py-2">
-      <p className="text-xs font-bold text-[#0F6CBD]">가정통신문 수합 관리</p>
+      <p className="text-xs font-bold text-[#526174]">가정통신문 수합 관리</p>
       <h1 className="mt-1 max-w-4xl break-words text-xl font-extrabold leading-8 sm:text-2xl">{draft.title}</h1>
       <p className="mt-1.5 max-w-3xl truncate text-xs text-[#64748B]" title={draft.fileName}>{draft.fileName}</p>
     </section>
@@ -323,7 +323,7 @@ export function ConsentFormsManagePage() {
         {submittedCount < recipients.length ? <button type="button" onClick={() => navigate(`/tools/consent-forms/${draft.id}/qr?target=pending`)} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-[#E6A700] bg-[#FFF9ED] px-3 text-xs font-bold text-[#76520E] hover:bg-[#FEF3C7]"><QrCode className="h-4 w-4" />미제출자 {recipients.length - submittedCount}명 재배부</button> : null}
       </div></div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <label className="min-w-0 flex-1"><span className="sr-only">이름 또는 식별값으로 찾기</span><input value={recipientQuery} onChange={(event) => setRecipientQuery(event.target.value)} placeholder="이름 또는 학번으로 찾기" className="min-h-[40px] w-full min-w-[160px] rounded-lg border border-[#C8D0DA] px-3 text-xs" /></label>
+        <label className="min-w-0 flex-1"><span className="sr-only">이름 또는 식별값으로 찾기</span><input value={recipientQuery} onChange={(event) => setRecipientQuery(event.target.value)} placeholder="이름 또는 식별값으로 찾기" className="min-h-[40px] w-full min-w-[160px] rounded-lg border border-[#C8D0DA] px-3 text-xs" /></label>
         <div className="flex shrink-0 gap-1" role="group" aria-label="제출 상태 filter">
           {([['all', '전체'], ['pending', '미제출'], ['submitted', '제출']] as const).map(([value, label]) => (
             <button key={value} type="button" aria-pressed={recipientFilter === value} onClick={() => setRecipientFilter(value)} className={`min-h-[40px] rounded-lg border px-3 text-xs font-bold ${recipientFilter === value ? 'border-[#0F6CBD] bg-[#EFF6FC] text-[#0F6CBD]' : 'border-[#C8D0DA] text-[#334155]'}`}>{label}</button>

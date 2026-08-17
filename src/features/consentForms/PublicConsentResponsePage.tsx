@@ -153,7 +153,7 @@ export function PublicConsentResponsePage() {
 
   return <main className="min-h-screen bg-[#E6E9ED] pb-28 text-[#0F172A]">
     <header className="sticky top-0 z-40 border-b border-[#DCE3EA] bg-white/95 px-4 py-3 backdrop-blur">
-      <div className="mx-auto flex max-w-[940px] items-center justify-between gap-4"><div className="min-w-0"><p className="text-[11px] font-bold text-[#0F6CBD]">{document.recipientName ? `${document.recipientName} 학생 보호자용` : '가정통신문 응답'}</p><h1 className="truncate text-sm font-extrabold sm:text-base">{document.title}</h1></div><div className="shrink-0 text-right"><span className="text-[11px] font-semibold text-[#64748B]">필수 항목</span><strong className="ml-2 text-sm tabular-nums text-[#0F6CBD]">{completedCount}/{requiredFields.length}</strong></div></div>
+      <div className="mx-auto flex max-w-[940px] items-center justify-between gap-4"><div className="min-w-0"><p className="text-[11px] font-bold text-[#526174]">{document.recipientName ? `${document.recipientName} 학생 보호자용` : '가정통신문 응답'}</p><h1 className="truncate text-sm font-extrabold sm:text-base">{document.title}</h1></div><div className="shrink-0 text-right"><span className="text-[11px] font-semibold text-[#64748B]">필수 항목</span><strong className="ml-2 text-sm tabular-nums text-[#0F6CBD]">{completedCount}/{requiredFields.length}</strong></div></div>
     </header>
     {document.description ? <section className="mx-auto max-w-[940px] border-b border-[#DCE3EA] bg-white px-4 py-3 text-xs leading-5 text-[#526174] sm:px-6">{document.description}</section> : null}
     <form onSubmit={(event) => void submit(event)}>
