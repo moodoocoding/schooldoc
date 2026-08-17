@@ -609,3 +609,44 @@ test('처리 중인 버튼은 다시 눌리지 않는다', async ({ page }) => {
   await expect(dialog.getByRole('button', { name: '영구 삭제' })).toBeVisible();
   await expect(dialog.getByRole('button', { name: '수합 삭제' })).toHaveCount(0);
 });
+
+test('기존 수합을 원본 PDF까지 그대로 복제한다', async ({ page }) => {
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+  pdf.text('Original notice', 20, 25);
+  await page.goto('/tools/consent-forms/new');
+  await page.getByLabel('가정통신문 PDF 파일').setInputFiles({
+    name: 'origin.pdf', mimeType: 'application/pdf', buffer: Buffer.from(pdf.output('arraybuffer')),
+  });
+  await page.getByRole('textbox', { name: '제목' }).fill('1학기 현장체험학습 동의서');
+  await page.getByRole('button', { name: '확인 후 필드 배치' }).click();
+  await page.getByRole('button', { name: '텍스트', exact: true }).click();
+  await page.getByRole('textbox', { name: '표시 이름' }).fill('보호자 의견');
+  await page.getByRole('button', { name: '서명', exact: true }).click();
+  await page.getByRole('button', { name: '필드 배치 완료' }).click();
+  await page.getByLabel('명단 없이 받기').check();
+  await page.getByRole('button', { name: '다음: 공유 설정' }).click();
+  await page.getByRole('button', { name: '수합 만들기' }).click();
+  await page.getByRole('button', { name: '관리·공유' }).click();
+  const originUrl = page.url();
+  const originLink = await page.getByLabel('응답 화면 열기').getAttribute('href');
+
+  await page.getByRole('button', { name: '이 수합 복제' }).click();
+
+  // 복제본 관리 화면으로 이동하고 제목에 사본 표시가 붙는다.
+  await expect(page.getByRole('heading', { name: '1학기 현장체험학습 동의서 사본' })).toBeVisible();
+  expect(page.url()).not.toBe(originUrl);
+
+  // 링크는 새로 발급되어 이전 배부물이 새 수합을 가리키지 않는다.
+  const copyLink = await page.getByLabel('응답 화면 열기').getAttribute('href');
+  expect(copyLink).not.toBe(originLink);
+
+  // 원본 PDF와 필드가 그대로 따라온다.
+  await page.goto(copyLink!);
+  await expect(page.getByRole('textbox', { name: '보호자 의견' })).toBeVisible();
+  await expect(page.locator('section[aria-label="1쪽"] canvas')).toBeVisible();
+
+  // 원본은 그대로 남는다.
+  await page.goto('/tools/consent-forms');
+  await expect(page.getByRole('heading', { name: '1학기 현장체험학습 동의서', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '1학기 현장체험학습 동의서 사본' })).toBeVisible();
+});

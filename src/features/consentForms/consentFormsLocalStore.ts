@@ -1,3 +1,4 @@
+import { buildDuplicateDraft } from './consentDuplicate';
 import type { ConsentLocalDraft, ConsentResponseRecord } from './types';
 
 const STORAGE_KEY = 'schooldoc:consent-forms:drafts';
@@ -79,6 +80,18 @@ export const reissueConsentLocalToken = (id: string) => {
   const publicToken = crypto.randomUUID();
   updateConsentLocalDraft(id, { publicToken });
   return publicToken;
+};
+
+export const duplicateConsentLocalDraft = (id: string) => {
+  const source = getConsentLocalDraft(id);
+  if (!source) return null;
+  const copy = buildDuplicateDraft(source, {
+    id: crypto.randomUUID(),
+    publicToken: crypto.randomUUID(),
+    createdAt: new Date().toISOString(),
+  });
+  addConsentLocalDraft(copy);
+  return copy;
 };
 
 export const deleteConsentLocalDraft = (id: string) => {

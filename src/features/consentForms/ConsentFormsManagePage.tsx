@@ -1,9 +1,9 @@
-import { ArrowLeft, Check, Copy, Download, ImageDown, ExternalLink, FilePenLine, Inbox, LoaderCircle, LockKeyhole, PauseCircle, PlayCircle, QrCode, RefreshCw, Save, Settings2, Sheet, Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, Copy, Download, ImageDown, ExternalLink, FilePenLine, Inbox, LoaderCircle, LockKeyhole, PauseCircle, PlayCircle, CopyPlus, QrCode, RefreshCw, Save, Settings2, Sheet, Trash2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { RegistryConfirmDialog } from '../registry/RegistryConfirmDialog';
-import { deleteConsentLocalDraft, getConsentLocalDraft, hashConsentPassword, listConsentLocalResponses, reissueConsentLocalToken, updateConsentLocalDraft } from './consentFormsLocalStore';
+import { deleteConsentLocalDraft, duplicateConsentLocalDraft, getConsentLocalDraft, hashConsentPassword, listConsentLocalResponses, reissueConsentLocalToken, updateConsentLocalDraft } from './consentFormsLocalStore';
 import { getConsentPublicOrigin, isConsentFormsDemoMode } from './consentFormsConfig';
 import { getRemoteConsentForm, getRemoteConsentSourceFile, reissueConsentPublicToken, updateRemoteConsentForm } from './consentFormsRepository';
 import { listConsentResponses } from './consentResponsesApi';
@@ -12,6 +12,8 @@ import { isRecipientsUnavailable, listConsentRecipients } from './consentRecipie
 import { downloadConsentResponsesExcel } from './consentResponsesExcel';
 import { filterRecipients, type ConsentRecipientFilter } from './consentRecipientSheet';
 import { purgeConsentForms } from './consentPurgeApi';
+import { duplicateConsentForm } from './consentDuplicateApi';
+import { DUPLICATE_CLEARED_LABELS } from './consentDuplicate';
 import { DEFAULT_RETENTION_MONTHS, retentionMonthsOf } from './consentPurgeSelection';
 import type { ConsentLocalDraft, ConsentRecipientRecord, ConsentResponseRecord } from './types';
 
@@ -53,6 +55,7 @@ export function ConsentFormsManagePage() {
   const [recipientFilter, setRecipientFilter] = useState<ConsentRecipientFilter>('all');
   const [confirmingReissue, setConfirmingReissue] = useState(false);
   const [reissuing, setReissuing] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [qrError, setQrError] = useState('');
   const [savingQr, setSavingQr] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
@@ -61,11 +64,26 @@ export function ConsentFormsManagePage() {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // 복제처럼 관리 화면에서 다른 수합으로 옮겨갈 수 있다.
+  // 컴포넌트가 그대로 남으므로 id가 바뀌면 화면 상태를 다시 맞춰야 한다.
   useEffect(() => {
+    setEditing(false);
+    setNewPassword('');
+    setRecipients([]);
+    setRecipientsNotice('');
+    setResponseError('');
     if (isConsentFormsDemoMode) {
+      const local = getConsentLocalDraft(id);
+      setDraft(local);
+      setTitle(local?.title ?? '');
+      setDeadline(local?.deadline ?? '');
+      setAllowResubmission(local?.allowResubmission ?? false);
+      setPasswordEnabled(local?.passwordEnabled ?? false);
+      if (local) setRetentionMonths(retentionMonthsOf(local));
       setResponses(listConsentLocalResponses(id));
       return;
     }
+    setLoading(true);
     let active = true;
     if (!isConsentFormsDemoMode) {
       listConsentRecipients(id)
@@ -164,6 +182,23 @@ export function ConsentFormsManagePage() {
     }
   };
 
+  const duplicateForm = async () => {
+    if (duplicating) return;
+    setDuplicating(true);
+    setResponseError('');
+    try {
+      const copyId = isConsentFormsDemoMode
+        ? duplicateConsentLocalDraft(draft.id)?.id
+        : (await duplicateConsentForm(draft.id)).id;
+      if (!copyId) throw new Error('복제한 수합을 확인하지 못했습니다.');
+      navigate(`/tools/consent-forms/${copyId}`);
+    } catch (error) {
+      setResponseError(error instanceof Error ? error.message : '수합을 복제하지 못했습니다.');
+    } finally {
+      setDuplicating(false);
+    }
+  };
+
   const reissueLink = async () => {
     if (reissuing) return;
     setReissuing(true);
@@ -252,6 +287,7 @@ export function ConsentFormsManagePage() {
 
     <nav aria-label="수합 관리 작업" className="flex flex-wrap items-center gap-2 border-y border-[#DCE3EA] bg-white px-3 py-2.5">
       <button type="button" onClick={() => navigate(`/tools/consent-forms/new?edit=${draft.id}`)} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg px-3 text-xs font-bold text-[#334155] hover:bg-[#EFF6FC] hover:text-[#0F6CBD]"><FilePenLine className="h-4 w-4" />원본·필드 수정</button>
+      <button type="button" disabled={duplicating} onClick={() => void duplicateForm()} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg px-3 text-xs font-bold text-[#334155] hover:bg-[#EFF6FC] hover:text-[#0F6CBD] disabled:text-[#94A3B8]" title={`원본 PDF와 필드, 명단을 그대로 가져옵니다. ${DUPLICATE_CLEARED_LABELS.join('·')}은 비웁니다.`}>{duplicating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CopyPlus className="h-4 w-4" />}{duplicating ? '복제 중' : '이 수합 복제'}</button>
       <button type="button" onClick={() => setEditing((value) => !value)} className={`inline-flex min-h-[40px] items-center gap-2 rounded-lg px-3 text-xs font-bold ${editing ? 'bg-[#EFF6FC] text-[#0F6CBD]' : 'text-[#334155] hover:bg-[#EFF6FC] hover:text-[#0F6CBD]'}`}><Settings2 className="h-4 w-4" />설정 수정</button>
       <span className="hidden h-5 w-px bg-[#DCE3EA] sm:block" />
       <button type="button" onClick={toggleStatus} className={`inline-flex min-h-[40px] items-center gap-2 rounded-lg px-3 text-xs font-bold ${draft.status === 'open' ? 'text-[#B42318] hover:bg-[#FEF2F2]' : 'text-[#126B32] hover:bg-[#E6F4EA]'}`}>{draft.status === 'open' ? <PauseCircle className="h-4 w-4" /> : <PlayCircle className="h-4 w-4" />}{draft.status === 'open' ? '수합 종료' : '수합 재개'}</button>
