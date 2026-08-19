@@ -143,3 +143,70 @@ test('XLSX 파일을 읽어 학생 결과를 채운다', async ({ page }, testIn
   await expect(page.getByLabel('1번 학생 수학 점수')).toHaveValue('94');
   await expect(page.getByLabel('1번 학생 피드백')).toHaveValue('수학 문제 해결력이 좋습니다.');
 });
+
+test('실수로 지운 학생 행을 Ctrl+Z와 되돌리기 버튼으로 살린다', async ({ page }) => {
+  // 학급 하나를 손으로 채우는 화면이라, 한 번의 오조작으로 입력이 사라지면 처음부터 다시 쳐야 한다.
+  await page.goto('/tools/student-results/new');
+  await page.getByLabel('1번 학생 성명').fill('김하늘');
+  await page.getByRole('button', { name: '학생 추가' }).click();
+  await page.getByLabel('2번 학생 성명').fill('박도윤');
+  await page.getByLabel('2번 학생 확인번호').fill('7315');
+
+  await expect(page.getByRole('button', { name: '되돌리기' })).toBeDisabled();
+
+  await page.getByRole('button', { name: '2번 학생 삭제' }).click();
+  await expect(page.getByLabel('2번 학생 성명')).toHaveCount(0);
+
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(page.getByLabel('2번 학생 성명')).toHaveValue('박도윤');
+  await expect(page.getByLabel('2번 학생 확인번호')).toHaveValue('7315');
+  await expect(page.getByLabel('1번 학생 성명')).toHaveValue('김하늘');
+  await expect(page.getByRole('button', { name: '되돌리기' })).toBeDisabled();
+
+  // 단축키를 모르는 사람을 위해 버튼으로도 같은 일이 되어야 한다.
+  await page.getByRole('button', { name: '2번 학생 삭제' }).click();
+  await expect(page.getByLabel('2번 학생 성명')).toHaveCount(0);
+  await page.getByRole('button', { name: '되돌리기' }).click();
+  await expect(page.getByLabel('2번 학생 성명')).toHaveValue('박도윤');
+});
+
+test('입력칸 안에서 누른 Ctrl+Z는 글자 되돌리기로 남는다', async ({ page }) => {
+  // 행 되돌리기가 브라우저의 글자 되돌리기를 빼앗으면 입력 중에 더 큰 혼란이 생긴다.
+  await page.goto('/tools/student-results/new');
+  await page.getByRole('button', { name: '학생 추가' }).click();
+  await page.getByLabel('2번 학생 성명').fill('박도윤');
+  await page.getByRole('button', { name: '2번 학생 삭제' }).click();
+  await expect(page.getByRole('button', { name: '되돌리기' })).toBeEnabled();
+
+  await page.getByLabel('1번 학생 성명').fill('김하늘');
+  await page.getByLabel('1번 학생 성명').press('ControlOrMeta+z');
+
+  // 지운 행은 그대로 남아 있고, 되돌리기는 아직 쓸 수 있어야 한다.
+  await expect(page.getByLabel('2번 학생 성명')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '되돌리기' })).toBeEnabled();
+});
+
+test('결과 안내를 지우기 전에 함께 사라지는 것을 숫자로 알린다', async ({ page }) => {
+  await page.goto('/tools/student-results/new');
+  await page.getByPlaceholder('예: 2학기 수행평가 결과').fill('1학기 수행평가 결과');
+  await page.getByLabel('1번 학생 성명').fill('김하늘');
+  await page.getByLabel('1번 학생 확인번호').fill('4821');
+  await page.getByLabel('1번 학생 평가 점수 점수').fill('92');
+  await page.getByRole('button', { name: '결과 안내 만들기' }).click();
+  await expect(page).toHaveURL(/\/tools\/student-results\/[0-9a-f-]+$/);
+
+  await page.getByRole('button', { name: '목록으로' }).click();
+  await page.getByRole('button', { name: '1학기 수행평가 결과 삭제' }).click();
+
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toContainText('학생 1명의 점수와 피드백이 함께 지워집니다');
+  await expect(dialog).toContainText('되돌릴 수 없');
+
+  // 취소하면 아무것도 사라지지 않는다.
+  await dialog.getByRole('button', { name: '취소' }).click();
+  await expect(page.getByRole('heading', { name: '1학기 수행평가 결과' })).toBeVisible();
+
+  await page.getByRole('button', { name: '1학기 수행평가 결과 삭제' }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: '영구 삭제' }).click();
+  await expect(page.getByRole('heading', { name: '아직 결과 안내가 없습니다' })).toBeVisible();
+});

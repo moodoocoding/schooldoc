@@ -1,21 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertCircle, ArrowLeft, CheckCircle2, FileSpreadsheet, LoaderCircle, Plus, Trash2, Undo2, Upload, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import { studentResultsOwnerId } from './studentResultsConfig';
 import { analyzeStudentResultFile, type StudentResultImportAnalysis } from './studentResultsImport';
 import { createStudentResultEvent } from './studentResultsService';
+import {
+  isTextEntryTarget,
+  isUndoShortcut,
+  rememberSnapshot,
+  takeLastSnapshot,
+  type EditableResultColumn,
+  type FormSnapshot,
+  type HistoryEntry,
+} from './studentResultsHistory';
 import { getStudentResultValidationIssue, makeEmptyRecipient } from './studentResultsUtils';
-import type { ResultColumn, ResultRecipientDraft, StudentResultDraft } from './types';
-
-type EditableResultColumn = Omit<ResultColumn, 'maxScore'> & { maxScore: number | '' };
-
-interface FormSnapshot {
-  title: string;
-  description: string;
-  columns: EditableResultColumn[];
-  recipients: ResultRecipientDraft[];
-}
+import type { ResultRecipientDraft, StudentResultDraft } from './types';
 
 const initialColumns: EditableResultColumn[] = [
   { id: 'score', label: '평가 점수', maxScore: 100, description: '' },
@@ -39,8 +39,46 @@ export function StudentResultsCreatePage() {
   const [importAnalysis, setImportAnalysis] = useState<StudentResultImportAnalysis | null>(null);
   const [pendingImportFileName, setPendingImportFileName] = useState('');
   const [pendingImport, setPendingImport] = useState<StudentResultImportAnalysis | null>(null);
-  const [preImportSnapshot, setPreImportSnapshot] = useState<FormSnapshot | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [undoNotice, setUndoNotice] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const snapshotNow = (): FormSnapshot => ({
+    title,
+    description,
+    columns: structuredClone(columns),
+    recipients: structuredClone(recipients),
+  });
+  /** 되돌릴 수 없는 변경 앞에서 현재 상태를 남긴다. */
+  const remember = (label: string) => {
+    setUndoNotice('');
+    setHistory((current) => rememberSnapshot(current, { label, snapshot: snapshotNow() }));
+  };
+  const undo = () => {
+    const { entry, rest } = takeLastSnapshot(history);
+    if (!entry) return;
+    setTitle(entry.snapshot.title);
+    setDescription(entry.snapshot.description);
+    setColumns(entry.snapshot.columns);
+    setRecipients(entry.snapshot.recipients);
+    setHistory(rest);
+    setUndoNotice(`${entry.label}을(를) 되돌렸습니다.`);
+    setError('');
+    setErrorFieldId('');
+  };
+  // 입력칸 안에서는 브라우저의 글자 되돌리기를 건드리지 않는다.
+  // 행을 지우면 지운 버튼이 사라져 포커스가 본문으로 가므로, 그 상태에서 Ctrl+Z가 여기로 온다.
+  // 의존성 배열을 두지 않아 매 렌더마다 다시 건다. 항상 최신 기록을 보는 쪽이 안전하다.
+  useEffect(() => {
+    const onKeyDown = (keyboardEvent: KeyboardEvent) => {
+      if (!isUndoShortcut(keyboardEvent) || isTextEntryTarget(keyboardEvent.target)) return;
+      if (history.length === 0) return;
+      keyboardEvent.preventDefault();
+      undo();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  });
 
   const addColumn = () => {
     const column: EditableResultColumn = {
@@ -58,6 +96,7 @@ export function StudentResultsCreatePage() {
 
   const removeColumn = (columnId: string) => {
     if (columns.length === 1) return;
+    remember(`${columns.find((column) => column.id === columnId)?.label.trim() || '이름 없는'} 항목 삭제`);
     setColumns((current) => current.filter((column) => column.id !== columnId));
     setRecipients((current) => current.map((recipient) => {
       const values = { ...recipient.values };
@@ -94,12 +133,7 @@ export function StudentResultsCreatePage() {
 
   const applyImport = () => {
     if (!pendingImport) return;
-    setPreImportSnapshot({
-      title,
-      description,
-      columns: structuredClone(columns),
-      recipients: structuredClone(recipients),
-    });
+    remember('엑셀 불러오기');
     setTitle(pendingImport.title);
     setDescription(pendingImport.description);
     setColumns(pendingImport.columns);
@@ -118,12 +152,7 @@ export function StudentResultsCreatePage() {
   };
 
   const undoImport = () => {
-    if (!preImportSnapshot) return;
-    setTitle(preImportSnapshot.title);
-    setDescription(preImportSnapshot.description);
-    setColumns(preImportSnapshot.columns);
-    setRecipients(preImportSnapshot.recipients);
-    setPreImportSnapshot(null);
+    undo();
     setImportAnalysis(null);
     setImportedFileName('');
   };
@@ -179,6 +208,7 @@ export function StudentResultsCreatePage() {
     || recipients.some((recipient) => recipient.name.trim() || recipient.verificationCode.trim() || recipient.feedback.trim()),
   );
   const fieldError = (fieldId: string) => errorFieldId === fieldId;
+  const lastChange = history.length > 0 ? history[history.length - 1].label : '';
 
   return (
     <form onSubmit={submit} className="mx-auto w-full max-w-7xl space-y-6 pb-12">
@@ -191,7 +221,18 @@ export function StudentResultsCreatePage() {
           <ArrowLeft className="h-5 w-5" />
           목록으로
         </button>
-        <span className="text-xs font-semibold text-[#526174]">엑셀 분석 또는 직접 입력</span>
+        <div className="flex items-center gap-3">
+          {undoNotice ? <span role="status" aria-live="polite" className="hidden text-xs font-semibold text-[#126B32] sm:inline">{undoNotice}</span> : null}
+          <button
+            type="button"
+            disabled={history.length === 0}
+            onClick={undo}
+            title={lastChange ? `${lastChange} 되돌리기 (Ctrl+Z)` : '되돌릴 변경이 없습니다'}
+            className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-[#C8D0DA] bg-white px-3 text-xs font-bold text-[#334155] hover:border-[#0F6CBD] hover:text-[#0F6CBD] disabled:border-[#E2E8F0] disabled:text-[#AAB7C4]"
+          >
+            <Undo2 className="h-4 w-4" />되돌리기
+          </button>
+        </div>
       </div>
 
       <div>
@@ -293,7 +334,7 @@ export function StudentResultsCreatePage() {
                 ) : null}
               </div>
               </div>
-              {preImportSnapshot ? <button type="button" onClick={undoImport} className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-lg border border-[#16803C] px-3 text-xs font-bold text-[#126B32]"><Undo2 className="h-4 w-4" />가져오기 취소</button> : null}
+              {lastChange === '엑셀 불러오기' ? <button type="button" onClick={undoImport} className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-lg border border-[#16803C] px-3 text-xs font-bold text-[#126B32]"><Undo2 className="h-4 w-4" />가져오기 취소</button> : null}
             </div>
           </div>
         ) : (
@@ -372,7 +413,7 @@ export function StudentResultsCreatePage() {
                     </td>
                   ))}
                   <td className="border border-[#DCE3EA] p-2"><input aria-label={`${index + 1}번 학생 피드백`} value={recipient.feedback} onChange={(event) => updateRecipient(index, { feedback: event.target.value })} className="min-h-[40px] w-full rounded-md border border-[#C8D0DA] px-2" /></td>
-                  <td className="border border-[#DCE3EA] p-2"><button type="button" disabled={recipients.length === 1} onClick={() => setRecipients((current) => current.filter((_, recipientIndex) => recipientIndex !== index))} className="flex h-9 w-9 items-center justify-center text-[#94A3B8] hover:text-[#B42318] disabled:opacity-30" aria-label={`${index + 1}번 학생 삭제`}><Trash2 className="h-4 w-4" /></button></td>
+                  <td className="border border-[#DCE3EA] p-2"><button type="button" disabled={recipients.length === 1} onClick={() => { remember(`${recipient.name.trim() || `${index + 1}번`} 학생 삭제`); setRecipients((current) => current.filter((_, recipientIndex) => recipientIndex !== index)); }} className="flex h-9 w-9 items-center justify-center text-[#94A3B8] hover:text-[#B42318] disabled:opacity-30" aria-label={`${index + 1}번 학생 삭제`}><Trash2 className="h-4 w-4" /></button></td>
                 </tr>
               ))}
             </tbody>

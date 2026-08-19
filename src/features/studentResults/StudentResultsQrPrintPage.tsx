@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { AlertCircle, ArrowLeft, Download, LoaderCircle, QrCode } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { getStudentResultsPublicOrigin } from './studentResultsConfig';
 import { paginateStudentResultRecipients } from './studentResultsUtils';
 import { useStudentResultEvent } from './useStudentResults';
 
@@ -32,7 +33,7 @@ export function StudentResultsQrPrintPage() {
     ? event.recipients.filter((recipient) => requestedRecipientIds.includes(recipient.id))
     : event.recipients;
   const pages = paginateStudentResultRecipients(printableRecipients, STUDENTS_PER_PAGE);
-  const personalLink = (token: string) => `${window.location.origin}/s/results/${event.publicToken}?recipient=${token}`;
+  const personalLink = (token: string) => `${getStudentResultsPublicOrigin()}/s/results/${event.publicToken}?recipient=${token}`;
   const downloadPdf = async () => {
     if (isExporting) return;
     setIsExporting(true);
