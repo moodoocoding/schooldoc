@@ -19,7 +19,9 @@ export function SignatureDialog({ registry, participant, onClose, onSubmit }: Si
   const [drawDataUrl, setDrawDataUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [values, setValues] = useState<Record<string, string>>(participant.values);
+  // 빈 채로 연다. 화면에 보이는 기존 값은 가려진 것이라, 그대로 돌려보내면 원문을 덮는다.
+  // 서버는 채워 보낸 항목만 반영하므로 비워 두면 교사가 넣어 둔 값이 그대로 남는다.
+  const [values, setValues] = useState<Record<string, string>>({});
   useDialogFocus(dialogRef, onClose, closeButtonRef);
 
   const handleSubmit = async () => {
@@ -58,7 +60,7 @@ export function SignatureDialog({ registry, participant, onClose, onSubmit }: Si
                     className={inputClass}
                     value={values[column.id] ?? ''}
                     onChange={(event) => setValues((current) => ({ ...current, [column.id]: event.target.value }))}
-                    placeholder={column.label}
+                    placeholder={participant.values[column.id] || column.label}
                   />
                 </label>
               ))}

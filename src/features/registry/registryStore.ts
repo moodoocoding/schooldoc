@@ -12,7 +12,7 @@ import {
   serializeRegistryBackup,
   summarizeRegistryBackup,
 } from './registryBackup';
-import { isValidSignatureDataUrl } from './registryUtils';
+import { isValidSignatureDataUrl, mergeSignedFieldValues } from './registryUtils';
 
 const STORAGE_KEY = 'schooldoc_registry_v1';
 const CHANGE_EVENT = 'schooldoc-registry-change';
@@ -198,7 +198,7 @@ export const submitSignature = (registryId: string, submission: SignatureSubmiss
         participant.id === submission.participantId && !participant.signature
           ? {
               ...participant,
-              values: submission.values ?? participant.values,
+              values: mergeSignedFieldValues(participant.values, submission.values),
               signature,
             }
           : participant

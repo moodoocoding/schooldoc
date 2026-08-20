@@ -88,6 +88,31 @@ export const parseExcelRows = (
   }).filter((participant) => participant.name);
 };
 
+/**
+ * 서명자가 채운 항목만 기존 값 위에 얹는다.
+ *
+ * 통째로 바꾸면 교사가 미리 넣어 둔 소속이 지워진다. 공개 화면은 기존 값을 가려서 받기
+ * 때문에 그대로 되돌려 보내면 원문이 가려진 글자로 덮이기도 한다. 비워 둔 항목은 손대지
+ * 않는다. `registry-public` 엣지 함수의 submit도 같은 규칙을 쓴다.
+ */
+export const mergeSignedFieldValues = (
+  existing: Record<string, string>,
+  submitted: Record<string, string> | undefined,
+) => ({
+  ...existing,
+  ...Object.fromEntries(Object.entries(submitted ?? {}).filter(([, value]) => value.trim() !== '')),
+});
+
+/** 되돌릴 수 없는 삭제 앞에서 무엇이 사라지는지 숫자로 밝힌다. */
+export const describeRegistryDeletion = (registry: Pick<Registry, 'participants'>) => {
+  const participantCount = registry.participants.length;
+  const signatureCount = registry.participants.filter((participant) => participant.signature).length;
+  const signaturePart = signatureCount > 0
+    ? `받은 서명 ${signatureCount}건이 함께 지워집니다.`
+    : '아직 받은 서명은 없습니다.';
+  return `참석자 ${participantCount}명이 사라집니다. ${signaturePart} 지운 뒤에는 되돌릴 수 없고, 배부한 링크와 QR도 열리지 않습니다.`;
+};
+
 export const maskName = (name: string) => {
   if (name.length <= 1) return '*';
   if (name.length === 2) return `${name[0]}*`;

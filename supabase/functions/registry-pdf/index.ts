@@ -279,7 +279,8 @@ const createPdf = async (
       );
     }
 
-    const footer = `- ${pageIndex + 1} -`;
+    // 전체 쪽수를 함께 적는다. 1쪽만 보고 명단이 여기까지라고 오해하는 일이 있었다.
+    const footer = `${pageIndex + 1} / ${pages.length}`;
     page.drawText(footer, {
       x: centeredX(regularFont, footer, 8.5, 0, PAGE_WIDTH),
       y: 34,

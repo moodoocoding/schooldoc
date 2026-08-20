@@ -156,11 +156,34 @@ const parseSignature = (dataUrl: unknown) => {
   };
 };
 
+/**
+ * 공개 화면으로 나가는 이름과 항목 값은 서버에서 가린다.
+ *
+ * 예전에는 원문을 보내고 브라우저가 별표로 덮어 보여줬다. 화면만 가려질 뿐 응답에는 원문이
+ * 그대로 있어, 링크를 아는 사람이 검색을 반복하면 명단을 통째로 긁을 수 있었다.
+ */
+const maskName = (name: string) => {
+  if (name.length <= 1) return '*';
+  if (name.length === 2) return `${name[0]}*`;
+  return `${name[0]}${'*'.repeat(name.length - 2)}${name.at(-1)}`;
+};
+
+const maskValue = (value: string) => {
+  if (!value) return '';
+  if (value.length <= 2) return `${value[0]}*`;
+  return `${value.slice(0, 2)}${'*'.repeat(Math.min(4, value.length - 2))}`;
+};
+
+const maskFieldValues = (values: unknown) => Object.fromEntries(
+  Object.entries((values ?? {}) as Record<string, unknown>)
+    .map(([key, value]) => [key, maskValue(typeof value === 'string' ? value : '')]),
+);
+
 const participantResponse = (participant: Record<string, unknown>) => ({
   id: participant.id,
   rowNumber: participant.row_number,
-  name: participant.name,
-  values: participant.field_values ?? {},
+  name: maskName(String(participant.name ?? '')),
+  values: maskFieldValues(participant.field_values),
   signed: participant.status === 'signed',
   signedAt: participant.signed_at ?? undefined,
 });
@@ -221,6 +244,19 @@ Deno.serve(async (request) => {
       const name = typeof body.name === 'string' ? body.name.trim() : '';
       if (name.length < 1 || name.length > 100) throw new HttpError(400, '성명을 확인해 주세요.');
       const values = cleanValues(body.values, columns);
+
+      // 행사장에서는 이미 명단에 있는 사람이 자기를 못 찾고 다시 등록하는 일이 잦다.
+      // 같은 이름이 있으면 한 번 되묻고, 그래도 등록하겠다면 그때 만든다.
+      if (body.confirmDuplicate !== true) {
+        const { count, error: duplicateError } = await db
+          .from('registry_participants')
+          .select('id', { count: 'exact', head: true })
+          .eq('registry_id', registry.id)
+          .eq('name', name);
+        if (duplicateError) throw duplicateError;
+        if ((count ?? 0) > 0) return response(200, { duplicateCount: count ?? 0 });
+      }
+
       const { data, error } = await db.rpc('create_registry_walk_in', {
         p_registry_id: registry.id,
         p_name: name,
@@ -242,7 +278,7 @@ Deno.serve(async (request) => {
 
       const { data: participant, error: participantError } = await db
         .from('registry_participants')
-        .select('id, registry_id, status')
+        .select('id, registry_id, status, field_values')
         .eq('id', participantId)
         .eq('registry_id', registry.id)
         .maybeSingle();
@@ -274,9 +310,12 @@ Deno.serve(async (request) => {
         throw insertError;
       }
 
+      // 서명자가 채운 항목만 덮어쓴다. 통째로 바꾸면 교사가 미리 넣어 둔 소속이 지워진다.
+      const filled = Object.fromEntries(Object.entries(values).filter(([, value]) => value !== ''));
+      const merged = { ...(participant.field_values ?? {}), ...filled };
       const { error: updateError } = await db
         .from('registry_participants')
-        .update({ field_values: values })
+        .update({ field_values: merged })
         .eq('id', participantId)
         .eq('registry_id', registry.id);
       if (updateError) throw updateError;

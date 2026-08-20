@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { RegistryConfirmDialog } from './RegistryConfirmDialog';
 import { isRegistryDemoMode } from './registryConfig';
 import { deleteRegistry } from './registryService';
+import { describeRegistryDeletion } from './registryUtils';
 import type { Registry } from './types';
 import { useRegistries } from './useRegistries';
 
@@ -152,7 +153,7 @@ export function RegistryListPage() {
       {pendingDelete ? (
         <RegistryConfirmDialog
           title="등록부를 삭제할까요?"
-          description={`“${pendingDelete.title}”의 참석자와 서명이 모두 삭제됩니다.`}
+          description={describeRegistryDeletion(pendingDelete)}
           confirmLabel={deleting ? '삭제 중' : '등록부 삭제'}
           onCancel={() => setPendingDelete(null)}
           onConfirm={() => void handleDelete()}
