@@ -78,3 +78,37 @@ describe('입력칸 판별', () => {
     expect(isTextEntryTarget(null)).toBe(false);
   });
 });
+
+describe('성명과 확인번호가 겹치면 만들 수 없다', () => {
+  // 확인번호는 임의 솔트를 쓰는 bcrypt라 저장한 뒤에는 대조할 수 없다. 그래서 만드는
+  // 시점에 막아야 한다. 서버(student-results-admin)도 같은 규칙을 다시 검사한다.
+  const authKeys = (recipients: { name: string; verificationCode: string }[]) => (
+    recipients.map((recipient) => `${recipient.name.trim()}::${recipient.verificationCode.trim()}`)
+  );
+  const firstDuplicate = (keys: string[]) => keys.findIndex((key, index) => keys.indexOf(key) !== index);
+
+  test('동명이인이 같은 확인번호를 쓰면 걸린다', () => {
+    const keys = authKeys([
+      { name: '김하늘', verificationCode: '4821' },
+      { name: '박도윤', verificationCode: '7315' },
+      { name: '김하늘', verificationCode: '4821' },
+    ]);
+    expect(firstDuplicate(keys)).toBe(2);
+  });
+
+  test('동명이인이라도 확인번호가 다르면 지나간다', () => {
+    const keys = authKeys([
+      { name: '김하늘', verificationCode: '4821' },
+      { name: '김하늘', verificationCode: '9902' },
+    ]);
+    expect(firstDuplicate(keys)).toBe(-1);
+  });
+
+  test('같은 확인번호라도 이름이 다르면 지나간다', () => {
+    const keys = authKeys([
+      { name: '김하늘', verificationCode: '4821' },
+      { name: '박도윤', verificationCode: '4821' },
+    ]);
+    expect(firstDuplicate(keys)).toBe(-1);
+  });
+});

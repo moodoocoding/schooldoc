@@ -90,6 +90,20 @@ Deno.serve(async (request) => {
       try {
         const { error: columnError } = await db.from('student_result_columns').insert(columns.map((column, position) => ({ event_id: created.id, id: String(column.id), position, label: String(column.label).trim(), max_score: Number(column.maxScore), description: String(column.description ?? '').trim() })));
         if (columnError) throw columnError;
+        // 이름과 확인번호가 겹치면 조회할 때 누가 누구인지 가릴 수 없다. 확인번호는 임의
+        // 솔트를 쓰는 bcrypt라 저장한 뒤에는 대조할 수 없으므로, 평문이 있는 지금 막는다.
+        const seenAuthKeys = new Map<string, string>();
+        for (const recipient of recipients) {
+          const name = String(recipient.name ?? '').trim();
+          const code = String(recipient.verificationCode ?? '').trim();
+          const authKey = `${await studentNameLookup(name)}::${code}`;
+          const previous = seenAuthKeys.get(authKey);
+          if (previous !== undefined) {
+            throw new HttpError(422, `${previous} 학생과 ${name} 학생의 성명·확인번호가 같습니다. 확인번호를 다르게 정해 주세요.`);
+          }
+          seenAuthKeys.set(authKey, name);
+        }
+
         const encryptedRecipients = await Promise.all(recipients.map(async (recipient) => {
           const verificationCode = String(recipient.verificationCode ?? '').trim();
           const { data: digest, error: digestError } = await db.rpc('hash_student_result_code', { p_code: verificationCode });

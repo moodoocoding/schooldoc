@@ -25,7 +25,7 @@ const deleteDescription = ({ recipientCount, disputeCount }: PendingDelete) => [
 export function StudentResultsListPage() {
   const navigate = useNavigate();
   const { user } = useTeacherAuth();
-  const { data: events, loading, error, refresh } = useStudentResultEvents();
+  const { data: events, loading, refreshing, error, refresh } = useStudentResultEvents();
 
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -59,6 +59,7 @@ export function StudentResultsListPage() {
           <p className="text-xs font-bold text-[#0F6CBD]">개별 안내</p>
           <h1 className="mt-1 text-2xl font-extrabold text-[#0F172A] sm:text-3xl">학생 결과 안내</h1>
           <p className="mt-2 text-sm text-[#526174]">학생별 결과를 안전하게 안내하고 확인과 이의 현황을 관리합니다.</p>
+          {refreshing ? <p role="status" aria-live="polite" className="mt-1 text-xs font-semibold text-[#0F6CBD]">새 활동 반영 중</p> : null}
         </div>
         <button type="button" onClick={() => navigate('/tools/student-results/new')} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-[#0F6CBD] px-5 text-sm font-bold text-white hover:bg-[#0B5B9F]"><Plus className="h-4 w-4" />새 결과 안내</button>
       </div>
