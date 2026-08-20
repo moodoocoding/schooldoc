@@ -60,6 +60,23 @@ const client = () => {
   return supabase;
 };
 
+/**
+ * 참석자의 항목 값은 암호문이라 브라우저가 풀 수 없다. 읽고 쓰는 세 갈래만 서버를 지난다.
+ * 이름은 평문이라 여기를 거치지 않는다.
+ */
+const callParticipants = async <T>(body: Record<string, unknown>) => {
+  const { data, error } = await client().functions.invoke('registry-participants', { body });
+  if (error) {
+    const context = error.context as Response | undefined;
+    if (context) {
+      const parsed = await context.clone().json().catch(() => null) as { error?: string } | null;
+      if (parsed?.error) throw new Error(parsed.error);
+    }
+    throw new Error(error.message || '참석자 명단을 처리하지 못했습니다.');
+  }
+  return data as T;
+};
+
 /** Storage list는 한 번에 일부만 돌려주므로 끝까지 넘긴다. */
 const listStorageNames = async (prefix: string) => {
   const names: string[] = [];
@@ -185,17 +202,16 @@ const loadRelatedRows = async (registryRows: RegistryRow[]) => {
   const ids = registryRows.map((row) => row.id);
   const [columnsResult, participantsResult, signaturesResult] = await Promise.all([
     client().from('registry_columns').select('id, registry_id, label, position').in('registry_id', ids),
-    client().from('registry_participants').select('id, registry_id, row_number, name, field_values, status, signed_at').in('registry_id', ids),
+    callParticipants<{ participants: ParticipantRow[] }>({ action: 'read', registryIds: ids }),
     client().from('registry_signatures').select('registry_id, participant_id, source, storage_path, created_at').in('registry_id', ids),
   ]);
   if (columnsResult.error) fail('등록부 열을 불러오지 못했습니다', columnsResult.error);
-  if (participantsResult.error) fail('참석자 명단을 불러오지 못했습니다', participantsResult.error);
   if (signaturesResult.error) fail('서명 현황을 불러오지 못했습니다', signaturesResult.error);
 
   return assembleRegistries(
     registryRows,
     (columnsResult.data ?? []) as ColumnRow[],
-    (participantsResult.data ?? []) as ParticipantRow[],
+    participantsResult.participants ?? [],
     (signaturesResult.data ?? []) as SignatureRow[],
   );
 };
@@ -263,15 +279,11 @@ export const createRemoteRegistry = async (draft: RegistryDraft) => {
     }
 
     if (draft.participants.length > 0) {
-      const { error: participantsError } = await client().from('registry_participants').insert(
-        draft.participants.map((participant, index) => ({
-          registry_id: registryId,
-          row_number: index + 1,
-          name: participant.name,
-          field_values: participant.values,
-        })),
-      );
-      if (participantsError) fail('참석자 명단을 저장하지 못했습니다', participantsError);
+      await callParticipants({
+        action: 'createMany',
+        registryId,
+        participants: draft.participants.map((participant) => ({ name: participant.name, values: participant.values })),
+      });
     }
   } catch (error) {
     await client().from('registries').delete().eq('id', registryId);
@@ -321,28 +333,18 @@ export const addRemoteParticipant = async (
   registryId: string,
   participant: Pick<RegistryParticipant, 'name' | 'values'>,
 ) => {
-  const { data: lastRow, error: rowError } = await client()
-    .from('registry_participants')
-    .select('row_number')
-    .eq('registry_id', registryId)
-    .order('row_number', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (rowError) fail('참석자 순서를 확인하지 못했습니다', rowError);
-
-  const { data, error } = await client().from('registry_participants').insert({
-    registry_id: registryId,
-    row_number: ((lastRow?.row_number as number | undefined) ?? 0) + 1,
+  // 연번 정하기와 봉인을 서버가 함께 한다. 브라우저는 항목 값을 다시 읽을 수 없다.
+  const { participant: created } = await callParticipants<{ participant: { id: string; rowNumber: number; name: string } }>({
+    action: 'addOne',
+    registryId,
     name: participant.name,
-    field_values: participant.values,
-  }).select('id, row_number').single();
-  if (error) fail('참석자를 추가하지 못했습니다', error);
-  if (!data) throw new Error('추가한 참석자를 확인하지 못했습니다.');
+    values: participant.values,
+  });
   notify();
   return {
-    id: data.id as string,
-    rowNumber: data.row_number as number,
-    name: participant.name,
+    id: created.id,
+    rowNumber: created.rowNumber,
+    name: created.name,
     values: participant.values,
   } satisfies RegistryParticipant;
 };

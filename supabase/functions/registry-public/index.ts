@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8';
+import { registryCrypto, type RegistryFieldValues } from '../_shared/registryCrypto.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -179,6 +180,18 @@ const maskFieldValues = (values: unknown) => Object.fromEntries(
     .map(([key, value]) => [key, maskValue(typeof value === 'string' ? value : '')]),
 );
 
+/**
+ * 암호문이 있으면 풀고, 없으면 옛 평문을 쓴다.
+ * 재암호화를 마치기 전까지 두 가지가 섞여 있으므로 읽는 쪽이 둘 다 감당한다.
+ */
+const decodeFieldValues = async (participant: Record<string, unknown>): Promise<RegistryFieldValues> => {
+  const ciphertext = participant.field_values_ciphertext;
+  if (typeof ciphertext === 'string' && ciphertext) {
+    return await registryCrypto.decryptPayload<RegistryFieldValues>(ciphertext);
+  }
+  return (participant.field_values ?? {}) as RegistryFieldValues;
+};
+
 const participantResponse = (participant: Record<string, unknown>) => ({
   id: participant.id,
   rowNumber: participant.row_number,
@@ -236,7 +249,11 @@ Deno.serve(async (request) => {
         p_limit: 10,
       });
       if (error) throw error;
-      return response(200, { participants: (data ?? []).map(participantResponse) });
+      const found = await Promise.all((data ?? []).map(async (participant: Record<string, unknown>) => ({
+        ...participantResponse(participant),
+        values: maskFieldValues(await decodeFieldValues(participant)),
+      })));
+      return response(200, { participants: found });
     }
 
     if (action === 'walk-in') {
@@ -260,10 +277,17 @@ Deno.serve(async (request) => {
       const { data, error } = await db.rpc('create_registry_walk_in', {
         p_registry_id: registry.id,
         p_name: name,
-        p_field_values: values,
+        p_field_values: {},
       });
       if (error) throw error;
-      return response(200, { participants: [participantResponse(data as Record<string, unknown>)] });
+      const created = data as Record<string, unknown>;
+      const { error: sealError } = await db.from('registry_participants')
+        .update({ field_values: null, field_values_ciphertext: await registryCrypto.encryptPayload(values) })
+        .eq('id', created.id as string);
+      if (sealError) throw sealError;
+      return response(200, {
+        participants: [{ ...participantResponse(created), values: maskFieldValues(values) }],
+      });
     }
 
     if (action === 'submit') {
@@ -278,7 +302,7 @@ Deno.serve(async (request) => {
 
       const { data: participant, error: participantError } = await db
         .from('registry_participants')
-        .select('id, registry_id, status, field_values')
+        .select('id, registry_id, status, field_values, field_values_ciphertext')
         .eq('id', participantId)
         .eq('registry_id', registry.id)
         .maybeSingle();
@@ -312,10 +336,10 @@ Deno.serve(async (request) => {
 
       // 서명자가 채운 항목만 덮어쓴다. 통째로 바꾸면 교사가 미리 넣어 둔 소속이 지워진다.
       const filled = Object.fromEntries(Object.entries(values).filter(([, value]) => value !== ''));
-      const merged = { ...(participant.field_values ?? {}), ...filled };
+      const merged = { ...(await decodeFieldValues(participant)), ...filled };
       const { error: updateError } = await db
         .from('registry_participants')
-        .update({ field_values: merged })
+        .update({ field_values: null, field_values_ciphertext: await registryCrypto.encryptPayload(merged) })
         .eq('id', participantId)
         .eq('registry_id', registry.id);
       if (updateError) throw updateError;

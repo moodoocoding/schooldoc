@@ -50,6 +50,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY=...
 |---|---|
 | `CONSENT_FORMS_ENCRYPTION_KEY` | 가정통신문 수신자 명단 |
 | `STUDENT_RESULTS_ENCRYPTION_KEY` | 학생 결과 안내 개인정보 |
+| `REGISTRY_ENCRYPTION_KEY` | 등록부 참석자의 항목 값(소속·직위 등) |
 
 ```bash
 npx supabase secrets set CONSENT_FORMS_ENCRYPTION_KEY=<64자리 16진수>
@@ -57,8 +58,12 @@ npx supabase secrets set CONSENT_FORMS_ENCRYPTION_KEY=<64자리 16진수>
 
 키가 없으면 명단 기능만 접히고 공용 링크 수합은 그대로 동작합니다.
 
-**두 키는 저장된 개인정보를 푸는 유일한 수단이라 잃어버리면 복구할 수 없고, 교체해도
+**이 키들은 저장된 개인정보를 푸는 유일한 수단이라 잃어버리면 복구할 수 없고, 교체해도
 기존 데이터를 읽지 못합니다.** 한 번 정하면 바꾸지 않으며, 프로젝트를 옮길 때도 같은 값을 씁니다.
+
+등록부는 이름을 평문으로 둡니다. 참석자가 행사장에서 두 글자만 넣어 자기를 찾는 흐름을
+지켜야 하는데 암호문에는 부분 검색이 통하지 않기 때문입니다. 대신 이름 옆에 붙어 신원을
+좁히는 항목 값만 봉인합니다.
 Supabase는 값을 다시 보여주지 않으므로 설정할 때 따로 적어 두어야 합니다.
 
 실제 값은 저장소에 올리지 않는 `SECRETS.local.md`에 적어 관리합니다.

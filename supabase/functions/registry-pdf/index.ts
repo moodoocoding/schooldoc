@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8';
+import { registryCrypto, type RegistryFieldValues } from '../_shared/registryCrypto.ts';
 import fontkit from 'npm:@pdf-lib/fontkit@1.1.1';
 import { PDFDocument, PDFImage, PDFFont, PDFPage, rgb } from 'npm:pdf-lib@1.17.1';
 import { chunkPdfRows, fitPdfFontSize, getPdfColumnWidths, getPdfPageSettings, paginatePdfRows } from './layout.ts';
@@ -322,17 +323,27 @@ Deno.serve(async (request) => {
 
     const [columnsResult, participantsResult, signaturesResult] = await Promise.all([
       db.from('registry_columns').select('id, label, position').eq('registry_id', registry.id).order('position'),
-      db.from('registry_participants').select('id, row_number, name, field_values').eq('registry_id', registry.id).order('row_number'),
+      db.from('registry_participants').select('id, row_number, name, field_values, field_values_ciphertext').eq('registry_id', registry.id).order('row_number'),
       db.from('registry_signatures').select('participant_id, storage_path').eq('registry_id', registry.id),
     ]);
     if (columnsResult.error) throw columnsResult.error;
     if (participantsResult.error) throw participantsResult.error;
     if (signaturesResult.error) throw signaturesResult.error;
 
+    // 항목 값은 암호문으로 저장된다. 옛 평문도 남아 있을 수 있어 둘 다 감당한다.
+    const participants = await Promise.all((participantsResult.data ?? []).map(async (row) => {
+      const record = row as Record<string, unknown>;
+      const ciphertext = record.field_values_ciphertext;
+      const values = typeof ciphertext === 'string' && ciphertext
+        ? await registryCrypto.decryptPayload<RegistryFieldValues>(ciphertext)
+        : (record.field_values ?? {}) as RegistryFieldValues;
+      return { ...record, field_values: values } as ParticipantRow;
+    }));
+
     const pdfBytes = await createPdf(
       registry,
       (columnsResult.data ?? []) as ColumnRow[],
-      (participantsResult.data ?? []) as ParticipantRow[],
+      participants,
       (signaturesResult.data ?? []) as SignatureRow[],
     );
     const fileName = safeFileName(registry.title);

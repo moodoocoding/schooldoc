@@ -201,7 +201,7 @@ export function RemotePublicRegistrySignPage() {
           <section>
             <h2 className="text-lg font-extrabold text-[#0F172A]">내 이름 찾기</h2>
             <p className="mt-1 text-sm text-[#526174]">이름이나 소속을 두 글자 이상 입력해 주세요.</p>
-            <label className="relative mt-5 block"><Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#526174]" /><input className={`${inputClass} pl-12`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="이름 또는 소속 검색" aria-label="이름 또는 소속 검색" autoComplete="off" /></label>
+            <label className="relative mt-5 block"><Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#526174]" /><input className={`${inputClass} pl-12`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="이름 검색" aria-label="이름 검색" autoComplete="off" /></label>
             {query.trim().length >= 2 ? (
               <div className="mt-4 divide-y divide-[#EEF1F4] border-y border-[#DCE3EA] bg-white">
                 {searching ? <div className="flex items-center justify-center gap-2 px-4 py-7 text-sm text-[#526174]"><LoaderCircle className="h-4 w-4 animate-spin" />검색 중</div> : results.length > 0 ? results.map((participant) => (
