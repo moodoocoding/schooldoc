@@ -46,6 +46,39 @@
   border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
+/*
+ * 인쇄 미리보기의 축소.
+ *
+ * transform: scale()은 그려지는 크기만 줄이고 차지하는 자리는 그대로 둔다. 그래서 미리보기
+ * 아래에 원본 높이의 남은 만큼(72%면 314px) 빈 공간이 생겼다. 배율을 변수 하나로 두고
+ * 감싸는 상자의 크기까지 같은 값으로 줄여 자리와 그림을 맞춘다.
+ */
+.registry-print-frame {
+  --preview-scale: 0.72;
+  width: calc(794px * var(--preview-scale));
+  height: calc(1123px * var(--preview-scale));
+}
+
+@media (min-width: 640px) {
+  .registry-print-frame { --preview-scale: 0.8; }
+}
+
+@media (min-width: 1280px) {
+  .registry-print-frame { --preview-scale: 0.86; }
+}
+
+.registry-print-preview {
+  transform: scale(var(--preview-scale));
+  transform-origin: top left;
+}
+
+/* PDF로 만들 때는 원본 크기로 되돌린다. 자리도 함께 돌려놓아야 잘리지 않는다. */
+.registry-print-frame.is-exporting {
+  --preview-scale: 1;
+  width: auto;
+  height: auto;
+}
+
 .registry-print-page,
 .registry-print-page *,
 .student-result-qr-print-page,
