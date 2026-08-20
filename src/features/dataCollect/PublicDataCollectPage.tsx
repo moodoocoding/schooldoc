@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, CheckCircle2, Download, FilePenLine, Search, Upload } from 'lucide-react';
 import { useParams, useSearchParams } from 'react-router-dom';
+import { isDataCollectDemoMode } from './dataCollectConfig';
+import { RemotePublicDataCollectPage } from './RemotePublicDataCollectPage';
 import { getDataCollectionByToken, submitDataCollectionReview, subscribeDataCollections } from './dataCollectStore';
 import { DATA_COLLECTION_TARGET_LABELS, hashCollectionPassword, isCollectionOpen, maskTargetLabel } from './dataCollectUtils';
 import type { DataCollectionSubmission, DataCollectionTarget } from './types';
 
 export function PublicDataCollectPage() {
+  return isDataCollectDemoMode ? <DemoPublicDataCollectPage /> : <RemotePublicDataCollectPage />;
+}
+
+function DemoPublicDataCollectPage() {
   const { token = '' } = useParams();
   const [params] = useSearchParams();
   const [collection, setCollection] = useState(() => getDataCollectionByToken(token));

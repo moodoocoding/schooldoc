@@ -3,7 +3,7 @@ import { AlertCircle, ArrowLeft, FileUp, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import { dataCollectOwnerId } from './dataCollectConfig';
-import { createDataCollection } from './dataCollectStore';
+import { createDataCollection } from './dataCollectService';
 import { DATA_COLLECTION_KIND_LABELS, DATA_COLLECTION_TARGET_LABELS, validateCollectionFile } from './dataCollectUtils';
 import type { DataCollectionKind } from './types';
 
