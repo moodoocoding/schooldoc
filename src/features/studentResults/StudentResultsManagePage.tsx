@@ -55,7 +55,7 @@ export function StudentResultsManagePage() {
   const { resultId } = useParams();
   const { user } = useTeacherAuth();
   const ownerId = studentResultsOwnerId(user?.id);
-  const { data: event, loading, error, refresh } = useStudentResultEvent(resultId);
+  const { data: event, loading, refreshing, error, refresh } = useStudentResultEvent(resultId);
   const [view, setView] = useState<ManageView>('status');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [query, setQuery] = useState('');
@@ -185,6 +185,8 @@ export function StudentResultsManagePage() {
           <div className="flex flex-wrap items-center gap-2">
             <span className={`rounded-md px-2.5 py-1 text-xs font-bold ${event.status === 'open' ? 'bg-[#E6F4EA] text-[#126B32]' : 'bg-[#EEF1F4] text-[#526174]'}`}>{event.status === 'open' ? '안내 중' : '종료'}</span>
             <span className="text-xs text-[#64748B]">보호된 학생 데이터</span>
+            {/* 갱신 중에는 표를 그대로 두고 여기서만 알린다. 화면이 사라지면 안 된다. */}
+            {refreshing ? <span role="status" aria-live="polite" className="text-xs font-semibold text-[#0F6CBD]">새 활동 반영 중</span> : null}
           </div>
           <h1 className="mt-2 break-words text-xl font-extrabold leading-snug text-[#0F172A] sm:text-2xl">{event.title}</h1>
           {event.description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-[#526174]">{event.description}</p> : null}

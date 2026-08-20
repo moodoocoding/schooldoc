@@ -14,7 +14,7 @@ export function StudentResultsQrPrintPage() {
   const navigate = useNavigate();
   const { resultId } = useParams();
   const [searchParams] = useSearchParams();
-  const { data: event, loading, error } = useStudentResultEvent(resultId);
+  const { data: event, loading, refreshing, error } = useStudentResultEvent(resultId);
   const pagesRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState('');
@@ -113,6 +113,7 @@ export function StudentResultsQrPrintPage() {
         <h1 className="text-2xl font-extrabold">개인 QR PDF</h1>
         <p className="mt-2 text-sm text-[#526174]">선택 {printableRecipients.length}명 · PDF A4 세로 · 페이지당 8명 · 총 {pages.length}페이지</p>
         <p className="mt-1 text-xs text-[#64748B]">각 QR은 해당 학생의 결과로 바로 연결됩니다. 학생 본인에게만 전달해 주세요.</p>
+        {refreshing ? <p role="status" aria-live="polite" className="mt-1 text-xs font-semibold text-[#0F6CBD]">명단을 새로 받는 중입니다. 인쇄 준비는 그대로 이어집니다.</p> : null}
       </div>
 
       {exportError ? (

@@ -236,3 +236,30 @@ test('개인 QR을 한 명씩 이미지로 저장한다', async ({ page }) => {
   const { statSync } = await import('node:fs');
   expect(statSync(path!).size).toBeGreaterThan(1000);
 });
+
+test('학생이 결과를 열면 교사 표에 바로 반영된다', async ({ context, page }) => {
+  // 갱신 중 화면이 비지 않는 규칙 자체는 studentResultsLoadState.test.ts가 지킨다.
+  // 데모 모드는 즉시 끝나 로딩이 화면에 칠해지지 않으므로 여기서는 확인할 수 없다.
+  await page.goto('/tools/student-results/new');
+  await page.getByPlaceholder('예: 2학기 수행평가 결과').fill('갱신 확인');
+  await page.getByLabel('1번 학생 성명').fill('김하늘');
+  await page.getByLabel('1번 학생 확인번호').fill('4821');
+  await page.getByLabel('1번 학생 평가 점수 점수').fill('92');
+  await page.getByRole('button', { name: '결과 안내 만들기' }).click();
+  await expect(page).toHaveURL(/\/tools\/student-results\/[0-9a-f-]+$/);
+
+  await page.getByRole('tab', { name: '접속 정보' }).click();
+  const publicLink = await page.getByRole('link', { name: '학생 화면 열기' }).getAttribute('href');
+  await page.getByRole('tab', { name: '현황' }).click();
+  const row = page.getByRole('row', { name: /김하늘/ });
+  await expect(row).toBeVisible();
+
+  const studentPage = await context.newPage();
+  await studentPage.goto(publicLink!);
+  await studentPage.getByLabel('성명').fill('김하늘');
+  await studentPage.getByLabel('확인번호').fill('4821');
+  await studentPage.getByRole('button', { name: '내 결과 조회' }).click();
+
+  await expect(row).toContainText('조회');
+  await expect(row).toBeVisible();
+});

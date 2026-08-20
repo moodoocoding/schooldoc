@@ -254,18 +254,25 @@ Deno.serve(async (request) => {
         .select('id')
         .eq('event_id', event.id)
         .eq('name_lookup', nameLookup)
-        .limit(5);
+        .limit(20);
       if (candidateError) throw candidateError;
-      let recipientId = '';
+
+      // 맞는 사람을 찾자마자 멈추지 않고 끝까지 센다. 동명이인이 같은 확인번호를 쓰면
+      // 먼저 걸린 사람의 성적이 열리는데, 그것은 남의 성적을 보여주는 일이다.
+      const matched: string[] = [];
       for (const candidate of candidates ?? []) {
         const { data: valid, error: verifyError } = await db.rpc('verify_student_result_code', {
           p_recipient_id: candidate.id,
           p_code: verificationCode,
         });
         if (verifyError) throw verifyError;
-        if (valid) { recipientId = candidate.id; break; }
+        if (valid) matched.push(candidate.id);
       }
-      if (!recipientId) throw new HttpError(401, '성명 또는 확인번호가 맞지 않습니다.');
+      if (matched.length === 0) throw new HttpError(401, '성명 또는 확인번호가 맞지 않습니다.');
+      if (matched.length > 1) {
+        throw new HttpError(409, '같은 성명과 확인번호를 가진 학생이 둘 이상입니다. 담당 선생님께 확인번호를 다시 받아 주세요.');
+      }
+      const recipientId = matched[0];
       const recipient = await getRecipient(event.id, recipientId);
       const issuedSession = await issueSession(event.id, recipient.id);
       return respond(200, { sessionToken: issuedSession, result: await buildResult(event, recipient) });
