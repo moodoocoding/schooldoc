@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlertCircle, ArrowLeft, Download, LoaderCircle, QrCode } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Download, ImageDown, LoaderCircle, QrCode } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { qrImageFileName, saveQrImage } from '../../utils/qrImage';
 import { getConsentPublicOrigin, isConsentFormsDemoMode } from './consentFormsConfig';
 import { getConsentLocalDraft } from './consentFormsLocalStore';
 import { getRemoteConsentForm } from './consentFormsRepository';
@@ -20,6 +21,7 @@ export function ConsentQrPrintPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [savingQrId, setSavingQrId] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
   // 미제출자에게 다시 배부하는 것이 이 화면의 주된 두 번째 쓰임이다.
   const target: ConsentSheetTarget = searchParams.get('target') === 'pending' ? 'pending' : 'all';
@@ -56,6 +58,20 @@ export function ConsentQrPrintPage() {
   const pendingCount = sheetRecipients(recipients, 'pending').length;
   const targetLabel = target === 'pending' ? '미제출자' : '전체';
 
+  /** 개인 QR 하나만 이미지로 저장한다. 한 사람에게만 따로 보낼 때 쓴다. */
+  const downloadQrImage = async (recipientId: string, name: string) => {
+    if (savingQrId) return;
+    setSavingQrId(recipientId);
+    setError('');
+    try {
+      await saveQrImage(document.getElementById(`consent-qr-${recipientId}`), qrImageFileName(`${draft.title}_${name}`, '개인QR', '가정통신문'));
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'QR 이미지를 저장하지 못했습니다.');
+    } finally {
+      setSavingQrId('');
+    }
+  };
+
   const downloadPdf = async () => {
     if (exporting) return;
     setExporting(true);
@@ -70,6 +86,10 @@ export function ConsentQrPrintPage() {
         const canvas = await html2canvas(sheets[index], {
           scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false,
           width: 794, height: 1123, windowWidth: 794, windowHeight: 1123,
+          // 저장 버튼은 화면에만 둔다. PDF에 찍히면 배부물이 지저분해진다.
+          onclone: (clonedDocument) => {
+            clonedDocument.querySelectorAll<HTMLElement>('.qr-save-button').forEach((button) => button.remove());
+          },
         });
         if (index > 0) pdf.addPage('a4', 'portrait');
         pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297, undefined, 'FAST');
@@ -120,7 +140,13 @@ export function ConsentQrPrintPage() {
                     if (!recipient) return <div key={`empty-${slot}`} aria-hidden="true" />;
                     return (
                       <div key={recipient.id} className="flex items-center gap-3 border border-dashed border-[#94A3B8] px-3 py-2">
-                        <div className="shrink-0 border border-[#DCE3EA] bg-white p-1"><QRCodeSVG value={personalLink(recipient.token)} size={104} level="M" includeMargin={false} aria-label={`${recipient.name} 응답 QR 코드`} /></div>
+                        <div className="flex shrink-0 flex-col items-center gap-1">
+                          <div id={`consent-qr-${recipient.id}`} className="border border-[#DCE3EA] bg-white p-1"><QRCodeSVG value={personalLink(recipient.token)} size={104} level="M" includeMargin={false} aria-label={`${recipient.name} 응답 QR 코드`} /></div>
+                          <button type="button" disabled={savingQrId !== ''} onClick={() => void downloadQrImage(recipient.id, recipient.name)} aria-label={`${recipient.name} QR 이미지 저장`} className="qr-save-button inline-flex min-h-[24px] items-center gap-1 rounded-md px-1.5 text-[10px] font-bold text-[#0F6CBD] hover:bg-[#EFF6FC] disabled:text-[#94A3B8] print:hidden">
+                            {savingQrId === recipient.id ? <LoaderCircle className="h-3 w-3 animate-spin" /> : <ImageDown className="h-3 w-3" />}
+                            {savingQrId === recipient.id ? '저장 중' : '이미지 저장'}
+                          </button>
+                        </div>
                         <div className="min-w-0">
                           <p className="truncate text-[15px] font-extrabold text-[#0F172A]">{recipient.name}</p>
                           {recipient.studentKey ? <p className="mt-0.5 truncate text-[12px] font-semibold text-[#526174]">{recipient.studentKey}</p> : null}

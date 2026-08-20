@@ -229,6 +229,9 @@ export const renderConsentResponsePdf = ({ file, fields, response }: {
   response: ConsentResponseRecord;
 }) => renderConsentResponsesPdf({ file, fields, responses: [response] });
 
+// QR 이미지 변환과 내려받기는 세 기능이 함께 쓴다. 구현은 utils/qrImage.ts에 있다.
+export { downloadBlob, svgToPngBlob } from '../../utils/qrImage';
+
 const safeFileTitle = (title: string) => title.replace(/[\\/:*?"<>|]/g, '_').trim().slice(0, 60) || '가정통신문';
 
 export const consentResponseFileName = (title: string, index: number) => (
@@ -237,50 +240,8 @@ export const consentResponseFileName = (title: string, index: number) => (
 
 export const consentQrFileName = (title: string) => `${safeFileTitle(title)}_응답QR.png`;
 
-/** 화면의 QR SVG를 인쇄에 쓸 수 있는 크기의 PNG로 변환한다. */
-export const svgToPngBlob = async (svg: SVGSVGElement, size: number) => {
-  const clone = svg.cloneNode(true) as SVGSVGElement;
-  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  clone.setAttribute('width', String(size));
-  clone.setAttribute('height', String(size));
-  const markup = new XMLSerializer().serializeToString(clone);
-  const url = URL.createObjectURL(new Blob([markup], { type: 'image/svg+xml;charset=utf-8' }));
-  try {
-    const image = new Image();
-    image.decoding = 'sync';
-    await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve();
-      image.onerror = () => reject(new Error('QR 이미지를 만들지 못했습니다.'));
-      image.src = url;
-    });
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('QR 이미지를 만들지 못했습니다.');
-    context.fillStyle = '#FFFFFF';
-    context.fillRect(0, 0, size, size);
-    context.drawImage(image, 0, 0, size, size);
-    return await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('QR 이미지를 만들지 못했습니다.')), 'image/png');
-    });
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-};
-
 export const consentResponsesFileName = (title: string, count: number) => (
   `${safeFileTitle(title)}_응답모음_${count}건.pdf`
 );
 
-export const downloadBlob = (blob: Blob, fileName: string) => {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  // 즉시 해제하면 브라우저가 저장을 시작하기 전에 URL이 사라질 수 있다.
-  window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
-};
+
