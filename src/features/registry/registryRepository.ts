@@ -52,10 +52,60 @@ interface SignatureRow {
 
 const SIGNATURE_BUCKET = 'registry-signatures';
 const CHANGE_EVENT = 'schooldoc-registry-remote-change';
+const STORAGE_PAGE = 1000;
+const SIGNATURE_REMOVE_CHUNK = 100;
 
 const client = () => {
   if (!supabase) throw new Error('Supabase 연결 정보가 없습니다.');
   return supabase;
+};
+
+/** Storage list는 한 번에 일부만 돌려주므로 끝까지 넘긴다. */
+const listStorageNames = async (prefix: string) => {
+  const names: string[] = [];
+  for (let offset = 0; ; offset += STORAGE_PAGE) {
+    const page = await client().storage.from(SIGNATURE_BUCKET).list(prefix, { limit: STORAGE_PAGE, offset });
+    if (page.error) fail('서명 파일 목록을 확인하지 못했습니다', page.error);
+    const entries = page.data ?? [];
+    entries.forEach((entry) => names.push(entry.name));
+    if (entries.length < STORAGE_PAGE) return names;
+  }
+};
+
+/** 참석자 한 명의 서명 파일. 경로는 `등록부/참석자/파일` 세 칸이다. */
+const listParticipantFilePaths = async (registryId: string, participantId: string) => (
+  (await listStorageNames(`${registryId}/${participantId}`))
+    .map((file) => `${registryId}/${participantId}/${file}`)
+);
+
+/** 등록부 아래 모든 서명 파일. 이전에 지우다 만 것까지 함께 걷힌다. */
+const listRegistryFilePaths = async (registryId: string) => {
+  const paths: string[] = [];
+  for (const participantFolder of await listStorageNames(registryId)) {
+    paths.push(...await listParticipantFilePaths(registryId, participantFolder));
+  }
+  return paths;
+};
+
+/**
+ * 지운 뒤 실제로 사라졌는지 다시 확인한다.
+ *
+ * Storage의 remove()는 정책에 막히면 오류 없이 성공한 척하고 파일을 남긴다. 가정통신문에서
+ * 실제로 겪은 일이라, 결과를 믿지 않고 목록을 다시 읽어 대조한다. 남아 있으면 여기서 멈춰
+ * 호출한 쪽이 행을 지우지 못하게 한다. 행이 사라지면 삭제 정책이 참이 될 수 없어 파일을
+ * 두 번 다시 지울 수 없기 때문이다.
+ */
+const removeSignatureFiles = async (paths: string[], relist: () => Promise<string[]>) => {
+  if (paths.length === 0) return;
+  for (let index = 0; index < paths.length; index += SIGNATURE_REMOVE_CHUNK) {
+    const removed = await client().storage.from(SIGNATURE_BUCKET)
+      .remove(paths.slice(index, index + SIGNATURE_REMOVE_CHUNK));
+    if (removed.error) fail('서명 이미지를 지우지 못했습니다', removed.error);
+  }
+  const remaining = await relist();
+  if (remaining.length > 0) {
+    throw new Error(`서명 이미지 ${remaining.length}건을 지우지 못했습니다. 잠시 후 다시 시도해 주세요.`);
+  }
 };
 
 const fail = (message: string, error?: { message?: string } | null): never => {
@@ -259,13 +309,8 @@ export const updateRemoteRegistry = async (id: string, patch: Partial<Registry>)
 };
 
 export const deleteRemoteRegistry = async (id: string) => {
-  const { data: signatures, error: signatureError } = await client()
-    .from('registry_signatures')
-    .select('storage_path')
-    .eq('registry_id', id);
-  if (signatureError) fail('서명 파일 목록을 확인하지 못했습니다', signatureError);
-  const paths = (signatures ?? []).map((row) => row.storage_path as string);
-  if (paths.length > 0) await client().storage.from(SIGNATURE_BUCKET).remove(paths);
+  // 파일을 먼저 지우고 확인한 뒤에야 행을 지운다. 순서가 바뀌면 남은 파일을 못 지운다.
+  await removeSignatureFiles(await listRegistryFilePaths(id), () => listRegistryFilePaths(id));
 
   const { error } = await client().from('registries').delete().eq('id', id);
   if (error) fail('등록부를 삭제하지 못했습니다', error);
@@ -303,16 +348,10 @@ export const addRemoteParticipant = async (
 };
 
 export const removeRemoteParticipant = async (registryId: string, participantId: string) => {
-  const { data: signature, error: signatureError } = await client()
-    .from('registry_signatures')
-    .select('storage_path')
-    .eq('registry_id', registryId)
-    .eq('participant_id', participantId)
-    .maybeSingle();
-  if (signatureError) fail('서명 파일을 확인하지 못했습니다', signatureError);
-  if (signature?.storage_path) {
-    await client().storage.from(SIGNATURE_BUCKET).remove([signature.storage_path as string]);
-  }
+  await removeSignatureFiles(
+    await listParticipantFilePaths(registryId, participantId),
+    () => listParticipantFilePaths(registryId, participantId),
+  );
   const { error } = await client()
     .from('registry_participants')
     .delete()
@@ -332,12 +371,16 @@ export const clearRemoteSignature = async (registryId: string, participantId: st
   if (error) fail('기존 서명을 확인하지 못했습니다', error);
   if (!data) return;
 
+  // 파일을 먼저 지운다. 행을 먼저 지우면 어떤 파일이 남았는지 가리키는 것이 없어진다.
+  await removeSignatureFiles(
+    await listParticipantFilePaths(registryId, participantId),
+    () => listParticipantFilePaths(registryId, participantId),
+  );
   const { error: deleteError } = await client()
     .from('registry_signatures')
     .delete()
     .eq('participant_id', participantId);
   if (deleteError) fail('기존 서명을 삭제하지 못했습니다', deleteError);
-  await client().storage.from(SIGNATURE_BUCKET).remove([data.storage_path as string]);
   notify();
 };
 

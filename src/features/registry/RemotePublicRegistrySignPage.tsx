@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, LoaderCircle, LockKeyhole, PenLine, Search, UserPlus } from 'lucide-react';
 import { useParams } from 'react-router-dom';
+import { RegistryConfirmDialog } from './RegistryConfirmDialog';
 import { SignatureDialog } from './SignatureDialog';
 import {
   createPublicWalkIn,
@@ -9,7 +10,6 @@ import {
   submitPublicSignature,
   unlockPublicRegistry,
 } from './registryPublicApi';
-import { maskName, maskValue } from './registryUtils';
 import type { Registry, RegistryParticipant, SignatureSource } from './types';
 
 const inputClass = 'min-h-[52px] w-full rounded-lg border border-[#DCE3EA] bg-white px-4 text-base text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#0F6CBD] focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]/15';
@@ -36,6 +36,7 @@ export function RemotePublicRegistrySignPage() {
   const [selected, setSelected] = useState<RegistryParticipant | null>(null);
   const [walkInName, setWalkInName] = useState('');
   const [walkInValues, setWalkInValues] = useState<Record<string, string>>({});
+  const [duplicateCount, setDuplicateCount] = useState(0);
   const [addingWalkIn, setAddingWalkIn] = useState(false);
   const [successName, setSuccessName] = useState('');
 
@@ -132,13 +133,19 @@ export function RemotePublicRegistrySignPage() {
     );
   }
 
-  const handleAddWalkIn = async () => {
+  const handleAddWalkIn = async (confirmDuplicate = false) => {
     if (!walkInName.trim()) return;
     setAddingWalkIn(true);
     setSearchError('');
     try {
-      const participant = await createPublicWalkIn(token, password, walkInName.trim(), walkInValues);
-      setSelected(participant);
+      const result = await createPublicWalkIn(token, password, walkInName.trim(), walkInValues, confirmDuplicate);
+      if (result.participant) {
+        setDuplicateCount(0);
+        setSelected(result.participant);
+        return;
+      }
+      // 같은 이름이 이미 있다. 본인이 맞는지 먼저 묻는다.
+      setDuplicateCount(result.duplicateCount);
     } catch (error) {
       setSearchError(error instanceof Error ? error.message : '참석 정보를 저장하지 못했습니다.');
     } finally {
@@ -199,7 +206,7 @@ export function RemotePublicRegistrySignPage() {
               <div className="mt-4 divide-y divide-[#EEF1F4] border-y border-[#DCE3EA] bg-white">
                 {searching ? <div className="flex items-center justify-center gap-2 px-4 py-7 text-sm text-[#526174]"><LoaderCircle className="h-4 w-4 animate-spin" />검색 중</div> : results.length > 0 ? results.map((participant) => (
                   <button key={participant.id} type="button" disabled={Boolean(participant.signature)} onClick={() => setSelected(participant)} className="flex min-h-[68px] w-full items-center justify-between gap-4 px-4 text-left hover:bg-[#F8FAFC] disabled:cursor-default disabled:bg-[#F8FAFC]">
-                    <span><span className="block text-base font-bold text-[#0F172A]">{maskName(participant.name)}</span><span className="mt-1 block text-xs text-[#526174]">{registry.columns.map((column) => maskValue(participant.values[column.id] ?? '')).filter(Boolean).join(' · ') || '추가 정보 없음'}</span></span>
+                    <span><span className="block text-base font-bold text-[#0F172A]">{participant.name}</span><span className="mt-1 block text-xs text-[#526174]">{registry.columns.map((column) => participant.values[column.id] ?? '').filter(Boolean).join(' · ') || '추가 정보 없음'}</span></span>
                     <span className={`shrink-0 text-xs font-bold ${participant.signature ? 'text-[#126B32]' : 'text-[#0F6CBD]'}`}>{participant.signature ? '서명 완료' : '선택'}</span>
                   </button>
                 )) : <div className="px-4 py-7 text-center text-sm text-[#526174]">일치하는 참석자가 없습니다.</div>}
@@ -216,12 +223,22 @@ export function RemotePublicRegistrySignPage() {
             <div className="mt-5 grid gap-4">
               <label className="grid gap-2 text-sm font-bold text-[#334155]">성명<input className={inputClass} value={walkInName} onChange={(event) => setWalkInName(event.target.value)} placeholder="성명을 입력해 주세요" /></label>
               {registry.columns.map((column) => <label key={column.id} className="grid gap-2 text-sm font-bold text-[#334155]">{column.label}<input className={inputClass} value={walkInValues[column.id] ?? ''} onChange={(event) => setWalkInValues((current) => ({ ...current, [column.id]: event.target.value }))} placeholder={`${column.label} 입력`} /></label>)}
-              <button type="button" disabled={!walkInName.trim() || addingWalkIn} onClick={() => void handleAddWalkIn()} className="mt-1 inline-flex min-h-[52px] items-center justify-center gap-2 rounded-lg bg-[#0F6CBD] px-5 text-base font-bold text-white hover:bg-[#0B5B9F] disabled:bg-[#AAB7C4]">{addingWalkIn ? <LoaderCircle className="h-5 w-5 animate-spin" /> : null}{addingWalkIn ? '저장 중' : '정보 확인 후 서명하기'}</button>
+              <button type="button" disabled={!walkInName.trim() || addingWalkIn} onClick={() => void handleAddWalkIn(false)} className="mt-1 inline-flex min-h-[52px] items-center justify-center gap-2 rounded-lg bg-[#0F6CBD] px-5 text-base font-bold text-white hover:bg-[#0B5B9F] disabled:bg-[#AAB7C4]">{addingWalkIn ? <LoaderCircle className="h-5 w-5 animate-spin" /> : null}{addingWalkIn ? '저장 중' : '정보 확인 후 서명하기'}</button>
             </div>
           </section>
         ) : null}
       </div>
 
+      {duplicateCount > 0 ? (
+        <RegistryConfirmDialog
+          title={`“${walkInName.trim()}” 이름이 이미 명단에 있습니다`}
+          description={`같은 이름으로 ${duplicateCount}명이 등록되어 있습니다. 이미 등록하셨다면 위에서 이름을 검색해 서명해 주세요. 동명이인이라면 그대로 추가할 수 있습니다.`}
+          confirmLabel={addingWalkIn ? '추가하는 중' : '동명이인으로 추가'}
+          tone="primary"
+          onCancel={() => setDuplicateCount(0)}
+          onConfirm={() => void handleAddWalkIn(true)}
+        />
+      ) : null}
       {selected && !selected.signature ? <SignatureDialog registry={registry} participant={selected} onClose={() => setSelected(null)} onSubmit={(dataUrl, source, values) => handleSubmit(selected, dataUrl, source, values)} /> : null}
     </main>
   );

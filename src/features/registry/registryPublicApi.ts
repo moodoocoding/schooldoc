@@ -87,20 +87,29 @@ export const searchPublicParticipants = async (token: string, password: string, 
   return participants.map(mapParticipant);
 };
 
+/**
+ * 현장 등록. 같은 이름이 이미 있으면 만들지 않고 그 수를 돌려준다.
+ * 본인이 맞다고 확인하면 confirmDuplicate로 다시 부른다.
+ */
 export const createPublicWalkIn = async (
   token: string,
   password: string,
   name: string,
   values: Record<string, string>,
+  confirmDuplicate = false,
 ) => {
-  const { participants } = await invoke<ParticipantsResponse>({
+  const result = await invoke<ParticipantsResponse & { duplicateCount?: number }>({
     action: 'walk-in',
     token,
     password,
     name,
     values,
+    confirmDuplicate,
   });
-  return mapParticipant(participants[0]);
+  if (typeof result.duplicateCount === 'number') {
+    return { duplicateCount: result.duplicateCount, participant: null };
+  }
+  return { duplicateCount: 0, participant: mapParticipant(result.participants[0]) };
 };
 
 export const submitPublicSignature = async (

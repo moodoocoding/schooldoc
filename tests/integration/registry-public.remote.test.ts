@@ -129,3 +129,34 @@ describe('원격 등록부 공개 API 경계', () => {
     expect(unlockStatuses.slice(0, firstLimitedRequest).every((status) => status === 200)).toBe(true);
   });
 });
+
+describe('공개 화면으로 나가는 값은 서버에서 가려진다', () => {
+  // 예전에는 서버가 원문을 보내고 브라우저가 별표로 덮어 보여줬다. 화면만 가려질 뿐
+  // 응답에는 원문이 그대로 있어, 링크를 아는 사람이 검색을 반복하면 명단을 긁을 수 있었다.
+  test('검색 결과의 이름과 항목 값에 원문이 남지 않는다', async () => {
+    const result = await invoke({
+      action: 'search',
+      password: registryPassword,
+      query: participantQuery,
+    });
+    expect(result.status).toBe(200);
+
+    const participants = result.data.participants ?? [];
+    expect(participants.length).toBeGreaterThan(0);
+    participants.forEach((participant) => {
+      // 가린 이름에는 반드시 별표가 들어간다. 한 글자 이름은 통째로 별표가 된다.
+      expect(participant.name).toContain('*');
+      // 검색어를 그대로 되돌려주면 가려지지 않은 것이다.
+      expect(participant.name).not.toBe(participantQuery);
+      Object.values(participant.values).forEach((value) => {
+        if (value !== '') expect(value).toContain('*');
+      });
+    });
+  });
+
+  test('안내 정보만 물으면 명단이 딸려 오지 않는다', async () => {
+    const result = await invoke({ action: 'metadata' });
+    expect(result.status).toBe(200);
+    expect(result.data.participants).toBeUndefined();
+  });
+});
