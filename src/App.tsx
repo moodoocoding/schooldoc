@@ -10,6 +10,8 @@ import { PublicStudentResultPage } from './features/studentResults/PublicStudent
 import { StudentResultsWorkspace } from './features/studentResults/StudentResultsWorkspace';
 import { ConsentFormsWorkspace } from './features/consentForms/ConsentFormsWorkspace';
 import { PublicConsentResponsePage } from './features/consentForms/PublicConsentResponsePage';
+import { DataCollectWorkspace } from './features/dataCollect/DataCollectWorkspace';
+import { PublicDataCollectPage } from './features/dataCollect/PublicDataCollectPage';
 import type { SidebarTab, SchoolTool, ActiveTask } from './types/schooldoc';
 import { MessageSquarePlus, X, CheckCircle2 } from 'lucide-react';
 
@@ -110,11 +112,13 @@ function AdminApp() {
   const isRegistryRoute = location.pathname.startsWith('/tools/registry-sign');
   const isStudentResultsRoute = location.pathname.startsWith('/tools/student-results');
   const isConsentFormsRoute = location.pathname.startsWith('/tools/consent-forms');
+  const isDataCollectRoute = location.pathname.startsWith('/tools/data-collect');
 
   const toolRoutes: Record<string, string> = {
     'registry-sign': '/tools/registry-sign',
     'student-lookup': '/tools/student-results',
     'notice-collect': '/tools/consent-forms',
+    'data-collect': '/tools/data-collect',
   };
 
   const handleSelectTool = (toolId: string) => {
@@ -170,9 +174,9 @@ function AdminApp() {
 
       {/* Right Workspace Main Content */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-        {isRegistryRoute || isStudentResultsRoute || isConsentFormsRoute ? (
+        {isRegistryRoute || isStudentResultsRoute || isConsentFormsRoute || isDataCollectRoute ? (
           <main className="min-w-0 overflow-x-hidden p-4 sm:p-8">
-            {isRegistryRoute ? <RegistryWorkspace /> : isStudentResultsRoute ? <StudentResultsWorkspace /> : <ConsentFormsWorkspace />}
+            {isRegistryRoute ? <RegistryWorkspace /> : isStudentResultsRoute ? <StudentResultsWorkspace /> : isConsentFormsRoute ? <ConsentFormsWorkspace /> : <DataCollectWorkspace />}
           </main>
         ) : selectedTool ? (
           // 닿지 않는 분기다. selectedTool은 activeToolId에서 오는데 값이 채워지는 곳이
@@ -304,6 +308,7 @@ function App() {
       <Route path="/s/registry/:token" element={<PublicRegistrySignPage />} />
       <Route path="/s/results/:token" element={<PublicStudentResultPage />} />
       <Route path="/s/consent/:token" element={<PublicConsentResponsePage />} />
+      <Route path="/s/data/:token" element={<PublicDataCollectPage />} />
       <Route path="*" element={<AdminApp />} />
     </Routes>
   );
