@@ -1,21 +1,50 @@
+import { useState } from 'react';
 import { AlertCircle, ArrowLeft, BarChart3, CalendarDays, LoaderCircle, Plus, Trash2, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import { deleteStudentResultEvent } from './studentResultsService';
 import { studentResultsOwnerId } from './studentResultsConfig';
 import { resultStatusLabel } from './studentResultsUtils';
+import { StudentResultConfirmDialog } from './StudentResultConfirmDialog';
 import { useStudentResultEvents } from './useStudentResults';
+
+interface PendingDelete {
+  id: string;
+  title: string;
+  recipientCount: number;
+  disputeCount: number;
+}
+
+/** 지우면 무엇이 함께 사라지는지 숫자로 밝힌다. 되돌릴 수 없는 행동이다. */
+const deleteDescription = ({ recipientCount, disputeCount }: PendingDelete) => [
+  `학생 ${recipientCount}명의 점수와 피드백이 함께 지워집니다.`,
+  disputeCount > 0 ? `접수된 이의 ${disputeCount}건도 사라집니다.` : '',
+  '지운 뒤에는 되돌릴 수 없고, 배부한 링크와 QR도 열리지 않습니다.',
+].filter(Boolean).join(' ');
 
 export function StudentResultsListPage() {
   const navigate = useNavigate();
   const { user } = useTeacherAuth();
   const { data: events, loading, error, refresh } = useStudentResultEvents();
 
-  const remove = async (eventId: string, title: string) => {
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  const remove = async () => {
     const ownerId = studentResultsOwnerId(user?.id);
-    if (!ownerId || !window.confirm(`“${title}” 결과 안내를 삭제할까요?`)) return;
-    await deleteStudentResultEvent(ownerId, eventId);
-    await refresh();
+    if (!ownerId || !pendingDelete || deleting) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await deleteStudentResultEvent(ownerId, pendingDelete.id);
+      await refresh();
+      setPendingDelete(null);
+    } catch (removeError) {
+      setDeleteError(removeError instanceof Error ? removeError.message : '결과 안내를 지우지 못했습니다.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -34,7 +63,7 @@ export function StudentResultsListPage() {
         <button type="button" onClick={() => navigate('/tools/student-results/new')} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-[#0F6CBD] px-5 text-sm font-bold text-white hover:bg-[#0B5B9F]"><Plus className="h-4 w-4" />새 결과 안내</button>
       </div>
 
-      {error ? <div role="alert" className="flex items-start gap-2 border-y border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm font-semibold text-[#B42318]"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</div> : null}
+      {error || deleteError ? <div role="alert" className="flex items-start gap-2 border-y border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm font-semibold text-[#B42318]"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error || deleteError}</div> : null}
       {loading ? (
         <div className="flex min-h-52 items-center justify-center gap-2 text-sm font-semibold text-[#526174]"><LoaderCircle className="h-5 w-5 animate-spin" />결과 안내를 불러오는 중입니다.</div>
       ) : events.length === 0 ? (
@@ -57,12 +86,22 @@ export function StudentResultsListPage() {
                   <div className="mt-4 space-y-2 text-sm text-[#526174]"><p className="flex items-center gap-2"><CalendarDays className="h-4 w-4" />{new Date(event.createdAt).toLocaleDateString('ko-KR')}</p><p className="flex items-center gap-2"><Users className="h-4 w-4" />{event.recipients.length}명 · 확인 {confirmed}명</p></div>
                   <div className="mt-5 flex items-center justify-between border-t border-[#EEF1F4] pt-4"><span className="text-xs font-semibold text-[#526174]">최근 상태: {resultStatusLabel(event.recipients.at(-1)?.status ?? 'unviewed')}</span><span className="text-xs font-bold text-[#0F6CBD]">현황 보기</span></div>
                 </button>
-                <button type="button" onClick={() => void remove(event.id, event.title)} className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-lg text-[#94A3B8] hover:bg-[#FEF3F2] hover:text-[#B42318]" aria-label={`${event.title} 삭제`} title="삭제"><Trash2 className="h-4 w-4" /></button>
+                <button type="button" onClick={() => setPendingDelete({ id: event.id, title: event.title, recipientCount: event.recipients.length, disputeCount: disputed })} className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-lg text-[#94A3B8] hover:bg-[#FEF3F2] hover:text-[#B42318]" aria-label={`${event.title} 삭제`} title="삭제"><Trash2 className="h-4 w-4" /></button>
               </article>
             );
           })}
         </div>
       )}
+
+      {pendingDelete ? (
+        <StudentResultConfirmDialog
+          title={`“${pendingDelete.title}” 결과 안내를 지울까요?`}
+          description={deleteDescription(pendingDelete)}
+          confirmLabel={deleting ? '지우는 중' : '영구 삭제'}
+          onCancel={() => { if (!deleting) { setPendingDelete(null); setDeleteError(''); } }}
+          onConfirm={() => void remove()}
+        />
+      ) : null}
     </div>
   );
 }

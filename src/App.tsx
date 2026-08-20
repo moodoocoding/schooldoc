@@ -19,7 +19,7 @@ function AdminApp() {
   const [activeTab, setActiveTab] = useState<SidebarTab>('home');
   const [activeToolId, setActiveToolId] = useState<string | null>(null);
   const [isOpenMobile, setIsOpenMobile] = useState<boolean>(false);
-  const [quickMenuIds, setQuickMenuIds] = useState<string[]>(['notice-collect', 'cert-collect']);
+  const [quickMenuIds, setQuickMenuIds] = useState<string[]>(['notice-collect', 'student-lookup']);
   const [activeTasks] = useState<ActiveTask[]>([]);
   const [isOpenSuggestion, setIsOpenSuggestion] = useState<boolean>(false);
   const [suggestionText, setSuggestionText] = useState<string>('');
@@ -53,49 +53,56 @@ function AdminApp() {
       name: '자료 수합',
       desc: '필요한 제출 항목을 만들고 파일과 응답을 한곳에서 받습니다.',
       iconName: 'inbox',
-      status: 'ready',
+      status: 'in_progress',
+      statusText: '개발 중',
     },
     'doc-sign': {
       id: 'doc-sign',
       name: '문서 서명',
       desc: 'PDF의 서명 위치를 지정하고 비대면 서명을 받습니다.',
       iconName: 'file-pen',
-      status: 'ready',
+      status: 'in_progress',
+      statusText: '개발 중',
     },
     'receipt-auto': {
       id: 'receipt-auto',
       name: '영수증 정리',
       desc: '영수증을 촬영하면 금액과 상호명을 인식해 표로 정리합니다.',
       iconName: 'receipt',
-      status: 'ready',
+      status: 'in_progress',
+      statusText: '개발 중',
     },
     'cert-collect': {
       id: 'cert-collect',
       name: '이수증 수합',
       desc: '연수 이수증을 모으고 연수명과 이수 시간을 자동 집계합니다.',
       iconName: 'award',
-      status: 'ready',
+      status: 'in_progress',
+      statusText: '개발 중',
     },
     'special-room': {
       id: 'special-room',
       name: '특별실 예약',
       desc: '특별실의 사용 가능 시간을 확인하고 예약합니다.',
       iconName: 'calendar-clock',
-      status: 'ready',
+      status: 'in_progress',
+      statusText: '개발 중',
     },
     'lost-found': {
       id: 'lost-found',
       name: '분실물 관리',
       desc: '습득물 사진과 장소를 등록하고 반환 상태를 관리합니다.',
       iconName: 'package-search',
-      status: 'ready',
+      status: 'in_progress',
+      statusText: '개발 중',
     },
     'item-rent': {
       id: 'item-rent',
       name: '물품 대여',
       desc: '공용 물품의 대여자와 반납 예정일을 관리합니다.',
       iconName: 'package-check',
-      status: 'ready',
+      status: 'in_progress',
+      statusText: '개발 중',
     },
   };
 
@@ -104,14 +111,19 @@ function AdminApp() {
   const isStudentResultsRoute = location.pathname.startsWith('/tools/student-results');
   const isConsentFormsRoute = location.pathname.startsWith('/tools/consent-forms');
 
+  const toolRoutes: Record<string, string> = {
+    'registry-sign': '/tools/registry-sign',
+    'student-lookup': '/tools/student-results',
+    'notice-collect': '/tools/consent-forms',
+  };
+
   const handleSelectTool = (toolId: string) => {
-    if (toolId === 'registry-sign' || toolId === 'student-lookup' || toolId === 'notice-collect') {
-      setActiveToolId(null);
-      navigate(toolId === 'registry-sign' ? '/tools/registry-sign' : toolId === 'student-lookup' ? '/tools/student-results' : '/tools/consent-forms');
-      return;
-    }
-    navigate('/');
-    setActiveToolId(toolId);
+    const route = toolRoutes[toolId];
+    // 아직 만들지 않은 도구는 열지 않는다. 단계와 업로드가 있는 화면이 열리면
+    // 동작하는 줄 알고 자료를 올리게 된다.
+    if (!route) return;
+    setActiveToolId(null);
+    navigate(route);
   };
 
   const handleAddQuickMenu = (toolId: string) => {
@@ -163,6 +175,8 @@ function AdminApp() {
             {isRegistryRoute ? <RegistryWorkspace /> : isStudentResultsRoute ? <StudentResultsWorkspace /> : <ConsentFormsWorkspace />}
           </main>
         ) : selectedTool ? (
+          // 닿지 않는 분기다. selectedTool은 activeToolId에서 오는데 값이 채워지는 곳이
+          // 없다. ToolExecutionPage 맨 위 설명 참고.
           <main className="p-4 sm:p-8">
             <ToolExecutionPage
               tool={selectedTool}

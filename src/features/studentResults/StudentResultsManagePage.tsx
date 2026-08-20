@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTeacherAuth } from '../../auth/teacherAuth';
-import { studentResultsOwnerId } from './studentResultsConfig';
+import { getStudentResultsPublicOrigin, studentResultsOwnerId } from './studentResultsConfig';
 import {
   regenerateStudentResultPersonalToken,
   replyToStudentDispute,
@@ -65,6 +65,8 @@ export function StudentResultsManagePage() {
   const [visibleCodes, setVisibleCodes] = useState<Set<string>>(new Set());
   const [selectedRecipientIds, setSelectedRecipientIds] = useState<Set<string>>(new Set());
   const [pendingTokenReset, setPendingTokenReset] = useState<{ id: string; name: string } | null>(null);
+  const [pending, setPending] = useState('');
+  const [actionError, setActionError] = useState('');
 
   if (loading) return <div className="py-20 text-center text-sm font-semibold text-[#526174]">결과 안내를 불러오는 중입니다.</div>;
   if (!event) {
@@ -76,7 +78,7 @@ export function StudentResultsManagePage() {
     );
   }
 
-  const publicLink = `${window.location.origin}/s/results/${event.publicToken}`;
+  const publicLink = `${getStudentResultsPublicOrigin()}/s/results/${event.publicToken}`;
   const keyword = query.trim().toLocaleLowerCase('ko-KR');
   const matchesQuery = (name: string, studentKey: string) => !keyword
     || name.toLocaleLowerCase('ko-KR').includes(keyword)
@@ -132,11 +134,43 @@ export function StudentResultsManagePage() {
     });
     navigate(`/tools/student-results/${event.id}/qr-print?${params.toString()}`);
   };
+  /**
+   * 서버를 부르는 동작은 모두 여기를 지난다.
+   * 실패하면 화면에 알리고, 끝날 때까지 다른 동작을 막아 같은 요청이 두 번 나가지 않게 한다.
+   */
+  const run = async (key: string, action: () => Promise<void>, failureMessage: string) => {
+    if (pending || !ownerId) return;
+    setPending(key);
+    setActionError('');
+    try {
+      await action();
+      await refresh();
+      return true;
+    } catch (runError) {
+      setActionError(runError instanceof Error ? runError.message : failureMessage);
+      return false;
+    } finally {
+      setPending('');
+    }
+  };
+  const toggleEventStatus = () => {
+    const next = event.status === 'open' ? 'closed' : 'open';
+    void run(
+      'status',
+      () => setStudentResultEventStatus(ownerId, event.id, next),
+      next === 'closed' ? '안내를 종료하지 못했습니다.' : '안내를 다시 열지 못했습니다.',
+    );
+  };
   const resetPersonalToken = async () => {
-    if (!ownerId || !pendingTokenReset) return;
-    await regenerateStudentResultPersonalToken(ownerId, event.id, pendingTokenReset.id);
-    await refresh();
-    setNotice(`${pendingTokenReset.name} 학생의 개인 링크를 재발급했습니다.`);
+    if (!pendingTokenReset) return;
+    const target = pendingTokenReset;
+    const done = await run(
+      'token',
+      () => regenerateStudentResultPersonalToken(ownerId, event.id, target.id),
+      '개인 링크를 재발급하지 못했습니다.',
+    );
+    if (!done) return;
+    setNotice(`${target.name} 학생의 개인 링크를 재발급했습니다.`);
     setPendingTokenReset(null);
   };
 
@@ -145,7 +179,7 @@ export function StudentResultsManagePage() {
       <header className="border-b border-[#DCE3EA] pb-5">
         <div className="flex items-center justify-between gap-3">
           <button type="button" onClick={() => navigate('/tools/student-results')} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg px-2 text-sm font-semibold text-[#334155] hover:bg-white hover:text-[#0F6CBD]"><ArrowLeft className="h-5 w-5" />목록으로</button>
-          <button type="button" onClick={() => { if (ownerId) void setStudentResultEventStatus(ownerId, event.id, event.status === 'open' ? 'closed' : 'open').then(refresh); }} className="min-h-[40px] shrink-0 rounded-lg border border-[#C8D0DA] bg-white px-4 text-xs font-bold">{event.status === 'open' ? '안내 종료' : '안내 다시 열기'}</button>
+          <button type="button" disabled={pending !== ''} onClick={toggleEventStatus} className="min-h-[40px] shrink-0 rounded-lg border border-[#C8D0DA] bg-white px-4 text-xs font-bold disabled:cursor-wait disabled:text-[#94A3B8]">{pending === 'status' ? '처리 중' : event.status === 'open' ? '안내 종료' : '안내 다시 열기'}</button>
         </div>
         <div className="mt-4 max-w-5xl">
           <div className="flex flex-wrap items-center gap-2">
@@ -162,6 +196,7 @@ export function StudentResultsManagePage() {
         <button type="button" role="tab" aria-selected={view === 'access'} onClick={() => setView('access')} className={`min-h-[40px] rounded-md px-5 text-sm font-bold ${view === 'access' ? 'bg-[#0F6CBD] text-white' : 'text-[#526174] hover:bg-[#F6F8FB]'}`}>접속 정보</button>
       </div>
 
+      {actionError ? <p role="alert" className="border-y border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm font-semibold text-[#B42318]">{actionError}</p> : null}
       {notice ? <p role="status" aria-live="polite" className="border-y border-[#B9D9F2] bg-[#EFF6FC] px-4 py-3 text-sm font-semibold text-[#0F6CBD]">{notice}</p> : null}
 
       {view === 'status' ? (
@@ -196,7 +231,7 @@ export function StudentResultsManagePage() {
                     <td className="border-b border-[#EEF1F4] p-3"><span className={`inline-flex rounded-md px-2 py-1 text-xs font-bold ${statusStyle(recipient.status)}`}>{resultStatusLabel(recipient.status)}</span></td>
                     <td className="border-b border-[#EEF1F4] p-3 text-xs text-[#526174]"><Clock3 className="mr-1 inline h-3.5 w-3.5" />{formatActivityAt(activityAt(recipient))}</td>
                     <td className="border-b border-[#EEF1F4] p-3">
-                      {recipient.dispute ? <div className="max-w-sm"><p className="text-xs text-[#334155]"><MessageSquareText className="mr-1 inline h-3.5 w-3.5" />{recipient.dispute.message}</p>{recipient.dispute.teacherReply ? <p className="mt-2 text-xs font-semibold text-[#0F6CBD]">답변: {recipient.dispute.teacherReply}</p> : <div className="mt-2 flex gap-2"><input value={reply[recipient.id] ?? ''} onChange={(changeEvent) => setReply((current) => ({ ...current, [recipient.id]: changeEvent.target.value }))} className="min-h-[36px] min-w-0 flex-1 rounded-md border border-[#C8D0DA] px-2 text-xs" placeholder="교사 답변" /><button type="button" disabled={!reply[recipient.id]?.trim()} onClick={() => { if (ownerId) void replyToStudentDispute(ownerId, event.id, recipient.id, reply[recipient.id]).then(refresh); }} className="rounded-md bg-[#0F6CBD] px-3 text-xs font-bold text-white disabled:opacity-40">답변</button></div>}</div> : <span className="text-xs text-[#94A3B8]">없음</span>}
+                      {recipient.dispute ? <div className="max-w-sm"><p className="text-xs text-[#334155]"><MessageSquareText className="mr-1 inline h-3.5 w-3.5" />{recipient.dispute.message}</p>{recipient.dispute.teacherReply ? <p className="mt-2 text-xs font-semibold text-[#0F6CBD]">답변: {recipient.dispute.teacherReply}</p> : <div className="mt-2 flex gap-2"><input value={reply[recipient.id] ?? ''} onChange={(changeEvent) => setReply((current) => ({ ...current, [recipient.id]: changeEvent.target.value }))} className="min-h-[36px] min-w-0 flex-1 rounded-md border border-[#C8D0DA] px-2 text-xs" placeholder="교사 답변" /><button type="button" disabled={!reply[recipient.id]?.trim() || pending !== ''} onClick={() => void run(`reply:${recipient.id}`, () => replyToStudentDispute(ownerId, event.id, recipient.id, reply[recipient.id]), '답변을 저장하지 못했습니다.')} aria-label={`${recipient.name} 학생의 이의에 답변`} className="shrink-0 rounded-md bg-[#0F6CBD] px-3 text-xs font-bold text-white disabled:opacity-40">{pending === `reply:${recipient.id}` ? '저장 중' : '답변'}</button></div>}</div> : <span className="text-xs text-[#94A3B8]">없음</span>}
                     </td>
                   </tr>
                 ))}</tbody>
@@ -230,7 +265,7 @@ export function StudentResultsManagePage() {
                   const isCodeVisible = visibleCodes.has(recipient.id);
                   const codeCopyKey = `code:${recipient.id}`;
                   const linkCopyKey = `link:${recipient.id}`;
-                  return <tr key={recipient.id}><td className="border-b border-[#EEF1F4] p-3"><input type="checkbox" checked={selectedRecipientIds.has(recipient.id)} onChange={() => toggleRecipient(recipient.id)} className="h-4 w-4" aria-label={`${recipient.name} 선택`} /></td><td className="border-b border-[#EEF1F4] p-3"><strong className="block">{recipient.name}</strong><span className="mt-1 block text-xs text-[#64748B]">{recipient.studentKey}</span></td><td className="border-b border-[#EEF1F4] p-3"><div className="flex items-center gap-1"><span className="min-w-14 font-mono font-bold tabular-nums">{isCodeVisible ? recipient.verificationCode : '••••'}</span><button type="button" onClick={() => toggleVisibleCode(recipient.id)} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-[#64748B] hover:bg-[#EFF6FC] hover:text-[#0F6CBD]" aria-label={`${recipient.name} 확인번호 ${isCodeVisible ? '숨기기' : '보기'}`} title={isCodeVisible ? '확인번호 숨기기' : '확인번호 보기'}>{isCodeVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button><button type="button" onClick={() => void copy(recipient.verificationCode, codeCopyKey, `${recipient.name} 학생의 확인번호를 복사했습니다.`)} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-[#64748B] hover:bg-[#EFF6FC] hover:text-[#0F6CBD]" aria-label={`${recipient.name} 확인번호 복사`} title="확인번호 복사">{copied === codeCopyKey ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}</button></div></td><td className="border-b border-[#EEF1F4] p-3"><button type="button" onClick={() => void copy(personalLink, linkCopyKey, `${recipient.name} 학생의 개인 링크를 복사했습니다.`)} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-[#C8D0DA] px-3 text-xs font-bold text-[#0F6CBD]">{copied === linkCopyKey ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}{recipient.name} 개인 링크 복사</button></td><td className="border-b border-[#EEF1F4] p-3"><button type="button" onClick={() => setPendingTokenReset({ id: recipient.id, name: recipient.name })} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg px-3 text-xs font-bold text-[#B42318] hover:bg-[#FEF2F2]"><RefreshCw className="h-4 w-4" />재발급</button></td></tr>;
+                  return <tr key={recipient.id}><td className="border-b border-[#EEF1F4] p-3"><input type="checkbox" checked={selectedRecipientIds.has(recipient.id)} onChange={() => toggleRecipient(recipient.id)} className="h-4 w-4" aria-label={`${recipient.name} 선택`} /></td><td className="border-b border-[#EEF1F4] p-3"><strong className="block">{recipient.name}</strong><span className="mt-1 block text-xs text-[#64748B]">{recipient.studentKey}</span></td><td className="border-b border-[#EEF1F4] p-3"><div className="flex items-center gap-1"><span className="min-w-14 font-mono font-bold tabular-nums">{isCodeVisible ? recipient.verificationCode : '••••'}</span><button type="button" onClick={() => toggleVisibleCode(recipient.id)} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-[#64748B] hover:bg-[#EFF6FC] hover:text-[#0F6CBD]" aria-label={`${recipient.name} 확인번호 ${isCodeVisible ? '숨기기' : '보기'}`} title={isCodeVisible ? '확인번호 숨기기' : '확인번호 보기'}>{isCodeVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button><button type="button" onClick={() => void copy(recipient.verificationCode, codeCopyKey, `${recipient.name} 학생의 확인번호를 복사했습니다.`)} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-[#64748B] hover:bg-[#EFF6FC] hover:text-[#0F6CBD]" aria-label={`${recipient.name} 확인번호 복사`} title="확인번호 복사">{copied === codeCopyKey ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}</button></div></td><td className="border-b border-[#EEF1F4] p-3"><button type="button" onClick={() => void copy(personalLink, linkCopyKey, `${recipient.name} 학생의 개인 링크를 복사했습니다.`)} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-[#C8D0DA] px-3 text-xs font-bold text-[#0F6CBD]">{copied === linkCopyKey ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}{recipient.name} 개인 링크 복사</button></td><td className="border-b border-[#EEF1F4] p-3"><button type="button" onClick={() => setPendingTokenReset({ id: recipient.id, name: recipient.name })} aria-label={`${recipient.name} 학생의 개인 링크 재발급`} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg px-3 text-xs font-bold text-[#B42318] hover:bg-[#FEF2F2]"><RefreshCw className="h-4 w-4" />재발급</button></td></tr>;
                 })}</tbody>
               </table>
             </div>
@@ -238,7 +273,7 @@ export function StudentResultsManagePage() {
         </>
       )}
 
-      {pendingTokenReset ? <StudentResultConfirmDialog title={`${pendingTokenReset.name} 학생의 링크를 재발급할까요?`} description="기존 개인 링크와 QR은 즉시 사용할 수 없게 됩니다. 새 링크나 QR을 학생에게 다시 전달해야 합니다." confirmLabel="재발급" onCancel={() => setPendingTokenReset(null)} onConfirm={resetPersonalToken} /> : null}
+      {pendingTokenReset ? <StudentResultConfirmDialog title={`${pendingTokenReset.name} 학생의 링크를 재발급할까요?`} description="기존 개인 링크와 QR은 즉시 사용할 수 없게 됩니다. 새 링크나 QR을 학생에게 다시 전달해야 합니다." confirmLabel={pending === 'token' ? '재발급 중' : '링크 재발급'} onCancel={() => setPendingTokenReset(null)} onConfirm={() => void resetPersonalToken()} /> : null}
     </div>
   );
 }
