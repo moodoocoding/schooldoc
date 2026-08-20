@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { ArrowLeft, ImageDown, LoaderCircle, Printer } from 'lucide-react';
+import { qrImageFileName, saveQrImage } from '../utils/qrImage';
 import type { EventData } from '../types';
 
 interface QRPrintViewProps {
@@ -9,6 +10,24 @@ interface QRPrintViewProps {
 }
 
 export const QRPrintView: React.FC<QRPrintViewProps> = ({ event, onBack }) => {
+  // QR을 그리는 화면에는 이미지 저장이 함께 있어야 한다. 제품 원칙이며
+  // tests/unit/qrScreensHaveImageSave.test.ts가 지킨다.
+  const [savingQrId, setSavingQrId] = useState('');
+  const [qrError, setQrError] = useState('');
+
+  const downloadQrImage = async (studentId: string, name: string) => {
+    if (savingQrId) return;
+    setSavingQrId(studentId);
+    setQrError('');
+    try {
+      await saveQrImage(document.getElementById(`student-qr-${studentId}`), qrImageFileName(`${event.title}_${name}`, '개인QR', '평가 결과'));
+    } catch (error) {
+      setQrError(error instanceof Error ? error.message : 'QR 이미지를 저장하지 못했습니다.');
+    } finally {
+      setSavingQrId('');
+    }
+  };
+
   const getStudentPortalLink = (studentId: string, accessCode: string) => {
     const base = window.location.origin + window.location.pathname;
     return `${base}?eventId=${event.id}&studentId=${studentId}&code=${accessCode}`;
@@ -35,6 +54,10 @@ export const QRPrintView: React.FC<QRPrintViewProps> = ({ event, onBack }) => {
           <Printer className="w-4 h-4" /> 일괄 인쇄하기 (A4용지 최적화)
         </button>
       </div>
+
+      {qrError ? (
+        <p role="alert" className="print:hidden text-sm font-semibold text-red-700">{qrError}</p>
+      ) : null}
 
       {/* Printable Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid-cols-2 print:gap-4 print:p-0">
@@ -65,13 +88,25 @@ export const QRPrintView: React.FC<QRPrintViewProps> = ({ event, onBack }) => {
               {/* Card Body */}
               <div className="flex gap-4 items-center flex-1 my-3">
                 {/* QR Code */}
-                <div className="p-2 border border-slate-200 rounded-xl bg-slate-50 shrink-0">
-                  <QRCodeSVG
-                    value={studentUrl}
-                    size={110}
-                    level="M"
-                    includeMargin={false}
-                  />
+                <div className="flex shrink-0 flex-col items-center gap-1">
+                  <div id={`student-qr-${student.id}`} className="p-2 border border-slate-200 rounded-xl bg-slate-50">
+                    <QRCodeSVG
+                      value={studentUrl}
+                      size={110}
+                      level="M"
+                      includeMargin={false}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={savingQrId !== ''}
+                    onClick={() => void downloadQrImage(student.id, student.name)}
+                    aria-label={`${student.name} QR 이미지 저장`}
+                    className="print:hidden inline-flex min-h-[24px] items-center gap-1 rounded-md px-1.5 text-[10px] font-bold text-brand-500 hover:bg-slate-50 disabled:text-slate-400"
+                  >
+                    {savingQrId === student.id ? <LoaderCircle className="w-3 h-3 animate-spin" /> : <ImageDown className="w-3 h-3" />}
+                    {savingQrId === student.id ? '저장 중' : '이미지 저장'}
+                  </button>
                 </div>
 
                 {/* Instructions */}

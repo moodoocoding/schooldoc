@@ -6,6 +6,8 @@ import {
   Download,
   ExternalLink,
   FileSpreadsheet,
+  ImageDown,
+  LoaderCircle,
   Plus,
   RefreshCw,
   Search,
@@ -14,6 +16,7 @@ import {
   Users,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { qrImageFileName, saveQrImage } from '../../utils/qrImage';
 import { useNavigate, useParams } from 'react-router-dom';
 import { RegistryConfirmDialog } from './RegistryConfirmDialog';
 import { isRegistryDemoMode } from './registryConfig';
@@ -46,6 +49,7 @@ export function RegistryManagePage() {
   const { data: registry, loading, error, refresh } = useRegistry(registryId);
   const navigate = useNavigate();
   const printRef = useRef<HTMLDivElement>(null);
+  const qrRef = useRef<HTMLDivElement>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
   const [newName, setNewName] = useState('');
@@ -54,6 +58,8 @@ export function RegistryManagePage() {
   const [copied, setCopied] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [actionError, setActionError] = useState('');
+  const [savingQr, setSavingQr] = useState(false);
+  const [qrError, setQrError] = useState('');
   const [isMutating, setIsMutating] = useState(false);
   const [participantPage, setParticipantPage] = useState(1);
   const [printPage, setPrintPage] = useState(1);
@@ -160,6 +166,19 @@ export function RegistryManagePage() {
       setActionError(mutationError instanceof Error ? mutationError.message : '요청을 처리하지 못했습니다.');
     } finally {
       setIsMutating(false);
+    }
+  };
+
+  const downloadQrImage = async () => {
+    if (savingQr) return;
+    setSavingQr(true);
+    setQrError('');
+    try {
+      await saveQrImage(qrRef.current, qrImageFileName(registry.title, '서명QR', '등록부'));
+    } catch (error) {
+      setQrError(error instanceof Error ? error.message : 'QR 이미지를 저장하지 못했습니다.');
+    } finally {
+      setSavingQr(false);
     }
   };
 
@@ -287,8 +306,15 @@ export function RegistryManagePage() {
       </div>
 
       <section className="grid gap-6 border-y border-[#DCE3EA] bg-white px-4 py-6 sm:px-6 md:grid-cols-[230px_1fr]">
-        <div className="flex items-center justify-center rounded-lg bg-white p-3 ring-1 ring-[#DCE3EA]">
-          <QRCodeSVG value={publicUrl} size={190} level="M" includeMargin aria-label="참석자 서명 링크 QR 코드" />
+        <div className="flex flex-col items-center gap-3">
+          <div ref={qrRef} className="flex items-center justify-center rounded-lg bg-white p-3 ring-1 ring-[#DCE3EA]">
+            <QRCodeSVG value={publicUrl} size={190} level="M" includeMargin aria-label="참석자 서명 링크 QR 코드" />
+          </div>
+          <button type="button" disabled={savingQr} onClick={() => void downloadQrImage()} className="inline-flex min-h-[40px] w-full items-center justify-center gap-2 rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD] hover:bg-[#EFF6FC] disabled:border-[#C8D0DA] disabled:text-[#94A3B8]">
+            {savingQr ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ImageDown className="h-4 w-4" />}
+            {savingQr ? '저장 중' : 'QR 이미지 저장'}
+          </button>
+          {qrError ? <p role="alert" className="text-[11px] font-semibold text-[#B42318]">{qrError}</p> : null}
         </div>
         <div className="min-w-0 self-center">
           <h2 className="text-lg font-extrabold text-[#0F172A]">참석자 서명 링크</h2>

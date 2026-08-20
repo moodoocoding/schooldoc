@@ -279,3 +279,37 @@ test('모바일 서명 창은 사진 입력 없이 직접 서명만 제공한다
   expect(source).toBe('draw');
   expect(runtimeErrors).toEqual([]);
 });
+
+test('서명 링크 QR을 이미지 파일로 저장한다', async ({ page }) => {
+  // QR을 그렸다면 언제나 이미지로 받을 수 있어야 한다는 제품 원칙을 실제 브라우저에서 확인한다.
+  await page.goto('/tools/registry-sign/new');
+  await page.evaluate(() => {
+    localStorage.removeItem('schooldoc_registry_v1');
+    sessionStorage.clear();
+  });
+  await page.reload();
+
+  await page.getByLabel(/문서 제목/).fill('QR 저장 확인 등록부');
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByLabel('1번 참석자 성명').fill('테스트교사');
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByRole('button', { name: '등록부 생성' }).click();
+  await expect(page).toHaveURL(/\/tools\/registry-sign\/[^/]+$/);
+
+  const saveButton = page.getByRole('button', { name: 'QR 이미지 저장' });
+  await expect(saveButton).toBeVisible();
+
+  const download = await Promise.all([
+    page.waitForEvent('download'),
+    saveButton.click(),
+  ]).then(([event]) => event);
+
+  expect(download.suggestedFilename()).toBe('QR 저장 확인 등록부_서명QR.png');
+
+  // 빈 파일이 떨어지면 저장은 됐지만 QR이 담기지 않은 것이다.
+  const path = await download.path();
+  expect(path).toBeTruthy();
+  const { statSync } = await import('node:fs');
+  expect(statSync(path!).size).toBeGreaterThan(1000);
+});
