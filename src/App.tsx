@@ -175,6 +175,8 @@ function AdminApp() {
             {isRegistryRoute ? <RegistryWorkspace /> : isStudentResultsRoute ? <StudentResultsWorkspace /> : <ConsentFormsWorkspace />}
           </main>
         ) : selectedTool ? (
+          // 닿지 않는 분기다. selectedTool은 activeToolId에서 오는데 값이 채워지는 곳이
+          // 없다. ToolExecutionPage 맨 위 설명 참고.
           <main className="p-4 sm:p-8">
             <ToolExecutionPage
               tool={selectedTool}
