@@ -166,6 +166,12 @@ Deno.serve(async (request) => {
     throw new HttpError(400, '지원하지 않는 요청입니다.');
   } catch (error) {
     if (error instanceof HttpError) return json(error.status, { error: error.message });
+    // 함수만 배포하고 마이그레이션을 적용하지 않으면 여기로 온다. 실제로 겪은 일이라,
+    // 원인을 모르고 헤매지 않도록 무엇이 빠졌는지 그대로 알린다.
+    if ((error as { code?: string }).code === '42703') {
+      console.error('registry-participants: migration not applied', error);
+      return json(503, { error: '등록부 마이그레이션이 아직 적용되지 않았습니다. 202608200001을 적용해 주세요.' });
+    }
     console.error('registry-participants failed', error);
     return json(500, { error: '참석자 명단을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.' });
   }

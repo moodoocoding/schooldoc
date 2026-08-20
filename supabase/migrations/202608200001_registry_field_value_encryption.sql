@@ -21,7 +21,11 @@ comment on column public.registry_participants.field_values is
 
 -- 검색은 이름만 훑는다. 항목 값이 암호문이 되어 부분 검색이 통하지 않고,
 -- 그대로 두면 암호문 조각에 우연히 걸리는 일이 생긴다.
-create or replace function public.search_registry_participants(
+--
+-- 돌려주는 열이 늘어나므로 create or replace로는 바꿀 수 없다. 먼저 지운다.
+drop function if exists public.search_registry_participants(uuid, text, integer);
+
+create function public.search_registry_participants(
   p_registry_id uuid,
   p_query text,
   p_limit integer default 10
