@@ -69,6 +69,33 @@ Supabase는 값을 다시 보여주지 않으므로 설정할 때 따로 적어 
 실제 값은 저장소에 올리지 않는 `SECRETS.local.md`에 적어 관리합니다.
 이 파일은 `.gitignore`에 등록되어 있으며, 저장소 밖에도 사본을 두는 편이 안전합니다.
 
+## 배포 순서
+
+**마이그레이션을 먼저 적용하고 함수를 나중에 배포합니다.** 순서가 뒤바뀌면 함수가 아직 없는
+컬럼을 읽으려다 실패하고, 화면에는 원인을 알 수 없는 오류만 뜹니다. 실제로 겪은 일입니다.
+
+1. 새 암호화 키가 필요하면 먼저 넣습니다. 키가 없으면 해당 기능이 503으로 접힙니다.
+   ```bash
+   npx supabase secrets set <이름>=$(openssl rand -hex 32)
+   ```
+2. 마이그레이션을 적용합니다.
+   ```bash
+   npx supabase db push
+   ```
+3. 함수를 배포합니다.
+   ```bash
+   npx supabase functions deploy <함수 이름>
+   ```
+
+컬럼이 생겼는지는 이렇게 확인합니다. `[]`가 나오면 성공, `does not exist`면 아직입니다.
+
+```bash
+set -a; . ./.env.local; set +a
+curl -s "$VITE_SUPABASE_URL/rest/v1/<테이블>?select=<새 컬럼>&limit=1" -H "apikey: $VITE_SUPABASE_ANON_KEY" -H "Authorization: Bearer $VITE_SUPABASE_ANON_KEY"
+```
+
+Edge Function은 코드를 푸시해도 자동으로 올라가지 않습니다. 항상 직접 배포해야 합니다.
+
 ## 제품 원칙
 
 - 교사가 반복 업무를 빠르고 실수 없이 끝낼 수 있어야 합니다.
