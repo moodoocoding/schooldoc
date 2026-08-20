@@ -313,3 +313,30 @@ test('서명 링크 QR을 이미지 파일로 저장한다', async ({ page }) =>
   const { statSync } = await import('node:fs');
   expect(statSync(path!).size).toBeGreaterThan(1000);
 });
+
+test('인쇄 미리보기 아래에 빈 공간이 남지 않는다', async ({ page }) => {
+  // transform: scale()은 그려지는 크기만 줄이고 차지하는 자리는 그대로 둔다. 예전에는 그래서
+  // 미리보기 아래에 원본 높이의 남은 만큼(72%면 314px) 회색 공백이 생겼다.
+  await page.goto('/tools/registry-sign/new');
+  await page.evaluate(() => {
+    localStorage.removeItem('schooldoc_registry_v1');
+    sessionStorage.clear();
+  });
+  await page.reload();
+
+  await page.getByLabel(/문서 제목/).fill('미리보기 여백 확인');
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByLabel('1번 참석자 성명').fill('테스트교사');
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByRole('button', { name: '다음' }).click();
+  await page.getByRole('button', { name: '등록부 생성' }).click();
+  await expect(page).toHaveURL(/\/tools\/registry-sign\/[^/]+$/);
+
+  const gap = await page.locator('.registry-print-frame').evaluate((frame) => {
+    const page1 = frame.querySelector('.registry-print-page');
+    if (!page1) throw new Error('인쇄 미리보기를 찾지 못했습니다.');
+    return Math.round(frame.getBoundingClientRect().height - page1.getBoundingClientRect().height);
+  });
+  // 차지하는 자리와 그려지는 크기가 같아야 한다. 반올림 오차만 허용한다.
+  expect(Math.abs(gap)).toBeLessThanOrEqual(1);
+});

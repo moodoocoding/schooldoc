@@ -224,6 +224,10 @@ export function RegistryManagePage() {
           windowWidth: 794,
           windowHeight: 1123,
           onclone: (clonedDocument) => {
+            clonedDocument.querySelectorAll<HTMLElement>('.registry-print-frame').forEach((frame) => {
+              frame.style.width = 'auto';
+              frame.style.height = 'auto';
+            });
             clonedDocument.querySelectorAll<HTMLElement>('.registry-print-preview').forEach((preview) => {
               preview.style.transform = 'none';
             });
@@ -422,8 +426,11 @@ export function RegistryManagePage() {
         </div>
 
         <div tabIndex={0} role="region" aria-label="등록부 인쇄 미리보기" className="mt-6 h-[720px] overflow-auto rounded-lg bg-[#E8ECF1] p-5">
-          <div ref={printRef} className="registry-print-preview w-max origin-top-left scale-[0.72] sm:scale-[0.8] xl:scale-[0.86]">
-            <RegistryPrintSheet registry={registry} pageIndex={renderAllPrintPages ? undefined : safePrintPage - 1} />
+          {/* 축소 배율과 자리 크기를 registry-print-frame이 함께 정한다. index.css 참고 */}
+          <div className={`registry-print-frame${renderAllPrintPages ? ' is-exporting' : ''}`}>
+            <div ref={printRef} className="registry-print-preview w-max">
+              <RegistryPrintSheet registry={registry} pageIndex={renderAllPrintPages ? undefined : safePrintPage - 1} />
+            </div>
           </div>
         </div>
         <RegistryPagination currentPage={safePrintPage} pageSize={1} totalItems={printPageCount} onPageChange={setPrintPage} label="인쇄 미리보기 페이지" itemLabel="쪽" showItemRange={false} />
