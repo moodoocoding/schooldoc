@@ -152,23 +152,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
               const tool = allToolsMap[id];
               if (!tool) return null;
               const Icon = getToolIcon(tool.iconName);
+              const isReady = tool.status === 'ready';
               return (
                 <div
                   key={id}
                   onClick={() => {
+                    if (!isReady) return;
                     onSelectTool(tool.id);
                     setIsOpenMobile(false);
                   }}
-                  className="group relative flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold text-[#334155] hover:bg-[#EFF6FC] hover:text-[#0F6CBD] cursor-pointer transition-colors min-h-[40px] text-left"
-                  title={!isHovered ? tool.name : undefined}
+                  className={`group relative flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold transition-colors min-h-[40px] text-left ${
+                    isReady
+                      ? 'text-[#334155] hover:bg-[#EFF6FC] hover:text-[#0F6CBD] cursor-pointer'
+                      : 'text-[#94A3B8] cursor-not-allowed'
+                  }`}
+                  title={!isHovered ? (isReady ? tool.name : `${tool.name} (개발 중)`) : undefined}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Icon className="w-4.5 h-4.5 text-[#0F6CBD]" />
+                      <Icon className={`w-4.5 h-4.5 ${isReady ? 'text-[#0F6CBD]' : 'text-[#AAB7C4]'}`} />
                     </div>
                     {isHovered && (
-                      <span className="truncate whitespace-nowrap font-bold text-xs text-[#0F172A]">
-                        {tool.name}
+                      <span className={`truncate whitespace-nowrap text-xs ${isReady ? 'font-bold text-[#0F172A]' : 'font-semibold text-[#94A3B8]'}`}>
+                        {tool.name}{isReady ? '' : ' (개발 중)'}
                       </span>
                     )}
                   </div>
