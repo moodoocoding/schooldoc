@@ -29,3 +29,5 @@ SECRETS.local.md
 *.njsproj
 *.sln
 *.sw?
+.vercel
+.env*
