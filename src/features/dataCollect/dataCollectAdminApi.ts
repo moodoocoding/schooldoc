@@ -47,8 +47,10 @@ export const createRemoteDataCollection = async (draft: DataCollectionDraft, sou
     const upload = await invoke<{ path: string; token: string }>({ action: 'create-upload-url', path: templatePath });
     await uploadSigned(upload.path, upload.token, sourceFile, 'data-collect-templates');
   }
-  const result = await invoke<{ collection: DataCollection }>({ action: 'create', id, title: draft.title, description: draft.description, kind: draft.kind, mode: 'fixed', allowWalkIn: false, dueAt: draft.dueAt, password: draft.password, allowResubmit: draft.allowResubmit, retentionMonths: draft.retentionMonths, targets: draft.targets, templatePath, templateName: sourceFile?.name ?? '', templateSize: sourceFile?.size ?? 0, templateMime: sourceFile?.type ?? '' });
-  return result.collection;
+  const result = await invoke<DataCollection | { collection: DataCollection }>({ action: 'create', id, title: draft.title, description: draft.description, kind: draft.kind, mode: 'fixed', allowWalkIn: false, dueAt: draft.dueAt, password: draft.password, allowResubmit: draft.allowResubmit, retentionMonths: draft.retentionMonths, targets: draft.targets, templatePath, templateName: sourceFile?.name ?? '', templateSize: sourceFile?.size ?? 0, templateMime: sourceFile?.type ?? '' });
+  // 운영 Edge Function은 생성 결과를 직접 반환하고, 로컬/기존 응답 경계는
+  // `{ collection }`으로 감쌀 수 있다. 두 형식을 모두 받아 중복 생성을 피한다.
+  return 'collection' in result ? result.collection : result;
 };
 
 export const updateRemoteDataCollectionStatus = async (id: string, status: DataCollection['status']) => {
