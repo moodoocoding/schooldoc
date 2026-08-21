@@ -12,12 +12,16 @@ import { ConsentFormsWorkspace } from './features/consentForms/ConsentFormsWorks
 import { PublicConsentResponsePage } from './features/consentForms/PublicConsentResponsePage';
 import { DataCollectWorkspace } from './features/dataCollect/DataCollectWorkspace';
 import { PublicDataCollectPage } from './features/dataCollect/PublicDataCollectPage';
+import { isDataCollectDeveloper } from './features/dataCollect/dataCollectConfig';
+import { useTeacherAuth } from './auth/teacherAuth';
 import type { SidebarTab, SchoolTool, ActiveTask } from './types/schooldoc';
 import { MessageSquarePlus, X, CheckCircle2 } from 'lucide-react';
 
 function AdminApp() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useTeacherAuth();
+  const dataCollectDeveloper = isDataCollectDeveloper(user);
   const [activeTab, setActiveTab] = useState<SidebarTab>('home');
   const [activeToolId, setActiveToolId] = useState<string | null>(null);
   const [isOpenMobile, setIsOpenMobile] = useState<boolean>(false);
@@ -55,8 +59,8 @@ function AdminApp() {
       name: '자료 수합',
       desc: '필요한 제출 항목을 만들고 파일과 응답을 한곳에서 받습니다.',
       iconName: 'inbox',
-      status: 'in_progress',
-      statusText: '개발 중',
+      status: dataCollectDeveloper ? 'ready' : 'in_progress',
+      statusText: dataCollectDeveloper ? '개발자 미리보기' : '개발 중',
     },
     'doc-sign': {
       id: 'doc-sign',
