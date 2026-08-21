@@ -75,8 +75,13 @@ export function SpecialRoomWeekGrid({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[720px] border-collapse text-sm">
+      <table className="w-full min-w-[720px] table-fixed border-collapse text-sm">
         <caption className="sr-only">월요일부터 금요일까지 1교시부터 8교시까지의 특별실 예약 표</caption>
+        {/* 칸 내용이나 편집 상태에 따라 열이 흔들리지 않도록 폭을 고정한다. */}
+        <colgroup>
+          <col className="w-16" />
+          {WEEKDAYS.map((day) => <col key={day} className="w-1/5" />)}
+        </colgroup>
         <thead>
           <tr className="bg-[#F6F8FB]">
             <th scope="col" className="w-16 border border-[#DCE3EA] p-2 text-xs font-bold text-[#526174]">교시</th>
