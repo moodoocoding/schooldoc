@@ -72,7 +72,7 @@ const serialize = async (collection: CollectionRow, userId: string) => {
   const sourceName = collection.template_name_ciphertext ? await dataCollectCrypto.decryptPayload<string>(collection.template_name_ciphertext) : '';
   return {
     id: collection.id, ownerId: collection.owner_id, publicToken: collection.public_token, title: collection.title,
-    description: collection.description, kind: collection.kind, status: collection.status, allowResubmit: collection.allow_resubmit,
+    description: collection.description, kind: collection.kind, mode: collection.mode === 'custom' ? 'custom' : 'fixed', status: collection.status, allowResubmit: collection.allow_resubmit,
     dueAt: collection.due_at ?? '', passwordHash: collection.password_digest ? 'configured' : '', retentionMonths: collection.retention_months,
     sourceFile: collection.template_path ? { originalName: sourceName, mimeType: collection.template_mime ?? 'application/octet-stream', byteSize: collection.template_size ?? 0, dataUrl: sourceUrl.data?.signedUrl ?? '' } : undefined,
     targets: await Promise.all(targets.map(async (target) => {

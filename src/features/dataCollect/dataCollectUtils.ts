@@ -48,6 +48,42 @@ export const maskTargetLabel = (label: string) => {
   return `${value[0]}${'○'.repeat(Math.min(2, value.length - 2))}${value.at(-1)}`;
 };
 
+const NAME_HEADER_PATTERN = /^(성명|이름|이름명|학생명|참여자|제출자|수합자|name|student ?name|participant)$/i;
+const HEADER_PATTERN = /^(번호|순번|연번|no\.?|number|성명|이름|이름명|학생명|참여자|제출자|수합자|name|student ?name|participant)$/i;
+const normalizeCell = (value: unknown) => String(value ?? '').replace(/\u00a0/g, ' ').trim();
+const isNameLike = (value: string) => {
+  if (!value || value.length > 40 || /^\d+(?:[.\-/]\d+)*$/.test(value)) return false;
+  return /^[가-힣]{2,6}$/.test(value) || /^[A-Za-z][A-Za-z .'-]{1,38}$/.test(value);
+};
+const uniqueLabels = (values: string[]) => [...new Map(values.map((value) => [value.toLocaleLowerCase('ko-KR'), value])).values()];
+
+/**
+ * 붙여넣은 표에서 이름/성명 열을 찾아 제출 대상 행으로 변환한다.
+ * 헤더가 없으면 이름처럼 보이는 값의 비율이 가장 높은 열을 선택한다.
+ */
+export const parseDataCollectionRows = (rows: unknown[][]) => {
+  const cleanRows = rows.map((row) => row.map(normalizeCell)).filter((row) => row.some(Boolean));
+  if (cleanRows.length === 0) return [];
+  const headerIndex = cleanRows.slice(0, Math.min(5, cleanRows.length)).findIndex((row) => row.some((cell) => NAME_HEADER_PATTERN.test(cell)));
+  const header = headerIndex >= 0 ? cleanRows[headerIndex] : undefined;
+  const nameColumn = header ? header.findIndex((cell) => NAME_HEADER_PATTERN.test(cell)) : (() => {
+    const width = Math.max(...cleanRows.map((row) => row.length));
+    return Array.from({ length: width }, (_, column) => ({
+      column,
+      score: cleanRows.map((row) => row[column] ?? '').filter(isNameLike).length,
+      textScore: cleanRows.map((row) => row[column] ?? '').filter((value) => value.length > 1 && !/^\d+$/.test(value)).length,
+      nonEmpty: cleanRows.map((row) => row[column] ?? '').filter(Boolean).length,
+    })).sort((a, b) => (b.score / Math.max(b.nonEmpty, 1)) - (a.score / Math.max(a.nonEmpty, 1)) || (b.textScore / Math.max(b.nonEmpty, 1)) - (a.textScore / Math.max(a.nonEmpty, 1)) || b.score - a.score)[0]?.column ?? 0;
+  })();
+  const start = headerIndex >= 0 ? headerIndex + 1 : 0;
+  const selectedValues = cleanRows.slice(start).map((row) => row[nameColumn] ?? '');
+  const nameLikeCount = selectedValues.filter(isNameLike).length;
+  const values = selectedValues.filter((value) => !HEADER_PATTERN.test(value) && (headerIndex >= 0 || nameLikeCount === 0 || isNameLike(value)));
+  return uniqueLabels(values);
+};
+
+export const parseDataCollectionPastedRows = (text: string) => parseDataCollectionRows(text.split(/\r?\n/).map((line) => line.split(/\t|,/)));
+
 export const isCollectionOpen = (status: 'open' | 'closed', dueAt: string, now = new Date()) => (
   status === 'open' && (!dueAt || new Date(dueAt).getTime() >= now.getTime())
 );

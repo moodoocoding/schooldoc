@@ -11,8 +11,8 @@ export const updateDataCollectionStatus = async (id: string, status: DataCollect
   if (isDataCollectDemoMode) { updateLocalStatus(id, status); return getLocal(id); }
   return updateRemoteDataCollectionStatus(id, status);
 };
-export const submitDataCollectionReview = async (collectionId: string, targetId: string, decision: DataCollectionSubmission['decision'], file?: File, note = '', publicToken = '', password = '', personalToken = '') => {
-  if (isDataCollectDemoMode) return submitLocal(collectionId, targetId, decision, file, note);
-  return submitRemoteDataCollectReview(publicToken, personalToken, decision, password, file, note);
+export const submitDataCollectionReview = async (collectionId: string, targetId: string, decision: DataCollectionSubmission['decision'], file?: File, note = '', publicToken = '', password = '', personalToken = '', respondentName = '') => {
+  if (isDataCollectDemoMode) return submitLocal(collectionId, targetId, decision, file, note, respondentName);
+  return submitRemoteDataCollectReview(publicToken, personalToken, decision, password, file, note, respondentName);
 };
 export { subscribeDataCollections };

@@ -1,4 +1,5 @@
 export type DataCollectionKind = 'worksheet' | 'plan' | 'consent' | 'custom';
+export type DataCollectionMode = 'fixed' | 'custom';
 export type DataCollectionStatus = 'open' | 'closed';
 
 export interface DataCollectionTarget {
@@ -33,6 +34,7 @@ export interface DataCollection {
   title: string;
   description: string;
   kind: DataCollectionKind;
+  mode: DataCollectionMode;
   status: DataCollectionStatus;
   allowResubmit: boolean;
   dueAt: string;
@@ -49,6 +51,7 @@ export interface DataCollectionDraft {
   title: string;
   description: string;
   kind: DataCollectionKind;
+  mode: DataCollectionMode;
   allowResubmit: boolean;
   dueAt: string;
   password: string;

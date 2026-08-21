@@ -51,13 +51,14 @@ export const createDataCollection = async (ownerId: string, draft: DataCollectio
     title: draft.title.trim(),
     description: draft.description.trim(),
     kind: draft.kind,
+    mode: draft.mode,
     status: 'open',
     allowResubmit: draft.allowResubmit,
     dueAt: draft.dueAt,
     passwordHash: await hashCollectionPassword(draft.password),
     retentionMonths: draft.retentionMonths,
     sourceFile: sourceFile ? await storeFile(sourceFile) : undefined,
-    targets: draft.targets.map((target, index) => ({
+    targets: (draft.mode === 'fixed' ? draft.targets : []).map((target, index) => ({
       id: makeId(),
       rowNumber: index + 1,
       label: target.label.trim(),
@@ -88,17 +89,29 @@ export const submitDataCollectionReview = async (
   decision: DataCollectionSubmission['decision'],
   file?: File,
   note = '',
+  respondentName = '',
 ) => {
-  const collection = getDataCollection(collectionId);
+  let collection = getDataCollection(collectionId);
   if (!collection) throw new Error('자료 수합을 찾을 수 없습니다.');
-  const revisions = collection.submissions.filter((item) => item.targetId === targetId);
+  let resolvedTarget = collection.targets.find((target) => target.id === targetId || target.personalToken === targetId);
+  if (!resolvedTarget && collection.mode === 'custom') {
+    const label = respondentName.trim();
+    if (!label) throw new Error('제출자 이름을 입력해 주세요.');
+    const duplicate = collection.targets.some((target) => target.label.trim().toLocaleLowerCase('ko-KR') === label.toLocaleLowerCase('ko-KR'));
+    if (duplicate) throw new Error('같은 이름의 제출 기록이 있습니다. 이름을 확인해 주세요.');
+    resolvedTarget = { id: makeId(), rowNumber: collection.targets.length + 1, label, owner: '', personalToken: makeId().replaceAll('-', '') };
+    collection = { ...collection, targets: [...collection.targets, resolvedTarget] };
+  }
+  if (!resolvedTarget && collection.mode !== 'custom') throw new Error('제출 대상을 선택해 주세요.');
+  const resolvedTargetId = resolvedTarget?.id ?? targetId;
+  const revisions = collection.submissions.filter((item) => item.targetId === resolvedTargetId);
   if (revisions.length > 0 && !collection.allowResubmit) throw new Error('이 수합은 다시 제출할 수 없습니다.');
   if ((decision === 'corrected' || decision === 'submitted') && !file) {
     throw new Error(decision === 'corrected' ? '수정한 파일을 선택해 주세요.' : '제출할 파일을 선택해 주세요.');
   }
   const submission: DataCollectionSubmission = {
     id: makeId(),
-    targetId,
+    targetId: resolvedTargetId,
     revision: revisions.length + 1,
     decision,
     note: note.trim(),
@@ -107,10 +120,11 @@ export const submitDataCollectionReview = async (
   };
   write(read().map((item) => item.id === collectionId ? {
     ...item,
+    targets: collection.targets,
     submissions: [...item.submissions, submission],
     updatedAt: submission.uploadedAt,
   } : item));
-  return submission;
+  return { ...submission, personalToken: collection.targets.find((target) => target.id === resolvedTargetId)?.personalToken ?? '' };
 };
 
 export const subscribeDataCollections = (listener: () => void) => {

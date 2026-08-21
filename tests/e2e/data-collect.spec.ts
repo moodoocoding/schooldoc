@@ -4,13 +4,12 @@ test('배포 파일을 확인하고 이상 없음 또는 수정본으로 회신�
   await page.goto('/tools/data-collect/new');
   await page.getByLabel('제목').fill('2학기 평가 문항 검토');
   await page.getByLabel('안내').fill('배포한 문항을 확인하고 이상 여부를 회신해 주세요.');
-  await page.locator('input[type="file"]').first().setInputFiles({
+  await page.locator('input[type="file"][accept*=".pdf"]').setInputFiles({
     name: '평가문항.pdf',
     mimeType: 'application/pdf',
     buffer: Buffer.from('%PDF-1.7\n%%EOF'),
   });
-  await page.getByLabel('1번 과목').fill('국어');
-  await page.getByLabel('1번 담당자').fill('김하늘');
+  await page.getByLabel('1번 제출 대상').fill('국어');
   await page.getByRole('button', { name: '자료 수합 만들기' }).click();
 
   await expect(page.getByRole('heading', { name: '2학기 평가 문항 검토' })).toBeVisible();
@@ -18,13 +17,12 @@ test('배포 파일을 확인하고 이상 없음 또는 수정본으로 회신�
   const publicUrl = await page.getByLabel('자료 수합 공개 링크').inputValue();
 
   await page.goto(publicUrl);
-  await page.getByPlaceholder(/과목 또는 담당자/).fill('국어');
+  await page.getByPlaceholder(/제출 대상 이름/).fill('국어');
   await page.getByRole('button', { name: /국○/ }).click();
   await expect(page.getByRole('link', { name: /평가문항.pdf 내려받기/ })).toBeVisible();
   await page.getByRole('button', { name: '이상 없음' }).click();
   await page.getByRole('button', { name: '회신 제출' }).click();
   await expect(page.getByRole('heading', { name: '회신을 제출했습니다' })).toBeVisible();
-
   await page.getByRole('button', { name: '다시 회신하기' }).click();
   await page.getByRole('button', { name: '수정본 제출' }).click();
   await page.locator('input[type="file"]').setInputFiles({
@@ -40,5 +38,39 @@ test('배포 파일을 확인하고 이상 없음 또는 수정본으로 회신�
   await page.getByRole('button', { name: /2학기 평가 문항 검토/ }).click();
   await expect(page.getByText('수정본 제출', { exact: true })).toHaveCount(2);
   await expect(page.getByRole('link', { name: '평가문항_수정.pdf' })).toBeVisible();
+  await expect(page.getByText(/2차/)).toBeVisible();
+});
+
+test('명단 없이 제출자가 이름을 입력해 자료를 제출한다', async ({ page }) => {
+  await page.goto('/tools/data-collect/new');
+  await page.getByLabel('제목').fill('명단 없는 자료 제출');
+  await page.getByLabel('안내').fill('제출자 이름을 입력하고 자료를 올려 주세요.');
+  await page.getByRole('button', { name: '명단 없음' }).click();
+  await page.getByRole('button', { name: '자료 수합 만들기' }).click();
+
+  await expect(page.getByRole('heading', { name: '명단 없는 자료 제출' })).toBeVisible();
+  const publicUrl = await page.getByLabel('자료 수합 공개 링크').inputValue();
+  await page.goto(publicUrl);
+  await page.getByLabel('제출자 이름').fill('김태호');
+  await page.locator('input[type="file"]').setInputFiles({
+    name: '제출자료.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.7\n%%EOF'),
+  });
+  await page.getByRole('button', { name: '회신 제출' }).click();
+  await expect(page.getByRole('heading', { name: '회신을 제출했습니다' })).toBeVisible();
+  await page.getByRole('button', { name: '다시 회신하기' }).click();
+  await page.locator('input[type="file"]').setInputFiles({
+    name: '제출자료_수정.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.7\ncorrected\n%%EOF'),
+  });
+  await page.getByRole('button', { name: '회신 제출' }).click();
+  await expect(page.getByRole('heading', { name: '회신을 제출했습니다' })).toBeVisible();
+
+  await page.goto('/tools/data-collect');
+  await page.getByRole('button', { name: /명단 없는 자료 제출/ }).click();
+  await expect(page.getByText('김태호')).toBeVisible();
+  await expect(page.getByRole('cell', { name: '수정본 제출' })).toBeVisible();
   await expect(page.getByText(/2차/)).toBeVisible();
 });

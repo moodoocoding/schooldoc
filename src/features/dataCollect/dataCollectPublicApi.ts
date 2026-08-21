@@ -11,7 +11,7 @@ const invoke = async <T>(body: Record<string, unknown>) => {
   throw new Error(message);
 };
 export interface DataCollectPublicMetadata {
-  title: string; description: string; kind: string; status: 'open' | 'closed'; dueAt: string; passwordRequired: boolean; allowResubmit: boolean; hasTemplate: boolean; template: { name: string; size: number; mimeType: string; url: string } | null;
+  title: string; description: string; kind: string; mode: 'fixed' | 'custom'; status: 'open' | 'closed'; dueAt: string; passwordRequired: boolean; allowResubmit: boolean; hasTemplate: boolean; template: { name: string; size: number; mimeType: string; url: string } | null;
 }
 export interface DataCollectPublicTarget { token: string; label: string; owner: string; }
 
@@ -25,14 +25,14 @@ export const searchRemoteDataCollectTargets = async (token: string, query: strin
   return result.targets;
 };
 
-export const submitRemoteDataCollectReview = async (token: string, targetToken: string, decision: DataCollectionSubmission['decision'], password: string, file?: File, note = '') => {
+export const submitRemoteDataCollectReview = async (token: string, targetToken: string, decision: DataCollectionSubmission['decision'], password: string, file?: File, note = '', respondentName = '') => {
   let storagePath = '';
   if (file) {
-    const prepared = await invoke<{ path: string; token: string }>({ action: 'prepare-upload', token, personalToken: targetToken, password, fileName: file.name });
+    const prepared = await invoke<{ path: string; token: string }>({ action: 'prepare-upload', token, personalToken: targetToken, password, respondentName, fileName: file.name });
     if (!supabase) throw new Error('자료 수합 공개 서버 연결 정보가 없습니다.');
     const upload = await supabase.storage.from('data-collect-files').uploadToSignedUrl(prepared.path, prepared.token, file);
     if (upload.error) throw new Error(`파일을 저장하지 못했습니다: ${upload.error.message}`);
     storagePath = prepared.path;
   }
-  return invoke<{ submitted: boolean; revision: number; decision: DataCollectionSubmission['decision'] }>({ action: 'submit', token, personalToken: targetToken, password, decision, storagePath, fileName: file?.name ?? '', note });
+  return invoke<{ submitted: boolean; revision: number; decision: DataCollectionSubmission['decision']; personalToken?: string }>({ action: 'submit', token, personalToken: targetToken, password, respondentName, decision, storagePath, fileName: file?.name ?? '', note });
 };

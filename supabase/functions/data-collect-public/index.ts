@@ -48,6 +48,23 @@ const getTarget = async (collectionId: string, targetToken: string) => {
   if (!result.data) throw new HttpError(404, '제출 대상을 찾을 수 없습니다.');
   return result.data as TargetRow;
 };
+const createWalkInTarget = async (collectionId: string, name: string) => {
+  const latest = await db.from('data_collection_targets').select('row_number').eq('collection_id', collectionId).order('row_number', { ascending: false }).limit(1).maybeSingle();
+  if (latest.error) throw latest.error;
+  const identity = { label: name, owner: '' };
+  const inserted = await db.from('data_collection_targets').insert({
+    collection_id: collectionId,
+    row_number: Number(latest.data?.row_number ?? 0) + 1,
+    label_ciphertext: await dataCollectCrypto.encryptPayload(identity),
+    owner_ciphertext: await dataCollectCrypto.encryptPayload(identity),
+    label_search: [await dataCollectCrypto.nameLookup(searchPrefix(name))],
+    owner_search: [],
+    display_label: name.length > 3 ? `${name[0]}○${name.at(-1)}` : `${name[0]}${name.length > 1 ? '○' : ''}`,
+    display_owner: '',
+  }).select('*').single();
+  if (inserted.error) throw inserted.error;
+  return inserted.data as TargetRow;
+};
 const ensureOpen = (collection: CollectionRow) => {
   if (collection.status === 'closed' || (collection.due_at && new Date(collection.due_at).getTime() < Date.now())) throw new HttpError(410, '자료 수합이 종료되었습니다.');
 };
@@ -65,7 +82,7 @@ const metadata = async (collection: CollectionRow) => {
     if (signed.error) throw signed.error;
     template = { name: collection.template_name_ciphertext ? await dataCollectCrypto.decryptPayload<string>(collection.template_name_ciphertext) : '배포 파일', size: collection.template_size ?? 0, mimeType: collection.template_mime ?? 'application/octet-stream', url: signed.data?.signedUrl ?? '' };
   }
-  return { title: collection.title, description: collection.description, kind: collection.kind, status: collection.status, dueAt: collection.due_at ?? '', passwordRequired: Boolean(collection.password_digest), allowResubmit: collection.allow_resubmit, hasTemplate: Boolean(collection.template_path), template };
+  return { title: collection.title, description: collection.description, kind: collection.kind, mode: collection.mode, status: collection.status, dueAt: collection.due_at ?? '', passwordRequired: Boolean(collection.password_digest), allowResubmit: collection.allow_resubmit, hasTemplate: Boolean(collection.template_path), template };
 };
 
 const extensionOf = (name: string) => name.toLowerCase().split('.').pop() ?? '';
@@ -106,6 +123,7 @@ Deno.serve(async (request) => {
 
     const personalToken = readString(body.personalToken, 80);
     if (action === 'search') {
+      if (collection.mode === 'custom') throw new HttpError(422, '이 자료 수합은 제출할 때 이름을 직접 입력합니다.');
       let rows: TargetRow[];
       if (personalToken) {
         rows = [await getTarget(collection.id, personalToken)];
@@ -122,11 +140,12 @@ Deno.serve(async (request) => {
       return json(200, { targets: matches.map((row) => ({ token: row.personal_token, label: row.display_label, owner: row.display_owner })) });
     }
 
-    const target = await getTarget(collection.id, personalToken);
     if (action === 'prepare-upload') {
       const name = readString(body.fileName, 500);
       if (!name || !allowedExtensions.has(extensionOf(name))) throw new HttpError(400, '허용되지 않은 파일 형식입니다.');
-      const path = `${collection.id}/${target.id}/${crypto.randomUUID()}-${name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      if (collection.mode === 'custom' && !readString(body.respondentName, 120)) throw new HttpError(422, '제출자 이름을 입력해 주세요.');
+      const target = collection.mode === 'fixed' || personalToken ? await getTarget(collection.id, personalToken) : null;
+      const path = `${collection.id}/${target?.id ?? 'walk-in'}/${crypto.randomUUID()}-${name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
       const signed = await db.storage.from(FILE_BUCKET).createSignedUploadUrl(path);
       if (signed.error) throw signed.error;
       return json(200, { path, token: signed.data.token });
@@ -134,25 +153,38 @@ Deno.serve(async (request) => {
 
     const decision = readString(body.decision, 20);
     if (!['confirmed', 'corrected', 'submitted'].includes(decision)) throw new HttpError(422, '회신 방법을 선택해 주세요.');
+    const respondentName = readString(body.respondentName, 120);
+    let target = collection.mode === 'fixed' ? await getTarget(collection.id, personalToken) : null;
+    const storagePath = readString(body.storagePath, 1000);
+    const originalName = readString(body.fileName, 500);
+    if (collection.mode === 'custom') {
+      if (!respondentName) throw new HttpError(422, '제출자 이름을 입력해 주세요.');
+      if (personalToken) {
+        target = await getTarget(collection.id, personalToken);
+      } else if (decision !== 'confirmed' && (!storagePath || !originalName || !storagePath.startsWith(`${collection.id}/walk-in/`))) {
+        throw new HttpError(400, '제출 파일이 없습니다.');
+      }
+      target ??= await createWalkInTarget(collection.id, respondentName);
+    }
+    if (!target) throw new HttpError(404, '제출 대상을 찾을 수 없습니다.');
     const history = await db.from('data_collection_files').select('revision').eq('collection_id', collection.id).eq('target_id', target.id).order('revision', { ascending: false }).limit(1).maybeSingle();
     if (history.error) throw history.error;
     if (history.data && !collection.allow_resubmit) throw new HttpError(409, '이미 제출한 자료입니다. 담당자에게 문의해 주세요.');
     const revision = Number(history.data?.revision ?? 0) + 1;
-    const path = readString(body.storagePath, 1000);
-    const originalName = readString(body.fileName, 500);
     if (decision !== 'confirmed') {
-      if (!path || !originalName || !path.startsWith(`${collection.id}/${target.id}/`)) throw new HttpError(400, '제출 파일이 없습니다.');
-      const info = await validateUploaded(path, originalName);
+      const expectedPrefix = collection.mode === 'custom' && !personalToken ? `${collection.id}/walk-in/` : `${collection.id}/${target.id}/`;
+      if (!storagePath || !originalName || !storagePath.startsWith(expectedPrefix)) throw new HttpError(400, '제출 파일이 없습니다.');
+      const info = await validateUploaded(storagePath, originalName);
       await db.from('data_collection_files').update({ is_current: false }).eq('collection_id', collection.id).eq('target_id', target.id);
-      const inserted = await db.from('data_collection_files').insert({ collection_id: collection.id, target_id: target.id, response_kind: decision, revision, is_current: true, storage_path: path, original_name_ciphertext: await dataCollectCrypto.encryptPayload(originalName), content_hash: info.contentHash, byte_size: info.byteSize, mime_type: info.mimeType, note_ciphertext: body.note ? await dataCollectCrypto.encryptPayload(readString(body.note, 4000)) : null });
-      if (inserted.error) { await db.storage.from(FILE_BUCKET).remove([path]); throw inserted.error; }
+      const inserted = await db.from('data_collection_files').insert({ collection_id: collection.id, target_id: target.id, response_kind: decision, revision, is_current: true, storage_path: storagePath, original_name_ciphertext: await dataCollectCrypto.encryptPayload(originalName), content_hash: info.contentHash, byte_size: info.byteSize, mime_type: info.mimeType, note_ciphertext: body.note ? await dataCollectCrypto.encryptPayload(readString(body.note, 4000)) : null });
+      if (inserted.error) { await db.storage.from(FILE_BUCKET).remove([storagePath]); throw inserted.error; }
     } else {
       await db.from('data_collection_files').update({ is_current: false }).eq('collection_id', collection.id).eq('target_id', target.id);
       const inserted = await db.from('data_collection_files').insert({ collection_id: collection.id, target_id: target.id, response_kind: 'confirmed', revision, is_current: true, note_ciphertext: body.note ? await dataCollectCrypto.encryptPayload(readString(body.note, 4000)) : null });
       if (inserted.error) throw inserted.error;
     }
     await db.from('data_collection_targets').update({ submitted_at: new Date().toISOString(), status: decision }).eq('id', target.id);
-    return json(200, { submitted: true, revision, decision });
+    return json(200, { submitted: true, revision, decision, personalToken: collection.mode === 'custom' ? target.personal_token : undefined });
   } catch (error) {
     if (error instanceof HttpError) return json(error.status, { error: error.message });
     console.error(error);

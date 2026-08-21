@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hashCollectionPassword, isCollectionOpen, maskTargetLabel, validateCollectionFile } from '../../src/features/dataCollect/dataCollectUtils';
+import { hashCollectionPassword, isCollectionOpen, maskTargetLabel, parseDataCollectionPastedRows, parseDataCollectionRows, validateCollectionFile } from '../../src/features/dataCollect/dataCollectUtils';
 
 describe('자료 수합 공통 규칙', () => {
   it('공개 검색 결과의 이름을 서버 응답처럼 가린다', () => {
@@ -25,5 +25,11 @@ describe('자료 수합 공통 규칙', () => {
     await expect(validateCollectionFile(pdf)).resolves.toBeUndefined();
     const disguised = new File(['not a pdf'], '검토.pdf', { type: 'application/pdf' });
     await expect(validateCollectionFile(disguised)).rejects.toThrow('실제 파일 형식');
+  });
+
+  it('붙여넣은 표에서 성명 열을 찾아 각 행으로 나눈다', () => {
+    expect(parseDataCollectionPastedRows('번호\t성명\t소속\n1\t홍길동\t1학년\n2\t김하늘\t2학년')).toEqual(['홍길동', '김하늘']);
+    expect(parseDataCollectionRows([['1', '홍길동'], ['2', '김하늘']])).toEqual(['홍길동', '김하늘']);
+    expect(parseDataCollectionPastedRows('홍길동\n김하늘\n홍길동')).toEqual(['홍길동', '김하늘']);
   });
 });
