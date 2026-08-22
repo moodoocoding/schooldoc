@@ -122,7 +122,7 @@ test('배포 파일을 확인하고 이상 없음 또는 수정본으로 회신�
   await page.goto(publicUrl);
   await page.getByPlaceholder(/제출 대상 이름/).fill('국어');
   await page.getByRole('button', { name: /국○/ }).click();
-  await expect(page.getByRole('link', { name: /평가문항.pdf 내려받기/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: '평가문항.pdf' })).toBeVisible();
   await page.getByRole('button', { name: '이상 없음' }).click();
   await page.getByRole('button', { name: '회신 제출' }).click();
   await expect(page.getByRole('heading', { name: '회신을 제출했습니다' })).toBeVisible();
