@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertCircle, ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTeacherAuth } from '../../auth/teacherAuth';
+import { insertRowAfter, isRowAddKey } from '../../utils/rowEntry';
 import { isSpecialRoomsDemoMode } from './specialRoomsConfig';
 import { SchoolPicker } from './SchoolPicker';
 import { mondayOf, toDateKey } from './specialRoomWeek';
@@ -21,6 +22,24 @@ export function SpecialRoomsCreatePage() {
   const [rooms, setRooms] = useState([{ name: '', location: '' }]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [focusRoom, setFocusRoom] = useState(-1);
+
+  // 엔터로 끼운 줄에 곧바로 이어 적을 수 있어야 한다.
+  useEffect(() => {
+    if (focusRoom < 0) return;
+    document.querySelector<HTMLInputElement>(`input[aria-label="${focusRoom + 1}번 특별실 이름"]`)?.focus();
+    setFocusRoom(-1);
+  }, [focusRoom]);
+
+  /** 목록 칸의 엔터는 폼을 보내지 않고 줄을 더한다. `utils/rowEntry` 참고. */
+  const onRoomKeyDown = (index: number) => (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isRowAddKey(event)) return;
+    event.preventDefault();
+    // 빈 줄에서 또 누르면 빈 줄만 쌓인다. 제출만 막고 둔다.
+    if (!rooms[index].name.trim()) return;
+    setRooms((current) => insertRowAfter(current, index, () => ({ name: '', location: '' })));
+    setFocusRoom(index + 1);
+  };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -70,7 +89,7 @@ export function SpecialRoomsCreatePage() {
           <input className={inputClass} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="예: 사용 후 정리 부탁드립니다" />
         </label>
         <div className="grid gap-2 text-sm font-bold text-[#334155]">
-          학교 <span className="font-normal text-[#64748B]">(고르면 공휴일과 재량휴업일이 표에 표시됩니다. 비워 둬도 됩니다)</span>
+          학교 <span className="font-normal text-[#64748B]">(고르면 만든 뒤 주간 예약 시간표에 공휴일과 재량휴업일이 함께 표시됩니다. 비워 둬도 됩니다)</span>
           <SchoolPicker value={school} onChange={setSchool} />
         </div>
         <label className="grid gap-2 text-sm font-bold text-[#334155]">공개 비밀번호 <span className="font-normal text-[#64748B]">(비워 두면 링크만으로 열립니다)</span>
@@ -88,8 +107,8 @@ export function SpecialRoomsCreatePage() {
         <div className="mt-4 grid gap-3">
           {rooms.map((room, index) => (
             <div key={index} className="flex gap-2">
-              <input className={inputClass} value={room.name} aria-label={`${index + 1}번 특별실 이름`} placeholder="과학실" onChange={(event) => setRooms((current) => current.map((entry, i) => i === index ? { ...entry, name: event.target.value } : entry))} />
-              <input className={inputClass} value={room.location} aria-label={`${index + 1}번 특별실 위치`} placeholder="본관 3층" onChange={(event) => setRooms((current) => current.map((entry, i) => i === index ? { ...entry, location: event.target.value } : entry))} />
+              <input className={inputClass} value={room.name} aria-label={`${index + 1}번 특별실 이름`} placeholder="과학실" onKeyDown={onRoomKeyDown(index)} onChange={(event) => setRooms((current) => current.map((entry, i) => i === index ? { ...entry, name: event.target.value } : entry))} />
+              <input className={inputClass} value={room.location} aria-label={`${index + 1}번 특별실 위치`} placeholder="본관 3층" onKeyDown={onRoomKeyDown(index)} onChange={(event) => setRooms((current) => current.map((entry, i) => i === index ? { ...entry, location: event.target.value } : entry))} />
               <button type="button" disabled={rooms.length === 1} onClick={() => setRooms((current) => current.filter((_, i) => i !== index))} aria-label={`${index + 1}번 특별실 삭제`} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-[#94A3B8] hover:text-[#B42318] disabled:opacity-30">
                 <Trash2 className="h-4 w-4" />
               </button>
