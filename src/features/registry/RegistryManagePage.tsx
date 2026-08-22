@@ -267,7 +267,7 @@ export function RegistryManagePage() {
   };
 
   return (
-    <div className="mx-auto min-w-0 w-full max-w-[1500px] space-y-6 overflow-x-hidden pb-16">
+    <div className="mx-auto min-w-0 w-full max-w-[1500px] space-y-6 overflow-x-clip pb-16">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#DCE3EA] pb-4">
         <button type="button" onClick={() => navigate('/tools/registry-sign')} className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-2 text-sm font-semibold text-[#334155] hover:bg-white hover:text-[#0F6CBD]">
           <ArrowLeft className="h-5 w-5" /> 등록부 목록
