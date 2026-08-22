@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, CalendarDays, ChevronLeft, ChevronRight, DoorOpen, LoaderCircle } from 'lucide-react';
+import { AlertCircle, CalendarDays, ChevronLeft, ChevronRight, DoorOpen } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { SpecialRoomWeekGrid } from './SpecialRoomWeekGrid';
 import { isSpecialRoomsDemoMode } from './specialRoomsConfig';
+import * as remote from './specialRoomsRepository';
+import * as service from './specialRoomsService';
 import * as store from './specialRoomsStore';
-import { bookingKey, formatWeekRange, mondayOf, shiftWeek, toDateKey, weekDates } from './specialRoomWeek';
+import { addDays, bookingKey, formatWeekRange, mondayOf, shiftWeek, toDateKey } from './specialRoomWeek';
 import type { Period, SpecialRoomBoard } from './types';
 
 const inputClass = 'min-h-[52px] w-full rounded-lg border border-[#DCE3EA] bg-white px-4 text-base text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#0F6CBD] focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]/15';
@@ -27,21 +29,31 @@ export function PublicSpecialRoomsPage() {
   const [savingCell, setSavingCell] = useState('');
   const [actionError, setActionError] = useState('');
 
-  const load = useMemo(() => () => {
-    if (!isSpecialRoomsDemoMode) {
-      setError('예약판을 불러오지 못했습니다.');
+  const load = useMemo(() => async () => {
+    try {
+      if (isSpecialRoomsDemoMode) {
+        const found = store.getBoardByToken(token);
+        if (!found) setError('예약판을 찾을 수 없습니다.');
+        setBoard(found);
+        return;
+      }
+      // 원격은 예약판 정보와 주간 자료를 따로 받는다. 한 주 것만 받아야 가볍다.
+      const meta = await remote.getRemotePublicBoard(token, password);
+      const week = unlocked || !meta.isPasswordProtected
+        ? await remote.readRemoteWeek(token, password, mondayKey, addDays(mondayKey, 4))
+        : { bookings: [], schoolDays: [] };
+      setBoard({ ...meta, bookings: week.bookings, schoolDays: week.schoolDays, createdAt: '', updatedAt: '' });
+      setError('');
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : '예약판을 불러오지 못했습니다.');
+    } finally {
       setLoading(false);
-      return;
     }
-    const found = store.getBoardByToken(token);
-    if (!found) setError('예약판을 찾을 수 없습니다.');
-    setBoard(found);
-    setLoading(false);
-  }, [token]);
+  }, [token, password, unlocked, mondayKey]);
 
   useEffect(() => {
-    load();
-    return store.subscribeSpecialRooms(load);
+    void load();
+    return service.subscribeSpecialRooms(() => void load());
   }, [load]);
 
   useEffect(() => {
@@ -66,12 +78,19 @@ export function PublicSpecialRoomsPage() {
           className="mt-6 grid gap-3"
           onSubmit={(event) => {
             event.preventDefault();
-            if (store.verifyPassword(token, password)) {
-              setUnlocked(true);
-              setPasswordError('');
-            } else {
-              setPasswordError('비밀번호가 맞지 않습니다.');
-            }
+            void (async () => {
+              try {
+                if (isSpecialRoomsDemoMode) {
+                  if (!store.verifyPassword(token, password)) throw new Error('비밀번호가 맞지 않습니다.');
+                } else {
+                  await remote.unlockRemoteBoard(token, password);
+                }
+                setUnlocked(true);
+                setPasswordError('');
+              } catch (unlockError) {
+                setPasswordError(unlockError instanceof Error ? unlockError.message : '비밀번호가 맞지 않습니다.');
+              }
+            })();
           }}
         >
           <label className="grid gap-2 text-sm font-bold text-[#334155]">
@@ -87,12 +106,13 @@ export function PublicSpecialRoomsPage() {
 
   const closed = board.status !== 'open';
 
-  const run = (cellKey: string, work: () => void) => {
+  const run = async (cellKey: string, work: () => Promise<void>) => {
     if (savingCell) return;
     setSavingCell(cellKey);
     setActionError('');
     try {
-      work();
+      await work();
+      await load();
     } catch (workError) {
       setActionError(workError instanceof Error ? workError.message : '예약을 처리하지 못했습니다.');
     } finally {
@@ -167,19 +187,18 @@ export function PublicSpecialRoomsPage() {
             schoolDays={board.schoolDays}
             readOnly={closed}
             savingCell={savingCell}
-            onSave={(date, period, label) => run(bookingKey(date, period), () => {
-              store.setBooking(token, roomId, date, period as Period, label);
-            })}
-            onClear={(date, period) => run(bookingKey(date, period), () => {
-              store.clearBooking(token, roomId, date, period as Period);
-            })}
+            onSave={(date, period, label) => void run(bookingKey(date, period), () => (
+              service.setBooking(token, password, roomId, date, period as Period, label)
+            ))}
+            onClear={(date, period) => void run(bookingKey(date, period), () => (
+              service.clearBooking(token, password, roomId, date, period as Period)
+            ))}
           />
         ) : (
           <p className="py-16 text-center text-sm text-[#64748B]">등록된 특별실이 없습니다.</p>
         )}
       </div>
 
-      {weekDates(mondayKey).length === 0 ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
     </main>
   );
 }

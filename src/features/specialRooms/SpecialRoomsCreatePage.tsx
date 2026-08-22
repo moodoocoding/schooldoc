@@ -3,7 +3,7 @@ import { AlertCircle, ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import { isSpecialRoomsDemoMode } from './specialRoomsConfig';
-import * as store from './specialRoomsStore';
+import * as service from './specialRoomsService';
 
 const inputClass = 'min-h-[44px] w-full rounded-lg border border-[#C8D0DA] px-3 text-sm';
 
@@ -19,7 +19,7 @@ export function SpecialRoomsCreatePage() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const submit = (event: React.FormEvent) => {
+  const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!ownerId || saving) return;
     if (!title.trim()) { setError('예약판 이름을 입력해 주세요.'); return; }
@@ -29,7 +29,7 @@ export function SpecialRoomsCreatePage() {
     setSaving(true);
     setError('');
     try {
-      const created = store.createBoard(ownerId, { title, description, schoolName, password, rooms: filled });
+      const created = await service.createBoard(ownerId, { title, description, schoolName, password, rooms: filled });
       navigate(`/tools/special-rooms/${created.id}`);
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : '예약판을 만들지 못했습니다.');
@@ -38,7 +38,7 @@ export function SpecialRoomsCreatePage() {
   };
 
   return (
-    <form onSubmit={submit} className="mx-auto w-full max-w-3xl space-y-6 pb-12">
+    <form onSubmit={(event) => void submit(event)} className="mx-auto w-full max-w-3xl space-y-6 pb-12">
       <div className="flex items-center justify-between border-b border-[#DCE3EA] pb-4">
         <button type="button" onClick={() => navigate('/tools/special-rooms')} className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-2 text-sm font-semibold text-[#334155] hover:text-[#0F6CBD]">
           <ArrowLeft className="h-5 w-5" />목록으로

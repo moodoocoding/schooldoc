@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import { RegistryConfirmDialog } from '../registry/RegistryConfirmDialog';
 import { isSpecialRoomsDemoMode } from './specialRoomsConfig';
-import * as store from './specialRoomsStore';
+import * as service from './specialRoomsService';
 import type { SpecialRoomBoard } from './types';
 
 export function SpecialRoomsListPage() {
@@ -14,20 +14,35 @@ export function SpecialRoomsListPage() {
   const [boards, setBoards] = useState<SpecialRoomBoard[]>([]);
   const [pendingDelete, setPendingDelete] = useState<SpecialRoomBoard | null>(null);
   const [actionError, setActionError] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    const load = () => setBoards(ownerId ? store.listBoards(ownerId) : []);
-    load();
-    return store.subscribeSpecialRooms(load);
+    let active = true;
+    const load = async () => {
+      if (!ownerId) { setBoards([]); return; }
+      try {
+        const next = await service.listBoards(ownerId);
+        if (active) { setBoards(next); setActionError(''); }
+      } catch (error) {
+        if (active) setActionError(error instanceof Error ? error.message : '예약판을 불러오지 못했습니다.');
+      }
+    };
+    void load();
+    const stop = service.subscribeSpecialRooms(() => void load());
+    return () => { active = false; stop(); };
   }, [ownerId]);
 
-  const remove = () => {
-    if (!ownerId || !pendingDelete) return;
+  const remove = async () => {
+    if (!ownerId || !pendingDelete || deleting) return;
+    setDeleting(true);
+    setActionError('');
     try {
-      store.deleteBoard(ownerId, pendingDelete.id);
+      await service.deleteBoard(ownerId, pendingDelete.id);
       setPendingDelete(null);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : '예약판을 지우지 못했습니다.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -78,9 +93,9 @@ export function SpecialRoomsListPage() {
         <RegistryConfirmDialog
           title={`“${pendingDelete.title}” 예약판을 지울까요?`}
           description={`특별실 ${pendingDelete.rooms.length}곳과 예약 ${pendingDelete.bookings.length}건이 함께 사라집니다. 지운 뒤에는 되돌릴 수 없고 배부한 링크도 열리지 않습니다.`}
-          confirmLabel="영구 삭제"
-          onCancel={() => setPendingDelete(null)}
-          onConfirm={remove}
+          confirmLabel={deleting ? '지우는 중' : '영구 삭제'}
+          onCancel={() => { if (!deleting) setPendingDelete(null); }}
+          onConfirm={() => void remove()}
         />
       ) : null}
     </div>
