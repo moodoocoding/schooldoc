@@ -12,12 +12,18 @@ import { PublicStudentResultPage } from './features/studentResults/PublicStudent
 import { StudentResultsWorkspace } from './features/studentResults/StudentResultsWorkspace';
 import { ConsentFormsWorkspace } from './features/consentForms/ConsentFormsWorkspace';
 import { PublicConsentResponsePage } from './features/consentForms/PublicConsentResponsePage';
+import { DataCollectWorkspace } from './features/dataCollect/DataCollectWorkspace';
+import { PublicDataCollectPage } from './features/dataCollect/PublicDataCollectPage';
+import { isDataCollectDeveloper } from './features/dataCollect/dataCollectConfig';
+import { useTeacherAuth } from './auth/teacherAuth';
 import type { SidebarTab, SchoolTool, ActiveTask } from './types/schooldoc';
 import { MessageSquarePlus, X, CheckCircle2 } from 'lucide-react';
 
 function AdminApp() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useTeacherAuth();
+  const dataCollectDeveloper = isDataCollectDeveloper(user);
   const [activeTab, setActiveTab] = useState<SidebarTab>('home');
   const [activeToolId, setActiveToolId] = useState<string | null>(null);
   const [isOpenMobile, setIsOpenMobile] = useState<boolean>(false);
@@ -55,8 +61,8 @@ function AdminApp() {
       name: '자료 수합',
       desc: '필요한 제출 항목을 만들고 파일과 응답을 한곳에서 받습니다.',
       iconName: 'inbox',
-      status: 'in_progress',
-      statusText: '개발 중',
+      status: dataCollectDeveloper ? 'ready' : 'in_progress',
+      statusText: dataCollectDeveloper ? '개발자 미리보기' : '개발 중',
     },
     'doc-sign': {
       id: 'doc-sign',
@@ -112,12 +118,14 @@ function AdminApp() {
   const isStudentResultsRoute = location.pathname.startsWith('/tools/student-results');
   const isConsentFormsRoute = location.pathname.startsWith('/tools/consent-forms');
   const isSpecialRoomsRoute = location.pathname.startsWith('/tools/special-rooms');
+  const isDataCollectRoute = location.pathname.startsWith('/tools/data-collect');
 
   const toolRoutes: Record<string, string> = {
     'registry-sign': '/tools/registry-sign',
     'student-lookup': '/tools/student-results',
     'notice-collect': '/tools/consent-forms',
     'special-room': '/tools/special-rooms',
+    'data-collect': '/tools/data-collect',
   };
 
   const handleSelectTool = (toolId: string) => {
@@ -173,9 +181,13 @@ function AdminApp() {
 
       {/* Right Workspace Main Content */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-        {isRegistryRoute || isStudentResultsRoute || isConsentFormsRoute || isSpecialRoomsRoute ? (
+        {isRegistryRoute || isStudentResultsRoute || isConsentFormsRoute || isSpecialRoomsRoute || isDataCollectRoute ? (
           <main className="min-w-0 overflow-x-hidden p-4 sm:p-8">
-            {isRegistryRoute ? <RegistryWorkspace /> : isStudentResultsRoute ? <StudentResultsWorkspace /> : isConsentFormsRoute ? <ConsentFormsWorkspace /> : <SpecialRoomsWorkspace />}
+            {isRegistryRoute ? <RegistryWorkspace />
+              : isStudentResultsRoute ? <StudentResultsWorkspace />
+              : isConsentFormsRoute ? <ConsentFormsWorkspace />
+              : isSpecialRoomsRoute ? <SpecialRoomsWorkspace />
+              : <DataCollectWorkspace />}
           </main>
         ) : selectedTool ? (
           // 닿지 않는 분기다. selectedTool은 activeToolId에서 오는데 값이 채워지는 곳이
@@ -308,6 +320,7 @@ function App() {
       <Route path="/s/results/:token" element={<PublicStudentResultPage />} />
       <Route path="/s/consent/:token" element={<PublicConsentResponsePage />} />
       <Route path="/s/rooms/:token" element={<PublicSpecialRoomsPage />} />
+      <Route path="/s/data/:token" element={<PublicDataCollectPage />} />
       <Route path="*" element={<AdminApp />} />
     </Routes>
   );
