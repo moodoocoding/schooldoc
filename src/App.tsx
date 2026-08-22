@@ -3,6 +3,8 @@ import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { HomeWorkspace } from './components/HomeWorkspace';
 import { ToolExecutionPage } from './components/ToolExecutionPage';
+import { SpecialRoomsWorkspace } from './features/specialRooms/SpecialRoomsWorkspace';
+import { PublicSpecialRoomsPage } from './features/specialRooms/PublicSpecialRoomsPage';
 import { SettingsPage } from './components/SettingsPage';
 import { PublicRegistrySignPage } from './features/registry/PublicRegistrySignPage';
 import { RegistryWorkspace } from './features/registry/RegistryWorkspace';
@@ -91,8 +93,7 @@ function AdminApp() {
       name: '특별실 예약',
       desc: '특별실의 사용 가능 시간을 확인하고 예약합니다.',
       iconName: 'calendar-clock',
-      status: 'in_progress',
-      statusText: '개발 중',
+      status: 'ready',
     },
     'lost-found': {
       id: 'lost-found',
@@ -116,12 +117,14 @@ function AdminApp() {
   const isRegistryRoute = location.pathname.startsWith('/tools/registry-sign');
   const isStudentResultsRoute = location.pathname.startsWith('/tools/student-results');
   const isConsentFormsRoute = location.pathname.startsWith('/tools/consent-forms');
+  const isSpecialRoomsRoute = location.pathname.startsWith('/tools/special-rooms');
   const isDataCollectRoute = location.pathname.startsWith('/tools/data-collect');
 
   const toolRoutes: Record<string, string> = {
     'registry-sign': '/tools/registry-sign',
     'student-lookup': '/tools/student-results',
     'notice-collect': '/tools/consent-forms',
+    'special-room': '/tools/special-rooms',
     'data-collect': '/tools/data-collect',
   };
 
@@ -178,9 +181,13 @@ function AdminApp() {
 
       {/* Right Workspace Main Content */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-        {isRegistryRoute || isStudentResultsRoute || isConsentFormsRoute || isDataCollectRoute ? (
+        {isRegistryRoute || isStudentResultsRoute || isConsentFormsRoute || isSpecialRoomsRoute || isDataCollectRoute ? (
           <main className="min-w-0 overflow-x-hidden p-4 sm:p-8">
-            {isRegistryRoute ? <RegistryWorkspace /> : isStudentResultsRoute ? <StudentResultsWorkspace /> : isConsentFormsRoute ? <ConsentFormsWorkspace /> : <DataCollectWorkspace />}
+            {isRegistryRoute ? <RegistryWorkspace />
+              : isStudentResultsRoute ? <StudentResultsWorkspace />
+              : isConsentFormsRoute ? <ConsentFormsWorkspace />
+              : isSpecialRoomsRoute ? <SpecialRoomsWorkspace />
+              : <DataCollectWorkspace />}
           </main>
         ) : selectedTool ? (
           // 닿지 않는 분기다. selectedTool은 activeToolId에서 오는데 값이 채워지는 곳이
@@ -312,6 +319,7 @@ function App() {
       <Route path="/s/registry/:token" element={<PublicRegistrySignPage />} />
       <Route path="/s/results/:token" element={<PublicStudentResultPage />} />
       <Route path="/s/consent/:token" element={<PublicConsentResponsePage />} />
+      <Route path="/s/rooms/:token" element={<PublicSpecialRoomsPage />} />
       <Route path="/s/data/:token" element={<PublicDataCollectPage />} />
       <Route path="*" element={<AdminApp />} />
     </Routes>

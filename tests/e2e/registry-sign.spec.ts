@@ -145,7 +145,7 @@ test('등록부를 만들고 모바일에서 서명한 뒤 결과물을 내려�
   await expect(page).toHaveURL(/\/tools\/registry-sign\/[^/]+$/);
   await expect(page.locator('h1').filter({ hasText: 'E2E 교직원 연수 등록부' }).first()).toBeVisible();
   const manageUrl = page.url();
-  const publicUrl = await page.getByRole('textbox', { name: '참석자 서명 링크', exact: true }).inputValue();
+  const publicUrl = await page.getByLabel('서명 링크 주소').inputValue();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(publicUrl);

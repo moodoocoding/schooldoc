@@ -312,7 +312,7 @@ export function RegistryManagePage() {
       <section className="grid gap-6 border-y border-[#DCE3EA] bg-white px-4 py-6 sm:px-6 md:grid-cols-[230px_1fr]">
         <div className="flex flex-col items-center gap-3">
           <div ref={qrRef} className="flex items-center justify-center rounded-lg bg-white p-3 ring-1 ring-[#DCE3EA]">
-            <QRCodeSVG value={publicUrl} size={190} level="M" includeMargin aria-label="참석자 서명 링크 QR 코드" />
+            <QRCodeSVG value={publicUrl} size={190} level="M" includeMargin aria-label="서명 QR 코드" />
           </div>
           <button type="button" disabled={savingQr} onClick={() => void downloadQrImage()} className="inline-flex min-h-[40px] w-full items-center justify-center gap-2 rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD] hover:bg-[#EFF6FC] disabled:border-[#C8D0DA] disabled:text-[#94A3B8]">
             {savingQr ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ImageDown className="h-4 w-4" />}
@@ -324,7 +324,7 @@ export function RegistryManagePage() {
           <h2 className="text-lg font-extrabold text-[#0F172A]">참석자 서명 링크</h2>
           <p className="mt-1 text-sm text-[#526174]">QR을 보여주거나 링크를 전송해 서명을 받으세요.</p>
           <div className="mt-5 flex min-w-0 gap-2">
-            <input readOnly value={publicUrl} className={`${inputClass} min-w-0 flex-1 text-[#526174]`} aria-label="참석자 서명 링크" />
+            <input readOnly value={publicUrl} className={`${inputClass} min-w-0 flex-1 text-[#526174]`} aria-label="서명 링크 주소" />
             <button type="button" onClick={() => void copyPublicUrl()} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#0F6CBD] text-white hover:bg-[#0B5B9F]" aria-label="서명 링크 복사" title="링크 복사">
               {copied ? <Check className="h-5 w-5" /> : <Clipboard className="h-5 w-5" />}
             </button>
