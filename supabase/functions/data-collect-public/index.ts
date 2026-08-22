@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8';
 import { dataCollectCrypto } from '../_shared/dataCollectCrypto.ts';
+import { dataCollectSubmissionTargetPrefix } from '../_shared/dataCollectStoragePaths.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -65,8 +66,9 @@ const createWalkInTarget = async (collectionId: string, name: string) => {
   if (inserted.error) throw inserted.error;
   return inserted.data as TargetRow;
 };
+const isClosed = (collection: CollectionRow) => collection.status === 'closed' || Boolean(collection.due_at && new Date(collection.due_at).getTime() < Date.now());
 const ensureOpen = (collection: CollectionRow) => {
-  if (collection.status === 'closed' || (collection.due_at && new Date(collection.due_at).getTime() < Date.now())) throw new HttpError(410, '자료 수합이 종료되었습니다.');
+  if (isClosed(collection)) throw new HttpError(410, '자료 수합이 종료되었습니다.');
 };
 const verifyPassword = async (collection: CollectionRow, password: unknown) => {
   if (!collection.password_digest) return;
@@ -75,14 +77,21 @@ const verifyPassword = async (collection: CollectionRow, password: unknown) => {
   if (result.error) throw result.error;
   if (!result.data) throw new HttpError(401, '비밀번호가 맞지 않습니다.');
 };
-const metadata = async (collection: CollectionRow) => {
+const metadataSummary = (collection: CollectionRow) => ({
+  accessGranted: false,
+  title: collection.title,
+  status: collection.status,
+  dueAt: collection.due_at ?? '',
+  passwordRequired: Boolean(collection.password_digest),
+});
+const authorizedMetadata = async (collection: CollectionRow) => {
   let template: Record<string, unknown> | null = null;
   if (collection.template_path) {
     const signed = await db.storage.from(TEMPLATE_BUCKET).createSignedUrl(collection.template_path, 300);
     if (signed.error) throw signed.error;
     template = { name: collection.template_name_ciphertext ? await dataCollectCrypto.decryptPayload<string>(collection.template_name_ciphertext) : '배포 파일', size: collection.template_size ?? 0, mimeType: collection.template_mime ?? 'application/octet-stream', url: signed.data?.signedUrl ?? '' };
   }
-  return { title: collection.title, description: collection.description, kind: collection.kind, mode: collection.mode, status: collection.status, dueAt: collection.due_at ?? '', passwordRequired: Boolean(collection.password_digest), allowResubmit: collection.allow_resubmit, hasTemplate: Boolean(collection.template_path), template };
+  return { accessGranted: true, title: collection.title, description: collection.description, kind: collection.kind, mode: collection.mode, status: collection.status, dueAt: collection.due_at ?? '', passwordRequired: Boolean(collection.password_digest), allowResubmit: collection.allow_resubmit, hasTemplate: Boolean(collection.template_path), template };
 };
 
 const extensionOf = (name: string) => name.toLowerCase().split('.').pop() ?? '';
@@ -116,7 +125,14 @@ Deno.serve(async (request) => {
     if (!['metadata', 'search', 'prepare-upload', 'submit'].includes(action)) throw new HttpError(400, '지원하지 않는 요청입니다.');
     await rateLimit(request, token, action);
     const collection = await getCollection(token);
-    if (action === 'metadata') return json(200, { collection: await metadata(collection) });
+    if (action === 'metadata') {
+      // 종료된 수합과 비밀번호 검증 전 응답에는 signed URL을 만들거나 포함하지 않는다.
+      if (isClosed(collection)) return json(200, { collection: metadataSummary(collection) });
+      const passwordWasSubmitted = Object.prototype.hasOwnProperty.call(body, 'password');
+      if (collection.password_digest && !passwordWasSubmitted) return json(200, { collection: metadataSummary(collection) });
+      await verifyPassword(collection, body.password);
+      return json(200, { collection: await authorizedMetadata(collection) });
+    }
     ensureOpen(collection);
     await verifyPassword(collection, body.password);
     if (!dataCollectCrypto.isConfigured()) throw new HttpError(503, '서버 준비가 끝나지 않았습니다. 잠시 후 다시 시도해 주세요.');
@@ -145,7 +161,7 @@ Deno.serve(async (request) => {
       if (!name || !allowedExtensions.has(extensionOf(name))) throw new HttpError(400, '허용되지 않은 파일 형식입니다.');
       if (collection.mode === 'custom' && !readString(body.respondentName, 120)) throw new HttpError(422, '제출자 이름을 입력해 주세요.');
       const target = collection.mode === 'fixed' || personalToken ? await getTarget(collection.id, personalToken) : null;
-      const path = `${collection.id}/${target?.id ?? 'walk-in'}/${crypto.randomUUID()}-${name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const path = `${dataCollectSubmissionTargetPrefix(collection.id, target?.id ?? 'walk-in')}/${crypto.randomUUID()}-${name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
       const signed = await db.storage.from(FILE_BUCKET).createSignedUploadUrl(path);
       if (signed.error) throw signed.error;
       return json(200, { path, token: signed.data.token });
@@ -161,7 +177,7 @@ Deno.serve(async (request) => {
       if (!respondentName) throw new HttpError(422, '제출자 이름을 입력해 주세요.');
       if (personalToken) {
         target = await getTarget(collection.id, personalToken);
-      } else if (decision !== 'confirmed' && (!storagePath || !originalName || !storagePath.startsWith(`${collection.id}/walk-in/`))) {
+      } else if (decision !== 'confirmed' && (!storagePath || !originalName || !storagePath.startsWith(`${dataCollectSubmissionTargetPrefix(collection.id, 'walk-in')}/`))) {
         throw new HttpError(400, '제출 파일이 없습니다.');
       }
       target ??= await createWalkInTarget(collection.id, respondentName);
@@ -172,7 +188,7 @@ Deno.serve(async (request) => {
     if (history.data && !collection.allow_resubmit) throw new HttpError(409, '이미 제출한 자료입니다. 담당자에게 문의해 주세요.');
     const revision = Number(history.data?.revision ?? 0) + 1;
     if (decision !== 'confirmed') {
-      const expectedPrefix = collection.mode === 'custom' && !personalToken ? `${collection.id}/walk-in/` : `${collection.id}/${target.id}/`;
+      const expectedPrefix = `${dataCollectSubmissionTargetPrefix(collection.id, collection.mode === 'custom' && !personalToken ? 'walk-in' : target.id)}/`;
       if (!storagePath || !originalName || !storagePath.startsWith(expectedPrefix)) throw new HttpError(400, '제출 파일이 없습니다.');
       const info = await validateUploaded(storagePath, originalName);
       await db.from('data_collection_files').update({ is_current: false }).eq('collection_id', collection.id).eq('target_id', target.id);

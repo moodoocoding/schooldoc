@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8';
 import { dataCollectCrypto, type DataCollectIdentity } from '../_shared/dataCollectCrypto.ts';
+import { dataCollectSubmissionPrefix, dataCollectTemplatePrefix } from '../_shared/dataCollectStoragePaths.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -168,7 +169,7 @@ Deno.serve(async (request) => {
           if (password.error) throw password.error;
         }
       } catch (error) {
-        await removeAll(COLLECTION_TEMPLATE_BUCKET, `${userId}/${id}`);
+        await removeAll(COLLECTION_TEMPLATE_BUCKET, dataCollectTemplatePrefix(userId, id));
         await db.from('data_collections').delete().eq('id', id);
         throw error;
       }
@@ -191,8 +192,8 @@ Deno.serve(async (request) => {
       const row = await db.from('data_collections').select('id').eq('id', id).eq('owner_id', userId).maybeSingle();
       if (row.error) throw row.error;
       if (!row.data) throw new HttpError(404, '자료 수합을 찾을 수 없습니다.');
-      await removeAll(COLLECTION_TEMPLATE_BUCKET, `${userId}/${id}`);
-      await removeAll(FILE_BUCKET, `${userId}/${id}`);
+      await removeAll(COLLECTION_TEMPLATE_BUCKET, dataCollectTemplatePrefix(userId, id));
+      await removeAll(FILE_BUCKET, dataCollectSubmissionPrefix(id));
       const deleted = await db.from('data_collections').delete().eq('id', id).eq('owner_id', userId);
       if (deleted.error) throw deleted.error;
       return json(200, { deleted: true });

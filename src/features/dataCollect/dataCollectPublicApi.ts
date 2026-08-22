@@ -10,13 +10,20 @@ const invoke = async <T>(body: Record<string, unknown>) => {
   if (context) { try { const parsed = await context.clone().json() as { error?: string }; if (parsed.error) message = parsed.error; } catch { /* 기본 문구를 유지한다. */ } }
   throw new Error(message);
 };
-export interface DataCollectPublicMetadata {
-  title: string; description: string; kind: string; mode: 'fixed' | 'custom'; status: 'open' | 'closed'; dueAt: string; passwordRequired: boolean; allowResubmit: boolean; hasTemplate: boolean; template: { name: string; size: number; mimeType: string; url: string } | null;
+interface DataCollectPublicMetadataSummary {
+  accessGranted: false; title: string; status: 'open' | 'closed'; dueAt: string; passwordRequired: boolean;
 }
+export interface DataCollectPublicMetadataDetails {
+  accessGranted: true; title: string; description: string; kind: string; mode: 'fixed' | 'custom'; status: 'open' | 'closed'; dueAt: string; passwordRequired: boolean; allowResubmit: boolean; hasTemplate: boolean; template: { name: string; size: number; mimeType: string; url: string } | null;
+}
+export type DataCollectPublicMetadata = DataCollectPublicMetadataSummary | DataCollectPublicMetadataDetails;
 export interface DataCollectPublicTarget { token: string; label: string; owner: string; }
 
-export const getRemoteDataCollectMetadata = async (token: string) => {
-  const result = await invoke<{ collection: DataCollectPublicMetadata }>({ action: 'metadata', token });
+export const getRemoteDataCollectMetadata = async (token: string, password?: string) => {
+  const body: Record<string, unknown> = { action: 'metadata', token };
+  // undefined는 최초 공개 조회이고, 빈 문자열을 포함한 string은 사용자의 검증 시도다.
+  if (password !== undefined) body.password = password;
+  const result = await invoke<{ collection: DataCollectPublicMetadata }>(body);
   return result.collection;
 };
 

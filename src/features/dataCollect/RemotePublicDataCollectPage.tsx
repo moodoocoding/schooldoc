@@ -8,7 +8,6 @@ export function RemotePublicDataCollectPage() {
   const [params] = useSearchParams();
   const [metadata, setMetadata] = useState<DataCollectPublicMetadata | null>(null);
   const [password, setPassword] = useState('');
-  const [unlocked, setUnlocked] = useState(false);
   const [query, setQuery] = useState('');
   const [walkInName, setWalkInName] = useState('');
   const [walkInToken, setWalkInToken] = useState('');
@@ -28,7 +27,6 @@ export function RemotePublicDataCollectPage() {
     void getRemoteDataCollectMetadata(token).then((value) => {
       if (!active) return;
       setMetadata(value);
-      setUnlocked(!value.passwordRequired);
       setLoading(false);
     }).catch((loadError) => { if (active) { setError(loadError instanceof Error ? loadError.message : '자료 수합을 찾지 못했습니다.'); setLoading(false); } });
     return () => { active = false; };
@@ -45,18 +43,28 @@ export function RemotePublicDataCollectPage() {
     finally { setWorking(false); }
   }, [password, personalToken, query, token]);
   useEffect(() => {
-    if (metadata && unlocked && personalToken) void search();
-  }, [metadata, unlocked, personalToken, search]);
+    if (metadata?.accessGranted && personalToken) void search();
+  }, [metadata, personalToken, search]);
   const unlock = async (event: React.FormEvent) => {
     event.preventDefault();
-    setUnlocked(true);
+    try {
+      setWorking(true);
+      setError('');
+      const value = await getRemoteDataCollectMetadata(token, password);
+      setMetadata(value);
+    } catch (unlockError) {
+      setError(unlockError instanceof Error ? unlockError.message : '비밀번호를 확인하지 못했습니다.');
+    } finally {
+      setWorking(false);
+    }
   };
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const effectiveDecision = metadata?.hasTemplate ? decision : 'submitted';
-    if ((!selected && metadata?.mode !== 'custom') || (metadata?.mode === 'custom' && !walkInName.trim())) { setError('제출자 이름을 입력해 주세요.'); return; }
+    if (!metadata?.accessGranted) { setError('먼저 공개 비밀번호를 확인해 주세요.'); return; }
+    const effectiveDecision = metadata.hasTemplate ? decision : 'submitted';
+    if ((!selected && metadata.mode !== 'custom') || (metadata.mode === 'custom' && !walkInName.trim())) { setError('제출자 이름을 입력해 주세요.'); return; }
     if (!effectiveDecision) { setError('회신 방법을 선택해 주세요.'); return; }
-    try { setWorking(true); setError(''); const result = await submitRemoteDataCollectReview(token, selected?.token ?? walkInToken, effectiveDecision, password, file, note, walkInName); if (metadata?.mode === 'custom' && result.personalToken) setWalkInToken(result.personalToken); setDecision(effectiveDecision); setComplete(true); }
+    try { setWorking(true); setError(''); const result = await submitRemoteDataCollectReview(token, selected?.token ?? walkInToken, effectiveDecision, password, file, note, walkInName); if (metadata.mode === 'custom' && result.personalToken) setWalkInToken(result.personalToken); setDecision(effectiveDecision); setComplete(true); }
     catch (submitError) { setError(submitError instanceof Error ? submitError.message : '회신을 제출하지 못했습니다.'); }
     finally { setWorking(false); }
   };
@@ -64,7 +72,7 @@ export function RemotePublicDataCollectPage() {
   if (loading) return <RemoteShell><p className="text-sm font-semibold text-[#526174]">자료 수합을 불러오는 중입니다.</p></RemoteShell>;
   if (!metadata) return <RemoteShell><h1 className="text-xl font-extrabold">자료 수합을 찾을 수 없습니다</h1><p className="mt-3 text-sm text-[#526174]">{error || '주소가 정확한지 보낸 분에게 확인해 주세요.'}</p></RemoteShell>;
   if (metadata.status !== 'open' || (metadata.dueAt && new Date(metadata.dueAt).getTime() < Date.now())) return <RemoteShell><h1 className="text-xl font-extrabold">자료 수합이 종료되었습니다</h1><p className="mt-3 text-sm text-[#526174]">추가 제출이 필요하면 보낸 분에게 문의해 주세요.</p></RemoteShell>;
-  if (!unlocked) return <RemoteShell><p className="text-xs font-bold text-[#0F6CBD]">보호된 자료</p><h1 className="mt-2 text-xl font-extrabold">{metadata.title}</h1><form onSubmit={unlock} className="mt-6"><label className="text-sm font-bold">공개 비밀번호<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 min-h-[48px] w-full rounded-lg border border-[#C8D0DA] px-3 font-normal" /></label>{error ? <p role="alert" className="mt-3 text-sm font-semibold text-[#B42318]">{error}</p> : null}<button type="submit" className="mt-4 min-h-[48px] w-full rounded-lg bg-[#0F6CBD] text-sm font-bold text-white">확인</button></form></RemoteShell>;
+  if (!metadata.accessGranted) return <RemoteShell><p className="text-xs font-bold text-[#0F6CBD]">보호된 자료</p><h1 className="mt-2 text-xl font-extrabold">{metadata.title}</h1><form onSubmit={unlock} className="mt-6"><label className="text-sm font-bold">공개 비밀번호<input type="password" autoFocus required value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 min-h-[48px] w-full rounded-lg border border-[#C8D0DA] px-3 font-normal" /></label>{error ? <p role="alert" className="mt-3 text-sm font-semibold text-[#B42318]">{error}</p> : null}<button type="submit" disabled={working} className="mt-4 min-h-[48px] w-full rounded-lg bg-[#0F6CBD] text-sm font-bold text-white disabled:opacity-60">{working ? '확인하는 중' : '확인'}</button></form></RemoteShell>;
   if (complete) return <RemoteShell><CheckCircle2 className="h-10 w-10 text-[#16803C]" /><h1 className="mt-4 text-xl font-extrabold">회신을 제출했습니다</h1><p className="mt-3 text-sm text-[#526174]">{selected?.label ?? walkInName} · {decision === 'confirmed' ? '이상 없음' : '수정본 제출'}</p>{metadata.allowResubmit ? <button type="button" onClick={() => { setComplete(false); setDecision(undefined); setFile(undefined); setNote(''); }} className="mt-6 min-h-[44px] rounded-lg border border-[#0F6CBD] px-5 text-sm font-bold text-[#0F6CBD]">다시 회신하기</button> : <p className="mt-5 text-sm font-semibold text-[#526174]">제출이 끝나 바꿀 수 없습니다.</p>}</RemoteShell>;
 
   return <RemoteShell><p className="text-xs font-bold text-[#0F6CBD]">자료 확인 및 제출</p><h1 className="mt-2 text-2xl font-extrabold">{metadata.title}</h1><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#526174]">{metadata.description}</p>

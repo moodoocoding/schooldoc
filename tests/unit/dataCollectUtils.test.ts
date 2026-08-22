@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hashCollectionPassword, isCollectionOpen, maskTargetLabel, parseDataCollectionPastedRows, parseDataCollectionRows, validateCollectionFile } from '../../src/features/dataCollect/dataCollectUtils';
+import { analyzeDataCollectionRows, hashCollectionPassword, isCollectionOpen, maskTargetLabel, parseDataCollectionPastedRows, parseDataCollectionRows, validateCollectionFile } from '../../src/features/dataCollect/dataCollectUtils';
 
 describe('자료 수합 공통 규칙', () => {
   it('공개 검색 결과의 이름을 서버 응답처럼 가린다', () => {
@@ -30,6 +30,20 @@ describe('자료 수합 공통 규칙', () => {
   it('붙여넣은 표에서 성명 열을 찾아 각 행으로 나눈다', () => {
     expect(parseDataCollectionPastedRows('번호\t성명\t소속\n1\t홍길동\t1학년\n2\t김하늘\t2학년')).toEqual(['홍길동', '김하늘']);
     expect(parseDataCollectionRows([['1', '홍길동'], ['2', '김하늘']])).toEqual(['홍길동', '김하늘']);
-    expect(parseDataCollectionPastedRows('홍길동\n김하늘\n홍길동')).toEqual(['홍길동', '김하늘']);
+    expect(parseDataCollectionPastedRows('홍길동\n김하늘\n홍길동')).toEqual(['홍길동', '김하늘', '홍길동']);
+  });
+
+  it('동명이인을 보존하고 사용자가 이름 열을 바꿀 수 있게 분석 결과를 돌려준다', () => {
+    const rows = [
+      ['번호', '성명', '부서'],
+      [1, '김하늘', '연구부'],
+      [2, '김하늘', '교무부'],
+    ];
+    const automatic = analyzeDataCollectionRows(rows);
+    expect(automatic.selectedColumn).toBe(1);
+    expect(automatic.labels).toEqual(['김하늘', '김하늘']);
+    expect(automatic.duplicateCount).toBe(1);
+    expect(automatic.columns.map((column) => column.label)).toContain('C열 · 부서');
+    expect(analyzeDataCollectionRows(rows, 2).labels).toEqual(['연구부', '교무부']);
   });
 });
