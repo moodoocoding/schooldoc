@@ -179,10 +179,22 @@ function AdminApp() {
         onOpenSuggestionModal={() => setIsOpenSuggestion(true)}
       />
 
-      {/* Right Workspace Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+      {/*
+        Right Workspace Main Content
+
+        세로 스크롤은 문서 하나만 맡는다. 사이드바가 `h-screen sticky top-0`이라 그래야
+        따라 붙고, 껍데기를 100vh로 못 박지 않아야 내용이 길어질 때 같이 늘어난다.
+        예전에는 이 판이 `h-screen overflow-y-auto`로 스크롤을 가로챘는데, 그러면 껍데기
+        높이가 100vh에 고정된 채 문서가 조금이라도 밀릴 때 아래에 흰 바닥이 드러났다.
+
+        main의 가로 넘침은 `clip`으로 자른다. `overflow-x-hidden`을 쓰면 반대 축의
+        `visible`이 `auto`로 계산돼 main이 뜻하지 않게 세로 스크롤 컨테이너가 되고,
+        flex 안에서 `min-height: auto`가 0으로 풀려 내용이 잘린다. `clip`은 반대 축을
+        건드리지 않는다.
+      */}
+      <div className="flex-1 flex flex-col min-w-0">
         {isRegistryRoute || isStudentResultsRoute || isConsentFormsRoute || isSpecialRoomsRoute || isDataCollectRoute ? (
-          <main className="min-w-0 overflow-x-hidden p-4 sm:p-8">
+          <main className="min-w-0 overflow-x-clip p-4 sm:p-8">
             {isRegistryRoute ? <RegistryWorkspace />
               : isStudentResultsRoute ? <StudentResultsWorkspace />
               : isConsentFormsRoute ? <ConsentFormsWorkspace />
