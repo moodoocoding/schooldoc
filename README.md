@@ -9,9 +9,12 @@ A4/PDF 출력을 함께 지원하는 것을 목표로 합니다.
 - 등록부 서명: 참석자 명단 작성·엑셀 가져오기, 공개 서명 링크, 서명 현황, PDF 출력
 - 학생 결과 안내: 엑셀 결과 분석, 입력 되돌리기(Ctrl+Z), 학생별 조회·확인·이의, 교사 답변, 개인 QR PDF
 - 가정통신문 수합: 원본 PDF에 응답 필드 배치, 공개·개인 링크 응답, 원본 위 응답 합성 PDF
+- 자료 수합: 명단 있음·없음 방식, 이름 붙여넣기·Excel 명단 분석, 새 파일 제출 또는 배포 파일의
+  `이상 없음` 확인·수정본 회신, 재제출과 제출 현황 관리
+- 특별실 예약: 특별실별 공개 예약, 주간 예약 현황과 교사용 관리 화면
 - 교사용 Google 로그인과 사용자별 데이터 격리 기반
 
-나머지 업무 도구는 순차적으로 구현합니다.
+추가 업무 도구는 순차적으로 구현합니다.
 
 ## 개발 환경
 
@@ -51,12 +54,14 @@ VITE_SUPABASE_PUBLISHABLE_KEY=...
 | `CONSENT_FORMS_ENCRYPTION_KEY` | 가정통신문 수신자 명단 |
 | `STUDENT_RESULTS_ENCRYPTION_KEY` | 학생 결과 안내 개인정보 |
 | `REGISTRY_ENCRYPTION_KEY` | 등록부 참석자의 항목 값(소속·직위 등) |
+| `DATA_COLLECT_ENCRYPTION_KEY` | 자료 수합 대상 이름·파일명·전달 사항 |
 
 ```bash
 npx supabase secrets set CONSENT_FORMS_ENCRYPTION_KEY=<64자리 16진수>
 ```
 
-키가 없으면 명단 기능만 접히고 공용 링크 수합은 그대로 동작합니다.
+기능마다 필요한 키가 다르며, 키가 없으면 해당 기능의 암호화 경로가 503으로 중단됩니다.
+가정통신문의 명단 없는 공용 링크처럼 키를 쓰지 않는 경로만 예외입니다.
 
 **이 키들은 저장된 개인정보를 푸는 유일한 수단이라 잃어버리면 복구할 수 없고, 교체해도
 기존 데이터를 읽지 못합니다.** 한 번 정하면 바꾸지 않으며, 프로젝트를 옮길 때도 같은 값을 씁니다.
@@ -78,8 +83,9 @@ Supabase는 값을 다시 보여주지 않으므로 설정할 때 따로 적어 
    ```bash
    npx supabase secrets set <이름>=$(openssl rand -hex 32)
    ```
-2. 마이그레이션을 적용합니다.
+2. `migration list`에서 새 로컬 마이그레이션이 원격에 없을 때만 적용합니다.
    ```bash
+   npx supabase migration list --linked
    npx supabase db push
    ```
 3. 함수를 배포합니다.
@@ -95,6 +101,48 @@ curl -s "$VITE_SUPABASE_URL/rest/v1/<테이블>?select=<새 컬럼>&limit=1" -H 
 ```
 
 Edge Function은 코드를 푸시해도 자동으로 올라가지 않습니다. 항상 직접 배포해야 합니다.
+
+### 자료 수합 재배포
+
+2026년 8월 22일 기준 운영 Supabase에는 `202608210001_data_collect.sql`이 적용되어 있고
+자료 수합 테이블도 생성되어 있습니다. 코드만 다시 배포할 때는 `db push`를 반복하지 말고,
+저장소 루트에서 함수 이름을 지정해 배포합니다.
+
+```bash
+cd ~/Downloads/vibecoding/schooldoc-codex
+npx supabase functions deploy data-collect-admin data-collect-public
+```
+
+공유 Supabase에는 실제 업무 자료가 있으므로 `supabase db reset`은 실행하지 않습니다.
+현재 같은 날짜의 마이그레이션 번호는 자료 수합 `202608210001`, 특별실 예약
+`202608210002`로 나뉘어 있습니다.
+
+### 워크트리를 여럿 쓸 때
+
+`git worktree`로 폴더를 나눠 작업하면 **DB는 하나인데 마이그레이션 폴더는 여럿**이 됩니다.
+`supabase db push`는 실행한 폴더의 `supabase/migrations/`만 읽으므로, 다른 폴더의
+마이그레이션은 보이지도 적용되지도 않습니다.
+
+여기서 두 가지가 걸립니다.
+
+**하나. 번호가 겹치면 나중 것이 조용히 건너뛰어집니다.** Supabase는 파일 이름 앞의 숫자를
+적용 이력의 키로 씁니다. 두 폴더가 같은 날 `202608210001`을 만들면, 먼저 적용된 쪽만
+기록되고 나머지는 "이미 적용됨"으로 처리됩니다. 표가 만들어지지 않은 채 함수만 올라갑니다.
+**새 마이그레이션을 만들기 전에 다른 폴더의 파일 목록을 확인하세요.**
+
+**둘. 상대가 적용하면 내 쪽 `db push`가 거부됩니다.** 로컬에 없는 마이그레이션이 원격
+이력에 있으면 CLI가 밀어내기를 멈춥니다. 이력이 갈라진 채로 밀면 위험하기 때문입니다.
+상대의 파일만 가져와 이력을 맞추면 됩니다. 이미 적용된 것이라 다시 실행되지 않습니다.
+
+```bash
+git checkout main -- supabase/migrations/<상대_마이그레이션>.sql
+npx supabase migration list   # 로컬과 원격이 맞는지 확인
+npx supabase db push
+```
+
+`migration list`에서 `local`과 `remote` 중 한쪽만 채워진 줄이 있으면 어긋난 것입니다.
+
+확인 프롬프트를 건너뛰려면 `--yes`입니다. `-y`는 없는 플래그입니다.
 
 ## 제품 원칙
 
