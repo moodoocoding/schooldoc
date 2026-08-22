@@ -103,7 +103,7 @@ export function SpecialRoomsManagePage() {
   // 머리글 수치는 보는 주나 고른 특별실에 따라 흔들리면 안 된다. 늘 이번 주 전체를 센다.
   const thisWeekDates = weekDates(thisMonday);
   const thisWeekBookings = board.bookings.filter((booking) => (
-    thisWeekDates.includes(booking.bookingDate)
+    thisWeekDates.includes(booking.date)
   )).length;
 
   return (
