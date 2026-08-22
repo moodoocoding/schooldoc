@@ -2,6 +2,7 @@ import { isSpecialRoomsDemoMode } from './specialRoomsConfig';
 import * as remote from './specialRoomsRepository';
 import * as schoolDays from './specialRoomsSchoolDays';
 import * as local from './specialRoomsStore';
+import type { BoardInfoDraft } from './specialRoomsBoardInfo';
 import type { Period, SpecialRoomBoardDraft } from './types';
 
 /**
@@ -21,6 +22,12 @@ export const getBoard = async (ownerId: string, boardId: string) => (
 export const createBoard = async (ownerId: string, draft: SpecialRoomBoardDraft) => (
   isSpecialRoomsDemoMode ? local.createBoard(ownerId, draft) : remote.createRemoteBoard(draft)
 );
+
+/** 제목과 안내 문구를 고친다. 안내 문구는 비워도 된다. 규칙은 `specialRoomsBoardInfo`에 있다. */
+export const updateBoardInfo = async (ownerId: string, boardId: string, info: BoardInfoDraft) => {
+  if (isSpecialRoomsDemoMode) local.updateBoardInfo(ownerId, boardId, info);
+  else await remote.updateRemoteBoardInfo(boardId, info);
+};
 
 export const deleteBoard = async (ownerId: string, boardId: string) => {
   if (isSpecialRoomsDemoMode) local.deleteBoard(ownerId, boardId);

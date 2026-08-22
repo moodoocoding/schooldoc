@@ -214,6 +214,13 @@ export const setRemoteBoardStatus = async (boardId: string, status: 'open' | 'cl
   notify();
 };
 
+export const updateRemoteBoardInfo = async (boardId: string, info: { title: string; description: string }) => {
+  const { error } = await client().from('special_room_boards')
+    .update({ title: info.title, description: info.description }).eq('id', boardId);
+  if (error) fail('예약판 정보를 저장하지 못했습니다', error);
+  notify();
+};
+
 export const deleteRemoteBoard = async (boardId: string) => {
   const { error } = await client().from('special_room_boards').delete().eq('id', boardId);
   if (error) fail('예약판을 지우지 못했습니다', error);
