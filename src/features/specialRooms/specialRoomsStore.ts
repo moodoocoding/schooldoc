@@ -98,6 +98,14 @@ export const setBoardStatus = (ownerId: string, boardId: string, status: 'open' 
   )));
 };
 
+export const updateBoardInfo = (ownerId: string, boardId: string, info: { title: string; description: string }) => {
+  writeAll(readAll().map((board) => (
+    board.id === boardId && board.ownerId === ownerId
+      ? { ...board, title: info.title, description: info.description, updatedAt: new Date().toISOString() }
+      : board
+  )));
+};
+
 export const verifyPassword = (token: string, password: string) => {
   const board = readAll().find((entry) => entry.publicToken === token);
   if (!board) return false;
