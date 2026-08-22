@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ArrowLeft, CheckCircle2, ClipboardPaste, FileSpreadsheet, FileUp, ListPlus, Plus, RotateCcw, Trash2, Users, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle2, ClipboardPaste, FileSpreadsheet, FileUp, ListPlus, RotateCcw, Trash2, Users, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import { dataCollectOwnerId } from './dataCollectConfig';
@@ -8,7 +8,7 @@ import { analyzeDataCollectionRows, validateCollectionFile, type DataCollectionI
 import type { DataCollectionMode } from './types';
 
 type TargetDraft = { label: string; owner: string };
-type ImportMethod = 'paste' | 'excel' | 'manual';
+type ImportMethod = 'text' | 'excel';
 type ImportStrategy = 'append' | 'replace';
 type RequestType = 'upload' | 'review';
 type FieldErrors = Partial<Record<'title' | 'targets' | 'source' | 'password', string>>;
@@ -51,7 +51,7 @@ const readSavedDraft = (): SavedCreateDraft | null => {
       description: typeof parsed.description === 'string' ? parsed.description : '',
       mode: parsed.mode === 'custom' ? 'custom' : 'fixed',
       targets: parsed.targets.map((target) => ({ label: String(target?.label ?? ''), owner: String(target?.owner ?? '') })),
-      importMethod: ['paste', 'excel', 'manual'].includes(String(parsed.importMethod)) ? parsed.importMethod as ImportMethod : 'paste',
+      importMethod: parsed.importMethod === 'excel' ? 'excel' : 'text',
       importStrategy: parsed.importStrategy === 'replace' ? 'replace' : 'append',
       requestType: parsed.requestType === 'review' ? 'review' : 'upload',
       dueAt: typeof parsed.dueAt === 'string' ? parsed.dueAt : defaultDueAt(),
@@ -84,7 +84,7 @@ export function DataCollectCreatePage() {
   const [title, setTitle] = useState(savedDraft?.title ?? '');
   const [description, setDescription] = useState(savedDraft?.description ?? '');
   const [targets, setTargets] = useState<TargetDraft[]>(savedDraft?.targets ?? []);
-  const [importMethod, setImportMethod] = useState<ImportMethod>(savedDraft?.importMethod ?? 'paste');
+  const [importMethod, setImportMethod] = useState<ImportMethod>(savedDraft?.importMethod ?? 'text');
   const [importStrategy, setImportStrategy] = useState<ImportStrategy>(savedDraft?.importStrategy ?? 'append');
   const [requestType, setRequestType] = useState<RequestType>(savedDraft?.requestType ?? 'upload');
   const [sourceFile, setSourceFile] = useState<File>();
@@ -166,7 +166,7 @@ export function DataCollectCreatePage() {
     });
   };
 
-  const applyImportedLabels = (analysis: DataCollectionImportAnalysis, source: '붙여넣기' | 'Excel') => {
+  const applyImportedLabels = (analysis: Pick<DataCollectionImportAnalysis, 'labels' | 'excludedCount'>, source: '이름 입력' | '붙여넣기' | 'Excel') => {
     if (analysis.labels.length === 0) {
       setImportError('이름을 찾지 못했습니다. 이름 또는 성명 열을 확인해 주세요.');
       return;
@@ -185,10 +185,16 @@ export function DataCollectCreatePage() {
 
   const handlePaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const text = event.clipboardData.getData('text');
-    const analysis = analyzeDataCollectionRows(importRowsFromText(text));
+    const combinedText = pasteText.trim() ? `${pasteText}\n${text}` : text;
+    const analysis = analyzeDataCollectionRows(importRowsFromText(combinedText));
     if (analysis.labels.length === 0) return;
     event.preventDefault();
     applyImportedLabels(analysis, '붙여넣기');
+  };
+
+  const applyTypedNames = () => {
+    const labels = pasteText.split(/\r?\n/).map((label) => label.trim()).filter(Boolean);
+    applyImportedLabels({ labels, excludedCount: 0 }, '이름 입력');
   };
 
   const importExcel = async (file?: File) => {
@@ -233,7 +239,7 @@ export function DataCollectCreatePage() {
     setDescription('');
     setMode('fixed');
     setTargets([]);
-    setImportMethod('paste');
+    setImportMethod('text');
     setImportStrategy('append');
     setRequestType('upload');
     setSourceFile(undefined);
@@ -333,28 +339,25 @@ export function DataCollectCreatePage() {
           </fieldset>
 
           {mode === 'fixed' ? <div ref={targetSectionRef} tabIndex={-1} className="mt-6 rounded-lg border border-[#DCE3EA] bg-[#F8FAFC] p-4 outline-none focus:ring-2 focus:ring-[#0F6CBD] sm:p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-bold">제출 대상 명단</h3><p className="mt-1 text-xs leading-5 text-[#526174]">가져올 방법 하나를 선택하세요. 같은 이름은 구분 정보를 추가할 수 있습니다.</p></div><span className="rounded-md bg-white px-2.5 py-1 text-xs font-bold text-[#334155]">{cleanedTargets.length}명</span></div>
+            <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-bold">제출 대상 명단</h3><p className="mt-1 text-xs leading-5 text-[#526174]">이름을 직접 입력하거나 붙여넣을 수 있습니다. 같은 이름은 구분 정보를 추가하세요.</p></div><span className="rounded-md bg-white px-2.5 py-1 text-xs font-bold text-[#334155]">{cleanedTargets.length}명</span></div>
 
             <fieldset className="mt-4">
               <legend className="sr-only">명단 입력 방법</legend>
-              <div className="grid gap-2 sm:grid-cols-3">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {([
-                  ['paste', '붙여넣기'],
+                  ['text', '이름 입력'],
                   ['excel', 'Excel 불러오기'],
-                  ['manual', '직접 입력'],
-                ] as const).map(([value, label]) => <label key={value} className={`relative flex min-h-[46px] cursor-pointer items-center justify-center rounded-lg border px-3 text-xs font-bold focus-within:ring-2 focus-within:ring-[#0F6CBD] ${importMethod === value ? 'border-[#0F6CBD] bg-white text-[#0F6CBD]' : 'border-[#C8D0DA] text-[#526174]'}`}><input type="radio" name="import-method" value={value} checked={importMethod === value} onChange={() => { setImportMethod(value); if (value === 'manual' && targets.length === 0) setTargets([{ label: '', owner: '' }]); }} className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0" />{label}</label>)}
+                ] as const).map(([value, label]) => <label key={value} className={`relative flex min-h-[46px] cursor-pointer items-center justify-center rounded-lg border px-3 text-xs font-bold focus-within:ring-2 focus-within:ring-[#0F6CBD] ${importMethod === value ? 'border-[#0F6CBD] bg-white text-[#0F6CBD]' : 'border-[#C8D0DA] text-[#526174]'}`}><input type="radio" name="import-method" value={value} checked={importMethod === value} onChange={() => setImportMethod(value)} className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0" />{label}</label>)}
               </div>
             </fieldset>
 
-            {cleanedTargets.length > 0 && importMethod !== 'manual' ? <fieldset className="mt-4 flex flex-wrap items-center gap-4 text-xs"><legend className="mr-1 font-bold text-[#334155]">가져온 명단을</legend><label className="flex min-h-[44px] items-center gap-2"><input type="radio" name="import-strategy" checked={importStrategy === 'append'} onChange={() => setImportStrategy('append')} />기존 명단에 추가</label><label className="flex min-h-[44px] items-center gap-2"><input type="radio" name="import-strategy" checked={importStrategy === 'replace'} onChange={() => setImportStrategy('replace')} />기존 명단 교체</label></fieldset> : null}
+            {cleanedTargets.length > 0 ? <fieldset className="mt-4 flex flex-wrap items-center gap-4 text-xs"><legend className="mr-1 font-bold text-[#334155]">{importMethod === 'excel' ? '가져온 명단을' : '입력한 명단을'}</legend><label className="flex min-h-[44px] items-center gap-2"><input type="radio" name="import-strategy" checked={importStrategy === 'append'} onChange={() => setImportStrategy('append')} />기존 명단에 추가</label><label className="flex min-h-[44px] items-center gap-2"><input type="radio" name="import-strategy" checked={importStrategy === 'replace'} onChange={() => setImportStrategy('replace')} />기존 명단 교체</label></fieldset> : null}
 
-            {importMethod === 'paste' ? <div className="mt-4"><label htmlFor="data-collect-paste" className="text-sm font-bold">명단 붙여넣기</label><textarea id="data-collect-paste" value={pasteText} onChange={(event) => setPasteText(event.target.value)} onPaste={handlePaste} className={`${inputClass} mt-2 min-h-24 p-3 font-normal`} placeholder="Excel이나 문서에서 이름을 복사해 여기에 붙여 넣으세요. 붙이는 즉시 분류됩니다." /><p className="mt-2 flex items-center gap-2 text-xs text-[#526174]"><ClipboardPaste className="h-4 w-4" />이름·성명 열을 자동으로 찾아 반영합니다.</p></div> : null}
+            {importMethod === 'text' ? <div className="mt-4"><label htmlFor="data-collect-paste" className="text-sm font-bold">이름 입력 또는 붙여넣기</label><textarea id="data-collect-paste" value={pasteText} onChange={(event) => { setPasteText(event.target.value); setImportError(''); }} onPaste={handlePaste} className={`${inputClass} mt-2 min-h-24 p-3 font-normal`} placeholder={'한 줄에 한 명씩 입력하세요.\nExcel이나 문서에서 여러 이름을 붙여넣어도 됩니다.'} /><div className="mt-2 flex flex-wrap items-center justify-between gap-2"><p className="flex items-center gap-2 text-xs text-[#526174]"><ClipboardPaste className="h-4 w-4" />붙여넣으면 이름·성명 열을 찾아 바로 반영합니다.</p><button type="button" disabled={!pasteText.trim()} onClick={applyTypedNames} className="min-h-[44px] rounded-lg bg-[#334155] px-4 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{importStrategy === 'append' && cleanedTargets.length > 0 ? '입력한 이름 추가' : '입력한 이름 반영'}</button></div></div> : null}
 
             {importMethod === 'excel' ? <div className="mt-4 space-y-3"><button type="button" disabled={excelLoading} onClick={() => excelInputRef.current?.click()} className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-[#0F6CBD] bg-white px-4 text-sm font-bold text-[#0F6CBD] disabled:opacity-60"><FileSpreadsheet className="h-4 w-4" />{excelLoading ? 'Excel 분석 중' : '명단 Excel 파일 선택'}</button><input ref={excelInputRef} type="file" hidden tabIndex={-1} aria-hidden="true" accept=".xlsx" onChange={(event) => void importExcel(event.target.files?.[0])} />
               {excelAnalysis ? <div className="rounded-lg border border-[#DCE3EA] bg-white p-4"><label className="text-xs font-bold" htmlFor="data-collect-name-column">이름으로 사용할 열</label><select id="data-collect-name-column" value={excelAnalysis.selectedColumn} onChange={(event) => setExcelColumn(Number(event.target.value))} className={`${inputClass} mt-2`}>{excelAnalysis.columns.map((column) => <option key={column.index} value={column.index}>{column.label}{column.sample ? ` — 예: ${column.sample}` : ''}</option>)}</select><p className="mt-3 text-xs font-semibold text-[#334155]">{excelAnalysis.labels.length}명 인식 · 제외 {excelAnalysis.excludedCount}행 · 같은 이름 {excelAnalysis.duplicateCount}건</p><div className="mt-3 max-h-28 overflow-y-auto rounded-md bg-[#F8FAFC] px-3 py-2 text-xs leading-6 text-[#526174]">{excelAnalysis.labels.slice(0, 20).map((label, index) => <span key={`${label}-${index}`} className="mr-3 inline-block">{index + 1}. {label}</span>)}{excelAnalysis.labels.length > 20 ? <span>외 {excelAnalysis.labels.length - 20}명</span> : null}</div><button type="button" disabled={excelAnalysis.labels.length === 0} onClick={() => applyImportedLabels(excelAnalysis, 'Excel')} className="mt-3 min-h-[44px] rounded-lg bg-[#334155] px-4 text-xs font-bold text-white disabled:opacity-50">{importStrategy === 'append' && cleanedTargets.length > 0 ? '명단에 추가' : '명단 교체'}</button></div> : null}
             </div> : null}
-
-            {importMethod === 'manual' ? <div className="mt-4 flex justify-end"><button type="button" onClick={() => setTargets((current) => [...current, { label: '', owner: '' }])} className="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-[#0F6CBD] bg-white px-3 text-xs font-bold text-[#0F6CBD]"><Plus className="h-4 w-4" />한 명 추가</button></div> : null}
 
             {importError ? <p role="alert" className="mt-3 flex gap-2 text-sm font-semibold text-[#B42318]"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{importError}</p> : null}
             {importNotice ? <div role="status" className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#E6F4EA] px-3 py-2 text-xs font-semibold text-[#126B32]"><span className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />{importNotice}</span>{previousTargets ? <button type="button" onClick={() => { setTargets(previousTargets); setPreviousTargets(undefined); setImportNotice('가져오기 전 명단으로 되돌렸습니다.'); }} className="inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 font-bold"><RotateCcw className="h-4 w-4" />실행 취소</button> : null}</div> : null}

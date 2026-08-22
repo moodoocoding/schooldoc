@@ -13,7 +13,7 @@ test('필요한 생성 입력만 보여주고 첫 오류로 이동한다', async
 
 test('붙여넣은 명단을 자동 분류하고 동명이인은 구분하게 한다', async ({ page }) => {
   await page.goto('/tools/data-collect/new');
-  await page.getByLabel('명단 붙여넣기').evaluate((element, text) => {
+  await page.getByLabel('이름 입력 또는 붙여넣기').evaluate((element, text) => {
     const clipboard = new DataTransfer();
     clipboard.setData('text/plain', text);
     element.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, clipboardData: clipboard }));
@@ -52,6 +52,17 @@ test('Excel의 성명 열을 자동 분석하고 사용자가 열을 바꿀 수 
   await expect(page.getByLabel('2번 제출 대상')).toHaveValue('박서준');
 });
 
+test('직접 입력과 붙여넣기를 하나의 이름 입력에서 처리한다', async ({ page }) => {
+  await page.goto('/tools/data-collect/new');
+  await expect(page.getByRole('radio', { name: '직접 입력' })).toHaveCount(0);
+  await page.getByLabel('이름 입력 또는 붙여넣기').fill('김하늘\n박서준');
+  await page.getByRole('button', { name: '입력한 이름 반영' }).click();
+
+  await expect(page.getByLabel('1번 제출 대상')).toHaveValue('김하늘');
+  await expect(page.getByLabel('2번 제출 대상')).toHaveValue('박서준');
+  await expect(page.getByText(/이름 입력에서 2명을 반영했습니다/)).toBeVisible();
+});
+
 test('배포 파일을 확인하고 이상 없음 또는 수정본으로 회신한다', async ({ page }) => {
   await page.goto('/tools/data-collect/new');
   await page.getByLabel('제목').fill('2학기 평가 문항 검토');
@@ -62,8 +73,8 @@ test('배포 파일을 확인하고 이상 없음 또는 수정본으로 회신�
     mimeType: 'application/pdf',
     buffer: Buffer.from('%PDF-1.7\n%%EOF'),
   });
-  await page.getByRole('radio', { name: '직접 입력' }).check();
-  await page.getByLabel('1번 제출 대상').fill('국어');
+  await page.getByLabel('이름 입력 또는 붙여넣기').fill('국어');
+  await page.getByRole('button', { name: '입력한 이름 반영' }).click();
   await page.getByRole('button', { name: '자료 수합 만들고 링크 확인' }).click();
 
   await expect(page.getByRole('heading', { name: '2학기 평가 문항 검토' })).toBeVisible();
