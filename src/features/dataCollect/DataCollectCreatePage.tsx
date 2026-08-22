@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ArrowLeft, CheckCircle2, ClipboardPaste, FileSpreadsheet, FileUp, ListPlus, RotateCcw, Trash2, Users, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CalendarClock, CheckCircle2, ClipboardPaste, FileSpreadsheet, FileUp, ListPlus, RotateCcw, Trash2, Users, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import { dataCollectOwnerId } from './dataCollectConfig';
@@ -11,7 +11,7 @@ type TargetDraft = { label: string; owner: string };
 type ImportMethod = 'text' | 'excel';
 type ImportStrategy = 'append' | 'replace';
 type RequestType = 'upload' | 'review';
-type FieldErrors = Partial<Record<'title' | 'targets' | 'source' | 'password', string>>;
+type FieldErrors = Partial<Record<'title' | 'targets' | 'source' | 'due' | 'password', string>>;
 
 interface SavedCreateDraft {
   version: 2;
@@ -29,16 +29,33 @@ interface SavedCreateDraft {
 const DRAFT_KEY = 'schooldoc_data_collect_create_v2';
 const inputClass = 'min-h-[44px] w-full rounded-lg border border-[#C8D0DA] bg-white px-3 text-sm text-[#0F172A] placeholder:text-[#64748B] focus:border-[#0F6CBD] focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]/20';
 const radioCardClass = 'relative block min-h-[112px] cursor-pointer rounded-lg border p-4 focus-within:ring-2 focus-within:ring-[#0F6CBD] focus-within:ring-offset-2';
+const DEADLINE_PRESETS = [
+  { days: 1, label: '내일' },
+  { days: 3, label: '3일 후' },
+  { days: 7, label: '7일 후' },
+  { days: 14, label: '14일 후' },
+] as const;
+const COMMON_DEADLINE_TIMES = Array.from({ length: 48 }, (_, index) => {
+  const hour = Math.floor(index / 2);
+  const minute = index % 2 === 0 ? '00' : '30';
+  return `${String(hour).padStart(2, '0')}:${minute}`;
+});
 
 const normalizeTarget = (value: string) => value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('ko-KR');
 
-const defaultDueAt = () => {
-  const due = new Date();
-  due.setDate(due.getDate() + 7);
-  due.setHours(17, 0, 0, 0);
+const toLocalDateTime = (due: Date) => {
   const pad = (value: number) => String(value).padStart(2, '0');
   return `${due.getFullYear()}-${pad(due.getMonth() + 1)}-${pad(due.getDate())}T${pad(due.getHours())}:${pad(due.getMinutes())}`;
 };
+
+const deadlineFromToday = (days: number) => {
+  const due = new Date();
+  due.setDate(due.getDate() + days);
+  due.setHours(17, 0, 0, 0);
+  return toLocalDateTime(due);
+};
+
+const defaultDueAt = () => deadlineFromToday(7);
 
 const readSavedDraft = (): SavedCreateDraft | null => {
   if (typeof window === 'undefined') return null;
@@ -75,6 +92,46 @@ const formatDueSummary = (value: string) => {
   return new Intl.DateTimeFormat('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(due);
 };
 
+const formatPresetDate = (days: number) => new Intl.DateTimeFormat('ko-KR', {
+  month: 'numeric',
+  day: 'numeric',
+  weekday: 'short',
+}).format(new Date(deadlineFromToday(days)));
+
+const formatDeadlineSentence = (value: string) => {
+  if (!value) return '기한 없이 받습니다. 수합을 직접 닫을 때까지 제출할 수 있습니다.';
+  const due = new Date(value);
+  if (Number.isNaN(due.getTime())) return value;
+  const formatted = new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(due);
+  return `${formatted}에 제출을 마감합니다.`;
+};
+
+const formatTimeLabel = (value: string) => {
+  const [hourText, minute = '00'] = value.split(':');
+  const hour = Number(hourText);
+  if (!Number.isFinite(hour)) return value;
+  const period = hour < 12 ? '오전' : '오후';
+  return `${period} ${hour % 12 || 12}:${minute}`;
+};
+
+const resolveDeadlinePreset = (value: string) => {
+  if (!value) return 'none';
+  const [date, time] = value.split('T');
+  if (!date || time?.slice(0, 5) !== '17:00') return 'custom';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(`${date}T00:00:00`);
+  const difference = Math.round((target.getTime() - today.getTime()) / 86_400_000);
+  return DEADLINE_PRESETS.some((preset) => preset.days === difference) ? String(difference) : 'custom';
+};
+
 export function DataCollectCreatePage() {
   const navigate = useNavigate();
   const { user } = useTeacherAuth();
@@ -97,6 +154,7 @@ export function DataCollectCreatePage() {
   const [importError, setImportError] = useState('');
   const [fileError, setFileError] = useState('');
   const [dueAt, setDueAt] = useState(savedDraft?.dueAt ?? defaultDueAt());
+  const [deadlineTime, setDeadlineTime] = useState(savedDraft?.dueAt?.split('T')[1]?.slice(0, 5) ?? '17:00');
   const [password, setPassword] = useState('');
   const [allowResubmit, setAllowResubmit] = useState(savedDraft?.allowResubmit ?? true);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -108,6 +166,7 @@ export function DataCollectCreatePage() {
   const titleRef = useRef<HTMLInputElement>(null);
   const targetSectionRef = useRef<HTMLDivElement>(null);
   const sourceButtonRef = useRef<HTMLButtonElement>(null);
+  const deadlineDateRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
   const cleanedTargets = useMemo(() => targets
@@ -124,6 +183,12 @@ export function DataCollectCreatePage() {
   const excelAnalysis = useMemo<DataCollectionImportAnalysis | null>(() => (
     excelRows ? analyzeDataCollectionRows(excelRows, excelColumn) : null
   ), [excelColumn, excelRows]);
+  const deadlineDate = dueAt.split('T')[0] ?? '';
+  const todayDate = toLocalDateTime(new Date()).split('T')[0];
+  const deadlinePreset = resolveDeadlinePreset(dueAt);
+  const deadlineTimeOptions = useMemo(() => (
+    [...new Set([...COMMON_DEADLINE_TIMES, deadlineTime])].sort()
+  ), [deadlineTime]);
 
   useEffect(() => {
     // 대량 명단을 편집할 때마다 동기식 Storage 쓰기가 반복되지 않도록 잠시 모아서 저장한다.
@@ -160,7 +225,8 @@ export function DataCollectCreatePage() {
       const element = key === 'title' ? titleRef.current
         : key === 'targets' ? targetSectionRef.current
           : key === 'source' ? sourceButtonRef.current
-            : passwordRef.current;
+            : key === 'due' ? deadlineDateRef.current
+              : passwordRef.current;
       element?.scrollIntoView({ block: 'center', behavior: 'smooth' });
       element?.focus();
     });
@@ -244,6 +310,7 @@ export function DataCollectCreatePage() {
     setRequestType('upload');
     setSourceFile(undefined);
     setDueAt(defaultDueAt());
+    setDeadlineTime('17:00');
     setPassword('');
     setAllowResubmit(true);
     setShowRestoreNotice(false);
@@ -264,9 +331,10 @@ export function DataCollectCreatePage() {
       }
     }
     if (requestType === 'review' && !sourceFile) errors.source = '검토받을 배포 파일을 선택해 주세요.';
+    if (dueAt && new Date(dueAt).getTime() <= Date.now()) errors.due = '마감 기한은 현재 시각보다 뒤로 정해 주세요.';
     if (password && password.length < 4) errors.password = '비밀번호는 4자 이상 입력해 주세요.';
     setFieldErrors(errors);
-    const firstError = (['title', 'targets', 'source', 'password'] as const).find((key) => errors[key]);
+    const firstError = (['title', 'targets', 'source', 'due', 'password'] as const).find((key) => errors[key]);
     if (firstError) {
       focusError(firstError);
       return;
@@ -300,7 +368,7 @@ export function DataCollectCreatePage() {
   const summaryFile = requestType === 'review' ? (sourceFile ? `검토 파일 ${sourceFile.name}` : '검토 파일 미선택') : '새 파일 제출받기';
 
   return (
-    <form onSubmit={submit} className="mx-auto w-full max-w-5xl space-y-5 pb-10">
+    <form noValidate onSubmit={submit} className="mx-auto w-full max-w-5xl space-y-5 pb-10">
       <div className="border-b border-[#DCE3EA] pb-4">
         <button type="button" onClick={() => navigate('/tools/data-collect')} className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-2 text-sm font-semibold text-[#334155] hover:bg-white hover:text-[#0F6CBD] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F6CBD]"><ArrowLeft className="h-5 w-5" />자료 수합 목록</button>
       </div>
@@ -387,9 +455,26 @@ export function DataCollectCreatePage() {
 
         <section className="p-5 sm:p-6">
           <h2 className="text-lg font-bold">마감</h2>
-          <label className="mt-4 block max-w-md text-sm font-bold" htmlFor="data-collect-due">회신 기한 <span className="font-normal text-[#64748B]">선택</span></label>
-          <div className="mt-2 flex flex-col gap-2 sm:flex-row"><input id="data-collect-due" type="datetime-local" value={dueAt} onChange={(event) => setDueAt(event.target.value)} className={`${inputClass} max-w-md font-normal`} />{dueAt ? <button type="button" onClick={() => setDueAt('')} className="min-h-[44px] rounded-lg px-3 text-xs font-bold text-[#526174]">기한 없애기</button> : null}</div>
-          <p className="mt-2 text-xs text-[#526174]">{dueAt ? '기한이 지나면 공개 링크에서 더 이상 제출할 수 없습니다.' : '수합을 직접 닫을 때까지 계속 받습니다.'}</p>
+          <p className="mt-1 text-sm text-[#526174]">자주 쓰는 기한을 고르거나 날짜와 시간을 직접 정하세요.</p>
+
+          <fieldset className="mt-4">
+            <legend className="text-sm font-bold">빠른 선택</legend>
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
+              {DEADLINE_PRESETS.map((preset) => {
+                const selected = deadlinePreset === String(preset.days);
+                return <button key={preset.days} type="button" aria-pressed={selected} onClick={() => { setDueAt(deadlineFromToday(preset.days)); setDeadlineTime('17:00'); clearFieldError('due'); }} className={`min-h-[64px] rounded-lg border px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F6CBD] ${selected ? 'border-[#0F6CBD] bg-[#EFF6FC] text-[#0F6CBD]' : 'border-[#DCE3EA] bg-white text-[#334155] hover:border-[#94A3B8]'}`}><span className="flex items-center justify-between gap-2 text-sm font-bold"><span>{preset.label}</span>{selected ? <CheckCircle2 aria-hidden="true" className="h-4 w-4" /> : null}</span><span className="mt-1 block text-[11px] font-semibold">{formatPresetDate(preset.days)} 오후 5시</span></button>;
+              })}
+              <button type="button" aria-pressed={deadlinePreset === 'none'} onClick={() => { setDueAt(''); clearFieldError('due'); }} className={`min-h-[64px] rounded-lg border px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F6CBD] ${deadlinePreset === 'none' ? 'border-[#0F6CBD] bg-[#EFF6FC] text-[#0F6CBD]' : 'border-[#DCE3EA] bg-white text-[#334155] hover:border-[#94A3B8]'}`}><span className="flex items-center justify-between gap-2 text-sm font-bold"><span>기한 없음</span>{deadlinePreset === 'none' ? <CheckCircle2 aria-hidden="true" className="h-4 w-4" /> : null}</span><span className="mt-1 block text-[11px] font-semibold">직접 닫을 때까지</span></button>
+            </div>
+          </fieldset>
+
+          <div className="mt-5 grid gap-4 sm:max-w-2xl sm:grid-cols-2">
+            <label className="text-sm font-bold" htmlFor="data-collect-due-date">마감 날짜<input ref={deadlineDateRef} id="data-collect-due-date" type="date" min={todayDate} value={deadlineDate} onChange={(event) => { setDueAt(event.target.value ? `${event.target.value}T${deadlineTime}` : ''); clearFieldError('due'); }} aria-invalid={Boolean(fieldErrors.due)} aria-describedby={fieldErrors.due ? 'data-collect-due-error' : 'data-collect-due-summary'} className={`${inputClass} mt-2 font-normal`} /></label>
+            <label className="text-sm font-bold" htmlFor="data-collect-due-time">마감 시간 <span className="font-normal text-[#64748B]">30분 단위</span><select id="data-collect-due-time" value={deadlineTime} disabled={!deadlineDate} onChange={(event) => { const time = event.target.value; setDeadlineTime(time); if (deadlineDate) setDueAt(`${deadlineDate}T${time}`); clearFieldError('due'); }} aria-describedby={fieldErrors.due ? 'data-collect-due-error' : 'data-collect-due-summary'} className={`${inputClass} mt-2 font-normal disabled:cursor-not-allowed disabled:bg-[#EEF1F4] disabled:text-[#94A3B8]`}>{deadlineTimeOptions.map((time) => <option key={time} value={time}>{formatTimeLabel(time)}</option>)}</select></label>
+          </div>
+
+          <p id="data-collect-due-summary" aria-live="polite" className={`mt-4 flex items-start gap-2 rounded-lg px-4 py-3 text-sm font-semibold ${dueAt ? 'bg-[#EFF6FC] text-[#1E4E79]' : 'bg-[#F8FAFC] text-[#526174]'}`}><CalendarClock className="mt-0.5 h-4 w-4 shrink-0" />{formatDeadlineSentence(dueAt)}</p>
+          {fieldErrors.due ? <p id="data-collect-due-error" role="alert" className="mt-2 text-sm font-semibold text-[#B42318]">{fieldErrors.due}</p> : null}
 
           <details className="mt-5 rounded-lg border border-[#DCE3EA] bg-[#F8FAFC] p-4">
             <summary className="min-h-[44px] cursor-pointer py-2 text-sm font-bold text-[#334155]">추가 설정</summary>

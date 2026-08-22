@@ -63,6 +63,41 @@ test('직접 입력과 붙여넣기를 하나의 이름 입력에서 처리한�
   await expect(page.getByText(/이름 입력에서 2명을 반영했습니다/)).toBeVisible();
 });
 
+test('마감 기한을 빠르게 고르거나 날짜와 시간을 따로 정한다', async ({ page }) => {
+  await page.goto('/tools/data-collect/new');
+  const expectedDefaultDate = new Date();
+  expectedDefaultDate.setDate(expectedDefaultDate.getDate() + 7);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  const expectedDefaultDateValue = `${expectedDefaultDate.getFullYear()}-${pad(expectedDefaultDate.getMonth() + 1)}-${pad(expectedDefaultDate.getDate())}`;
+  await expect(page.locator('input[type="datetime-local"]')).toHaveCount(0);
+  await expect(page.getByLabel('마감 날짜')).toHaveValue(expectedDefaultDateValue);
+  await expect(page.getByLabel('마감 시간')).toHaveValue('17:00');
+
+  await page.getByRole('button', { name: /기한 없음/ }).click();
+  await expect(page.getByLabel('마감 날짜')).toHaveValue('');
+  await expect(page.getByLabel('마감 시간')).toBeDisabled();
+  await expect(page.getByText(/기한 없이 받습니다/)).toBeVisible();
+
+  const threeDaysButton = page.getByRole('button', { name: /3일 후/ });
+  await threeDaysButton.click();
+  await expect(threeDaysButton).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel('마감 시간')).toHaveValue('17:00');
+  await page.getByLabel('마감 시간').selectOption('17:30');
+  await expect(threeDaysButton).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByText(/오후 5:30.*제출을 마감합니다/)).toBeVisible();
+
+  await page.getByLabel('제목').fill('마감 검증');
+  await page.getByLabel('이름 입력 또는 붙여넣기').fill('김하늘');
+  await page.getByRole('button', { name: '입력한 이름 반영' }).click();
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayValue = `${yesterday.getFullYear()}-${pad(yesterday.getMonth() + 1)}-${pad(yesterday.getDate())}`;
+  await page.getByLabel('마감 날짜').fill(yesterdayValue);
+  await page.getByRole('button', { name: '자료 수합 만들고 링크 확인' }).click();
+  await expect(page.getByText('마감 기한은 현재 시각보다 뒤로 정해 주세요.')).toBeVisible();
+  await expect(page.getByLabel('마감 날짜')).toBeFocused();
+});
+
 test('배포 파일을 확인하고 이상 없음 또는 수정본으로 회신한다', async ({ page }) => {
   await page.goto('/tools/data-collect/new');
   await page.getByLabel('제목').fill('2학기 평가 문항 검토');
