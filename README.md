@@ -102,21 +102,6 @@ curl -s "$VITE_SUPABASE_URL/rest/v1/<테이블>?select=<새 컬럼>&limit=1" -H 
 
 Edge Function은 코드를 푸시해도 자동으로 올라가지 않습니다. 항상 직접 배포해야 합니다.
 
-### 자료 수합 재배포
-
-2026년 8월 22일 기준 운영 Supabase에는 `202608210001_data_collect.sql`이 적용되어 있고
-자료 수합 테이블도 생성되어 있습니다. 코드만 다시 배포할 때는 `db push`를 반복하지 말고,
-저장소 루트에서 함수 이름을 지정해 배포합니다.
-
-```bash
-cd ~/Downloads/vibecoding/schooldoc-codex
-npx supabase functions deploy data-collect-admin data-collect-public
-```
-
-공유 Supabase에는 실제 업무 자료가 있으므로 `supabase db reset`은 실행하지 않습니다.
-현재 같은 날짜의 마이그레이션 번호는 자료 수합 `202608210001`, 특별실 예약
-`202608210002`로 나뉘어 있습니다.
-
 ### 워크트리를 여럿 쓸 때
 
 `git worktree`로 폴더를 나눠 작업하면 **DB는 하나인데 마이그레이션 폴더는 여럿**이 됩니다.
