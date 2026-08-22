@@ -89,7 +89,7 @@ export function SpecialRoomsCreatePage() {
           <input className={inputClass} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="예: 사용 후 정리 부탁드립니다" />
         </label>
         <div className="grid gap-2 text-sm font-bold text-[#334155]">
-          학교 <span className="font-normal text-[#64748B]">(고르면 만든 뒤 주간 예약 시간표에 공휴일과 재량휴업일이 함께 표시됩니다. 비워 둬도 됩니다)</span>
+          학교
           <SchoolPicker value={school} onChange={setSchool} />
         </div>
         <label className="grid gap-2 text-sm font-bold text-[#334155]">공개 비밀번호 <span className="font-normal text-[#64748B]">(비워 두면 링크만으로 열립니다)</span>
