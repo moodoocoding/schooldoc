@@ -144,6 +144,18 @@ npx supabase db push
 
 확인 프롬프트를 건너뛰려면 `--yes`입니다. `-y`는 없는 플래그입니다.
 
+**셋. 저장소에 올리지 않는 문서는 폴더마다 별개입니다.** 추적하지 않는 파일은 워크트리가
+각자 갖습니다. 개발 일지를 폴더마다 따로 쓰면 손으로 합쳐야 하고, 실제로 두 번 어긋났습니다.
+그래서 실체를 워크트리 바깥에 두고 각 폴더에서 링크로 봅니다. 새 워크트리를 만들면 한 번만
+이어 주면 됩니다.
+
+```bash
+ln -s ~/Downloads/vibecoding/schooldoc-docs <새_워크트리>/docs
+```
+
+`.git/info/exclude`의 항목이 `/docs/`가 아니라 `/docs`여야 합니다. 끝의 `/`는 디렉터리만
+맞추는데 git은 심볼릭 링크를 파일로 보기 때문입니다. `exclude`는 워크트리들이 함께 씁니다.
+
 ## 제품 원칙
 
 - 교사가 반복 업무를 빠르고 실수 없이 끝낼 수 있어야 합니다.
@@ -161,29 +173,27 @@ npx supabase db push
 
 ## 화면 뼈대 규칙
 
-새 화면을 붙일 때 아래 두 가지를 지킵니다. 어겼을 때 나오는 증상이 화면 아래쪽에 생기는
-설명되지 않는 빈 여백이고, 학생 결과 안내와 특별실 예약에서 실제로 194px이 비었습니다.
+새 화면도 스스로 스크롤 판을 만들지 않습니다. 세로 스크롤은 문서 하나가 맡고, 한 축만
+막을 때는 `overflow-x-hidden`이 아니라 `overflow-x-clip`을 씁니다. 어기면 화면 아래쪽에
+설명되지 않는 빈 여백이 생깁니다.
 
-**1. 세로 스크롤은 문서가 맡습니다.**
-
-앱 껍데기(`src/App.tsx`)는 `min-h-screen`이고, 안쪽 판은 높이를 못 박지 않습니다.
-사이드바가 `h-screen sticky top-0`이라 문서가 스크롤해야 따라 붙습니다. 판에
-`h-screen overflow-y-auto`를 붙이면 껍데기 높이가 100vh에 고정된 채 문서가 밀릴 때
-껍데기 아래로 `body`의 흰 배경이 드러납니다. 화면 위에 떠서 제 안을 굴려야 하는
-대화상자는 예외이며, 그때도 `h-screen` 대신 `max-h-[...]`를 씁니다.
-
-**2. 한 축만 막을 때는 `hidden`이 아니라 `clip`을 씁니다.**
-
-CSS는 한 축이 `visible`이 아니면 반대 축의 `visible`을 `auto`로 계산합니다. 그래서
-`overflow-x-hidden`만 적으면 그 요소가 뜻하지 않게 세로 스크롤 컨테이너가 되고, flex
-안에서는 `min-height: auto`가 0으로 풀려 내용이 부모 높이로 찌그러집니다. 안쪽의
-`position: sticky` 기준도 함께 바뀝니다. 가로만 자르려면 `overflow-x-clip`을 씁니다.
-두 축을 모두 적어 스크롤을 의도한 곳(`overflow-y-auto overflow-x-hidden`)은 그대로 둡니다.
-
-지키는 장치는 두 개입니다. `tests/unit/scrollContainersAreDeliberate.test.ts`가 위 두
-패턴을 클래스 이름 단계에서 막고, `tests/e2e/app-shell-scroll.spec.ts`가 화면마다 맨
-아래까지 내려 빈 바닥이 없는지 실제로 잽니다. 새 화면을 만들면 e2e의 경로 목록에
+이유와 예외는 [`tests/unit/scrollContainersAreDeliberate.test.ts`](tests/unit/scrollContainersAreDeliberate.test.ts)
+맨 위에 적혀 있습니다. 그 테스트가 위 두 패턴을 클래스 이름 단계에서 막고,
+[`tests/e2e/app-shell-scroll.spec.ts`](tests/e2e/app-shell-scroll.spec.ts)가 화면마다 맨
+아래까지 내려 빈 바닥이 없는지 실제로 잽니다. 새 화면을 만들면 e2e 위쪽 `SHELL_ROUTES`에
 한 줄 더합니다.
+
+## 문서 규칙
+
+**README에는 "지금 상태"를 적지 않습니다. 언제나 참인 것만 적습니다.**
+
+이번 배포의 진행 상황, 확인 대기 항목, 마이그레이션 적용 여부처럼 곧 낡을 내용은 개발
+일지나 PR 본문에 적습니다. 여러 사람이 같은 파일의 다른 성격 내용을 고치면 병합할 때마다
+부딪히고, 낡은 상태가 README에 남으면 읽는 사람이 속습니다.
+
+개발 일지(`docs/development-history.md`)는 저장소에 올리지 않고 워크트리 바깥의
+`../schooldoc-docs`에 실체를 두고 각 워크트리에서 심볼릭 링크로 봅니다. 워크트리를 나눠
+써도 한 파일에 시간순으로 쌓입니다. Codex 쪽에서 쓴 항목은 제목 끝에 `(codex)`를 붙입니다.
 
 ## UX/UI 전문가 페르소나
 
