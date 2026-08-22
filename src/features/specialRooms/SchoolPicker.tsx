@@ -91,7 +91,7 @@ export function SchoolPicker({ value, onChange }: SchoolPickerProps) {
               <div>
                 <h2 id="school-picker-title" className="text-lg font-extrabold text-[#0F172A]">학교 찾기</h2>
                 <p className="mt-1 text-xs leading-5 text-[#64748B]">
-                  NEIS에서 찾습니다. 고른 학교의 공휴일과 재량휴업일이 예약 표에 표시됩니다.
+                  NEIS에서 찾습니다. 고르면 그 학교의 공휴일과 재량휴업일을 바로 받아 예약 표에 표시합니다.
                 </p>
               </div>
               <button

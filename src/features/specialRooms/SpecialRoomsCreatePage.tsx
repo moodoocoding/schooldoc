@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import { isSpecialRoomsDemoMode } from './specialRoomsConfig';
 import { SchoolPicker } from './SchoolPicker';
+import { mondayOf, toDateKey } from './specialRoomWeek';
 import * as service from './specialRoomsService';
 import type { SelectedSchool } from './types';
 
@@ -32,7 +33,14 @@ export function SpecialRoomsCreatePage() {
     setError('');
     try {
       const created = await service.createBoard(ownerId, { title, description, school, password, rooms: filled });
-      navigate(`/tools/special-rooms/${created.id}`);
+      // 학교를 고른 이유가 학사일정이므로 만드는 김에 같이 받아 둔다. 실패해도 예약판은
+      // 살리고, 관리 화면에서 무엇을 다시 해야 하는지 알린다.
+      const outcome = school && !isSpecialRoomsDemoMode
+        ? await service.linkSchoolAndSyncDays(created.id, school, mondayOf(toDateKey(new Date())))
+        : null;
+      navigate(`/tools/special-rooms/${created.id}`, {
+        state: outcome ? { schoolNotice: outcome.notice, schoolError: outcome.error } : undefined,
+      });
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : '예약판을 만들지 못했습니다.');
       setSaving(false);
