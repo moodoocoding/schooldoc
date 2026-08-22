@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AlertCircle, ArrowLeft, CheckCircle2, FileSpreadsheet, LoaderCircle, Plus, Trash2, Undo2, Upload, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTeacherAuth } from '../../auth/teacherAuth';
+import { insertRowAfter, isRowAddKey } from '../../utils/rowEntry';
 import { studentResultsOwnerId } from './studentResultsConfig';
 import { analyzeStudentResultFile, type StudentResultImportAnalysis } from './studentResultsImport';
 import { createStudentResultEvent } from './studentResultsService';
@@ -79,6 +80,35 @@ export function StudentResultsCreatePage() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   });
+
+  const [focusRow, setFocusRow] = useState('');
+
+  // 엔터로 끼운 줄에 곧바로 이어 적을 수 있어야 한다.
+  useEffect(() => {
+    if (!focusRow) return;
+    document.querySelector<HTMLInputElement>(`input[aria-label="${focusRow}"]`)?.focus();
+    setFocusRow('');
+  }, [focusRow]);
+
+  /**
+   * 목록 칸의 엔터는 폼을 보내지 않고 줄을 더한다. `utils/rowEntry` 참고.
+   * 명단을 한 줄씩 적어 내려가다 무심코 누른 엔터에 결과 안내가 만들어지면 안 된다.
+   */
+  const onColumnKeyDown = (index: number) => (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isRowAddKey(event)) return;
+    event.preventDefault();
+    if (!columns[index].label.trim()) return;
+    addColumn();
+    setFocusRow(`${columns.length + 1}번 항목명`);
+  };
+
+  const onRecipientKeyDown = (index: number) => (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isRowAddKey(event)) return;
+    event.preventDefault();
+    if (!recipients[index].name.trim()) return;
+    setRecipients((current) => insertRowAfter(current, index, () => makeEmptyRecipient(current.length, columns)));
+    setFocusRow(`${index + 2}번 학생 성명`);
+  };
 
   const addColumn = () => {
     const column: EditableResultColumn = {
@@ -369,7 +399,7 @@ export function StudentResultsCreatePage() {
         <div className="mt-4 space-y-3">
           {columns.map((column, index) => (
             <div key={column.id} className="grid gap-3 border-b border-[#EEF1F4] pb-3 md:grid-cols-[1fr_120px_1.3fr_40px]">
-              <div><input id={`student-result-column-label-${index}`} aria-invalid={fieldError(`student-result-column-label-${index}`)} aria-describedby={fieldError(`student-result-column-label-${index}`) ? `student-result-column-label-${index}-error` : undefined} aria-label={`${index + 1}번 항목명`} value={column.label} onChange={(event) => setColumns((current) => current.map((item) => item.id === column.id ? { ...item, label: event.target.value } : item))} className={`min-h-[44px] w-full rounded-lg border px-3 text-sm ${fieldError(`student-result-column-label-${index}`) ? 'border-[#B42318] bg-[#FFF8F8]' : 'border-[#C8D0DA]'}`} placeholder="항목명" />{fieldError(`student-result-column-label-${index}`) ? <p id={`student-result-column-label-${index}-error`} className="mt-1 text-xs font-semibold text-[#B42318]">{error}</p> : null}</div>
+              <div><input id={`student-result-column-label-${index}`} aria-invalid={fieldError(`student-result-column-label-${index}`)} aria-describedby={fieldError(`student-result-column-label-${index}`) ? `student-result-column-label-${index}-error` : undefined} aria-label={`${index + 1}번 항목명`} onKeyDown={onColumnKeyDown(index)} value={column.label} onChange={(event) => setColumns((current) => current.map((item) => item.id === column.id ? { ...item, label: event.target.value } : item))} className={`min-h-[44px] w-full rounded-lg border px-3 text-sm ${fieldError(`student-result-column-label-${index}`) ? 'border-[#B42318] bg-[#FFF8F8]' : 'border-[#C8D0DA]'}`} placeholder="항목명" />{fieldError(`student-result-column-label-${index}`) ? <p id={`student-result-column-label-${index}-error`} className="mt-1 text-xs font-semibold text-[#B42318]">{error}</p> : null}</div>
               <div><input id={`student-result-column-max-${index}`} aria-invalid={fieldError(`student-result-column-max-${index}`)} aria-describedby={fieldError(`student-result-column-max-${index}`) ? `student-result-column-max-${index}-error` : undefined} aria-label={`${column.label || index + 1} 배점`} type="number" min="1" value={column.maxScore} onChange={(event) => setColumns((current) => current.map((item) => item.id === column.id ? { ...item, maxScore: event.target.value === '' ? '' : Number(event.target.value) } : item))} className={`min-h-[44px] w-full rounded-lg border px-3 text-sm ${fieldError(`student-result-column-max-${index}`) ? 'border-[#B42318] bg-[#FFF8F8]' : 'border-[#C8D0DA]'}`} />{fieldError(`student-result-column-max-${index}`) ? <p id={`student-result-column-max-${index}-error`} className="mt-1 text-xs font-semibold text-[#B42318]">{error}</p> : null}</div>
               <input aria-label={`${column.label || index + 1} 설명`} value={column.description} onChange={(event) => setColumns((current) => current.map((item) => item.id === column.id ? { ...item, description: event.target.value } : item))} className="min-h-[44px] rounded-lg border border-[#C8D0DA] px-3 text-sm" placeholder="설명 (선택)" />
               <button type="button" disabled={columns.length === 1} onClick={() => removeColumn(column.id)} className="flex h-10 w-10 items-center justify-center rounded-lg text-[#94A3B8] hover:bg-[#FEF3F2] hover:text-[#B42318] disabled:opacity-30" aria-label={`${column.label || index + 1} 항목 삭제`}><Trash2 className="h-4 w-4" /></button>
@@ -389,15 +419,16 @@ export function StudentResultsCreatePage() {
             <tbody>
               {recipients.map((recipient, index) => (
                 <tr key={index}>
-                  <td className="border border-[#DCE3EA] p-2"><input id={`student-result-recipient-key-${index}`} aria-invalid={fieldError(`student-result-recipient-key-${index}`)} aria-label={`${index + 1}번 학생 식별값`} value={recipient.studentKey} onChange={(event) => updateRecipient(index, { studentKey: event.target.value })} className={`min-h-[40px] w-full rounded-md border px-2 ${fieldError(`student-result-recipient-key-${index}`) ? 'border-[#B42318] bg-[#FFF8F8]' : 'border-[#C8D0DA]'}`} /></td>
-                  <td className="border border-[#DCE3EA] p-2"><input id={`student-result-recipient-name-${index}`} aria-invalid={fieldError(`student-result-recipient-name-${index}`)} aria-label={`${index + 1}번 학생 성명`} value={recipient.name} onChange={(event) => updateRecipient(index, { name: event.target.value })} className={`min-h-[40px] w-full rounded-md border px-2 ${fieldError(`student-result-recipient-name-${index}`) ? 'border-[#B42318] bg-[#FFF8F8]' : 'border-[#C8D0DA]'}`} /></td>
-                  <td className="border border-[#DCE3EA] p-2"><input id={`student-result-recipient-code-${index}`} aria-invalid={fieldError(`student-result-recipient-code-${index}`)} aria-label={`${index + 1}번 학생 확인번호`} value={recipient.verificationCode} onChange={(event) => updateRecipient(index, { verificationCode: event.target.value })} className={`min-h-[40px] w-full rounded-md border px-2 ${fieldError(`student-result-recipient-code-${index}`) ? 'border-[#B42318] bg-[#FFF8F8]' : 'border-[#C8D0DA]'}`} /></td>
+                  <td className="border border-[#DCE3EA] p-2"><input id={`student-result-recipient-key-${index}`} aria-invalid={fieldError(`student-result-recipient-key-${index}`)} aria-label={`${index + 1}번 학생 식별값`} onKeyDown={onRecipientKeyDown(index)} value={recipient.studentKey} onChange={(event) => updateRecipient(index, { studentKey: event.target.value })} className={`min-h-[40px] w-full rounded-md border px-2 ${fieldError(`student-result-recipient-key-${index}`) ? 'border-[#B42318] bg-[#FFF8F8]' : 'border-[#C8D0DA]'}`} /></td>
+                  <td className="border border-[#DCE3EA] p-2"><input id={`student-result-recipient-name-${index}`} aria-invalid={fieldError(`student-result-recipient-name-${index}`)} aria-label={`${index + 1}번 학생 성명`} onKeyDown={onRecipientKeyDown(index)} value={recipient.name} onChange={(event) => updateRecipient(index, { name: event.target.value })} className={`min-h-[40px] w-full rounded-md border px-2 ${fieldError(`student-result-recipient-name-${index}`) ? 'border-[#B42318] bg-[#FFF8F8]' : 'border-[#C8D0DA]'}`} /></td>
+                  <td className="border border-[#DCE3EA] p-2"><input id={`student-result-recipient-code-${index}`} aria-invalid={fieldError(`student-result-recipient-code-${index}`)} aria-label={`${index + 1}번 학생 확인번호`} onKeyDown={onRecipientKeyDown(index)} value={recipient.verificationCode} onChange={(event) => updateRecipient(index, { verificationCode: event.target.value })} className={`min-h-[40px] w-full rounded-md border px-2 ${fieldError(`student-result-recipient-code-${index}`) ? 'border-[#B42318] bg-[#FFF8F8]' : 'border-[#C8D0DA]'}`} /></td>
                   {columns.map((column) => (
                     <td key={column.id} className="border border-[#DCE3EA] p-2">
                       <input
                         id={`student-result-score-${index}-${columns.indexOf(column)}`}
                         aria-invalid={fieldError(`student-result-score-${index}-${columns.indexOf(column)}`)}
                         aria-label={`${index + 1}번 학생 ${column.label} 점수`}
+                        onKeyDown={onRecipientKeyDown(index)}
                         type="number"
                         min="0"
                         max={column.maxScore}
@@ -412,7 +443,7 @@ export function StudentResultsCreatePage() {
                       />
                     </td>
                   ))}
-                  <td className="border border-[#DCE3EA] p-2"><input aria-label={`${index + 1}번 학생 피드백`} value={recipient.feedback} onChange={(event) => updateRecipient(index, { feedback: event.target.value })} className="min-h-[40px] w-full rounded-md border border-[#C8D0DA] px-2" /></td>
+                  <td className="border border-[#DCE3EA] p-2"><input aria-label={`${index + 1}번 학생 피드백`} onKeyDown={onRecipientKeyDown(index)} value={recipient.feedback} onChange={(event) => updateRecipient(index, { feedback: event.target.value })} className="min-h-[40px] w-full rounded-md border border-[#C8D0DA] px-2" /></td>
                   <td className="border border-[#DCE3EA] p-2"><button type="button" disabled={recipients.length === 1} onClick={() => { remember(`${recipient.name.trim() || `${index + 1}번`} 학생 삭제`); setRecipients((current) => current.filter((_, recipientIndex) => recipientIndex !== index)); }} className="flex h-9 w-9 items-center justify-center text-[#94A3B8] hover:text-[#B42318] disabled:opacity-30" aria-label={`${index + 1}번 학생 삭제`}><Trash2 className="h-4 w-4" /></button></td>
                 </tr>
               ))}

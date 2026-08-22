@@ -1,18 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, ArrowLeft, CalendarSync, Check, Copy, ExternalLink, ImageDown, LoaderCircle, QrCode, School } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import { qrImageFileName, saveQrImage } from '../../utils/qrImage';
 import { SpecialRoomWeekGrid } from './SpecialRoomWeekGrid';
 import { getSpecialRoomsPublicOrigin, isSpecialRoomsDemoMode } from './specialRoomsConfig';
 import * as service from './specialRoomsService';
 import { SchoolPicker } from './SchoolPicker';
-import { addDays, formatWeekRange, mondayOf, shiftWeek, toDateKey } from './specialRoomWeek';
+import { formatWeekRange, mondayOf, shiftWeek, toDateKey } from './specialRoomWeek';
+import type { SchoolDaysOutcome } from './specialRoomsSchoolDays';
 import type { SpecialRoomBoard } from './types';
 
 export function SpecialRoomsManagePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { boardId = '' } = useParams();
   const { user } = useTeacherAuth();
   const ownerId = user?.id ?? (isSpecialRoomsDemoMode ? 'local-demo-teacher' : '');
@@ -25,8 +27,10 @@ export function SpecialRoomsManagePage() {
   const [qrError, setQrError] = useState('');
   const qrRef = useRef<HTMLDivElement>(null);
   const [schoolBusy, setSchoolBusy] = useState('');
-  const [schoolError, setSchoolError] = useState('');
-  const [schoolNotice, setSchoolNotice] = useState('');
+  // 만들면서 학사일정까지 받아 왔다면 그 결과를 여기서 이어 보여 준다.
+  const handoff = location.state as { schoolNotice?: string; schoolError?: string } | null;
+  const [schoolError, setSchoolError] = useState(handoff?.schoolError ?? '');
+  const [schoolNotice, setSchoolNotice] = useState(handoff?.schoolNotice ?? '');
 
   useEffect(() => {
     let active = true;
@@ -77,16 +81,17 @@ export function SpecialRoomsManagePage() {
 
   /**
    * NEIS는 곁들이는 기능이다. 실패해도 예약은 그대로 되어야 하므로 이 영역 안에서만 알린다.
+   * 연결과 일정 받기의 순서·실패 처리는 `specialRoomsSchoolDays`가 정한다.
    */
-  const runSchool = async (key: string, work: () => Promise<string>) => {
+  const runSchool = async (key: string, work: () => Promise<SchoolDaysOutcome>) => {
     if (schoolBusy) return;
     setSchoolBusy(key);
     setSchoolError('');
     setSchoolNotice('');
     try {
-      setSchoolNotice(await work());
-    } catch (error) {
-      setSchoolError(error instanceof Error ? error.message : '학사일정을 가져오지 못했습니다.');
+      const outcome = await work();
+      setSchoolNotice(outcome.notice);
+      setSchoolError(outcome.error);
     } finally {
       setSchoolBusy('');
     }
@@ -138,7 +143,7 @@ export function SpecialRoomsManagePage() {
           <h2 className="font-bold">학사일정</h2>
         </div>
         <p className="mt-1 text-xs leading-5 text-[#64748B]">
-          학교를 연결하면 공휴일과 재량휴업일이 표에 표시됩니다. 연결하지 않아도 예약은 그대로 됩니다.
+          학교를 고르면 공휴일과 재량휴업일을 바로 받아 표에 표시합니다. 연결하지 않아도 예약은 그대로 됩니다.
         </p>
         {board.schoolName ? (
           <p className="mt-3 text-sm font-bold text-[#0F172A]">연결된 학교: {board.schoolName}</p>
@@ -147,27 +152,20 @@ export function SpecialRoomsManagePage() {
         <div className="mt-3 grid gap-2 sm:max-w-md">
           <SchoolPicker
             value={board.schoolName ? { name: board.schoolName, officeCode: '', schoolCode: '' } : null}
-            onChange={(school) => void runSchool('link', async () => {
-              if (!school) {
-                await service.linkSchool(board.id, { name: '', officeCode: '', schoolCode: '', kind: '', address: '' });
-                return '학교 연결을 지웠습니다.';
-              }
-              await service.linkSchool(board.id, { ...school, kind: '', address: '' });
-              return `${school.name}을(를) 연결했습니다. 이제 학사일정을 받아 주세요.`;
-            })}
+            onChange={(school) => void runSchool('link', () => (
+              school
+                ? service.linkSchoolAndSyncDays(board.id, school, mondayKey)
+                : service.unlinkSchool(board.id)
+            ))}
           />
           <button
             type="button"
             disabled={schoolBusy !== '' || !board.schoolName}
-            onClick={() => void runSchool('sync', async () => {
-              // 이번 주부터 한 학기 남짓을 받아 둔다. 화면을 열 때마다 부르지 않기 위해서다.
-              const count = await service.syncSchoolDays(board.id, mondayKey, addDays(mondayKey, 180));
-              return `학사일정 ${count}건을 받았습니다.`;
-            })}
-            className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-lg bg-[#0F6CBD] px-4 text-xs font-bold text-white disabled:bg-[#AAB7C4]"
+            onClick={() => void runSchool('sync', () => service.syncSchoolDays(board.id, mondayKey))}
+            className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-lg border border-[#0F6CBD] px-4 text-xs font-bold text-[#0F6CBD] hover:bg-[#EFF6FC] disabled:border-[#C8D0DA] disabled:text-[#94A3B8]"
           >
             {schoolBusy === 'sync' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CalendarSync className="h-4 w-4" />}
-            {schoolBusy === 'sync' ? '받는 중' : '학사일정 받기'}
+            {schoolBusy === 'sync' ? '받는 중' : '학사일정 다시 받기'}
           </button>
         </div>
 
