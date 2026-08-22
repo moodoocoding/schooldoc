@@ -3,7 +3,9 @@ import { AlertCircle, ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import { isSpecialRoomsDemoMode } from './specialRoomsConfig';
+import { SchoolPicker } from './SchoolPicker';
 import * as service from './specialRoomsService';
+import type { SelectedSchool } from './types';
 
 const inputClass = 'min-h-[44px] w-full rounded-lg border border-[#C8D0DA] px-3 text-sm';
 
@@ -13,7 +15,7 @@ export function SpecialRoomsCreatePage() {
   const ownerId = user?.id ?? (isSpecialRoomsDemoMode ? 'local-demo-teacher' : '');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [schoolName, setSchoolName] = useState('');
+  const [school, setSchool] = useState<SelectedSchool | null>(null);
   const [password, setPassword] = useState('');
   const [rooms, setRooms] = useState([{ name: '', location: '' }]);
   const [error, setError] = useState('');
@@ -29,7 +31,7 @@ export function SpecialRoomsCreatePage() {
     setSaving(true);
     setError('');
     try {
-      const created = await service.createBoard(ownerId, { title, description, schoolName, password, rooms: filled });
+      const created = await service.createBoard(ownerId, { title, description, school, password, rooms: filled });
       navigate(`/tools/special-rooms/${created.id}`);
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : '예약판을 만들지 못했습니다.');
@@ -59,9 +61,10 @@ export function SpecialRoomsCreatePage() {
         <label className="grid gap-2 text-sm font-bold text-[#334155]">안내 문구
           <input className={inputClass} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="예: 사용 후 정리 부탁드립니다" />
         </label>
-        <label className="grid gap-2 text-sm font-bold text-[#334155]">학교 이름 <span className="font-normal text-[#64748B]">(넣으면 학사일정의 휴업일이 표시됩니다)</span>
-          <input className={inputClass} value={schoolName} onChange={(event) => setSchoolName(event.target.value)} placeholder="예: 서울고등학교" />
-        </label>
+        <div className="grid gap-2 text-sm font-bold text-[#334155]">
+          학교 <span className="font-normal text-[#64748B]">(고르면 공휴일과 재량휴업일이 표에 표시됩니다. 비워 둬도 됩니다)</span>
+          <SchoolPicker value={school} onChange={setSchool} />
+        </div>
         <label className="grid gap-2 text-sm font-bold text-[#334155]">공개 비밀번호 <span className="font-normal text-[#64748B]">(비워 두면 링크만으로 열립니다)</span>
           <input className={inputClass} value={password} onChange={(event) => setPassword(event.target.value)} />
         </label>

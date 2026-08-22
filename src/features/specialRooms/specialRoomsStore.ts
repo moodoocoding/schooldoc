@@ -68,7 +68,7 @@ export const createBoard = (ownerId: string, draft: SpecialRoomBoardDraft) => {
     password: draft.password,
     title: draft.title.trim(),
     description: draft.description.trim(),
-    schoolName: draft.schoolName.trim(),
+    schoolName: draft.school?.name ?? '',
     status: 'open',
     isPasswordProtected: Boolean(draft.password),
     rooms: draft.rooms.map((room, position) => ({

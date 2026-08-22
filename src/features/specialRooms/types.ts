@@ -42,10 +42,17 @@ export interface SpecialRoomBoard {
   updatedAt: string;
 }
 
+/** NEIS에서 고른 학교. 이름만으로는 학사일정을 받을 수 없어 코드까지 함께 든다. */
+export interface SelectedSchool {
+  name: string;
+  officeCode: string;
+  schoolCode: string;
+}
+
 export interface SpecialRoomBoardDraft {
   title: string;
   description: string;
-  schoolName: string;
+  school: SelectedSchool | null;
   password: string;
   rooms: Pick<SpecialRoom, 'name' | 'location'>[];
 }

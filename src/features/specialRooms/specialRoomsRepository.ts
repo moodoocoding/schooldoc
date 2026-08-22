@@ -177,7 +177,9 @@ export const createRemoteBoard = async (draft: SpecialRoomBoardDraft) => {
     owner_id: ownerId,
     title: draft.title.trim(),
     description: draft.description.trim(),
-    school_name: draft.schoolName.trim() || null,
+    school_name: draft.school?.name ?? null,
+    neis_office_code: draft.school?.officeCode ?? null,
+    neis_school_code: draft.school?.schoolCode ?? null,
     password_digest: passwordDigest,
   }).select('id').single();
   if (error) fail('예약판을 만들지 못했습니다', error);
