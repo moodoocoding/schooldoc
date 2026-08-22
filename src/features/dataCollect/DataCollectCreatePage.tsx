@@ -480,12 +480,15 @@ export function DataCollectCreatePage() {
             <summary className="min-h-[44px] cursor-pointer py-2 text-sm font-bold text-[#334155]">추가 설정</summary>
             <div className="mt-3 grid gap-4 sm:grid-cols-2"><label className="text-sm font-bold" htmlFor="data-collect-password">링크 비밀번호 <span className="font-normal text-[#64748B]">선택</span></label><input ref={passwordRef} id="data-collect-password" type="password" value={password} onChange={(event) => { setPassword(event.target.value); clearFieldError('password'); }} aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? 'data-collect-password-error' : undefined} className={`${inputClass} sm:col-start-1`} placeholder="4자 이상" />{fieldErrors.password ? <p id="data-collect-password-error" className="text-sm font-semibold text-[#B42318] sm:col-start-1">{fieldErrors.password}</p> : null}<label className="flex min-h-[44px] items-center gap-3 text-sm font-bold sm:col-start-2 sm:row-start-1 sm:row-span-2"><input type="checkbox" checked={allowResubmit} onChange={(event) => setAllowResubmit(event.target.checked)} className="h-5 w-5" />{requestType === 'review' ? '수정본 다시 제출 허용' : '제출 후 파일 교체 허용'}</label></div>
           </details>
-        </section>
-      </div>
 
-      <div className="sticky bottom-0 z-10 rounded-lg border border-[#DCE3EA] bg-white/95 p-4 shadow-lg backdrop-blur">
-        {submitError ? <p role="alert" className="mb-3 flex gap-2 text-sm font-semibold text-[#B42318]"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{submitError}</p> : null}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><p className="min-w-0 text-xs font-semibold leading-5 text-[#526174]"><span className="text-[#0F172A]">{summaryTarget}</span> · <span className="break-all text-[#0F172A]">{summaryFile}</span> · {formatDueSummary(dueAt)}</p><button type="submit" disabled={saving} className="min-h-[48px] shrink-0 rounded-lg bg-[#0F6CBD] px-6 text-sm font-bold text-white hover:bg-[#0B5B9F] disabled:opacity-60">{saving ? '만드는 중' : '자료 수합 만들고 링크 확인'}</button></div>
+          <div className="mt-6 border-t border-[#DCE3EA] pt-5">
+            <h3 className="text-base font-bold">최종 확인</h3>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[#526174]"><span className="text-[#0F172A]">{summaryTarget}</span> · <span className="break-all text-[#0F172A]">{summaryFile}</span> · {formatDueSummary(dueAt)}</p>
+            <p className="mt-1 text-xs text-[#64748B]">만들면 다음 화면에서 공유 링크를 확인할 수 있습니다.</p>
+            {submitError ? <p role="alert" className="mt-4 flex gap-2 text-sm font-semibold text-[#B42318]"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{submitError}</p> : null}
+            <div className="mt-5 flex justify-end"><button type="submit" disabled={saving} className="min-h-[48px] w-full rounded-lg bg-[#0F6CBD] px-6 text-sm font-bold text-white hover:bg-[#0B5B9F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F6CBD] focus-visible:ring-offset-2 disabled:opacity-60 sm:w-auto">{saving ? '만드는 중' : '자료 수합 만들기'}</button></div>
+          </div>
+        </section>
       </div>
     </form>
   );

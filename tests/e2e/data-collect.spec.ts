@@ -5,8 +5,11 @@ test('필요한 생성 입력만 보여주고 첫 오류로 이동한다', async
   await page.goto('/tools/data-collect/new');
   await page.getByRole('radio', { name: /제출자가 이름 입력/ }).check();
   await expect(page.getByRole('heading', { name: '제출 대상 명단' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: '최종 확인' })).toBeVisible();
+  const createButton = page.getByRole('button', { name: '자료 수합 만들기' });
+  await expect(createButton.evaluate((element) => Boolean(element.closest('.sticky')))).resolves.toBe(false);
 
-  await page.getByRole('button', { name: '자료 수합 만들고 링크 확인' }).click();
+  await createButton.click();
   await expect(page.getByText('수합 제목을 입력해 주세요.')).toBeVisible();
   await expect(page.getByLabel('제목')).toBeFocused();
 });
@@ -93,7 +96,7 @@ test('마감 기한을 빠르게 고르거나 날짜와 시간을 따로 정한�
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayValue = `${yesterday.getFullYear()}-${pad(yesterday.getMonth() + 1)}-${pad(yesterday.getDate())}`;
   await page.getByLabel('마감 날짜').fill(yesterdayValue);
-  await page.getByRole('button', { name: '자료 수합 만들고 링크 확인' }).click();
+  await page.getByRole('button', { name: '자료 수합 만들기' }).click();
   await expect(page.getByText('마감 기한은 현재 시각보다 뒤로 정해 주세요.')).toBeVisible();
   await expect(page.getByLabel('마감 날짜')).toBeFocused();
 });
@@ -110,7 +113,7 @@ test('배포 파일을 확인하고 이상 없음 또는 수정본으로 회신�
   });
   await page.getByLabel('이름 입력 또는 붙여넣기').fill('국어');
   await page.getByRole('button', { name: '입력한 이름 반영' }).click();
-  await page.getByRole('button', { name: '자료 수합 만들고 링크 확인' }).click();
+  await page.getByRole('button', { name: '자료 수합 만들기' }).click();
 
   await expect(page.getByRole('heading', { name: '2학기 평가 문항 검토' })).toBeVisible();
   await expect(page.getByText('미확인', { exact: true })).toBeVisible();
@@ -146,7 +149,7 @@ test('명단 없이 제출자가 이름을 입력해 자료를 제출한다', as
   await page.getByLabel('제목').fill('명단 없는 자료 제출');
   await page.getByLabel('안내').fill('제출자 이름을 입력하고 자료를 올려 주세요.');
   await page.getByRole('radio', { name: /제출자가 이름 입력/ }).check();
-  await page.getByRole('button', { name: '자료 수합 만들고 링크 확인' }).click();
+  await page.getByRole('button', { name: '자료 수합 만들기' }).click();
 
   await expect(page.getByRole('heading', { name: '명단 없는 자료 제출' })).toBeVisible();
   const publicUrl = await page.getByLabel('자료 수합 공개 링크').inputValue();
