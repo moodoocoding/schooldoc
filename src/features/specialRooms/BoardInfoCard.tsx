@@ -18,7 +18,7 @@ interface BoardInfoCardProps {
  * 제목과 안내 문구를 보고 고친다.
  *
  * 예전에는 만들 때 적은 뒤로 담당자 화면 어디에도 나오지 않았다. 안내 문구는 공개 화면에만
- * 보이므로, 적었는지조차 배부한 링크를 직접 열어 봐야 알 수 있었다. 오타 하나에 예약판을
+ * 보이므로, 적었는지조차 배부한 링크를 직접 열어 봐야 알 수 있었다. 오타 하나에 예약표를
  * 새로 만들어야 했다.
  *
  * 안내 문구는 비워도 된다. 비면 공개 화면에서 그 자리가 사라진다는 것을 옆에 적어 둔다.
@@ -71,13 +71,13 @@ export function BoardInfoCard({ board, onSave }: BoardInfoCardProps) {
   return (
     <section className="rounded-lg border border-[#DCE3EA] bg-white px-4 py-5 sm:px-5">
       <h2 className="flex items-center gap-2 text-base font-bold text-[#0F172A]">
-        <Pencil className="h-4 w-4 text-[#0F6CBD]" />예약판 정보
+        <Pencil className="h-4 w-4 text-[#0F6CBD]" />예약표 정보
       </h2>
       <p className="mt-1 text-xs leading-5 text-[#526174]">예약 화면 맨 위에 보이는 내용입니다.</p>
 
       <div className="mt-4 grid gap-3">
         <label className="grid gap-1.5 text-xs font-bold text-[#334155]" htmlFor="board-info-title">
-          예약판 이름
+          예약표 이름
           <input
             id="board-info-title"
             value={draft.title}
@@ -121,7 +121,7 @@ export function BoardInfoCard({ board, onSave }: BoardInfoCardProps) {
       ) : null}
       {done ? (
         <p role="status" aria-live="polite" className="mt-3 flex items-start gap-1.5 rounded-md bg-[#E7F3EA] px-2.5 py-2 text-xs font-semibold leading-5 text-[#166534]">
-          <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" />예약판 정보를 저장했습니다.
+          <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" />예약표 정보를 저장했습니다.
         </p>
       ) : null}
     </section>

@@ -16,7 +16,7 @@ export function SpecialRoomsAuthGate({ children }: { children: ReactNode }) {
           <CalendarClock className="h-8 w-8 text-[#0F6CBD]" />
           <p className="mt-5 text-xs font-bold text-[#0F6CBD]">교직원 전용</p>
           <h1 className="mt-2 text-2xl font-extrabold text-[#0F172A]">특별실 예약</h1>
-          <p className="mt-3 text-sm leading-6 text-[#526174]">Google 계정으로 로그인해 특별실 예약판과 예약 현황을 관리하세요.</p>
+          <p className="mt-3 text-sm leading-6 text-[#526174]">Google 계정으로 로그인해 특별실 예약표와 예약 현황을 관리하세요.</p>
           <button
             type="button"
             onClick={() => void signIn('/tools/special-rooms')}

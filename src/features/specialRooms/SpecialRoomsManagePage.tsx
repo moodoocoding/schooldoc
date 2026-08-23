@@ -59,7 +59,7 @@ export function SpecialRoomsManagePage() {
   if (!board) {
     return (
       <div className="py-20 text-center">
-        <p className="font-bold">예약판을 찾을 수 없습니다.</p>
+        <p className="font-bold">예약표를 찾을 수 없습니다.</p>
         <button type="button" onClick={() => navigate('/tools/special-rooms')} className="mt-4 text-sm font-bold text-[#0F6CBD]">목록으로</button>
       </div>
     );

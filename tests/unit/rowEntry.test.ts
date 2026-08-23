@@ -4,7 +4,7 @@ import { insertRowAfter, isRowAddKey } from '../../src/utils/rowEntry';
 /**
  * 목록 칸의 엔터는 폼을 보내지 않고 줄을 더한다.
  *
- * 특별실 이름을 적다 무심코 엔터를 치면 `예약판 만들기`가 실행됐다. 학생 결과 화면도
+ * 특별실 이름을 적다 무심코 엔터를 치면 `예약표 만들기`가 실행됐다. 학생 결과 화면도
  * 같았다. HTML 폼의 기본 동작이라 화면마다 되풀이되므로 규칙을 여기 한 곳에 둔다.
  */
 const key = (overrides: Record<string, unknown> = {}) => ({

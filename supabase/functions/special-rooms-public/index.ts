@@ -69,7 +69,7 @@ const getBoard = async (token: string) => {
     .select('id, public_token, title, description, school_name, status, password_digest')
     .eq('public_token', token).maybeSingle();
   if (error) throw error;
-  if (!data) throw new HttpError(404, '예약판을 찾을 수 없습니다.');
+  if (!data) throw new HttpError(404, '예약표를 찾을 수 없습니다.');
   return data as BoardRow;
 };
 
@@ -168,7 +168,7 @@ Deno.serve(async (request) => {
       });
     }
 
-    // 여기부터는 자료를 바꾼다. 닫힌 예약판은 읽기만 된다.
+    // 여기부터는 자료를 바꾼다. 닫힌 예약표는 읽기만 된다.
     if (board.status !== 'open') throw new HttpError(409, '예약이 종료되었습니다.');
 
     const roomId = await readRoom(board.id, body.roomId);
