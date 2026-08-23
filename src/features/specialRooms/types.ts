@@ -1,5 +1,17 @@
-export const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
-export type Period = (typeof PERIODS)[number];
+/**
+ * 담을 수 있는 교시의 전부. 예약표마다 이 중 앞에서 몇 개를 쓸지 정한다.
+ *
+ * 초등은 6교시가 끝이고 중등은 7교시, 고등은 방과후까지 9교시를 쓴다. 학교마다 다른데
+ * 예전에는 8교시가 코드에 박혀 있어 초등은 두 줄이 늘 비고 고등은 방과후를 못 넣었다.
+ * DB의 `period between 1 and 9`와 같은 값이다.
+ */
+export const ALL_PERIODS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+
+/** 예약표가 고를 수 있는 교시 수. */
+export const PERIOD_COUNT_MIN = 4;
+export const PERIOD_COUNT_MAX = ALL_PERIODS.length;
+export const DEFAULT_PERIOD_COUNT = 8;
+export type Period = (typeof ALL_PERIODS)[number];
 
 export interface SpecialRoom {
   id: string;
@@ -32,6 +44,10 @@ export interface SpecialRoomBoard {
   publicToken: string;
   title: string;
   description: string;
+  /** 이 예약표가 쓰는 교시 수. 앞에서부터 이만큼만 표에 나온다. */
+  periodCount: number;
+  /** 토요일까지 보여 줄지. 고등학교는 주말 모의면접·자습이 있다. */
+  includeSaturday: boolean;
   schoolName: string;
   status: 'open' | 'closed';
   isPasswordProtected: boolean;
@@ -50,6 +66,8 @@ export interface SelectedSchool {
 }
 
 export interface SpecialRoomBoardDraft {
+  periodCount: number;
+  includeSaturday: boolean;
   title: string;
   description: string;
   school: SelectedSchool | null;

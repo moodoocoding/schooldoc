@@ -1,4 +1,4 @@
-import { PERIODS, type Period, type SchoolDay, type SpecialRoomBooking } from './types';
+import { ALL_PERIODS, type Period, type SchoolDay, type SpecialRoomBooking } from './types';
 
 /**
  * 주간 표의 날짜 계산.
@@ -7,7 +7,23 @@ import { PERIODS, type Period, type SchoolDay, type SpecialRoomBooking } from '.
  * 날짜는 전부 `YYYY-MM-DD` 문자열로 다룬다. Date 객체를 주고받으면 시간대에 따라 하루가
  * 밀린다. 실제로 흔한 사고다.
  */
-export const WEEKDAYS = ['월', '화', '수', '목', '금'] as const;
+/**
+ * 담을 수 있는 요일의 전부. 예약표마다 토요일까지 쓸지 정한다.
+ *
+ * 일요일은 넣지 않았다. 375px에서 요일 한 칸이 5일이면 61px, 6일이면 51px인데 7일이면
+ * 44px까지 줄어 `6학년1반`(37px)이 겨우 들어간다. 필요하다는 이야기가 나오면 그때 다시 잰다.
+ */
+export const ALL_WEEKDAYS = ['월', '화', '수', '목', '금', '토'] as const;
+
+/** 토요일을 쓰는 예약표면 여섯 요일, 아니면 다섯 요일. */
+export const weekdaysFor = (includeSaturday: boolean) => (
+  ALL_WEEKDAYS.slice(0, includeSaturday ? 6 : 5)
+);
+
+/** 앞에서부터 쓰는 교시만 고른다. */
+export const periodsFor = (periodCount: number) => (
+  ALL_PERIODS.slice(0, Math.min(Math.max(periodCount, 1), ALL_PERIODS.length))
+);
 
 /** 로컬 기준 YYYY-MM-DD. toISOString()은 UTC라 저녁에 하루가 밀린다. */
 export const toDateKey = (date: Date) => {
@@ -40,8 +56,8 @@ export const addDays = (key: string, days: number) => {
 export const shiftWeek = (mondayKey: string, weeks: number) => addDays(mondayKey, weeks * 7);
 
 /** 월~금 다섯 날. 주말은 학교 수업이 없어 표에 넣지 않는다. */
-export const weekDates = (mondayKey: string) => (
-  WEEKDAYS.map((_, index) => addDays(mondayKey, index))
+export const weekDates = (mondayKey: string, includeSaturday = false) => (
+  weekdaysFor(includeSaturday).map((_, index) => addDays(mondayKey, index))
 );
 
 export const formatWeekRange = (mondayKey: string) => {
@@ -93,7 +109,7 @@ export const indexSchoolDays = (schoolDays: SchoolDay[]) => {
 };
 
 export const isPeriod = (value: number): value is Period => (
-  PERIODS.includes(value as Period)
+  ALL_PERIODS.includes(value as Period)
 );
 
 /**

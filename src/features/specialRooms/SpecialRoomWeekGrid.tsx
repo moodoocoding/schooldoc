@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { LoaderCircle, X } from 'lucide-react';
 import { BookingSheet } from './BookingSheet';
 import {
-  WEEKDAYS,
+  periodsFor,
+  weekdaysFor,
   bookingKey,
   formatDayLabel,
   toDateKey,
@@ -10,13 +11,17 @@ import {
   indexSchoolDays,
   weekDates,
 } from './specialRoomWeek';
-import { PERIODS, type Period, type SchoolDay, type SpecialRoomBooking } from './types';
+import type { Period, SchoolDay, SpecialRoomBooking } from './types';
 
 interface SpecialRoomWeekGridProps {
   mondayKey: string;
   roomId: string;
   /** 시트 제목에 쓴다. 어느 방을 잡는지 표를 떠나서도 알아야 한다. */
   roomName?: string;
+  /** 이 예약표가 쓰는 교시 수. 학교마다 다르다. */
+  periodCount: number;
+  /** 토요일까지 보여 줄지. */
+  includeSaturday: boolean;
   bookings: SpecialRoomBooking[];
   schoolDays: SchoolDay[];
   readOnly?: boolean;
@@ -33,10 +38,15 @@ interface SpecialRoomWeekGridProps {
  *
  * 휴업일은 회색으로 덮되 예약을 막지는 않는다. 재량휴업일에 행사 준비로 쓰는 경우가 있다.
  */
+/** 점심이 오는 자리. 교시 수와 무관하게 4교시 뒤가 보통이다. */
+const LUNCH_AFTER_PERIOD = 4;
+
 export function SpecialRoomWeekGrid({
   mondayKey,
   roomId,
   roomName,
+  periodCount,
+  includeSaturday,
   bookings,
   schoolDays,
   readOnly = false,
@@ -46,12 +56,14 @@ export function SpecialRoomWeekGrid({
 }: SpecialRoomWeekGridProps) {
   const [editing, setEditing] = useState<{ date: string; period: Period } | null>(null);
 
-  const dates = weekDates(mondayKey);
+  const weekdays = weekdaysFor(includeSaturday);
+  const periods = periodsFor(periodCount);
+  const dates = weekDates(mondayKey, includeSaturday);
   const booked = indexBookings(bookings, roomId);
   const days = indexSchoolDays(schoolDays);
 
   // 주가 바뀌거나 특별실을 바꾸면 시트를 접는다. 엉뚱한 칸에 저장되지 않게 한다.
-  useEffect(() => setEditing(null), [mondayKey, roomId]);
+  useEffect(() => setEditing(null), [mondayKey, roomId, periodCount, includeSaturday]);
 
   const openCell = (date: string, period: Period) => {
     if (readOnly) return;
@@ -88,7 +100,7 @@ export function SpecialRoomWeekGrid({
         {/* 칸 내용이나 편집 상태에 따라 열이 흔들리지 않도록 폭을 고정한다. */}
         <colgroup>
           <col className="w-[34px] sm:w-[64px]" />
-          {WEEKDAYS.map((day) => <col key={day} className="w-1/5" />)}
+          {weekdays.map((day) => <col key={day} style={{ width: `${100 / weekdays.length}%` }} />)}
         </colgroup>
         <thead>
           <tr>
@@ -116,7 +128,7 @@ export function SpecialRoomWeekGrid({
                   {/* 좁은 화면에서는 요일 아래 날짜를 두 줄로 눌러 담는다. */}
                   <span className="flex flex-col items-center gap-0 sm:flex-row sm:justify-center sm:gap-1.5">
                     <span className={`text-xs font-bold sm:text-sm ${note?.isOffDay ? 'text-[#C0261B]' : 'text-[#0F172A]'}`}>
-                      {WEEKDAYS[index]}
+                      {weekdays[index]}
                     </span>
                     <span className={`text-[10px] font-semibold sm:text-xs ${note?.isOffDay ? 'text-[#C0261B]' : 'text-[#64748B]'}`}>
                       {formatDayLabel(date)}
@@ -142,11 +154,11 @@ export function SpecialRoomWeekGrid({
           </tr>
         </thead>
         <tbody>
-          {PERIODS.map((period) => {
-            // 초등 시간표는 4교시 뒤에 점심이 온다. 그 자리에 선을 하나 두면 몇 교시인지
-            // 세지 않고도 위아래를 가늠한다.
-            const afterLunch = period === 4 ? 'border-b-2 border-b-[#C8D0DA]' : 'border-b border-b-[#EEF1F4]';
-            const lastRow = period === PERIODS[PERIODS.length - 1] ? 'border-b-0' : '';
+          {periods.map((period) => {
+            // 점심 자리에 선을 하나 두면 몇 교시인지 세지 않고도 위아래를 가늠한다.
+            // 6교시 학교는 4교시 뒤, 8~9교시 학교도 4교시 뒤가 보통이다.
+            const afterLunch = period === LUNCH_AFTER_PERIOD ? 'border-b-2 border-b-[#C8D0DA]' : 'border-b border-b-[#EEF1F4]';
+            const lastRow = period === periods[periods.length - 1] ? 'border-b-0' : '';
             return (
               <tr key={period}>
                 <th scope="row" className={`bg-[#F6F8FB] px-1 py-2 text-[10px] font-bold text-[#64748B] sm:text-[11px] ${afterLunch} ${lastRow}`}>
@@ -207,7 +219,7 @@ export function SpecialRoomWeekGrid({
       {editing ? (
         <BookingSheet
           cellName={`${formatDayLabel(editing.date)} ${editing.period}교시`}
-          title={`${WEEKDAYS[weekDates(mondayKey).indexOf(editing.date)]} ${formatDayLabel(editing.date)} · ${editing.period}교시`}
+          title={`${weekdays[dates.indexOf(editing.date)]} ${formatDayLabel(editing.date)} · ${editing.period}교시`}
           roomName={roomName}
           current={booked.get(bookingKey(editing.date, editing.period))?.label ?? ''}
           saving={savingCell === bookingKey(editing.date, editing.period)}

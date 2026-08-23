@@ -101,7 +101,7 @@ export function SpecialRoomsManagePage() {
   const thisMonday = mondayOf(toDateKey(new Date()));
   const isThisWeek = mondayKey === thisMonday;
   // 머리글 수치는 보는 주나 고른 특별실에 따라 흔들리면 안 된다. 늘 이번 주 전체를 센다.
-  const thisWeekDates = weekDates(thisMonday);
+  const thisWeekDates = weekDates(thisMonday, board.includeSaturday);
   const thisWeekBookings = board.bookings.filter((booking) => (
     thisWeekDates.includes(booking.date)
   )).length;
@@ -168,7 +168,7 @@ export function SpecialRoomsManagePage() {
 
           <div className="mt-4">
             {roomId ? (
-              <SpecialRoomWeekGrid mondayKey={mondayKey} roomId={roomId} bookings={board.bookings} schoolDays={board.schoolDays} readOnly />
+              <SpecialRoomWeekGrid mondayKey={mondayKey} roomId={roomId} periodCount={board.periodCount} includeSaturday={board.includeSaturday} bookings={board.bookings} schoolDays={board.schoolDays} readOnly />
             ) : (
               <p className="py-12 text-center text-sm text-[#64748B]">등록된 특별실이 없습니다.</p>
             )}

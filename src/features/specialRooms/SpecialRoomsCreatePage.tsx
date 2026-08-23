@@ -7,7 +7,7 @@ import { isSpecialRoomsDemoMode } from './specialRoomsConfig';
 import { SchoolPicker } from './SchoolPicker';
 import { mondayOf, toDateKey } from './specialRoomWeek';
 import * as service from './specialRoomsService';
-import type { SelectedSchool } from './types';
+import { DEFAULT_PERIOD_COUNT, PERIOD_COUNT_MAX, PERIOD_COUNT_MIN, type SelectedSchool } from './types';
 
 const inputClass = 'min-h-[44px] w-full rounded-lg border border-[#C8D0DA] px-3 text-sm';
 
@@ -18,6 +18,8 @@ export function SpecialRoomsCreatePage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [school, setSchool] = useState<SelectedSchool | null>(null);
+  const [periodCount, setPeriodCount] = useState(DEFAULT_PERIOD_COUNT);
+  const [includeSaturday, setIncludeSaturday] = useState(false);
   const [password, setPassword] = useState('');
   const [rooms, setRooms] = useState([{ name: '', location: '' }]);
   const [error, setError] = useState('');
@@ -51,7 +53,7 @@ export function SpecialRoomsCreatePage() {
     setSaving(true);
     setError('');
     try {
-      const created = await service.createBoard(ownerId, { title, description, school, password, rooms: filled });
+      const created = await service.createBoard(ownerId, { title, description, periodCount, includeSaturday, school, password, rooms: filled });
       // 학교를 고른 이유가 학사일정이므로 만드는 김에 같이 받아 둔다. 실패해도 예약표는
       // 살리고, 관리 화면에서 무엇을 다시 해야 하는지 알린다.
       const outcome = school && !isSpecialRoomsDemoMode
@@ -91,6 +93,38 @@ export function SpecialRoomsCreatePage() {
         <div className="grid gap-2 text-sm font-bold text-[#334155]">
           학교
           <SchoolPicker value={school} onChange={setSchool} />
+        </div>
+        {/*
+          학교마다 하루가 다르다. 초등은 6교시가 끝이고 중등은 7교시, 고등은 방과후까지
+          쓴다. 예전에는 8교시가 코드에 박혀 있어 초등은 두 줄이 늘 비었다.
+          나중에 관리 화면에서 바꿀 수 있다.
+        */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="grid gap-2 text-sm font-bold text-[#334155]" htmlFor="board-period-count">
+            하루 교시 수
+            <select
+              id="board-period-count"
+              value={periodCount}
+              onChange={(event) => setPeriodCount(Number(event.target.value))}
+              className={`${inputClass} bg-white font-normal`}
+            >
+              {Array.from({ length: PERIOD_COUNT_MAX - PERIOD_COUNT_MIN + 1 }, (_, index) => PERIOD_COUNT_MIN + index).map((count) => (
+                <option key={count} value={count}>{count}교시까지</option>
+              ))}
+            </select>
+          </label>
+          <div className="grid gap-2 text-sm font-bold text-[#334155]">
+            토요일
+            <label className="flex min-h-[44px] items-center gap-2 rounded-lg border border-[#C8D0DA] px-3 text-sm font-normal">
+              <input
+                type="checkbox"
+                checked={includeSaturday}
+                onChange={(event) => setIncludeSaturday(event.target.checked)}
+                className="h-4 w-4"
+              />
+              토요일도 예약받기
+            </label>
+          </div>
         </div>
         <label className="grid gap-2 text-sm font-bold text-[#334155]">공개 비밀번호 <span className="font-normal text-[#64748B]">(비워 두면 링크만으로 열립니다)</span>
           <input className={inputClass} value={password} onChange={(event) => setPassword(event.target.value)} />

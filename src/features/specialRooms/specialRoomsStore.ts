@@ -68,6 +68,8 @@ export const createBoard = (ownerId: string, draft: SpecialRoomBoardDraft) => {
     password: draft.password,
     title: draft.title.trim(),
     description: draft.description.trim(),
+    periodCount: draft.periodCount,
+    includeSaturday: draft.includeSaturday,
     schoolName: draft.school?.name ?? '',
     status: 'open',
     isPasswordProtected: Boolean(draft.password),
@@ -98,10 +100,21 @@ export const setBoardStatus = (ownerId: string, boardId: string, status: 'open' 
   )));
 };
 
-export const updateBoardInfo = (ownerId: string, boardId: string, info: { title: string; description: string }) => {
+export const updateBoardInfo = (
+  ownerId: string,
+  boardId: string,
+  info: { title: string; description: string; periodCount: number; includeSaturday: boolean },
+) => {
   writeAll(readAll().map((board) => (
     board.id === boardId && board.ownerId === ownerId
-      ? { ...board, title: info.title, description: info.description, updatedAt: new Date().toISOString() }
+      ? {
+        ...board,
+        title: info.title,
+        description: info.description,
+        periodCount: info.periodCount,
+        includeSaturday: info.includeSaturday,
+        updatedAt: new Date().toISOString(),
+      }
       : board
   )));
 };
