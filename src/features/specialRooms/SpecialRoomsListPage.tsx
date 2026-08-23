@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AlertCircle, CalendarClock, DoorOpen, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ToolHeaderBadge, ToolListHeader } from '../../components/ToolListHeader';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import { RegistryConfirmDialog } from '../registry/RegistryConfirmDialog';
 import { isSpecialRoomsDemoMode } from './specialRoomsConfig';
@@ -48,16 +49,13 @@ export function SpecialRoomsListPage() {
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 pb-12">
-      <div className="flex flex-col gap-4 border-b border-[#DCE3EA] pb-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold text-[#0F6CBD]">공유 예약</p>
-          <h1 className="mt-1 text-2xl font-extrabold text-[#0F172A] sm:text-3xl">특별실 예약</h1>
-          <p className="mt-2 text-sm text-[#526174]">예약판을 만들고 링크를 뿌리면 교직원이 시간표에서 바로 잡습니다.</p>
-        </div>
-        <button type="button" onClick={() => navigate('/tools/special-rooms/new')} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-[#0F6CBD] px-5 text-sm font-bold text-white hover:bg-[#0B5B9F]">
-          <Plus className="h-4 w-4" />새 예약판
-        </button>
-      </div>
+      <ToolListHeader
+        eyebrow="공유 예약"
+        title="특별실 예약"
+        description="예약판을 만들고 링크를 뿌리면 교직원이 시간표에서 바로 잡습니다."
+        toolbar={<ToolHeaderBadge>교사 전용</ToolHeaderBadge>}
+        action={<button type="button" onClick={() => navigate('/tools/special-rooms/new')} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-[#0F6CBD] px-5 text-sm font-bold text-white hover:bg-[#0B5B9F]"><Plus className="h-4 w-4" />새 예약판</button>}
+      />
 
       {actionError ? <p role="alert" className="border-y border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm font-semibold text-[#B42318]"><AlertCircle className="mr-1 inline h-4 w-4" />{actionError}</p> : null}
 

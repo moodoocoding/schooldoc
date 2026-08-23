@@ -2,22 +2,18 @@ import React, { useState } from 'react';
 import { 
   Search, Bell, LogIn, LogOut, X 
 } from 'lucide-react';
-import type { SchoolTool, SidebarTab, ActiveTask } from '../types/schooldoc';
+import type { SchoolTool } from '../types/schooldoc';
 import { ToolCard } from './ToolCard';
 import { useTeacherAuth } from '../auth/teacherAuth';
 
 interface HomeWorkspaceProps {
-  setActiveTab: (tab: SidebarTab) => void;
   allToolsMap: Record<string, SchoolTool>;
-  activeTasks: ActiveTask[];
   onSelectTool: (toolId: string) => void;
   onOpenMobileMenu: () => void;
 }
 
 export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
-  setActiveTab,
   allToolsMap,
-  activeTasks,
   onSelectTool,
   onOpenMobileMenu,
 }) => {
@@ -131,37 +127,6 @@ export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
           )}
         </div>
       </section>
-
-      {/* In Progress Section (실제로 진행 중인 데이터가 있을 때만 출력!) */}
-      {activeTasks.length > 0 && !searchQuery && (
-        <section className="space-y-4 pt-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-[#0F172A]">진행 중인 업무</h2>
-            <button
-              onClick={() => setActiveTab('in_progress')}
-              className="text-xs font-semibold text-[#0F6CBD] hover:text-[#0F5B9E]"
-            >
-              전체 보기 ↗
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {activeTasks.map((task) => (
-              <div
-                key={task.id}
-                onClick={() => onSelectTool(task.toolId)}
-                className="bg-[#EFF6FC] border border-[#0F6CBD]/20 rounded-xl p-4 flex flex-col justify-between hover:border-[#0F6CBD] transition cursor-pointer"
-              >
-                <div>
-                  <span className="text-xs font-bold text-[#0F6CBD]">{task.toolName}</span>
-                  <p className="text-sm font-semibold text-[#0F172A] mt-1">{task.title}</p>
-                </div>
-                <span className="text-xs font-semibold text-[#0F6CBD] pt-2">상세 보기 ↗</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* Tools Area (10개 카드를 직접 표시) */}
       <section className="space-y-4 pt-2">

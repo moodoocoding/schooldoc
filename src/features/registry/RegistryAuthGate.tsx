@@ -1,10 +1,10 @@
 import { type ReactNode } from 'react';
-import { LogIn, LogOut, ShieldCheck } from 'lucide-react';
+import { LogIn, ShieldCheck } from 'lucide-react';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import { isRegistryDemoMode } from './registryConfig';
 
 export function RegistryAuthGate({ children }: { children: ReactNode }) {
-  const { configured, displayName, error, loading, signIn, signOut, user } = useTeacherAuth();
+  const { configured, error, loading, signIn, user } = useTeacherAuth();
 
   if (isRegistryDemoMode) return children;
 
@@ -51,21 +51,5 @@ export function RegistryAuthGate({ children }: { children: ReactNode }) {
     );
   }
 
-  return (
-    <>
-      <div className="mx-auto mb-5 flex w-full max-w-7xl items-center justify-end gap-3 border-b border-[#DCE3EA] pb-3">
-        <span className="min-w-0 truncate text-xs font-semibold text-[#526174]">{displayName}</span>
-        <button
-          type="button"
-          onClick={() => void signOut()}
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#526174] hover:bg-white hover:text-[#0F6CBD]"
-          aria-label="로그아웃"
-          title="로그아웃"
-        >
-          <LogOut className="h-4 w-4" />
-        </button>
-      </div>
-      {children}
-    </>
-  );
+  return children;
 }

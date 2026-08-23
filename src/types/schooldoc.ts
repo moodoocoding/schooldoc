@@ -10,16 +10,6 @@ export interface SchoolTool {
   warningCount?: number;
 }
 
-export interface ActiveTask {
-  id: string;
-  toolId: string;
-  toolName: string;
-  title: string;
-  statusText: string;
-  updatedAt: string;
-  progressPercent?: number;
-}
-
 export type SidebarTab = 'home' | 'in_progress' | 'settings';
 
 export interface StudentInfo {

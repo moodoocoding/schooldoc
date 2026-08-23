@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { AlertCircle, ArrowLeft, BarChart3, CalendarDays, LoaderCircle, Plus, Trash2, Users } from 'lucide-react';
+import { AlertCircle, BarChart3, CalendarDays, LoaderCircle, Plus, Trash2, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ToolHeaderBadge, ToolListHeader } from '../../components/ToolListHeader';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import { deleteStudentResultEvent } from './studentResultsService';
 import { studentResultsOwnerId } from './studentResultsConfig';
@@ -49,20 +50,14 @@ export function StudentResultsListPage() {
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 pb-12">
-      <div className="flex items-center justify-between border-b border-[#DCE3EA] pb-4">
-        <button type="button" onClick={() => navigate('/')} className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-2 text-sm font-semibold text-[#334155] hover:bg-white hover:text-[#0F6CBD]"><ArrowLeft className="h-5 w-5" />업무 도구로</button>
-        <span className="rounded-md border border-[#DCE3EA] bg-white px-3 py-1.5 text-xs font-semibold text-[#526174]">교사 전용</span>
-      </div>
-
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold text-[#0F6CBD]">개별 안내</p>
-          <h1 className="mt-1 text-2xl font-extrabold text-[#0F172A] sm:text-3xl">학생 결과 안내</h1>
-          <p className="mt-2 text-sm text-[#526174]">학생별 결과를 안전하게 안내하고 확인과 이의 현황을 관리합니다.</p>
-          {refreshing ? <p role="status" aria-live="polite" className="mt-1 text-xs font-semibold text-[#0F6CBD]">새 활동 반영 중</p> : null}
-        </div>
-        <button type="button" onClick={() => navigate('/tools/student-results/new')} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-[#0F6CBD] px-5 text-sm font-bold text-white hover:bg-[#0B5B9F]"><Plus className="h-4 w-4" />새 결과 안내</button>
-      </div>
+      <ToolListHeader
+        eyebrow="개별 안내"
+        title="학생 결과 안내"
+        description="학생별 결과를 안전하게 안내하고 확인과 이의 현황을 관리합니다."
+        descriptionExtra={refreshing ? <p role="status" aria-live="polite" className="mt-1 text-xs font-semibold text-[#0F6CBD]">새 활동 반영 중</p> : null}
+        toolbar={<ToolHeaderBadge>교사 전용</ToolHeaderBadge>}
+        action={<button type="button" onClick={() => navigate('/tools/student-results/new')} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-[#0F6CBD] px-5 text-sm font-bold text-white hover:bg-[#0B5B9F]"><Plus className="h-4 w-4" />새 결과 안내</button>}
+      />
 
       {error || deleteError ? <div role="alert" className="flex items-start gap-2 border-y border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm font-semibold text-[#B42318]"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error || deleteError}</div> : null}
       {loading ? (
