@@ -97,6 +97,22 @@ test('머리글이 상태와 핵심 수치를 보여 준다', async ({ page }) =
   await expect(page.getByText('예약 종료됨')).toBeVisible();
 });
 
+test('머리글의 예약 건수가 실제 예약을 센다', async ({ page }) => {
+  // 0건만 확인하면 세는 곳이 통째로 잘못돼도 지나간다. 실제로 한 건 잡아 보고 센다.
+  await createBoard(page, { title: '컴퓨터실 예약판' });
+  const link = await publicLink(page);
+  const manage = page.url();
+
+  await page.goto(new URL(link).pathname);
+  await page.getByRole('button', { name: /교시 예약하기$/ }).first().click();
+  await page.getByRole('textbox', { name: /사용 내용$/ }).fill('6-1반');
+  await page.getByRole('textbox', { name: /사용 내용$/ }).press('Enter');
+  await expect(page.getByRole('button', { name: /6-1반 고치기$/ })).toBeVisible();
+
+  await page.goto(new URL(manage).pathname);
+  await expect(page.getByText('이번 주 예약 1건')).toBeVisible();
+});
+
 test('390px에서 가로 스크롤이 생기지 않는다', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 780 });
   await createBoard(page, { title: '컴퓨터실 예약판', description: '사용 후 정리 부탁드립니다' });
