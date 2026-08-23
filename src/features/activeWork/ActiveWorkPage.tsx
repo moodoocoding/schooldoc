@@ -38,7 +38,7 @@ export function ActiveWorkPage() {
   const loginRequired = !user && !isActiveWorkDemoMode;
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-8 sm:py-8">
+    <div className="mx-auto w-full max-w-6xl space-y-5 px-4 py-6 sm:px-8 sm:py-8">
       <div className="flex flex-col gap-4 border-b border-[#DCE3EA] pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-bold text-[#0F6CBD]">한곳에서 이어서 하기</p>
@@ -49,7 +49,7 @@ export function ActiveWorkPage() {
           type="button"
           onClick={() => void refresh()}
           disabled={loading || refreshing}
-          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-[#C8D0DA] bg-white px-4 text-sm font-bold text-[#334155] hover:border-[#0F6CBD] hover:text-[#0F6CBD] disabled:cursor-wait disabled:opacity-60"
+          className="inline-flex min-h-[40px] self-start items-center justify-center gap-2 rounded-lg border border-[#C8D0DA] bg-white px-3 text-xs font-bold text-[#334155] hover:border-[#0F6CBD] hover:text-[#0F6CBD] disabled:cursor-wait disabled:opacity-60 sm:self-auto"
         >
           <RefreshCw className={`h-4 w-4 ${loading || refreshing ? 'animate-spin' : ''}`} />
           {refreshing ? '새로 고치는 중' : '새로고침'}
@@ -100,49 +100,53 @@ export function ActiveWorkPage() {
           <button type="button" onClick={() => navigate('/')} className="mt-5 min-h-[44px] rounded-lg border border-[#0F6CBD] px-5 text-sm font-bold text-[#0F6CBD] hover:bg-[#EFF6FC]">전체 업무 도구 보기</button>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-3">
           <p className="text-sm font-semibold text-[#526174]">{groups.length}개 도구에서 {totalCount}건이 진행 중입니다.</p>
-          {groups.map((group) => {
-            const Icon = ICONS[group.toolId];
-            return (
-              <section key={group.toolId} aria-labelledby={`active-work-${group.toolId}`} className="space-y-3">
-                <button
-                  type="button"
-                  onClick={() => navigate(group.listPath)}
-                  className="group flex min-h-[56px] w-full items-center gap-3 border-y border-[#DCE3EA] bg-white px-4 py-3 text-left hover:border-[#0F6CBD] hover:bg-[#F8FBFE] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F6CBD]"
-                  aria-label={`${group.toolName} 전체 목록으로 이동`}
-                >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#EFF6FC] text-[#0F6CBD]"><Icon className="h-5 w-5" /></span>
-                  <span id={`active-work-${group.toolId}`} className="min-w-0 flex-1 text-base font-extrabold text-[#0F172A]">{group.toolName}</span>
-                  <span className="rounded-md bg-[#EFF6FC] px-2.5 py-1 text-xs font-bold text-[#0F6CBD]">{group.items.length}건</span>
-                  <span className="hidden text-xs font-bold text-[#526174] group-hover:text-[#0F6CBD] sm:inline">전체 목록</span>
-                  <ArrowRight className="h-4 w-4 text-[#64748B] group-hover:text-[#0F6CBD]" />
-                </button>
+          <div className="space-y-4">
+            {groups.map((group) => {
+              const Icon = ICONS[group.toolId];
+              return (
+                <section key={group.toolId} aria-labelledby={`active-work-${group.toolId}`} className="overflow-clip rounded-xl border border-[#DCE3EA] bg-white">
+                  <button
+                    type="button"
+                    onClick={() => navigate(group.listPath)}
+                    className="group flex min-h-[52px] w-full items-center gap-3 border-b border-[#DCE3EA] bg-white px-4 py-2.5 text-left hover:bg-[#F8FBFE] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0F6CBD]"
+                    aria-label={`${group.toolName} 전체 목록으로 이동`}
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#EFF6FC] text-[#0F6CBD]"><Icon className="h-[18px] w-[18px]" /></span>
+                    <span id={`active-work-${group.toolId}`} className="min-w-0 flex-1 text-sm font-extrabold text-[#0F172A] sm:text-base">{group.toolName}</span>
+                    <span className="rounded-md bg-[#EFF6FC] px-2.5 py-1 text-xs font-bold text-[#0F6CBD]">{group.items.length}건</span>
+                    <span className="hidden text-xs font-bold text-[#526174] group-hover:text-[#0F6CBD] sm:inline">전체 목록</span>
+                    <ArrowRight className="h-4 w-4 text-[#64748B] group-hover:text-[#0F6CBD]" />
+                  </button>
 
-                <div className="grid gap-3 md:grid-cols-2">
-                  {group.items.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => navigate(item.detailPath)}
-                      className="rounded-lg border border-[#DCE3EA] bg-white p-5 text-left shadow-sm transition hover:border-[#0F6CBD] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F6CBD]"
-                      aria-label={`${item.title} ${group.toolName} 관리 화면으로 이동`}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <span className={`rounded-md px-2.5 py-1 text-xs font-bold ${item.overdue ? 'bg-[#FFF1F0] text-[#B42318]' : 'bg-[#E6F4EA] text-[#126B32]'}`}>{item.statusLabel}</span>
-                        <span className="text-xs font-semibold text-[#526174]">{item.progressLabel}</span>
-                      </div>
-                      <h3 className="mt-3 line-clamp-2 min-h-12 text-base font-bold leading-6 text-[#0F172A]">{item.title}</h3>
-                      <div className="mt-4 flex items-center justify-between border-t border-[#EEF1F4] pt-3">
-                        <span className="text-xs text-[#64748B]">{formatUpdatedAt(item.updatedAt)}</span>
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-[#0F6CBD]">관리하기 <ArrowRight className="h-3.5 w-3.5" /></span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </section>
-            );
-          })}
+                  <div className="divide-y divide-[#EEF1F4]">
+                    {group.items.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => navigate(item.detailPath)}
+                        className="group grid min-h-[72px] w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-3 text-left hover:bg-[#F8FBFE] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0F6CBD] sm:grid-cols-[minmax(0,1fr)_minmax(7rem,auto)_minmax(10rem,auto)_auto] sm:gap-x-5 sm:px-5"
+                        aria-label={`${item.title} ${group.toolName} 관리 화면으로 이동`}
+                      >
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-bold ${item.overdue ? 'bg-[#FFF1F0] text-[#B42318]' : 'bg-[#E6F4EA] text-[#126B32]'}`}>{item.statusLabel}</span>
+                            <h3 className="min-w-0 truncate text-sm font-bold text-[#0F172A] sm:text-[15px]">{item.title}</h3>
+                          </div>
+                        </div>
+                        <div className="col-start-1 mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:contents">
+                          <span className="font-semibold text-[#526174] sm:col-start-2 sm:row-start-1">{item.progressLabel}</span>
+                          <span className="text-[#64748B] sm:col-start-3 sm:row-start-1">{formatUpdatedAt(item.updatedAt)}</span>
+                        </div>
+                        <ArrowRight className="col-start-2 row-span-2 row-start-1 h-4 w-4 text-[#94A3B8] group-hover:text-[#0F6CBD] sm:col-start-4 sm:row-span-1" />
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
