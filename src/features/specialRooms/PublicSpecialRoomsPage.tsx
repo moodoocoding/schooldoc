@@ -183,6 +183,7 @@ export function PublicSpecialRoomsPage() {
           <SpecialRoomWeekGrid
             mondayKey={mondayKey}
             roomId={roomId}
+            roomName={board.rooms.find((room) => room.id === roomId)?.name}
             bookings={board.bookings}
             schoolDays={board.schoolDays}
             readOnly={closed}
