@@ -70,12 +70,12 @@ const schoolDaysPorts: schoolDays.SchoolDaysPorts = {
   sync: (boardId, from, to) => remote.syncRemoteSchoolDays(boardId, from, to),
 };
 
-export const linkSchoolAndSyncDays = (boardId: string, school: schoolDays.LinkableSchool, fromMonday: string) => (
-  schoolDays.linkSchoolAndSyncDays(schoolDaysPorts, boardId, school, fromMonday)
+export const linkSchoolAndSyncDays = (boardId: string, school: schoolDays.LinkableSchool, reference: string) => (
+  schoolDays.linkSchoolAndSyncDays(schoolDaysPorts, boardId, school, reference)
 );
 
-export const syncSchoolDays = (boardId: string, fromMonday: string) => (
-  schoolDays.syncDaysOnly(schoolDaysPorts, boardId, fromMonday)
+export const syncSchoolDays = (boardId: string, reference: string) => (
+  schoolDays.syncDaysOnly(schoolDaysPorts, boardId, reference)
 );
 
 export const unlinkSchool = (boardId: string) => schoolDays.unlinkSchool(schoolDaysPorts, boardId);
