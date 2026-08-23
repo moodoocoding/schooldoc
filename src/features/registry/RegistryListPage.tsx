@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  ArrowLeft,
   CalendarDays,
   MapPin,
   PenLine,
@@ -10,6 +9,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ToolListHeader } from '../../components/ToolListHeader';
 import { RegistryConfirmDialog } from './RegistryConfirmDialog';
 import { isRegistryDemoMode } from './registryConfig';
 import { deleteRegistry } from './registryService';
@@ -41,16 +41,12 @@ export function RegistryListPage() {
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 pb-12">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#DCE3EA] pb-4">
-        <button
-          type="button"
-          onClick={() => navigate('/')}
-          className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-2 text-sm font-semibold text-[#334155] hover:bg-white hover:text-[#0F6CBD]"
-        >
-          <ArrowLeft className="h-5 w-5" />
-          업무 도구로
-        </button>
-        <div className="flex items-center gap-2">
+      <ToolListHeader
+        eyebrow="수합 · 서명"
+        title="등록부 서명"
+        description="회의와 행사 참석자의 서명을 모아 등록부로 출력합니다."
+        toolbar={(
+          <div className="flex items-center gap-2">
           {isRegistryDemoMode ? (
             <span className="rounded-md border border-[#DCE3EA] bg-white px-3 py-1.5 text-xs font-semibold text-[#526174]">로컬 데모</span>
           ) : null}
@@ -64,15 +60,9 @@ export function RegistryListPage() {
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold text-[#0F6CBD]">수합 · 서명</p>
-          <h1 className="mt-1 text-2xl font-extrabold text-[#0F172A] sm:text-3xl">등록부 서명</h1>
-          <p className="mt-2 text-sm text-[#526174]">회의와 행사 참석자의 서명을 모아 등록부로 출력합니다.</p>
-        </div>
+          </div>
+        )}
+        action={(
         <button
           type="button"
           onClick={() => navigate('/tools/registry-sign/new')}
@@ -81,7 +71,8 @@ export function RegistryListPage() {
           <Plus className="h-4 w-4" />
           새 등록부
         </button>
-      </div>
+        )}
+      />
 
       {error || actionError ? (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-3 border-y border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm font-semibold text-[#B42318]">

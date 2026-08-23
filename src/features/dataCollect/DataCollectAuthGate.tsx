@@ -4,7 +4,7 @@ import { useTeacherAuth } from '../../auth/teacherAuth';
 import { isDataCollectDemoMode, isDataCollectDeveloper } from './dataCollectConfig';
 
 export function DataCollectAuthGate({ children }: { children: ReactNode }) {
-  const { configured, displayName, error, loading, signIn, signOut, user } = useTeacherAuth();
+  const { configured, error, loading, signIn, signOut, user } = useTeacherAuth();
   if (isDataCollectDemoMode) return children;
   if (loading) return <div className="py-20 text-center text-sm font-semibold text-[#526174]">로그인 상태를 확인하고 있습니다.</div>;
   if (!configured) return <div className="py-20 text-center text-sm font-semibold text-[#B42318]">Supabase 연결 정보를 확인해 주세요.</div>;
@@ -31,5 +31,5 @@ export function DataCollectAuthGate({ children }: { children: ReactNode }) {
       </section>
     </div>
   );
-  return <><div className="mx-auto mb-2 flex min-h-[40px] w-full max-w-7xl items-center justify-end gap-2"><span className="max-w-48 truncate text-xs font-semibold text-[#526174]">{displayName}</span><button type="button" onClick={() => void signOut()} className="flex h-10 w-10 items-center justify-center rounded-lg text-[#526174] hover:bg-white hover:text-[#0F6CBD]" aria-label="로그아웃" title="로그아웃"><LogOut className="h-4 w-4" /></button></div>{children}</>;
+  return children;
 }

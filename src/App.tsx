@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { HomeWorkspace } from './components/HomeWorkspace';
-import { ToolExecutionPage } from './components/ToolExecutionPage';
+import { ActiveWorkPage } from './features/activeWork/ActiveWorkPage';
 import { SpecialRoomsWorkspace } from './features/specialRooms/SpecialRoomsWorkspace';
 import { PublicSpecialRoomsPage } from './features/specialRooms/PublicSpecialRoomsPage';
 import { SettingsPage } from './components/SettingsPage';
@@ -16,7 +16,7 @@ import { DataCollectWorkspace } from './features/dataCollect/DataCollectWorkspac
 import { PublicDataCollectPage } from './features/dataCollect/PublicDataCollectPage';
 import { isDataCollectDeveloper } from './features/dataCollect/dataCollectConfig';
 import { useTeacherAuth } from './auth/teacherAuth';
-import type { SidebarTab, SchoolTool, ActiveTask } from './types/schooldoc';
+import type { SidebarTab, SchoolTool } from './types/schooldoc';
 import { MessageSquarePlus, X, CheckCircle2 } from 'lucide-react';
 
 function AdminApp() {
@@ -25,10 +25,8 @@ function AdminApp() {
   const { user } = useTeacherAuth();
   const dataCollectDeveloper = isDataCollectDeveloper(user);
   const [activeTab, setActiveTab] = useState<SidebarTab>('home');
-  const [activeToolId, setActiveToolId] = useState<string | null>(null);
   const [isOpenMobile, setIsOpenMobile] = useState<boolean>(false);
   const [quickMenuIds, setQuickMenuIds] = useState<string[]>(['notice-collect', 'student-lookup']);
-  const [activeTasks] = useState<ActiveTask[]>([]);
   const [isOpenSuggestion, setIsOpenSuggestion] = useState<boolean>(false);
   const [suggestionText, setSuggestionText] = useState<string>('');
   const [isSuggestionSent, setIsSuggestionSent] = useState<boolean>(false);
@@ -113,7 +111,6 @@ function AdminApp() {
     },
   };
 
-  const selectedTool = activeToolId ? allToolsMap[activeToolId] : null;
   const isRegistryRoute = location.pathname.startsWith('/tools/registry-sign');
   const isStudentResultsRoute = location.pathname.startsWith('/tools/student-results');
   const isConsentFormsRoute = location.pathname.startsWith('/tools/consent-forms');
@@ -133,7 +130,6 @@ function AdminApp() {
     // 아직 만들지 않은 도구는 열지 않는다. 단계와 업로드가 있는 화면이 열리면
     // 동작하는 줄 알고 자료를 올리게 된다.
     if (!route) return;
-    setActiveToolId(null);
     navigate(route);
   };
 
@@ -166,7 +162,6 @@ function AdminApp() {
         activeTab={activeTab}
         setActiveTab={(tab) => {
           setActiveTab(tab);
-          setActiveToolId(null);
           navigate('/');
         }}
         quickMenuIds={quickMenuIds}
@@ -201,59 +196,18 @@ function AdminApp() {
               : isSpecialRoomsRoute ? <SpecialRoomsWorkspace />
               : <DataCollectWorkspace />}
           </main>
-        ) : selectedTool ? (
-          // 닿지 않는 분기다. selectedTool은 activeToolId에서 오는데 값이 채워지는 곳이
-          // 없다. ToolExecutionPage 맨 위 설명 참고.
-          <main className="p-4 sm:p-8">
-            <ToolExecutionPage
-              tool={selectedTool}
-              onBack={() => setActiveToolId(null)}
-            />
-          </main>
         ) : (
           <main className="flex-1">
             {activeTab === 'home' && (
               <HomeWorkspace
-                setActiveTab={setActiveTab}
                 allToolsMap={allToolsMap}
-                activeTasks={activeTasks}
                 onSelectTool={handleSelectTool}
                 onOpenMobileMenu={() => setIsOpenMobile(true)}
               />
             )}
 
             {activeTab === 'in_progress' && (
-              <div className="max-w-7xl mx-auto p-6 sm:p-8 space-y-6">
-                <h1 className="text-2xl font-extrabold text-[#0F172A]">진행 중인 업무</h1>
-                {activeTasks.length === 0 ? (
-                  <div className="bg-white p-12 rounded-xl border border-[#DCE3EA] text-center space-y-3">
-                    <p className="text-base font-semibold text-[#334155]">
-                      현재 진행 중인 수합·서명·예약 업무가 없습니다.
-                    </p>
-                    <p className="text-xs text-[#64748B]">
-                      홈 화면에서 10가지 업무 도구를 선택해 새 업무를 시작해 보세요.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {activeTasks.map((task) => (
-                      <div
-                        key={task.id}
-                        onClick={() => setActiveToolId(task.toolId)}
-                        className="bg-white p-5 rounded-xl border border-[#DCE3EA] shadow-xs hover:border-[#0F6CBD] cursor-pointer transition flex justify-between items-center"
-                      >
-                        <div>
-                          <h3 className="text-base font-bold text-[#0F172A] mb-1">{task.toolName}</h3>
-                          <p className="text-xs text-[#0F6CBD] font-semibold">{task.statusText}</p>
-                        </div>
-                        <span className="text-xs font-semibold bg-[#EFF6FC] text-[#0F6CBD] px-3 py-1.5 rounded-lg">
-                          상세 보기 ↗
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ActiveWorkPage />
             )}
 
             {activeTab === 'settings' && (
