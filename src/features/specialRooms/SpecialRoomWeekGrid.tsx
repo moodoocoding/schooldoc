@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LoaderCircle, X } from 'lucide-react';
+import { BookingSheet } from './BookingSheet';
 import {
   WEEKDAYS,
-  BOOKING_LABEL_MAX,
   bookingKey,
   formatDayLabel,
   toDateKey,
@@ -15,6 +15,8 @@ import { PERIODS, type Period, type SchoolDay, type SpecialRoomBooking } from '.
 interface SpecialRoomWeekGridProps {
   mondayKey: string;
   roomId: string;
+  /** 시트 제목에 쓴다. 어느 방을 잡는지 표를 떠나서도 알아야 한다. */
+  roomName?: string;
   bookings: SpecialRoomBooking[];
   schoolDays: SchoolDay[];
   readOnly?: boolean;
@@ -34,6 +36,7 @@ interface SpecialRoomWeekGridProps {
 export function SpecialRoomWeekGrid({
   mondayKey,
   roomId,
+  roomName,
   bookings,
   schoolDays,
   readOnly = false,
@@ -41,32 +44,25 @@ export function SpecialRoomWeekGrid({
   onSave,
   onClear,
 }: SpecialRoomWeekGridProps) {
-  const [editing, setEditing] = useState('');
-  const [draft, setDraft] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [editing, setEditing] = useState<{ date: string; period: Period } | null>(null);
 
   const dates = weekDates(mondayKey);
   const booked = indexBookings(bookings, roomId);
   const days = indexSchoolDays(schoolDays);
 
-  useEffect(() => {
-    if (editing) inputRef.current?.focus();
-  }, [editing]);
+  // 주가 바뀌거나 특별실을 바꾸면 시트를 접는다. 엉뚱한 칸에 저장되지 않게 한다.
+  useEffect(() => setEditing(null), [mondayKey, roomId]);
 
-  // 주가 바뀌거나 특별실을 바꾸면 편집을 접는다. 엉뚱한 칸에 저장되지 않게 한다.
-  useEffect(() => setEditing(''), [mondayKey, roomId]);
-
-  const openCell = (key: string, current: string) => {
+  const openCell = (date: string, period: Period) => {
     if (readOnly) return;
-    setEditing(key);
-    setDraft(current);
+    setEditing({ date, period });
   };
 
-  const commit = (date: string, period: Period) => {
+  const commit = (date: string, period: Period, value: string) => {
     const key = bookingKey(date, period);
     const current = booked.get(key)?.label ?? '';
-    const next = draft.trim();
-    setEditing('');
+    const next = value.trim();
+    setEditing(null);
     if (next === current.trim()) return;
     if (!next) {
       if (current) onClear?.(date, period);
@@ -76,20 +72,27 @@ export function SpecialRoomWeekGrid({
   };
 
   const today = toDateKey(new Date());
+  const editingKey = editing ? bookingKey(editing.date, editing.period) : '';
 
   return (
-    <div className="overflow-x-auto rounded-md border border-[#EEF1F4]">
-      <table className="w-full min-w-[720px] table-fixed border-collapse text-sm">
+    <div className="rounded-md border border-[#EEF1F4]">
+      {/*
+        한 주가 통째로 보여야 한다. 오늘이 찼으면 다른 날을 잡는 것이 이 화면의 기본
+        동작인데, 예전에는 `min-w-[720px]` 때문에 375px 화면에서 5일 중 2일만 보이고
+        나머지는 가로 스크롤 뒤에 숨어 있었다. 720px은 필연이 아니라 임의로 정한 값이었다.
+        교시 열을 좁히면 요일 열이 61px씩 다섯 개 들어가고, 학교에서 실제로 쓰는 라벨
+        (`6-1반`, `과학실험`, `6학년1반`)은 그 폭에 한 줄로 읽힌다.
+      */}
+      <table className="w-full table-fixed border-collapse text-sm">
         <caption className="sr-only">월요일부터 금요일까지 1교시부터 8교시까지의 특별실 예약 표</caption>
         {/* 칸 내용이나 편집 상태에 따라 열이 흔들리지 않도록 폭을 고정한다. */}
         <colgroup>
-          <col className="w-[68px]" />
+          <col className="w-[34px] sm:w-[64px]" />
           {WEEKDAYS.map((day) => <col key={day} className="w-1/5" />)}
         </colgroup>
         <thead>
           <tr>
-            {/* 좁은 화면에서 옆으로 밀 때 몇 교시인지 놓치지 않게 교시 열을 붙여 둔다. */}
-            <th scope="col" className="sticky left-0 z-20 border-b border-[#C8D0DA] bg-[#F6F8FB] p-2 text-[11px] font-bold text-[#64748B]">
+            <th scope="col" className="border-b border-[#C8D0DA] bg-[#F6F8FB] px-1 py-2 text-[10px] font-bold text-[#64748B] sm:text-[11px]">
               교시
             </th>
             {dates.map((date, index) => {
@@ -100,7 +103,7 @@ export function SpecialRoomWeekGrid({
                   key={date}
                   scope="col"
                   aria-current={isToday ? 'date' : undefined}
-                  className={`border-b border-l border-[#C8D0DA] px-2 py-2.5 align-top ${
+                  className={`border-b border-l border-[#C8D0DA] px-0.5 py-2 align-top sm:px-2 sm:py-2.5 ${
                     note?.isOffDay ? 'bg-[#F1F3F6]' : 'bg-[#F6F8FB]'
                   } ${isToday ? 'border-t-2 border-t-[#0F6CBD]' : 'border-t-2 border-t-transparent'}`}
                 >
@@ -110,11 +113,12 @@ export function SpecialRoomWeekGrid({
                     오늘은 면을 칠하지 않고 위쪽 선으로 표시한다. 옅은 배경을 두 가지 쓰면
                     밝기 차이가 1% 밖에 나지 않아 둘 다 흰색으로 보인다.
                   */}
-                  <span className="flex items-center justify-center gap-1.5">
-                    <span className={`text-sm font-bold ${note?.isOffDay ? 'text-[#C0261B]' : 'text-[#0F172A]'}`}>
+                  {/* 좁은 화면에서는 요일 아래 날짜를 두 줄로 눌러 담는다. */}
+                  <span className="flex flex-col items-center gap-0 sm:flex-row sm:justify-center sm:gap-1.5">
+                    <span className={`text-xs font-bold sm:text-sm ${note?.isOffDay ? 'text-[#C0261B]' : 'text-[#0F172A]'}`}>
                       {WEEKDAYS[index]}
                     </span>
-                    <span className={`text-xs font-semibold ${note?.isOffDay ? 'text-[#C0261B]' : 'text-[#64748B]'}`}>
+                    <span className={`text-[10px] font-semibold sm:text-xs ${note?.isOffDay ? 'text-[#C0261B]' : 'text-[#64748B]'}`}>
                       {formatDayLabel(date)}
                     </span>
                   </span>
@@ -145,7 +149,7 @@ export function SpecialRoomWeekGrid({
             const lastRow = period === PERIODS[PERIODS.length - 1] ? 'border-b-0' : '';
             return (
               <tr key={period}>
-                <th scope="row" className={`sticky left-0 z-10 bg-[#F6F8FB] p-2 text-[11px] font-bold text-[#64748B] ${afterLunch} ${lastRow}`}>
+                <th scope="row" className={`bg-[#F6F8FB] px-1 py-2 text-[10px] font-bold text-[#64748B] sm:text-[11px] ${afterLunch} ${lastRow}`}>
                   {period}교시
                 </th>
                 {dates.map((date) => {
@@ -160,47 +164,26 @@ export function SpecialRoomWeekGrid({
                   const tone = note?.isOffDay ? 'bg-[#F1F3F6]' : 'bg-white';
                   const todayEdge = isToday ? 'border-l-2 border-l-[#0F6CBD]' : 'border-l border-l-[#EEF1F4]';
 
-                  if (editing === key) {
-                    return (
-                      <td key={key} className={`${todayEdge} p-0 ring-2 ring-inset ring-[#0F6CBD] ${afterLunch} ${lastRow}`}>
-                        <input
-                          ref={inputRef}
-                          value={draft}
-                          onChange={(event) => setDraft(event.target.value)}
-                          onBlur={() => commit(date, period)}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter') commit(date, period);
-                            if (event.key === 'Escape') setEditing('');
-                          }}
-                          maxLength={BOOKING_LABEL_MAX}
-                          aria-label={`${cellName} 사용 내용`}
-                          placeholder="6-1반"
-                          className="h-[52px] w-full min-w-0 bg-white px-2 text-sm outline-none"
-                        />
-                      </td>
-                    );
-                  }
-
                   return (
                     <td key={key} className={`${todayEdge} p-0 ${tone} ${afterLunch} ${lastRow}`}>
                       <button
                         type="button"
                         disabled={readOnly || isSaving}
-                        onClick={() => openCell(key, booking?.label ?? '')}
+                        onClick={() => openCell(date, period)}
                         aria-label={booking ? `${cellName} ${booking.label} 고치기` : `${cellName} 예약하기`}
-                        className={`flex h-[52px] w-full items-center justify-center px-1.5 ${
+                        className={`flex h-[44px] w-full items-center justify-center px-0.5 sm:h-[52px] sm:px-1.5 ${
                           readOnly ? 'cursor-default' : 'cursor-pointer hover:bg-[#F1F6FB]'
-                        } disabled:cursor-wait`}
+                        } ${editingKey === key ? 'ring-2 ring-inset ring-[#0F6CBD]' : ''} disabled:cursor-wait`}
                       >
                         {isSaving ? (
                           <LoaderCircle className="h-4 w-4 animate-spin text-[#0F6CBD]" />
                         ) : booking ? (
                           // 예약은 칸을 통째로 칠하지 않고 블록으로 얹는다. 시간표처럼 읽힌다.
-                          // 한 줄로 자르면 `6학년 1반 과학 실험…`처럼 40%만 읽혔다. 두 줄까지
-                          // 보여 주고, 그래도 넘치면 전체를 툴팁으로 준다.
+                          // 한 줄로 자르고 전체는 시트에서 본다. 61px 칸에 두 줄을 넣으려던
+                          // 앞선 시도는 `line-clamp`가 듣지 않아 글자 중간이 잘렸다.
                           <span
                             title={booking.label}
-                            className="line-clamp-2 w-full break-all rounded-md border border-[#BBD6EE] bg-[#EFF6FC] px-1.5 py-1 text-[11px] font-bold leading-4 text-[#0F5B9E]"
+                            className="w-full truncate rounded border border-[#BBD6EE] bg-[#EFF6FC] px-1 py-1 text-[10px] font-bold text-[#0F5B9E] sm:rounded-md sm:px-2 sm:text-xs"
                           >
                             {booking.label}
                           </span>
@@ -219,6 +202,18 @@ export function SpecialRoomWeekGrid({
           })}
         </tbody>
       </table>
+
+      {editing ? (
+        <BookingSheet
+          cellName={`${formatDayLabel(editing.date)} ${editing.period}교시`}
+          title={`${WEEKDAYS[weekDates(mondayKey).indexOf(editing.date)]} ${formatDayLabel(editing.date)} · ${editing.period}교시`}
+          roomName={roomName}
+          current={booked.get(bookingKey(editing.date, editing.period))?.label ?? ''}
+          saving={savingCell === bookingKey(editing.date, editing.period)}
+          onSubmit={(label) => commit(editing.date, editing.period, label)}
+          onClose={() => setEditing(null)}
+        />
+      ) : null}
 
       {!readOnly ? (
         <p className="mt-3 text-xs text-[#64748B]">
