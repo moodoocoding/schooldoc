@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { 
-  Search, Bell, LogIn, LogOut, X 
+import {
+  Search, LogIn, LogOut, X
 } from 'lucide-react';
 import type { SchoolTool } from '../types/schooldoc';
 import { ToolCard } from './ToolCard';
@@ -55,13 +55,6 @@ export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
 
         {/* Top Right Actions: Auth State */}
         <div className="flex items-center gap-3">
-          <button
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2 text-[#64748B] hover:text-[#0F172A] hover:bg-[#F6F8FB] rounded-lg relative transition-colors focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]"
-            aria-label="알림 목록"
-          >
-            <Bell className="w-5 h-5" />
-          </button>
-
           {user ? (
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 bg-[#F6F8FB] border border-[#DCE3EA] px-3.5 py-1.5 rounded-full min-h-[44px]">

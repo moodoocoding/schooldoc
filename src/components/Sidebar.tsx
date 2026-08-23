@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  Home, Clock, Settings, Plus, MessageSquarePlus, X, Trash2, Pin 
+  Home, Clock, Settings, Plus, MessageSquarePlus, X, Trash2, Pin, Bell
 } from 'lucide-react';
 import type { SidebarTab, SchoolTool } from '../types/schooldoc';
 import { getToolIcon } from './ToolCard';
@@ -15,6 +15,7 @@ interface SidebarProps {
   onRemoveQuickMenu: (toolId: string) => void;
   isOpenMobile: boolean;
   setIsOpenMobile: (open: boolean) => void;
+  onOpenNotifications: () => void;
   onOpenSuggestionModal: () => void;
 }
 
@@ -28,6 +29,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onRemoveQuickMenu,
   isOpenMobile,
   setIsOpenMobile,
+  onOpenNotifications,
   onOpenSuggestionModal,
 }) => {
   const [isHovered, setIsHovered] = useState<boolean>(false);
@@ -198,8 +200,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </nav>
 
-      {/* Bottom Footer Link: 선생님 제안함 */}
-      <div className="p-2 border-t border-[#DCE3EA] bg-[#F6F8FB]">
+      {/* Bottom utilities: notifications and feedback */}
+      <div className="space-y-1 border-t border-[#DCE3EA] bg-[#F6F8FB] p-2">
+        <button
+          type="button"
+          onClick={() => {
+            setIsOpenMobile(false);
+            onOpenNotifications();
+          }}
+          className="flex min-h-[44px] w-full items-center gap-3 rounded-xl p-2 text-left text-xs font-semibold text-[#64748B] transition-colors hover:text-[#0F6CBD] focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]"
+          title={!isHovered ? '알림' : undefined}
+          aria-label="알림"
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
+            <Bell className="h-5 w-5 text-[#0F6CBD]" />
+          </div>
+          {isHovered ? <span className="whitespace-nowrap text-xs font-bold text-[#334155]">알림</span> : null}
+        </button>
         <button
           onClick={onOpenSuggestionModal}
           className="w-full flex items-center gap-3 text-xs font-semibold text-[#64748B] hover:text-[#0F6CBD] transition-colors p-2 rounded-xl min-h-[44px] focus:outline-none text-left"

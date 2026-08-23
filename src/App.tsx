@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { HomeWorkspace } from './components/HomeWorkspace';
+import { NotificationComingSoonDialog } from './components/NotificationComingSoonDialog';
 import { ActiveWorkPage } from './features/activeWork/ActiveWorkPage';
 import { SpecialRoomsWorkspace } from './features/specialRooms/SpecialRoomsWorkspace';
 import { PublicSpecialRoomsPage } from './features/specialRooms/PublicSpecialRoomsPage';
@@ -27,6 +28,7 @@ function AdminApp() {
   const [activeTab, setActiveTab] = useState<SidebarTab>('home');
   const [isOpenMobile, setIsOpenMobile] = useState<boolean>(false);
   const [quickMenuIds, setQuickMenuIds] = useState<string[]>(['notice-collect', 'student-lookup']);
+  const [isOpenNotifications, setIsOpenNotifications] = useState<boolean>(false);
   const [isOpenSuggestion, setIsOpenSuggestion] = useState<boolean>(false);
   const [suggestionText, setSuggestionText] = useState<string>('');
   const [isSuggestionSent, setIsSuggestionSent] = useState<boolean>(false);
@@ -171,6 +173,7 @@ function AdminApp() {
         onRemoveQuickMenu={handleRemoveQuickMenu}
         isOpenMobile={isOpenMobile}
         setIsOpenMobile={setIsOpenMobile}
+        onOpenNotifications={() => setIsOpenNotifications(true)}
         onOpenSuggestionModal={() => setIsOpenSuggestion(true)}
       />
 
@@ -216,6 +219,10 @@ function AdminApp() {
           </main>
         )}
       </div>
+
+      {isOpenNotifications ? (
+        <NotificationComingSoonDialog onClose={() => setIsOpenNotifications(false)} />
+      ) : null}
 
       {/* 선생님 제안함 Modal */}
       {isOpenSuggestion && (
