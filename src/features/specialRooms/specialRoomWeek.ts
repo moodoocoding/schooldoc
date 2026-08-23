@@ -1,4 +1,4 @@
-import { ALL_PERIODS, type Period, type SchoolDay, type SpecialRoomBooking } from './types';
+import { ALL_PERIODS, DEFAULT_PERIOD_COUNT, type Period, type SchoolDay, type SpecialRoomBooking } from './types';
 
 /**
  * 주간 표의 날짜 계산.
@@ -16,14 +16,24 @@ import { ALL_PERIODS, type Period, type SchoolDay, type SpecialRoomBooking } fro
 export const ALL_WEEKDAYS = ['월', '화', '수', '목', '금', '토'] as const;
 
 /** 토요일을 쓰는 예약표면 여섯 요일, 아니면 다섯 요일. */
-export const weekdaysFor = (includeSaturday: boolean) => (
-  ALL_WEEKDAYS.slice(0, includeSaturday ? 6 : 5)
+export const weekdaysFor = (includeSaturday: boolean | null | undefined) => (
+  ALL_WEEKDAYS.slice(0, includeSaturday === true ? 6 : 5)
 );
 
-/** 앞에서부터 쓰는 교시만 고른다. */
-export const periodsFor = (periodCount: number) => (
-  ALL_PERIODS.slice(0, Math.min(Math.max(periodCount, 1), ALL_PERIODS.length))
-);
+/**
+ * 앞에서부터 쓰는 교시만 고른다.
+ *
+ * 값이 없으면 기본값으로 버틴다. 공개 화면은 예약표 정보를 엣지 함수에서 받는데, 함수가
+ * 아직 새 필드를 안 돌려주면 `undefined`가 온다. 그대로 계산하면 `NaN`이 되어 표에 줄이
+ * 하나도 그려지지 않는다. 실제로 그렇게 공개 예약 화면이 통째로 비었다.
+ * 화면이 서버보다 먼저 배포될 수 있으므로 화면 쪽이 버텨야 한다.
+ */
+export const periodsFor = (periodCount: number | null | undefined) => {
+  // `Number(null)`은 0이라 유한값으로 통과한다. 타입까지 봐야 값이 없는 경우를 가른다.
+  const given = typeof periodCount === 'number' && Number.isFinite(periodCount);
+  const wanted = given ? Math.trunc(periodCount) : DEFAULT_PERIOD_COUNT;
+  return ALL_PERIODS.slice(0, Math.min(Math.max(wanted, 1), ALL_PERIODS.length));
+};
 
 /** 로컬 기준 YYYY-MM-DD. toISOString()은 UTC라 저녁에 하루가 밀린다. */
 export const toDateKey = (date: Date) => {
