@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 import {
-  SCHOOL_DAYS_AHEAD,
+  academicYearOf,
   linkSchoolAndSyncDays,
   schoolDaysRange,
   syncDaysOnly,
@@ -31,7 +31,7 @@ describe('학교를 고르면 학사일정까지 이어서 받는다', () => {
     const outcome = await linkSchoolAndSyncDays(ports, 'board-1', school, '2026-08-17');
 
     expect(ports.link).toHaveBeenCalledWith('board-1', school);
-    expect(ports.sync).toHaveBeenCalledWith('board-1', '2026-08-17', '2027-02-13');
+    expect(ports.sync).toHaveBeenCalledWith('board-1', '2026-03-01', '2027-02-28');
     expect(outcome.linked).toBe(true);
     expect(outcome.count).toBe(12);
     expect(outcome.error).toBe('');
@@ -39,10 +39,33 @@ describe('학교를 고르면 학사일정까지 이어서 받는다', () => {
     expect(outcome.notice).toContain('12건');
   });
 
-  test('고른 주부터 한 학기 남짓을 받는다', () => {
-    // 화면을 열 때마다 NEIS를 부르지 않으려고 한 번에 받아 둔다.
-    expect(schoolDaysRange('2026-08-17')).toEqual({ from: '2026-08-17', to: '2027-02-13' });
-    expect(SCHOOL_DAYS_AHEAD).toBe(180);
+  test('학년도를 통째로 받는다', () => {
+    // 예전에는 `이번 주 월요일부터 180일`이라 그보다 앞선 날의 휴업일을 받지 못했다.
+    // 8/23(일)에 만든 예약판이 8/24부터 받는 바람에 8/17 대체공휴일이 표에 없었다.
+    expect(schoolDaysRange('2026-08-24')).toEqual({ from: '2026-03-01', to: '2027-02-28' });
+  });
+
+  test('만든 주보다 앞선 날도 범위 안에 든다', () => {
+    const { from, to } = schoolDaysRange('2026-08-24');
+    expect(from <= '2026-08-17').toBe(true);
+    expect(to >= '2026-08-17').toBe(true);
+  });
+
+  test('180일 너머도 범위 안에 든다', () => {
+    // 예전에는 2027-02-13에서 끊겨 그 너머 주가 다시 빈 표가 됐다.
+    const { to } = schoolDaysRange('2026-08-24');
+    expect(to >= '2027-02-20').toBe(true);
+  });
+
+  test('1~2월은 전해 3월에 시작한 학년도로 친다', () => {
+    expect(academicYearOf('2027-01-15')).toBe(2026);
+    expect(academicYearOf('2027-02-28')).toBe(2026);
+    expect(academicYearOf('2027-03-01')).toBe(2027);
+    expect(schoolDaysRange('2027-01-15')).toEqual({ from: '2026-03-01', to: '2027-02-28' });
+  });
+
+  test('윤년 2월 말일을 맞춘다', () => {
+    expect(schoolDaysRange('2027-09-01').to).toBe('2028-02-29');
   });
 
   test('연결에 실패하면 일정을 받으러 가지 않는다', async () => {
