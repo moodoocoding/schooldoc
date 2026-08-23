@@ -121,6 +121,20 @@ describe('교시와 칸 값', () => {
     expect(periodsFor(99)).toHaveLength(9);
   });
 
+  test('교시 수를 못 받았으면 기본값으로 버틴다', () => {
+    // 공개 화면은 엣지 함수에서 예약표 정보를 받는다. 함수가 아직 새 필드를 안 돌려주면
+    // undefined가 오는데, 그대로 계산하면 NaN이 되어 표에 줄이 하나도 안 그려진다.
+    // 실제로 그렇게 공개 예약 화면이 통째로 비었다.
+    expect(periodsFor(undefined)).toHaveLength(8);
+    expect(periodsFor(null)).toHaveLength(8);
+    expect(periodsFor(Number.NaN)).toHaveLength(8);
+  });
+
+  test('토요일 값을 못 받았으면 다섯 요일로 버틴다', () => {
+    expect(weekdaysFor(undefined)).toHaveLength(5);
+    expect(weekdaysFor(null)).toHaveLength(5);
+  });
+
   test('토요일을 쓰면 여섯 요일이 된다', () => {
     expect(weekdaysFor(false)).toEqual(['월', '화', '수', '목', '금']);
     expect(weekdaysFor(true)).toEqual(['월', '화', '수', '목', '금', '토']);

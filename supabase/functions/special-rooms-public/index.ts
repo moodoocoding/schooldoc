@@ -66,7 +66,7 @@ interface BoardRow {
 
 const getBoard = async (token: string) => {
   const { data, error } = await db.from('special_room_boards')
-    .select('id, public_token, title, description, school_name, status, password_digest')
+    .select('id, public_token, title, description, period_count, include_saturday, school_name, status, password_digest')
     .eq('public_token', token).maybeSingle();
   if (error) throw error;
   if (!data) throw new HttpError(404, '예약표를 찾을 수 없습니다.');
@@ -128,6 +128,8 @@ Deno.serve(async (request) => {
           publicToken: board.public_token,
           title: board.title,
           description: board.description,
+          periodCount: board.period_count,
+          includeSaturday: board.include_saturday,
           schoolName: board.school_name ?? '',
           status: board.status,
           hasPassword: Boolean(board.password_digest),
