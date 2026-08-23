@@ -32,6 +32,8 @@ interface BoardRow {
   public_token: string;
   title: string;
   description: string;
+  period_count: number;
+  include_saturday: boolean;
   school_name: string | null;
   neis_office_code: string | null;
   neis_school_code: string | null;
@@ -85,6 +87,8 @@ const assemble = async (rows: BoardRow[]): Promise<SpecialRoomBoard[]> => {
     publicToken: row.public_token,
     title: row.title,
     description: row.description,
+    periodCount: row.period_count,
+    includeSaturday: row.include_saturday,
     schoolName: row.school_name ?? '',
     status: row.status,
     isPasswordProtected: Boolean(row.password_digest),
@@ -109,7 +113,7 @@ const assemble = async (rows: BoardRow[]): Promise<SpecialRoomBoard[]> => {
   }));
 };
 
-const BOARD_COLUMNS = 'id, public_token, title, description, school_name, neis_office_code, neis_school_code, status, password_digest, created_at, updated_at';
+const BOARD_COLUMNS = 'id, public_token, title, description, period_count, include_saturday, school_name, neis_office_code, neis_school_code, status, password_digest, created_at, updated_at';
 
 export const listRemoteBoards = async () => {
   const { data, error } = await client().from('special_room_boards')
@@ -177,6 +181,8 @@ export const createRemoteBoard = async (draft: SpecialRoomBoardDraft) => {
     owner_id: ownerId,
     title: draft.title.trim(),
     description: draft.description.trim(),
+    period_count: draft.periodCount,
+    include_saturday: draft.includeSaturday,
     school_name: draft.school?.name ?? null,
     neis_office_code: draft.school?.officeCode ?? null,
     neis_school_code: draft.school?.schoolCode ?? null,
@@ -214,9 +220,17 @@ export const setRemoteBoardStatus = async (boardId: string, status: 'open' | 'cl
   notify();
 };
 
-export const updateRemoteBoardInfo = async (boardId: string, info: { title: string; description: string }) => {
+export const updateRemoteBoardInfo = async (
+  boardId: string,
+  info: { title: string; description: string; periodCount: number; includeSaturday: boolean },
+) => {
   const { error } = await client().from('special_room_boards')
-    .update({ title: info.title, description: info.description }).eq('id', boardId);
+    .update({
+      title: info.title,
+      description: info.description,
+      period_count: info.periodCount,
+      include_saturday: info.includeSaturday,
+    }).eq('id', boardId);
   if (error) fail('예약표 정보를 저장하지 못했습니다', error);
   notify();
 };

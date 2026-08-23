@@ -7,9 +7,11 @@ import {
   indexSchoolDays,
   isPeriod,
   mondayOf,
+  periodsFor,
   shiftWeek,
   toDateKey,
   weekDates,
+  weekdaysFor,
 } from '../../src/features/specialRooms/specialRoomWeek';
 import type { SpecialRoomBooking } from '../../src/features/specialRooms/types';
 
@@ -99,11 +101,36 @@ describe('학사일정 정리', () => {
 });
 
 describe('교시와 칸 값', () => {
-  test('1~8교시만 받는다', () => {
+  test('1~9교시만 받는다', () => {
+    // 고등학교 방과후 8·9교시를 담으려고 넓혔다. DB의 `period between 1 and 9`와 같다.
     expect(isPeriod(1)).toBe(true);
-    expect(isPeriod(8)).toBe(true);
+    expect(isPeriod(9)).toBe(true);
     expect(isPeriod(0)).toBe(false);
-    expect(isPeriod(9)).toBe(false);
+    expect(isPeriod(10)).toBe(false);
+  });
+
+  test('예약표가 쓰는 교시만 앞에서 잘라 준다', () => {
+    // 초등 6교시, 중등 7교시, 고등 9교시. 학교마다 다르다.
+    expect(periodsFor(6)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(periodsFor(9)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  });
+
+  test('교시 수가 범위를 벗어나도 표가 깨지지 않는다', () => {
+    expect(periodsFor(0)).toEqual([1]);
+    expect(periodsFor(-3)).toEqual([1]);
+    expect(periodsFor(99)).toHaveLength(9);
+  });
+
+  test('토요일을 쓰면 여섯 요일이 된다', () => {
+    expect(weekdaysFor(false)).toEqual(['월', '화', '수', '목', '금']);
+    expect(weekdaysFor(true)).toEqual(['월', '화', '수', '목', '금', '토']);
+  });
+
+  test('토요일을 쓰면 날짜도 여섯 개가 된다', () => {
+    expect(weekDates('2026-08-24')).toHaveLength(5);
+    const six = weekDates('2026-08-24', true);
+    expect(six).toHaveLength(6);
+    expect(six[5]).toBe('2026-08-29');
   });
 
   test('칸 값의 공백을 정리하고 길이를 자른다', () => {

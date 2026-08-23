@@ -40,7 +40,8 @@ export function PublicSpecialRoomsPage() {
       // 원격은 예약표 정보와 주간 자료를 따로 받는다. 한 주 것만 받아야 가볍다.
       const meta = await remote.getRemotePublicBoard(token, password);
       const week = unlocked || !meta.isPasswordProtected
-        ? await remote.readRemoteWeek(token, password, mondayKey, addDays(mondayKey, 4))
+        // 방금 받은 meta를 본다. board는 아직 이전 주 것이거나 비어 있다.
+        ? await remote.readRemoteWeek(token, password, mondayKey, addDays(mondayKey, meta.includeSaturday ? 5 : 4))
         : { bookings: [], schoolDays: [] };
       setBoard({ ...meta, bookings: week.bookings, schoolDays: week.schoolDays, createdAt: '', updatedAt: '' });
       setError('');
@@ -183,6 +184,8 @@ export function PublicSpecialRoomsPage() {
           <SpecialRoomWeekGrid
             mondayKey={mondayKey}
             roomId={roomId}
+            periodCount={board.periodCount}
+            includeSaturday={board.includeSaturday}
             roomName={board.rooms.find((room) => room.id === roomId)?.name}
             bookings={board.bookings}
             schoolDays={board.schoolDays}

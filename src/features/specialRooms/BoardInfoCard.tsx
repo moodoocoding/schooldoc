@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Check, LoaderCircle, Pencil } from 'lucide-react';
+import { hiddenBookingsNotice, hiddenByShape } from './specialRoomsSchedule';
+import { PERIOD_COUNT_MAX, PERIOD_COUNT_MIN } from './types';
 import {
   DESCRIPTION_MAX,
   TITLE_MAX,
@@ -25,7 +27,12 @@ interface BoardInfoCardProps {
  * 빈 칸을 보고 "안 적으면 안 되나" 하고 망설이지 않게 한다.
  */
 export function BoardInfoCard({ board, onSave }: BoardInfoCardProps) {
-  const saved: BoardInfoDraft = { title: board.title, description: board.description };
+  const saved: BoardInfoDraft = {
+    title: board.title,
+    description: board.description,
+    periodCount: board.periodCount,
+    includeSaturday: board.includeSaturday,
+  };
   const [draft, setDraft] = useState<BoardInfoDraft>(saved);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -35,13 +42,20 @@ export function BoardInfoCard({ board, onSave }: BoardInfoCardProps) {
   // 않은 상태일 때만 갈아 끼운다. `seen`은 마지막으로 반영한 서버 값이다.
   const seen = useRef(saved);
   useEffect(() => {
-    const next = { title: board.title, description: board.description };
-    if (next.title === seen.current.title && next.description === seen.current.description) return;
+    const next: BoardInfoDraft = {
+      title: board.title,
+      description: board.description,
+      periodCount: board.periodCount,
+      includeSaturday: board.includeSaturday,
+    };
+    if (!boardInfoChanged(seen.current, next)) return;
     setDraft((current) => (boardInfoChanged(seen.current, current) ? current : next));
     seen.current = next;
   }, [board.title, board.description]);
 
   const changed = boardInfoChanged(saved, draft);
+  // 저장을 누르기 전에 무엇이 가려지는지 보여 준다. 누른 뒤에 알리면 늦다.
+  const hiddenNotice = hiddenBookingsNotice(hiddenByShape(board.bookings, draft));
 
   const submit = async () => {
     if (saving || !changed) return;
@@ -99,6 +113,44 @@ export function BoardInfoCard({ board, onSave }: BoardInfoCardProps) {
             className="w-full resize-y rounded-lg border border-[#C8D0DA] px-3 py-2 text-sm font-normal leading-6"
           />
         </label>
+
+        {/*
+          학교마다 하루가 다르다. 줄이면 그 너머 예약이 표에서 사라지므로 몇 건이 가려지는지
+          미리 알린다. 지우지는 않는다. 규칙은 `specialRoomsSchedule`에 있다.
+        */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="grid gap-1.5 text-xs font-bold text-[#334155]" htmlFor="board-info-periods">
+            하루 교시 수
+            <select
+              id="board-info-periods"
+              value={draft.periodCount}
+              onChange={(event) => setDraft((current) => ({ ...current, periodCount: Number(event.target.value) }))}
+              className="min-h-[44px] w-full rounded-lg border border-[#C8D0DA] bg-white px-3 text-sm font-normal"
+            >
+              {Array.from({ length: PERIOD_COUNT_MAX - PERIOD_COUNT_MIN + 1 }, (_, index) => PERIOD_COUNT_MIN + index).map((count) => (
+                <option key={count} value={count}>{count}교시까지</option>
+              ))}
+            </select>
+          </label>
+          <div className="grid gap-1.5 text-xs font-bold text-[#334155]">
+            토요일
+            <label className="flex min-h-[44px] items-center gap-2 rounded-lg border border-[#C8D0DA] px-3 text-sm font-normal">
+              <input
+                type="checkbox"
+                checked={draft.includeSaturday}
+                onChange={(event) => setDraft((current) => ({ ...current, includeSaturday: event.target.checked }))}
+                className="h-4 w-4"
+              />
+              토요일도 예약받기
+            </label>
+          </div>
+        </div>
+
+        {hiddenNotice ? (
+          <p className="flex items-start gap-1.5 rounded-md bg-[#FFF7ED] px-2.5 py-2 text-xs font-semibold leading-5 text-[#9A3412]">
+            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{hiddenNotice}
+          </p>
+        ) : null}
 
         <div className="flex items-center justify-between gap-3">
           <span className="text-[11px] text-[#94A3B8]">{draft.description.length} / {DESCRIPTION_MAX}자</span>

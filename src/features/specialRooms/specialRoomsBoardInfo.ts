@@ -21,6 +21,10 @@ export const DESCRIPTION_MAX = 500;
 export interface BoardInfoDraft {
   title: string;
   description: string;
+  /** 하루 교시 수. 학교마다 다르다. */
+  periodCount: number;
+  /** 토요일까지 예약받을지. */
+  includeSaturday: boolean;
 }
 
 export interface BoardInfoCheck {
@@ -37,7 +41,7 @@ export interface BoardInfoCheck {
 export const checkBoardInfo = (draft: BoardInfoDraft): BoardInfoCheck => {
   const title = draft.title.trim();
   const description = draft.description.trim();
-  const value = { title, description };
+  const value = { ...draft, title, description };
 
   if (!title) {
     return { ok: false, value, error: '예약표 이름을 입력해 주세요.', field: 'title' };
@@ -54,5 +58,8 @@ export const checkBoardInfo = (draft: BoardInfoDraft): BoardInfoCheck => {
 /** 고친 것이 없으면 저장하러 가지 않는다. 눌러도 아무 일이 없는 편이 낫다. */
 export const boardInfoChanged = (saved: BoardInfoDraft, draft: BoardInfoDraft) => {
   const checked = checkBoardInfo(draft).value;
-  return saved.title !== checked.title || saved.description !== checked.description;
+  return saved.title !== checked.title
+    || saved.description !== checked.description
+    || saved.periodCount !== checked.periodCount
+    || saved.includeSaturday !== checked.includeSaturday;
 };
