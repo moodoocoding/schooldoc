@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { 
-  Search, Bell, LogIn, LogOut, X 
+import {
+  Search, X
 } from 'lucide-react';
 import type { SchoolTool } from '../types/schooldoc';
 import { ToolCard } from './ToolCard';
-import { useTeacherAuth } from '../auth/teacherAuth';
 
 interface HomeWorkspaceProps {
   allToolsMap: Record<string, SchoolTool>;
@@ -18,8 +17,6 @@ export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
   onOpenMobileMenu,
 }) => {
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const { configured, displayName, error, loading, signIn, signOut, user } = useTeacherAuth();
-  const initial = displayName.trim().charAt(0) || '교';
 
   const allTools = Object.values(allToolsMap);
 
@@ -36,8 +33,8 @@ export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
   return (
     <div className="w-full max-w-7xl mx-auto space-y-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       
-      {/* Top Bar: Clean Header with Auth Button */}
-      <div className="flex items-center justify-between border-b border-[#DCE3EA] pb-4">
+      {/* Top Bar */}
+      <div className="flex items-center gap-3 border-b border-[#DCE3EA] pb-4">
         {/* Mobile Hamburger Menu Toggle */}
         <button
           onClick={onOpenMobileMenu}
@@ -53,46 +50,7 @@ export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
           </span>
         </div>
 
-        {/* Top Right Actions: Auth State */}
-        <div className="flex items-center gap-3">
-          <button
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2 text-[#64748B] hover:text-[#0F172A] hover:bg-[#F6F8FB] rounded-lg relative transition-colors focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]"
-            aria-label="알림 목록"
-          >
-            <Bell className="w-5 h-5" />
-          </button>
-
-          {user ? (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 bg-[#F6F8FB] border border-[#DCE3EA] px-3.5 py-1.5 rounded-full min-h-[44px]">
-                <div className="w-6 h-6 rounded-full bg-[#0F6CBD] text-white flex items-center justify-center text-xs font-bold">
-                  {initial}
-                </div>
-                <span className="max-w-44 truncate text-sm font-semibold text-[#0F172A]">{displayName}</span>
-              </div>
-              <button
-                onClick={() => void signOut()}
-                className="text-xs font-semibold text-[#64748B] hover:text-[#B42318] p-2 flex items-center gap-1 rounded-lg min-h-[44px]"
-                title="로그아웃"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">로그아웃</span>
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => void signIn('/')}
-              disabled={loading || !configured}
-              title={!configured ? '로그인 서버 설정이 필요합니다' : undefined}
-              className="bg-[#0F6CBD] hover:bg-[#0F5B9E] text-white font-semibold text-xs px-4 py-2.5 rounded-lg transition shadow-xs flex items-center gap-1.5 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-[#0F6CBD] disabled:cursor-not-allowed disabled:bg-[#94A3B8]"
-            >
-              <LogIn className="w-4 h-4" />
-              <span>{loading ? '확인 중' : configured ? 'Google 로그인' : '로그인 설정 필요'}</span>
-            </button>
-          )}
-        </div>
       </div>
-      {error ? <p role="alert" className="-mt-5 text-right text-xs font-semibold text-[#B42318]">{error}</p> : null}
 
       {/* Greeting Section (인사 영역: 28px / 800) */}
       <section className="space-y-2">

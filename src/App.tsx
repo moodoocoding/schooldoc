@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { HomeWorkspace } from './components/HomeWorkspace';
+import { NotificationComingSoonDialog } from './components/NotificationComingSoonDialog';
 import { ActiveWorkPage } from './features/activeWork/ActiveWorkPage';
 import { SpecialRoomsWorkspace } from './features/specialRooms/SpecialRoomsWorkspace';
 import { PublicSpecialRoomsPage } from './features/specialRooms/PublicSpecialRoomsPage';
@@ -17,7 +18,6 @@ import { PublicDataCollectPage } from './features/dataCollect/PublicDataCollectP
 import { isDataCollectDeveloper } from './features/dataCollect/dataCollectConfig';
 import { useTeacherAuth } from './auth/teacherAuth';
 import type { SidebarTab, SchoolTool } from './types/schooldoc';
-import { MessageSquarePlus, X, CheckCircle2 } from 'lucide-react';
 
 function AdminApp() {
   const location = useLocation();
@@ -27,9 +27,7 @@ function AdminApp() {
   const [activeTab, setActiveTab] = useState<SidebarTab>('home');
   const [isOpenMobile, setIsOpenMobile] = useState<boolean>(false);
   const [quickMenuIds, setQuickMenuIds] = useState<string[]>(['notice-collect', 'student-lookup']);
-  const [isOpenSuggestion, setIsOpenSuggestion] = useState<boolean>(false);
-  const [suggestionText, setSuggestionText] = useState<string>('');
-  const [isSuggestionSent, setIsSuggestionSent] = useState<boolean>(false);
+  const [isOpenNotifications, setIsOpenNotifications] = useState<boolean>(false);
 
   // 10 Core Services matched EXACTLY with user specification
   const allToolsMap: Record<string, SchoolTool> = {
@@ -144,17 +142,6 @@ function AdminApp() {
     setQuickMenuIds(quickMenuIds.filter((id) => id !== toolId));
   };
 
-  const handleSendSuggestion = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!suggestionText.trim()) return;
-    setIsSuggestionSent(true);
-    setTimeout(() => {
-      setIsSuggestionSent(false);
-      setSuggestionText('');
-      setIsOpenSuggestion(false);
-    }, 1800);
-  };
-
   return (
     <div className="schooldoc-admin-shell min-h-screen bg-[#F6F8FB] font-sans text-[#0F172A] flex antialiased">
       {/* Smart Hover Sidebar Component */}
@@ -171,7 +158,7 @@ function AdminApp() {
         onRemoveQuickMenu={handleRemoveQuickMenu}
         isOpenMobile={isOpenMobile}
         setIsOpenMobile={setIsOpenMobile}
-        onOpenSuggestionModal={() => setIsOpenSuggestion(true)}
+        onOpenNotifications={() => setIsOpenNotifications(true)}
       />
 
       {/*
@@ -217,64 +204,9 @@ function AdminApp() {
         )}
       </div>
 
-      {/* 선생님 제안함 Modal */}
-      {isOpenSuggestion && (
-        <div
-          className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-[#DCE3EA]">
-            <div className="flex justify-between items-center border-b border-[#F6F8FB] pb-3">
-              <h3 className="font-bold text-base text-[#0F172A] flex items-center gap-2">
-                <MessageSquarePlus className="w-5 h-5 text-[#0F6CBD]" />
-                <span>선생님 제안함</span>
-              </h3>
-              <button
-                onClick={() => setIsOpenSuggestion(false)}
-                className="p-1 text-[#64748B] hover:text-[#0F172A] rounded-lg min-w-[32px] min-h-[32px] flex items-center justify-center"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {isSuggestionSent ? (
-              <div className="py-8 text-center space-y-2">
-                <CheckCircle2 className="w-10 h-10 text-[#16803C] mx-auto animate-bounce" />
-                <p className="text-base font-bold text-[#0F172A]">소중한 제안이 전달되었습니다!</p>
-              </div>
-            ) : (
-              <form onSubmit={handleSendSuggestion} className="space-y-4">
-                <p className="text-xs text-[#334155]">
-                  필요하신 교무 서식이나 기능 개선 요청사항을 적어주세요.
-                </p>
-                <textarea
-                  value={suggestionText}
-                  onChange={(e) => setSuggestionText(e.target.value)}
-                  placeholder="예: 체험학습 보고서 자동 집계 기능이 추가되면 좋겠습니다."
-                  className="w-full h-32 border border-[#DCE3EA] rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]"
-                  required
-                />
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsOpenSuggestion(false)}
-                    className="px-4 py-2 text-xs font-semibold text-[#64748B] hover:bg-[#F6F8FB] rounded-lg min-h-[44px]"
-                  >
-                    취소
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 text-xs font-semibold bg-[#0F6CBD] hover:bg-[#0F5B9E] text-white rounded-lg shadow-xs min-h-[44px]"
-                  >
-                    보내기
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
+      {isOpenNotifications ? (
+        <NotificationComingSoonDialog onClose={() => setIsOpenNotifications(false)} />
+      ) : null}
     </div>
   );
 }
