@@ -8,6 +8,8 @@ import type { SelectedSchool } from './types';
 interface SchoolPickerProps {
   value: SelectedSchool | null;
   onChange: (school: SelectedSchool | null) => void;
+  disabled?: boolean;
+  helpText?: string;
 }
 
 /**
@@ -19,7 +21,12 @@ interface SchoolPickerProps {
  * 학교 연결은 곁들이는 기능이라 비워 둘 수 있다. 비우면 휴업일 표시 없이 평범한 주간
  * 표가 된다.
  */
-export function SchoolPicker({ value, onChange }: SchoolPickerProps) {
+export function SchoolPicker({
+  value,
+  onChange,
+  disabled = false,
+  helpText = 'NEIS에서 찾습니다. 고르면 그 학교의 공휴일과 재량휴업일을 바로 받아 주간 예약 시간표에 표시합니다.',
+}: SchoolPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<NeisSchool[]>([]);
@@ -58,8 +65,9 @@ export function SchoolPicker({ value, onChange }: SchoolPickerProps) {
       <div className="flex gap-2">
         <button
           type="button"
+          disabled={disabled}
           onClick={() => { setOpen(true); setQuery(value?.name ?? ''); }}
-          className="flex min-h-[44px] flex-1 items-center gap-2 rounded-lg border border-[#C8D0DA] bg-white px-3 text-left text-sm hover:border-[#0F6CBD]"
+          className="flex min-h-[44px] flex-1 items-center gap-2 rounded-lg border border-[#C8D0DA] bg-white px-3 text-left text-sm hover:border-[#0F6CBD] disabled:cursor-not-allowed disabled:bg-[#F6F8FB]"
         >
           <School className="h-4 w-4 shrink-0 text-[#0F6CBD]" />
           {value
@@ -69,9 +77,10 @@ export function SchoolPicker({ value, onChange }: SchoolPickerProps) {
         {value ? (
           <button
             type="button"
+            disabled={disabled}
             onClick={() => onChange(null)}
             aria-label="연결한 학교 지우기"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#C8D0DA] text-[#526174] hover:text-[#B42318]"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#C8D0DA] text-[#526174] hover:text-[#B42318] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <X className="h-4 w-4" />
           </button>
@@ -91,7 +100,7 @@ export function SchoolPicker({ value, onChange }: SchoolPickerProps) {
               <div>
                 <h2 id="school-picker-title" className="text-lg font-extrabold text-[#0F172A]">학교 찾기</h2>
                 <p className="mt-1 text-xs leading-5 text-[#64748B]">
-                  NEIS에서 찾습니다. 고르면 그 학교의 공휴일과 재량휴업일을 바로 받아 주간 예약 시간표에 표시합니다.
+                  {helpText}
                 </p>
               </div>
               <button

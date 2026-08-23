@@ -1,27 +1,44 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
-  User, Building2, Lock, Bell, Moon, Sun, 
+  User, Building2, Lock, Bell, Sun, Palette,
   ShieldCheck, CheckCircle2, FileSignature, Upload
 } from 'lucide-react';
 import { useTeacherAuth } from '../auth/teacherAuth';
+import { SchoolPicker } from '../features/specialRooms/SchoolPicker';
+import type { SelectedSchool } from '../features/specialRooms/types';
+import { useAppearanceSettings } from '../features/settings/appearanceContext';
+import { SCHOOLDOC_THEMES } from '../features/settings/appearanceSettings';
+import { loadTeacherProfile, saveTeacherProfile } from '../features/settings/profileSettings';
 
 export const SettingsPage: React.FC = () => {
   const { configured, displayName, error, loading, signIn, user } = useTeacherAuth();
+  const { settings: appearance, setFontSize, setTheme } = useAppearanceSettings();
   const isLoggedIn = Boolean(user);
   const [activeTab, setActiveTab] = useState<'profile' | 'signature' | 'security' | 'display'>('profile');
-  const [schoolName, setSchoolName] = useState<string>('한국초등학교');
-  const [teacherName, setTeacherName] = useState<string>('김교사');
-  const [gradeClass, setGradeClass] = useState<string>('3학년 2반 담임');
-  const [signatureSaved, setSignatureSaved] = useState<boolean>(false);
+  const [school, setSchool] = useState<SelectedSchool | null>(null);
+  const [teacherName, setTeacherName] = useState<string>('');
+  const [gradeClass, setGradeClass] = useState<string>('');
+  const [profileSaved, setProfileSaved] = useState<boolean>(false);
   const [autoPurgeDays, setAutoPurgeDays] = useState<number>(90);
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
-  const [fontSize, setFontSize] = useState<'normal' | 'large'>('normal');
   const accountLabel = displayName || '교사 계정';
+
+  useEffect(() => {
+    const profile = loadTeacherProfile(user?.id ?? '', displayName ?? '');
+    setSchool(profile.school);
+    setTeacherName(profile.teacherName);
+    setGradeClass(profile.gradeClass);
+    setProfileSaved(false);
+  }, [displayName, user?.id]);
 
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
-    setSignatureSaved(true);
-    setTimeout(() => setSignatureSaved(false), 2000);
+    if (!user?.id) return;
+    saveTeacherProfile(user.id, {
+      school,
+      teacherName: teacherName.trim(),
+      gradeClass: gradeClass.trim(),
+    });
+    setProfileSaved(true);
   };
 
   return (
@@ -33,7 +50,7 @@ export const SettingsPage: React.FC = () => {
             스쿨독 환경 설정
           </h1>
           <p className="text-sm text-[#334155] mt-1 font-normal">
-            개인 프로필, 전자 서명 도장, 알림 및 보안 설정을 관리합니다.
+            개인 프로필, 전자 서명 도장, 알림, 화면 환경을 관리합니다.
           </p>
         </div>
 
@@ -144,14 +161,17 @@ export const SettingsPage: React.FC = () => {
                   <Building2 className="w-4 h-4 text-[#0F6CBD]" />
                   <span>소속 학교</span>
                 </label>
-                <input
-                  type="text"
-                  value={schoolName}
-                  onChange={(e) => setSchoolName(e.target.value)}
+                <SchoolPicker
+                  value={school}
+                  onChange={(nextSchool) => { setSchool(nextSchool); setProfileSaved(false); }}
                   disabled={!isLoggedIn}
-                  placeholder="예: 한국초등학교"
-                  className="w-full border border-[#DCE3EA] rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0F6CBD] disabled:bg-[#F6F8FB] disabled:text-[#64748B]"
+                  helpText="NEIS 학교 정보에서 찾습니다. 학교 이름과 교육청·학교 코드를 함께 저장합니다."
                 />
+                {school ? (
+                  <p className="mt-1.5 text-xs text-[#64748B]">
+                    NEIS 교육청 코드 {school.officeCode} · 학교 코드 {school.schoolCode}
+                  </p>
+                ) : null}
               </div>
 
               <div>
@@ -162,7 +182,7 @@ export const SettingsPage: React.FC = () => {
                 <input
                   type="text"
                   value={teacherName}
-                  onChange={(e) => setTeacherName(e.target.value)}
+                  onChange={(e) => { setTeacherName(e.target.value); setProfileSaved(false); }}
                   disabled={!isLoggedIn}
                   placeholder="선생님 성함을 입력하세요"
                   className="w-full border border-[#DCE3EA] rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0F6CBD] disabled:bg-[#F6F8FB] disabled:text-[#64748B]"
@@ -176,7 +196,7 @@ export const SettingsPage: React.FC = () => {
                 <input
                   type="text"
                   value={gradeClass}
-                  onChange={(e) => setGradeClass(e.target.value)}
+                  onChange={(e) => { setGradeClass(e.target.value); setProfileSaved(false); }}
                   disabled={!isLoggedIn}
                   placeholder="예: 3학년 2반 담임"
                   className="w-full border border-[#DCE3EA] rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0F6CBD] disabled:bg-[#F6F8FB] disabled:text-[#64748B]"
@@ -188,12 +208,13 @@ export const SettingsPage: React.FC = () => {
               <div className="flex items-center gap-3 pt-4 border-t border-[#F6F8FB]">
                 <button
                   type="submit"
-                  className="bg-[#0F6CBD] hover:bg-[#0F5B9E] text-white font-bold text-xs px-6 py-2.5 rounded-lg shadow-xs transition"
+                  disabled={!teacherName.trim()}
+                  className="bg-[#0F6CBD] hover:bg-[#0F5B9E] text-white font-bold text-xs px-6 py-2.5 rounded-lg shadow-xs transition disabled:cursor-not-allowed disabled:bg-[#AAB7C4]"
                 >
                   프로필 저장하기
                 </button>
-                {signatureSaved && (
-                  <span className="text-xs font-bold text-[#16803C] flex items-center gap-1">
+                {profileSaved && (
+                  <span role="status" className="text-xs font-bold text-[#16803C] flex items-center gap-1">
                     <CheckCircle2 className="w-4 h-4" />
                     <span>저장되었습니다.</span>
                   </span>
@@ -279,32 +300,71 @@ export const SettingsPage: React.FC = () => {
         {/* Tab 4: Display */}
         {activeTab === 'display' && (
           <div className="p-6 sm:p-8 space-y-6">
-            <div className="space-y-4 max-w-lg">
+            <div className="space-y-6">
               <h3 className="text-base font-bold text-[#0F172A]">화면 테마 및 가독성 설정</h3>
 
-              <div className="flex justify-between items-center p-4 border border-[#DCE3EA] rounded-xl bg-[#F6F8FB]">
+              <fieldset className="space-y-3">
                 <div>
-                  <span className="text-sm font-bold text-[#0F172A] block">다크 모드 (어두운 테마)</span>
-                  <span className="text-xs text-[#64748B]">야간 업무 시 눈의 피로를 줄여줍니다.</span>
+                  <legend className="flex items-center gap-2 text-sm font-bold text-[#0F172A]">
+                    <Palette className="h-4 w-4 text-[#0F6CBD]" />
+                    색상 테마
+                  </legend>
+                  <p className="mt-1 text-xs text-[#64748B]">
+                    화면 구성은 그대로 두고 배경·강조·본문·테두리 색만 바꿉니다.
+                  </p>
                 </div>
-                <button
-                  onClick={() => setIsDarkMode(!isDarkMode)}
-                  className="p-2 bg-white rounded-lg border border-[#DCE3EA] text-[#0F6CBD]"
-                >
-                  {isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-                </button>
-              </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {SCHOOLDOC_THEMES.map((theme) => {
+                    const selected = appearance.themeId === theme.id;
+                    return (
+                      <label
+                        key={theme.id}
+                        className={`theme-choice relative flex min-h-[72px] cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${
+                          selected
+                            ? 'border-[#0F6CBD] bg-[#EFF6FC] shadow-xs'
+                            : 'border-[#DCE3EA] bg-white hover:border-[#0F6CBD]'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="schooldoc-theme"
+                          value={theme.id}
+                          checked={selected}
+                          onChange={() => setTheme(theme.id)}
+                          className="sr-only"
+                        />
+                        <span
+                          aria-hidden="true"
+                          className="grid h-10 w-10 shrink-0 grid-cols-2 overflow-hidden rounded-lg border border-black/10"
+                        >
+                          <span style={{ backgroundColor: theme.colors.accent }} />
+                          <span style={{ backgroundColor: theme.colors.accentSoft }} />
+                          <span style={{ backgroundColor: theme.colors.canvas }} />
+                          <span style={{ backgroundColor: theme.colors.text }} />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-xs font-bold text-[#0F172A]">{theme.name}</span>
+                          <span className="block truncate text-xs text-[#64748B]">{theme.description}</span>
+                        </span>
+                        {selected ? <CheckCircle2 aria-label="선택됨" className="h-4 w-4 shrink-0 text-[#0F6CBD]" /> : null}
+                      </label>
+                    );
+                  })}
+                </div>
+              </fieldset>
 
-              <div className="flex justify-between items-center p-4 border border-[#DCE3EA] rounded-xl bg-[#F6F8FB]">
+              <div className="flex flex-col justify-between gap-4 rounded-xl border border-[#DCE3EA] bg-[#F6F8FB] p-4 sm:flex-row sm:items-center">
                 <div>
                   <span className="text-sm font-bold text-[#0F172A] block">화면 글자 크기</span>
-                  <span className="text-xs text-[#64748B]">Pretendard 서체 가독성을 조정합니다.</span>
+                  <span className="text-xs text-[#64748B]">교사용 화면의 글자와 줄 간격을 함께 조정합니다.</span>
                 </div>
-                <div className="flex gap-2">
+                <div role="group" aria-label="화면 글자 크기" className="flex gap-2">
                   <button
+                    type="button"
+                    aria-pressed={appearance.fontSize === 'normal'}
                     onClick={() => setFontSize('normal')}
                     className={`px-3 py-1.5 text-xs font-bold rounded-lg border ${
-                      fontSize === 'normal'
+                      appearance.fontSize === 'normal'
                         ? 'bg-[#0F6CBD] text-white border-[#0F6CBD]'
                         : 'bg-white text-[#334155] border-[#DCE3EA]'
                     }`}
@@ -312,9 +372,11 @@ export const SettingsPage: React.FC = () => {
                     보통
                   </button>
                   <button
+                    type="button"
+                    aria-pressed={appearance.fontSize === 'large'}
                     onClick={() => setFontSize('large')}
                     className={`px-3 py-1.5 text-xs font-bold rounded-lg border ${
-                      fontSize === 'large'
+                      appearance.fontSize === 'large'
                         ? 'bg-[#0F6CBD] text-white border-[#0F6CBD]'
                         : 'bg-white text-[#334155] border-[#DCE3EA]'
                     }`}

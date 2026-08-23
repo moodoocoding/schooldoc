@@ -2,6 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --sd-accent: #0f6cbd;
+  --sd-accent-hover: #0b5b9f;
+  --sd-accent-soft: #eff6fc;
+  --sd-canvas: #f6f8fb;
+  --sd-surface: #ffffff;
+  --sd-surface-hover: #f8fbfe;
+  --sd-text: #0f172a;
+  --sd-text-muted: #526174;
+  --sd-text-subtle: #64748b;
+  --sd-border: #dce3ea;
+  --sd-border-strong: #c8d0da;
+  --sd-divider: #eef1f4;
+  --sd-disabled: #aab7c4;
+  --sd-font-scale: 1;
+  --sd-text-xs: calc(0.75rem * var(--sd-font-scale));
+  --sd-leading-xs: calc(1rem * var(--sd-font-scale));
+  --sd-text-sm: calc(0.875rem * var(--sd-font-scale));
+  --sd-leading-sm: calc(1.25rem * var(--sd-font-scale));
+  --sd-text-base: calc(1rem * var(--sd-font-scale));
+  --sd-leading-base: calc(1.5rem * var(--sd-font-scale));
+  --sd-text-lg: calc(1.125rem * var(--sd-font-scale));
+  --sd-leading-lg: calc(1.75rem * var(--sd-font-scale));
+  --sd-text-xl: calc(1.25rem * var(--sd-font-scale));
+  --sd-leading-xl: calc(1.75rem * var(--sd-font-scale));
+  --sd-text-2xl: calc(1.5rem * var(--sd-font-scale));
+  --sd-leading-2xl: calc(2rem * var(--sd-font-scale));
+  --sd-text-3xl: calc(1.875rem * var(--sd-font-scale));
+  --sd-leading-3xl: calc(2.25rem * var(--sd-font-scale));
+  --sd-text-4xl: calc(2.25rem * var(--sd-font-scale));
+  --sd-leading-4xl: calc(2.5rem * var(--sd-font-scale));
+  --sd-text-5xl: calc(3rem * var(--sd-font-scale));
+  --sd-leading-5xl: 1;
+}
+
 @layer base {
   html {
     overflow-x: clip;
@@ -20,6 +55,117 @@
     outline: 3px solid #0f6cbd;
     outline-offset: 2px;
   }
+}
+
+/*
+ * 교사용 앱에만 적용하는 화면 테마다. 공개 링크와 인쇄물은 만든 사람의 개인 설정에
+ * 영향을 받으면 안 되므로 App.tsx의 schooldoc-admin-shell 안에서만 기존 색 토큰을
+ * 치환한다. 레이아웃과 성공·경고·오류 같은 의미 색은 그대로 둔다.
+ */
+.schooldoc-admin-shell {
+  --sd-font-scale: 1;
+  --sd-text-xs: calc(0.75rem * var(--sd-font-scale));
+  --sd-leading-xs: calc(1rem * var(--sd-font-scale));
+  --sd-text-sm: calc(0.875rem * var(--sd-font-scale));
+  --sd-leading-sm: calc(1.25rem * var(--sd-font-scale));
+  --sd-text-base: calc(1rem * var(--sd-font-scale));
+  --sd-leading-base: calc(1.5rem * var(--sd-font-scale));
+  --sd-text-lg: calc(1.125rem * var(--sd-font-scale));
+  --sd-leading-lg: calc(1.75rem * var(--sd-font-scale));
+  --sd-text-xl: calc(1.25rem * var(--sd-font-scale));
+  --sd-leading-xl: calc(1.75rem * var(--sd-font-scale));
+  --sd-text-2xl: calc(1.5rem * var(--sd-font-scale));
+  --sd-leading-2xl: calc(2rem * var(--sd-font-scale));
+  --sd-text-3xl: calc(1.875rem * var(--sd-font-scale));
+  --sd-leading-3xl: calc(2.25rem * var(--sd-font-scale));
+  --sd-text-4xl: calc(2.25rem * var(--sd-font-scale));
+  --sd-leading-4xl: calc(2.5rem * var(--sd-font-scale));
+  --sd-text-5xl: calc(3rem * var(--sd-font-scale));
+  --sd-leading-5xl: 1;
+  background-color: var(--sd-canvas) !important;
+  color: var(--sd-text);
+}
+
+html[data-schooldoc-font-size="large"] .schooldoc-admin-shell {
+  --sd-font-scale: 1.125;
+}
+
+.schooldoc-admin-shell :where(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline-color: var(--sd-accent);
+}
+
+.schooldoc-admin-shell .bg-white,
+.schooldoc-admin-shell .bg-\[\#FFFFFF\],
+.schooldoc-admin-shell .bg-\[\#fcfcfb\] { background-color: var(--sd-surface) !important; }
+.schooldoc-admin-shell .bg-\[\#F6F8FB\],
+.schooldoc-admin-shell .bg-\[\#F8FAFC\],
+.schooldoc-admin-shell .bg-\[\#F9FAFB\],
+.schooldoc-admin-shell .bg-\[\#F1F5F9\],
+.schooldoc-admin-shell .bg-\[\#F3F5F7\],
+.schooldoc-admin-shell .bg-\[\#F1F3F6\],
+.schooldoc-admin-shell .bg-slate-50 { background-color: var(--sd-canvas) !important; }
+.schooldoc-admin-shell .bg-\[\#EFF6FC\],
+.schooldoc-admin-shell .bg-\[\#ebf3fc\],
+.schooldoc-admin-shell .bg-slate-100 { background-color: var(--sd-accent-soft) !important; }
+.schooldoc-admin-shell .bg-\[\#F8FBFE\],
+.schooldoc-admin-shell .bg-\[\#F7FBFE\],
+.schooldoc-admin-shell .bg-\[\#F5FAFE\] { background-color: var(--sd-surface-hover) !important; }
+.schooldoc-admin-shell .bg-\[\#EEF1F4\],
+.schooldoc-admin-shell .bg-\[\#E9EDF2\],
+.schooldoc-admin-shell .bg-\[\#E8ECF1\],
+.schooldoc-admin-shell .bg-\[\#DCE3EA\],
+.schooldoc-admin-shell .bg-\[\#CBD5E1\] { background-color: var(--sd-divider) !important; }
+.schooldoc-admin-shell .bg-\[\#0F6CBD\],
+.schooldoc-admin-shell .bg-\[\#0f6cbd\] { background-color: var(--sd-accent) !important; }
+.schooldoc-admin-shell .hover\:bg-\[\#0F6CBD\]:hover,
+.schooldoc-admin-shell .hover\:bg-\[\#0F5B9E\]:hover,
+.schooldoc-admin-shell .hover\:bg-\[\#0B5B9F\]:hover { background-color: var(--sd-accent-hover) !important; }
+.schooldoc-admin-shell .hover\:bg-\[\#F6F8FB\]:hover,
+.schooldoc-admin-shell .hover\:bg-\[\#F8FBFE\]:hover,
+.schooldoc-admin-shell .hover\:bg-slate-50:hover { background-color: var(--sd-surface-hover) !important; }
+.schooldoc-admin-shell .disabled\:bg-\[\#AAB7C4\]:disabled,
+.schooldoc-admin-shell .disabled\:bg-\[\#94A3B8\]:disabled { background-color: var(--sd-disabled) !important; }
+
+.schooldoc-admin-shell .text-\[\#0F172A\],
+.schooldoc-admin-shell .text-\[\#111827\],
+.schooldoc-admin-shell .text-slate-900 { color: var(--sd-text) !important; }
+.schooldoc-admin-shell .text-\[\#334155\],
+.schooldoc-admin-shell .text-\[\#526174\],
+.schooldoc-admin-shell .text-\[\#475569\],
+.schooldoc-admin-shell .text-\[\#41566E\],
+.schooldoc-admin-shell .text-slate-800,
+.schooldoc-admin-shell .text-slate-700,
+.schooldoc-admin-shell .text-slate-600 { color: var(--sd-text-muted) !important; }
+.schooldoc-admin-shell .text-\[\#64748B\],
+.schooldoc-admin-shell .text-\[\#94A3B8\],
+.schooldoc-admin-shell .text-slate-500 { color: var(--sd-text-subtle) !important; }
+.schooldoc-admin-shell .text-\[\#0F6CBD\],
+.schooldoc-admin-shell .text-\[\#0f6cbd\] { color: var(--sd-accent) !important; }
+.schooldoc-admin-shell .hover\:text-\[\#0F172A\]:hover { color: var(--sd-text) !important; }
+.schooldoc-admin-shell .hover\:text-\[\#0F6CBD\]:hover { color: var(--sd-accent) !important; }
+.schooldoc-admin-shell .placeholder\:text-\[\#94A3B8\]::placeholder { color: var(--sd-text-subtle) !important; }
+
+.schooldoc-admin-shell .border-\[\#DCE3EA\],
+.schooldoc-admin-shell .border-\[\#e1dfdd\],
+.schooldoc-admin-shell .border-\[\#E2E8F0\],
+.schooldoc-admin-shell .border-\[\#CBD5E1\],
+.schooldoc-admin-shell .border-slate-200 { border-color: var(--sd-border) !important; }
+.schooldoc-admin-shell .border-\[\#C8D0DA\],
+.schooldoc-admin-shell .border-\[\#8795A5\],
+.schooldoc-admin-shell .border-\[\#94A3B8\],
+.schooldoc-admin-shell .border-slate-300 { border-color: var(--sd-border-strong) !important; }
+.schooldoc-admin-shell .border-\[\#EEF1F4\] { border-color: var(--sd-divider) !important; }
+.schooldoc-admin-shell .border-\[\#0F6CBD\],
+.schooldoc-admin-shell .border-\[\#0f6cbd\],
+.schooldoc-admin-shell .hover\:border-\[\#0F6CBD\]:hover { border-color: var(--sd-accent) !important; }
+.schooldoc-admin-shell .divide-\[\#EEF1F4\] > :not([hidden]) ~ :not([hidden]) { border-color: var(--sd-divider) !important; }
+.schooldoc-admin-shell .ring-\[\#0F6CBD\],
+.schooldoc-admin-shell .focus\:ring-\[\#0F6CBD\]:focus,
+.schooldoc-admin-shell .focus-visible\:ring-\[\#0F6CBD\]:focus-visible { --tw-ring-color: var(--sd-accent) !important; }
+.schooldoc-admin-shell .accent-\[\#0F6CBD\] { accent-color: var(--sd-accent) !important; }
+.schooldoc-admin-shell .theme-choice:focus-within {
+  outline: 3px solid var(--sd-accent);
+  outline-offset: 2px;
 }
 
 /* Custom scrollbar */

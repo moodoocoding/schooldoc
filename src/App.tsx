@@ -156,7 +156,7 @@ function AdminApp() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F6F8FB] font-sans text-[#0F172A] flex antialiased">
+    <div className="schooldoc-admin-shell min-h-screen bg-[#F6F8FB] font-sans text-[#0F172A] flex antialiased">
       {/* Smart Hover Sidebar Component */}
       <Sidebar
         activeTab={activeTab}
