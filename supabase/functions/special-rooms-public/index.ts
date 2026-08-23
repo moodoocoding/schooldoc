@@ -26,11 +26,20 @@ const db = createClient(url, serviceKey, { auth: { persistSession: false, autoRe
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+
+/** 날짜 문자열에 며칠을 더한다. 시간대에 밀리지 않도록 숫자로 다룬다. */
+const addDays = (key: string, days: number) => {
+  const [year, month, day] = key.split('-').map(Number);
+  const moved = new Date(year, month - 1, day + days);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${moved.getFullYear()}-${pad(moved.getMonth() + 1)}-${pad(moved.getDate())}`;
+};
 const actionLimits: Record<string, number> = {
   metadata: 60,
   unlock: 10,
   week: 120,
   setBooking: 60,
+  setRepeat: 20,
   clearBooking: 60,
 };
 
@@ -122,6 +131,19 @@ Deno.serve(async (request) => {
       const { data: rooms, error } = await db.from('special_rooms')
         .select('id, position, name, location').eq('board_id', board.id).order('position');
       if (error) throw error;
+
+      /*
+        이번 학기 마지막 날을 찾아 둔다. 반복 예약의 `학기 말까지` 빠른 선택에 쓴다.
+        NEIS 학사일정의 행사 이름에 `여름방학`·`겨울방학`이 들어온다. 방학 첫날부터는
+        잡을 이유가 없으므로 그 앞날까지만 반복한다. 공개 화면은 이번 주 학사일정만
+        받으므로 여기서 계산해 주지 않으면 알 길이 없다.
+      */
+      const today = new Date().toISOString().slice(0, 10);
+      const vacation = await db.from('special_room_school_days')
+        .select('day').eq('board_id', board.id).gt('day', today)
+        .ilike('event_name', '%방학%').order('day').limit(1).maybeSingle();
+      if (vacation.error) throw vacation.error;
+      const termEndDate = vacation.data ? addDays(vacation.data.day as string, -1) : '';
       return json(200, {
         board: {
           id: board.id,
@@ -130,6 +152,7 @@ Deno.serve(async (request) => {
           description: board.description,
           periodCount: board.period_count,
           includeSaturday: board.include_saturday,
+          termEndDate,
           schoolName: board.school_name ?? '',
           status: board.status,
           hasPassword: Boolean(board.password_digest),
@@ -204,6 +227,71 @@ Deno.serve(async (request) => {
         throw error;
       }
       return json(200, { ok: true, updated: false });
+    }
+
+    if (action === 'setRepeat') {
+      /*
+        매주 같은 시간을 한 번에 잡는다.
+
+        펼치는 일을 서버에서 하는 이유는, 공개 화면이 이번 주 학사일정만 들고 있어
+        앞으로 올 휴업일을 모르기 때문이다. 화면에서 펼치면 추석 주에도 예약이 들어간다.
+        여기서는 받아 둔 학사일정 전체를 볼 수 있다.
+
+        반복은 넣는 방식이지 저장하는 방식이 아니다. 펼쳐서 보통 예약으로 하나씩 넣는다.
+        그래야 나중에 한 주만 지우는 것이 그냥 그 칸을 지우는 일이 된다.
+      */
+      const label = typeof body.label === 'string' ? body.label.trim().replace(/\s+/g, ' ') : '';
+      if (!label || label.length > 40) throw new HttpError(422, '내용을 40자 이내로 입력해 주세요.');
+      const until = typeof body.until === 'string' ? body.until : '';
+      if (!datePattern.test(until)) throw new HttpError(400, '마지막 날짜가 올바르지 않습니다.');
+
+      // 최대 52주. 한 학년도가 대략 52주다.
+      const dates: string[] = [];
+      for (let index = 0; index < 52; index += 1) {
+        const next = addDays(date, index * 7);
+        if (next > until) break;
+        dates.push(next);
+      }
+      if (dates.length === 0) dates.push(date);
+
+      const [offDayResult, takenResult] = await Promise.all([
+        db.from('special_room_school_days').select('day')
+          .eq('board_id', board.id).eq('is_off_day', true).in('day', dates),
+        db.from('special_room_bookings').select('booking_date')
+          .eq('room_id', roomId).eq('period', period).in('booking_date', dates),
+      ]);
+      if (offDayResult.error) throw offDayResult.error;
+      if (takenResult.error) throw takenResult.error;
+
+      const offDays = new Set((offDayResult.data ?? []).map((row) => row.day as string));
+      const taken = new Set((takenResult.data ?? []).map((row) => row.booking_date as string));
+
+      const skippedOffDay = dates.filter((day) => offDays.has(day));
+      const skippedTaken = dates.filter((day) => !offDays.has(day) && taken.has(day));
+      const created = dates.filter((day) => !offDays.has(day) && !taken.has(day));
+
+      if (created.length > 0) {
+        const { error } = await db.from('special_room_bookings').insert(
+          created.map((day) => ({ board_id: board.id, room_id: roomId, booking_date: day, period, label })),
+        );
+        // 넣는 사이에 누가 한 칸을 채웠을 수 있다. 그때는 그 칸만 남의 것으로 둔다.
+        if (error && (error as { code?: string }).code !== '23505') throw error;
+        if (error) {
+          const retry = await db.from('special_room_bookings').select('booking_date')
+            .eq('room_id', roomId).eq('period', period).in('booking_date', created);
+          if (retry.error) throw retry.error;
+          const now = new Set((retry.data ?? []).map((row) => row.booking_date as string));
+          const left = created.filter((day) => !now.has(day));
+          if (left.length > 0) {
+            const again = await db.from('special_room_bookings').insert(
+              left.map((day) => ({ board_id: board.id, room_id: roomId, booking_date: day, period, label })),
+            );
+            if (again.error) throw again.error;
+          }
+        }
+      }
+
+      return json(200, { created, skippedOffDay, skippedTaken });
     }
 
     if (action === 'clearBooking') {

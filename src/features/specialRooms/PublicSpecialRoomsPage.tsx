@@ -186,6 +186,12 @@ export function PublicSpecialRoomsPage() {
             roomId={roomId}
             periodCount={board.periodCount}
             includeSaturday={board.includeSaturday}
+            termEndDate={board.termEndDate}
+            onRepeat={async (date, period, label, until) => {
+              const outcome = await service.setRepeat(token, password, roomId, date, period, label, until);
+              await load();
+              return outcome;
+            }}
             roomName={board.rooms.find((room) => room.id === roomId)?.name}
             bookings={board.bookings}
             schoolDays={board.schoolDays}

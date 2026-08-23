@@ -1,4 +1,5 @@
-import { cleanBookingLabel } from './specialRoomWeek';
+import { cleanBookingLabel, toDateKey } from './specialRoomWeek';
+import { repeatDates, termEndFrom } from './specialRoomsRepeat';
 import type { Period, SpecialRoomBoard, SpecialRoomBoardDraft, SpecialRoomBooking } from './types';
 
 /**
@@ -11,7 +12,8 @@ import type { Period, SpecialRoomBoard, SpecialRoomBoardDraft, SpecialRoomBookin
 const STORAGE_KEY = 'schooldoc_special_rooms_v1';
 const CHANGE_EVENT = 'schooldoc-special-rooms-change';
 
-interface StoredBoard extends SpecialRoomBoard {
+/** 학기 말은 학사일정에서 계산하는 값이라 저장하지 않는다. 읽을 때 만들어 준다. */
+interface StoredBoard extends Omit<SpecialRoomBoard, 'termEndDate'> {
   ownerId: string;
   password: string;
 }
@@ -32,7 +34,7 @@ const writeAll = (boards: StoredBoard[]) => {
 
 const strip = (board: StoredBoard): SpecialRoomBoard => {
   const { ownerId: _ownerId, password: _password, ...rest } = board;
-  return rest;
+  return { ...rest, termEndDate: termEndFrom(rest.schoolDays, toDateKey(new Date())) };
 };
 
 export const subscribeSpecialRooms = (listener: () => void) => {
@@ -154,6 +156,36 @@ export const setBooking = (
       : [...board.bookings, { id: crypto.randomUUID(), roomId, date, period, label: cleaned, updatedAt: now }];
     return { ...board, bookings, updatedAt: now };
   }));
+};
+
+/**
+ * 데모 저장소의 반복 넣기. 실제 서버와 같은 규칙을 따라야 화면이 갈라지지 않는다.
+ * 휴업일과 이미 찬 칸을 건너뛰고, 무엇을 건너뛰었는지 그대로 돌려준다.
+ */
+export const setRepeat = (
+  token: string, roomId: string, date: string, period: Period, label: string, until: string,
+) => {
+  const clean = cleanBookingLabel(label);
+  const outcome = { created: [] as string[], skippedOffDay: [] as string[], skippedTaken: [] as string[] };
+  writeAll(readAll().map((board) => {
+    if (board.publicToken !== token) return board;
+    const offDays = new Set(board.schoolDays.filter((day) => day.isOffDay).map((day) => day.date));
+    const taken = new Set(board.bookings
+      .filter((booking) => booking.roomId === roomId && booking.period === period)
+      .map((booking) => booking.date));
+    const added: StoredBoard['bookings'] = [];
+    for (const day of repeatDates(date, until)) {
+      if (offDays.has(day)) { outcome.skippedOffDay.push(day); continue; }
+      if (taken.has(day)) { outcome.skippedTaken.push(day); continue; }
+      outcome.created.push(day);
+      added.push({
+        id: crypto.randomUUID(), roomId, date: day, period, label: clean,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+    return { ...board, bookings: [...board.bookings, ...added], updatedAt: new Date().toISOString() };
+  }));
+  return outcome;
 };
 
 export const clearBooking = (token: string, roomId: string, date: string, period: Period) => {

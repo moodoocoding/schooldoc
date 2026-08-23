@@ -48,6 +48,12 @@ export interface SpecialRoomBoard {
   periodCount: number;
   /** 토요일까지 보여 줄지. 고등학교는 주말 모의면접·자습이 있다. */
   includeSaturday: boolean;
+  /**
+   * 이번 학기 마지막 날. 받아 둔 학사일정에서 다음 방학 앞날을 찾아 둔다.
+   * 학교를 연결하지 않았거나 방학을 못 찾으면 빈 문자열이고, 그때는 `학기 말까지`
+   * 빠른 선택을 감춘다.
+   */
+  termEndDate: string;
   schoolName: string;
   status: 'open' | 'closed';
   isPasswordProtected: boolean;
