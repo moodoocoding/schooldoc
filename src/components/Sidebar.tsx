@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { 
-  Home, Clock, Settings, Plus, MessageSquarePlus, X, Trash2, Pin, Bell
+  Home, Clock, Settings, Plus, X, Trash2, Pin, Bell
 } from 'lucide-react';
 import type { SidebarTab, SchoolTool } from '../types/schooldoc';
 import { getToolIcon } from './ToolCard';
+import { SidebarUserMenu } from './SidebarUserMenu';
 
 interface SidebarProps {
   activeTab: SidebarTab;
@@ -16,7 +17,6 @@ interface SidebarProps {
   isOpenMobile: boolean;
   setIsOpenMobile: (open: boolean) => void;
   onOpenNotifications: () => void;
-  onOpenSuggestionModal: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -30,10 +30,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile,
   setIsOpenMobile,
   onOpenNotifications,
-  onOpenSuggestionModal,
 }) => {
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [isOpenQuickAddModal, setIsOpenQuickAddModal] = useState<boolean>(false);
+  const [isOpenUserMenu, setIsOpenUserMenu] = useState<boolean>(false);
+  const isExpanded = isOpenMobile || isHovered || isOpenUserMenu;
 
   const mainNavs: { id: SidebarTab; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: 'home', label: '홈', icon: Home },
@@ -50,7 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={`flex flex-col h-full bg-[#FFFFFF] border-r border-[#DCE3EA] shadow-lg select-none transition-all duration-300 ease-in-out ${
-        isHovered ? 'w-64' : 'w-16'
+        isExpanded ? 'w-64' : 'w-16'
       } overflow-hidden`}
     >
       {/* Header / Brand Logo */}
@@ -66,7 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="w-10 h-10 bg-[#0F6CBD] rounded-xl flex items-center justify-center text-white font-extrabold text-sm shadow-xs group-hover:bg-[#0F5B9E] transition-colors flex-shrink-0">
             SD
           </div>
-          {isHovered && (
+          {isExpanded && (
             <span className="font-extrabold text-lg text-[#0F172A] tracking-tight whitespace-nowrap animate-fade-in">
               스쿨독
             </span>
@@ -103,12 +104,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     ? 'bg-[#EFF6FC] text-[#0F6CBD] font-bold'
                     : 'text-[#334155] hover:bg-[#F6F8FB] hover:text-[#0F172A]'
                 } focus:outline-none focus:ring-2 focus:ring-[#0F6CBD] text-left`}
-                title={!isHovered ? item.label : undefined}
+                title={!isExpanded ? item.label : undefined}
               >
                 <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Icon className={`w-5 h-5 ${isActive ? 'text-[#0F6CBD]' : 'text-[#64748B]'}`} />
                 </div>
-                {isHovered && (
+                {isExpanded && (
                   <span className="whitespace-nowrap font-bold text-sm text-[#0F172A] truncate">
                     {item.label}
                   </span>
@@ -120,13 +121,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Clean Divider Line (-) */}
         <div className="py-2">
-          <div className={`border-t border-[#DCE3EA] ${isHovered ? 'w-full px-2' : 'w-8 mx-auto'}`}></div>
+          <div className={`border-t border-[#DCE3EA] ${isExpanded ? 'w-full px-2' : 'w-8 mx-auto'}`}></div>
         </div>
 
         {/* Quick Menu Header & Add Button (+) */}
         <div className="space-y-1">
-          <div className={`flex items-center justify-between ${isHovered ? 'px-3' : 'justify-center'} py-1`}>
-            {isHovered && (
+          <div className={`flex items-center justify-between ${isExpanded ? 'px-3' : 'justify-center'} py-1`}>
+            {isExpanded && (
               <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap flex items-center gap-1.5">
                 <Pin className="w-3.5 h-3.5 text-[#0F6CBD]" />
                 <span>퀵 메뉴 ({quickMenuIds.length}/5)</span>
@@ -138,7 +139,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 onClick={() => setIsOpenQuickAddModal(true)}
                 className={`rounded-xl bg-[#EFF6FC] text-[#0F6CBD] hover:bg-[#0F6CBD] hover:text-white flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-[#0F6CBD] ${
-                  isHovered ? 'w-7 h-7' : 'w-9 h-9 mx-auto'
+                  isExpanded ? 'w-7 h-7' : 'w-9 h-9 mx-auto'
                 }`}
                 title="퀵 메뉴 등록 (+)"
                 aria-label="퀵 메뉴 추가"
@@ -168,20 +169,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       ? 'text-[#334155] hover:bg-[#EFF6FC] hover:text-[#0F6CBD] cursor-pointer'
                       : 'text-[#94A3B8] cursor-not-allowed'
                   }`}
-                  title={!isHovered ? (isReady ? tool.name : `${tool.name} (개발 중)`) : undefined}
+                  title={!isExpanded ? (isReady ? tool.name : `${tool.name} (개발 중)`) : undefined}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
                       <Icon className={`w-4.5 h-4.5 ${isReady ? 'text-[#0F6CBD]' : 'text-[#AAB7C4]'}`} />
                     </div>
-                    {isHovered && (
+                    {isExpanded && (
                       <span className={`truncate whitespace-nowrap text-xs ${isReady ? 'font-bold text-[#0F172A]' : 'font-semibold text-[#94A3B8]'}`}>
                         {tool.name}{isReady ? '' : ' (개발 중)'}
                       </span>
                     )}
                   </div>
 
-                  {isHovered && (
+                  {isExpanded && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -200,33 +201,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </nav>
 
-      {/* Bottom utilities: notifications and feedback */}
+      {/* Bottom utilities: notifications and user account */}
       <div className="space-y-1 border-t border-[#DCE3EA] bg-[#F6F8FB] p-2">
         <button
           type="button"
           onClick={() => {
+            setIsOpenUserMenu(false);
             setIsOpenMobile(false);
             onOpenNotifications();
           }}
           className="flex min-h-[44px] w-full items-center gap-3 rounded-xl p-2 text-left text-xs font-semibold text-[#64748B] transition-colors hover:text-[#0F6CBD] focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]"
-          title={!isHovered ? '알림' : undefined}
+          title={!isExpanded ? '알림' : undefined}
           aria-label="알림"
         >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
             <Bell className="h-5 w-5 text-[#0F6CBD]" />
           </div>
-          {isHovered ? <span className="whitespace-nowrap text-xs font-bold text-[#334155]">알림</span> : null}
+          {isExpanded ? <span className="whitespace-nowrap text-xs font-bold text-[#334155]">알림</span> : null}
         </button>
-        <button
-          onClick={onOpenSuggestionModal}
-          className="w-full flex items-center gap-3 text-xs font-semibold text-[#64748B] hover:text-[#0F6CBD] transition-colors p-2 rounded-xl min-h-[44px] focus:outline-none text-left"
-          title={!isHovered ? '선생님 제안함' : undefined}
-        >
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
-            <MessageSquarePlus className="w-5 h-5 text-[#0F6CBD]" />
-          </div>
-          {isHovered && <span className="whitespace-nowrap font-bold text-xs text-[#334155]">선생님 제안함</span>}
-        </button>
+        <SidebarUserMenu
+          isExpanded={isExpanded}
+          isOpen={isOpenUserMenu}
+          onOpenChange={setIsOpenUserMenu}
+          onOpenSettings={() => {
+            setActiveTab('settings');
+            setIsOpenMobile(false);
+          }}
+        />
       </div>
     </div>
   );
