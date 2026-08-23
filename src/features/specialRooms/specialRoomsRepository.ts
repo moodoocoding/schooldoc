@@ -10,7 +10,7 @@ import type {
 /**
  * 실제 Supabase를 쓰는 저장소.
  *
- * 예약판과 특별실은 RLS를 걸고 브라우저가 직접 읽고 쓴다. 개인정보가 없어 암복호가 필요
+ * 예약표와 특별실은 RLS를 걸고 브라우저가 직접 읽고 쓴다. 개인정보가 없어 암복호가 필요
  * 없기 때문이다. 예약 칸은 가입하지 않은 교사도 고쳐야 하므로 공개 엣지 함수만 쓴다.
  * 그래서 담당자 화면도 칸을 바꿀 때는 같은 함수를 지난다.
  */
@@ -114,14 +114,14 @@ const BOARD_COLUMNS = 'id, public_token, title, description, school_name, neis_o
 export const listRemoteBoards = async () => {
   const { data, error } = await client().from('special_room_boards')
     .select(BOARD_COLUMNS).order('updated_at', { ascending: false });
-  if (error) fail('예약판을 불러오지 못했습니다', error);
+  if (error) fail('예약표를 불러오지 못했습니다', error);
   return assemble((data ?? []) as BoardRow[]);
 };
 
 export const getRemoteBoard = async (boardId: string) => {
   const { data, error } = await client().from('special_room_boards')
     .select(BOARD_COLUMNS).eq('id', boardId).maybeSingle();
-  if (error) fail('예약판을 불러오지 못했습니다', error);
+  if (error) fail('예약표를 불러오지 못했습니다', error);
   if (!data) return null;
   return (await assemble([data as BoardRow]))[0] ?? null;
 };
@@ -182,8 +182,8 @@ export const createRemoteBoard = async (draft: SpecialRoomBoardDraft) => {
     neis_school_code: draft.school?.schoolCode ?? null,
     password_digest: passwordDigest,
   }).select('id').single();
-  if (error) fail('예약판을 만들지 못했습니다', error);
-  if (!created) throw new Error('만든 예약판을 확인하지 못했습니다.');
+  if (error) fail('예약표를 만들지 못했습니다', error);
+  if (!created) throw new Error('만든 예약표를 확인하지 못했습니다.');
 
   const boardId = created.id as string;
   try {
@@ -197,33 +197,33 @@ export const createRemoteBoard = async (draft: SpecialRoomBoardDraft) => {
       if (roomError) throw roomError;
     }
   } catch (roomError) {
-    // 특별실 없는 예약판은 쓸 수 없다. 반쯤 만들어진 것을 남기지 않는다.
+    // 특별실 없는 예약표는 쓸 수 없다. 반쯤 만들어진 것을 남기지 않는다.
     await client().from('special_room_boards').delete().eq('id', boardId);
     throw roomError;
   }
 
   notify();
   const board = await getRemoteBoard(boardId);
-  if (!board) throw new Error('만든 예약판을 확인하지 못했습니다.');
+  if (!board) throw new Error('만든 예약표를 확인하지 못했습니다.');
   return board;
 };
 
 export const setRemoteBoardStatus = async (boardId: string, status: 'open' | 'closed') => {
   const { error } = await client().from('special_room_boards').update({ status }).eq('id', boardId);
-  if (error) fail('예약판 상태를 바꾸지 못했습니다', error);
+  if (error) fail('예약표 상태를 바꾸지 못했습니다', error);
   notify();
 };
 
 export const updateRemoteBoardInfo = async (boardId: string, info: { title: string; description: string }) => {
   const { error } = await client().from('special_room_boards')
     .update({ title: info.title, description: info.description }).eq('id', boardId);
-  if (error) fail('예약판 정보를 저장하지 못했습니다', error);
+  if (error) fail('예약표 정보를 저장하지 못했습니다', error);
   notify();
 };
 
 export const deleteRemoteBoard = async (boardId: string) => {
   const { error } = await client().from('special_room_boards').delete().eq('id', boardId);
-  if (error) fail('예약판을 지우지 못했습니다', error);
+  if (error) fail('예약표를 지우지 못했습니다', error);
   notify();
 };
 
