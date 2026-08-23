@@ -83,4 +83,45 @@ test.describe('진행 중인 업무', () => {
     await card.click();
     await expect(page).toHaveURL(/\/tools\/data-collect\/open-overdue$/);
   });
+
+  test('단건 업무도 반쪽 카드가 아닌 전체 폭 목록 행으로 표시한다', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('schooldoc_data_collect_v1', JSON.stringify([{
+        id: 'full-width-row',
+        ownerId: 'demo-teacher',
+        publicToken: 'full-width-token',
+        title: '전체 폭으로 표시할 자료 수합',
+        description: '',
+        kind: 'custom',
+        mode: 'custom',
+        status: 'open',
+        allowResubmit: true,
+        dueAt: '',
+        passwordHash: '',
+        retentionMonths: 12,
+        targets: [],
+        submissions: [],
+        createdAt: '2026-08-22T10:00:00.000Z',
+        updatedAt: '2026-08-22T10:00:00.000Z',
+      }]));
+    });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/');
+    await page.getByRole('button', { name: '진행 중' }).click();
+
+    const group = page.getByRole('button', { name: '자료 수합 전체 목록으로 이동' });
+    const item = page.getByRole('button', { name: /전체 폭으로 표시할 자료 수합 자료 수합 관리 화면으로 이동/ });
+    const widths = await Promise.all([
+      group.evaluate((element) => element.getBoundingClientRect().width),
+      item.evaluate((element) => element.getBoundingClientRect().width),
+    ]);
+    expect(Math.abs(widths[0] - widths[1])).toBeLessThanOrEqual(1);
+
+    await page.setViewportSize({ width: 390, height: 780 });
+    const overflow = await page.evaluate(() => ({
+      viewport: window.innerWidth,
+      document: document.documentElement.scrollWidth,
+    }));
+    expect(overflow.document).toBeLessThanOrEqual(overflow.viewport + 1);
+  });
 });

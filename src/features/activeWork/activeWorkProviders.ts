@@ -45,7 +45,7 @@ const registryProvider: ActiveWorkProvider = {
           toolId: 'registry-sign',
           toolName: '등록부 서명',
           title: registry.title,
-          statusLabel: '서명 수합 중',
+          statusLabel: '수합 중',
           progressLabel: `${signedCount}/${registry.participants.length}명 서명`,
           updatedAt: registry.updatedAt,
           listPath: '/tools/registry-sign',
@@ -102,7 +102,7 @@ const consentFormsProvider: ActiveWorkProvider = {
           toolId: 'notice-collect',
           toolName: '가정통신문 수합',
           title: form.title,
-          statusLabel: overdue ? '마감 지남' : '응답 수합 중',
+          statusLabel: overdue ? '마감 지남' : '수합 중',
           progressLabel: form.recipientMode === 'named'
             ? `${form.responseCount}/${form.recipientCount}명 응답`
             : `응답 ${form.responseCount}건`,
@@ -134,7 +134,7 @@ const dataCollectProvider: ActiveWorkProvider = {
           toolId: 'data-collect',
           toolName: '자료 수합',
           title: collection.title,
-          statusLabel: overdue ? '마감 지남' : '자료 수합 중',
+          statusLabel: overdue ? '마감 지남' : '수합 중',
           progressLabel: collection.mode === 'fixed'
             ? `${responseCount}/${collection.targets.length}명 회신`
             : `회신 ${responseCount}건`,

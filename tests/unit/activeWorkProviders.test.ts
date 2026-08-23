@@ -7,7 +7,7 @@ const item = (id: string, updatedAt: string): ActiveWorkItem => ({
   toolId: 'data-collect',
   toolName: '자료 수합',
   title: `수합 ${id}`,
-  statusLabel: '자료 수합 중',
+  statusLabel: '수합 중',
   progressLabel: '0/2명 회신',
   updatedAt,
   listPath: '/tools/data-collect',
