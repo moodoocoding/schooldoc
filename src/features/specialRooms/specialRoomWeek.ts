@@ -96,5 +96,15 @@ export const isPeriod = (value: number): value is Period => (
   PERIODS.includes(value as Period)
 );
 
+/**
+ * 칸에 적어 넣을 수 있는 길이. 표에서 두 줄로 읽히는 만큼이다.
+ *
+ * 저장소는 40자까지 받는다(마이그레이션의 `char_length(label) between 1 and 40`).
+ * 화면이 더 짧게 받는 것은 어긋난 것이 아니라, 읽을 수 없는 길이를 애초에 받지 않기
+ * 위해서다. 예전에는 40자를 받아 놓고 표에서는 40%만 보여 줬다. 저장소 쪽 상한은
+ * 마지막 방어선으로 그대로 둔다.
+ */
+export const BOOKING_LABEL_MAX = 24;
+
 /** 칸에 적는 값 정리. 앞뒤 공백과 겹친 공백을 없앤다. */
 export const cleanBookingLabel = (value: string) => value.trim().replace(/\s+/g, ' ').slice(0, 40);

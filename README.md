@@ -33,10 +33,16 @@ npm run dev
 
 ```bash
 npm run build
+npm run typecheck
 npm run lint
 npm test
 npm run test:e2e
 ```
+
+**타입 검사는 `npm run typecheck`(`tsc -b --noEmit`)로 합니다.** 루트 `tsconfig.json`은
+`"files": []`인 참조 전용 설정이라 `npx tsc --noEmit`은 파일을 한 개도 읽지 않고 그냥
+통과합니다. 통과했다고 검사된 것이 아닙니다. 실제로 그렇게 확인하다 `booking.bookingDate`
+처럼 없는 필드를 읽는 코드가 그대로 배포될 뻔했습니다.
 
 Supabase 연결 정보는 저장소에 커밋하지 않는 `.env.local`에 설정합니다.
 
