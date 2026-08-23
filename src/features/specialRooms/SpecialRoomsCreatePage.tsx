@@ -44,7 +44,7 @@ export function SpecialRoomsCreatePage() {
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!ownerId || saving) return;
-    if (!title.trim()) { setError('예약판 이름을 입력해 주세요.'); return; }
+    if (!title.trim()) { setError('예약표 이름을 입력해 주세요.'); return; }
     const filled = rooms.filter((room) => room.name.trim());
     if (filled.length === 0) { setError('특별실을 한 곳 이상 입력해 주세요.'); return; }
 
@@ -52,7 +52,7 @@ export function SpecialRoomsCreatePage() {
     setError('');
     try {
       const created = await service.createBoard(ownerId, { title, description, school, password, rooms: filled });
-      // 학교를 고른 이유가 학사일정이므로 만드는 김에 같이 받아 둔다. 실패해도 예약판은
+      // 학교를 고른 이유가 학사일정이므로 만드는 김에 같이 받아 둔다. 실패해도 예약표는
       // 살리고, 관리 화면에서 무엇을 다시 해야 하는지 알린다.
       const outcome = school && !isSpecialRoomsDemoMode
         ? await service.linkSchoolAndSyncDays(created.id, school, mondayOf(toDateKey(new Date())))
@@ -61,7 +61,7 @@ export function SpecialRoomsCreatePage() {
         state: outcome ? { schoolNotice: outcome.notice, schoolError: outcome.error } : undefined,
       });
     } catch (createError) {
-      setError(createError instanceof Error ? createError.message : '예약판을 만들지 못했습니다.');
+      setError(createError instanceof Error ? createError.message : '예약표를 만들지 못했습니다.');
       setSaving(false);
     }
   };
@@ -75,14 +75,14 @@ export function SpecialRoomsCreatePage() {
       </div>
 
       <div>
-        <p className="text-xs font-bold text-[#0F6CBD]">새 예약판</p>
+        <p className="text-xs font-bold text-[#0F6CBD]">새 예약표</p>
         <h1 className="mt-1 text-2xl font-extrabold">특별실과 안내를 입력하세요</h1>
       </div>
 
       {error ? <p role="alert" className="border-y border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm font-semibold text-[#B42318]"><AlertCircle className="mr-1 inline h-4 w-4" />{error}</p> : null}
 
       <section className="grid gap-4 border-y border-[#DCE3EA] bg-white px-4 py-6 sm:px-6">
-        <label className="grid gap-2 text-sm font-bold text-[#334155]">예약판 이름
+        <label className="grid gap-2 text-sm font-bold text-[#334155]">예약표 이름
           <input className={inputClass} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="예: 2학기 특별실 예약" />
         </label>
         <label className="grid gap-2 text-sm font-bold text-[#334155]">안내 문구
@@ -118,7 +118,7 @@ export function SpecialRoomsCreatePage() {
       </section>
 
       <button type="submit" disabled={saving} className="min-h-[52px] w-full rounded-lg bg-[#0F6CBD] text-base font-bold text-white disabled:bg-[#AAB7C4]">
-        {saving ? '만드는 중' : '예약판 만들기'}
+        {saving ? '만드는 중' : '예약표 만들기'}
       </button>
     </form>
   );

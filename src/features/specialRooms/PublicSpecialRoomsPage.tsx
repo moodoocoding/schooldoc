@@ -33,11 +33,11 @@ export function PublicSpecialRoomsPage() {
     try {
       if (isSpecialRoomsDemoMode) {
         const found = store.getBoardByToken(token);
-        if (!found) setError('예약판을 찾을 수 없습니다.');
+        if (!found) setError('예약표를 찾을 수 없습니다.');
         setBoard(found);
         return;
       }
-      // 원격은 예약판 정보와 주간 자료를 따로 받는다. 한 주 것만 받아야 가볍다.
+      // 원격은 예약표 정보와 주간 자료를 따로 받는다. 한 주 것만 받아야 가볍다.
       const meta = await remote.getRemotePublicBoard(token, password);
       const week = unlocked || !meta.isPasswordProtected
         ? await remote.readRemoteWeek(token, password, mondayKey, addDays(mondayKey, 4))
@@ -45,7 +45,7 @@ export function PublicSpecialRoomsPage() {
       setBoard({ ...meta, bookings: week.bookings, schoolDays: week.schoolDays, createdAt: '', updatedAt: '' });
       setError('');
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : '예약판을 불러오지 못했습니다.');
+      setError(loadError instanceof Error ? loadError.message : '예약표를 불러오지 못했습니다.');
     } finally {
       setLoading(false);
     }
@@ -64,7 +64,7 @@ export function PublicSpecialRoomsPage() {
   if (!board) {
     return (
       <main className="py-20 text-center">
-        <p className="font-bold text-[#0F172A]">{error || '예약판을 찾을 수 없습니다.'}</p>
+        <p className="font-bold text-[#0F172A]">{error || '예약표를 찾을 수 없습니다.'}</p>
       </main>
     );
   }
@@ -73,7 +73,7 @@ export function PublicSpecialRoomsPage() {
     return (
       <main className="mx-auto w-full max-w-md px-4 py-16">
         <h1 className="text-xl font-extrabold text-[#0F172A]">{board.title}</h1>
-        <p className="mt-2 text-sm text-[#526174]">예약판을 열려면 비밀번호가 필요합니다.</p>
+        <p className="mt-2 text-sm text-[#526174]">예약표를 열려면 비밀번호가 필요합니다.</p>
         <form
           className="mt-6 grid gap-3"
           onSubmit={(event) => {

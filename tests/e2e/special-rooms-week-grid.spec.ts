@@ -9,9 +9,9 @@ import { expect, test, type Page } from '@playwright/test';
  */
 const openBoard = async (page: Page) => {
   await page.goto('/tools/special-rooms/new');
-  await page.getByLabel('예약판 이름').fill('주간 표 확인');
+  await page.getByLabel('예약표 이름').fill('주간 표 확인');
   await page.getByLabel('1번 특별실 이름').fill('과학실');
-  await page.getByRole('button', { name: '예약판 만들기' }).click();
+  await page.getByRole('button', { name: '예약표 만들기' }).click();
   await expect(page).toHaveURL(/\/tools\/special-rooms\/[0-9a-f-]{36}$/);
   const link = await page.getByLabel('예약 링크 주소').inputValue();
   await page.goto(new URL(link).pathname);

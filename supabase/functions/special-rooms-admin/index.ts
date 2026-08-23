@@ -6,7 +6,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.110.8';
  * NEIS는 CORS가 열려 있어 브라우저에서 바로 부를 수 있지만, 그러면 인증키가 번들에 박혀
  * 사이트를 여는 누구나 꺼내 쓸 수 있다. 그래서 키를 여기에 두고 우리가 대신 부른다.
  *
- * 예약판과 특별실의 생성·수정은 RLS로 브라우저가 직접 한다. 개인정보가 없어 암복호가
+ * 예약표와 특별실의 생성·수정은 RLS로 브라우저가 직접 한다. 개인정보가 없어 암복호가
  * 필요 없기 때문이다.
  */
 const corsHeaders = {
@@ -45,12 +45,12 @@ const requireUser = async (request: Request) => {
 };
 
 const requireOwnedBoard = async (boardId: string, userId: string) => {
-  if (!uuidPattern.test(boardId)) throw new HttpError(400, '예약판을 찾을 수 없습니다.');
+  if (!uuidPattern.test(boardId)) throw new HttpError(400, '예약표를 찾을 수 없습니다.');
   const { data, error } = await db.from('special_room_boards')
     .select('id, neis_office_code, neis_school_code')
     .eq('id', boardId).eq('owner_id', userId).maybeSingle();
   if (error) throw error;
-  if (!data) throw new HttpError(403, '이 예약판을 관리할 권한이 없습니다.');
+  if (!data) throw new HttpError(403, '이 예약표를 관리할 권한이 없습니다.');
   return data as { id: string; neis_office_code: string | null; neis_school_code: string | null };
 };
 
@@ -118,7 +118,7 @@ Deno.serve(async (request) => {
       const boardId = typeof body.boardId === 'string' ? body.boardId : '';
       const board = await requireOwnedBoard(boardId, userId);
       if (!board.neis_office_code || !board.neis_school_code) {
-        throw new HttpError(400, '이 예약판에는 학교가 지정되어 있지 않습니다.');
+        throw new HttpError(400, '이 예약표에는 학교가 지정되어 있지 않습니다.');
       }
       const from = typeof body.from === 'string' ? body.from : '';
       const to = typeof body.to === 'string' ? body.to : '';

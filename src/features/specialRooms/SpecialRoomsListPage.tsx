@@ -25,7 +25,7 @@ export function SpecialRoomsListPage() {
         const next = await service.listBoards(ownerId);
         if (active) { setBoards(next); setActionError(''); }
       } catch (error) {
-        if (active) setActionError(error instanceof Error ? error.message : '예약판을 불러오지 못했습니다.');
+        if (active) setActionError(error instanceof Error ? error.message : '예약표를 불러오지 못했습니다.');
       }
     };
     void load();
@@ -41,7 +41,7 @@ export function SpecialRoomsListPage() {
       await service.deleteBoard(ownerId, pendingDelete.id);
       setPendingDelete(null);
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : '예약판을 지우지 못했습니다.');
+      setActionError(error instanceof Error ? error.message : '예약표를 지우지 못했습니다.');
     } finally {
       setDeleting(false);
     }
@@ -52,9 +52,9 @@ export function SpecialRoomsListPage() {
       <ToolListHeader
         eyebrow="공유 예약"
         title="특별실 예약"
-        description="예약판을 만들고 링크를 뿌리면 교직원이 시간표에서 바로 잡습니다."
+        description="예약표를 만들고 링크를 뿌리면 교직원이 시간표에서 바로 잡습니다."
         toolbar={<ToolHeaderBadge>교사 전용</ToolHeaderBadge>}
-        action={<button type="button" onClick={() => navigate('/tools/special-rooms/new')} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-[#0F6CBD] px-5 text-sm font-bold text-white hover:bg-[#0B5B9F]"><Plus className="h-4 w-4" />새 예약판</button>}
+        action={<button type="button" onClick={() => navigate('/tools/special-rooms/new')} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-[#0F6CBD] px-5 text-sm font-bold text-white hover:bg-[#0B5B9F]"><Plus className="h-4 w-4" />새 예약표</button>}
       />
 
       {actionError ? <p role="alert" className="border-y border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm font-semibold text-[#B42318]"><AlertCircle className="mr-1 inline h-4 w-4" />{actionError}</p> : null}
@@ -62,9 +62,9 @@ export function SpecialRoomsListPage() {
       {boards.length === 0 ? (
         <div className="border-y border-[#DCE3EA] bg-white py-20 text-center">
           <CalendarClock className="mx-auto h-9 w-9 text-[#94A3B8]" />
-          <h2 className="mt-4 text-lg font-bold">아직 예약판이 없습니다</h2>
-          <p className="mt-2 text-sm text-[#526174]">특별실 목록을 넣어 첫 예약판을 만들어 보세요.</p>
-          <button type="button" onClick={() => navigate('/tools/special-rooms/new')} className="mt-5 min-h-[44px] rounded-lg border border-[#0F6CBD] px-5 text-sm font-bold text-[#0F6CBD] hover:bg-[#EFF6FC]">첫 예약판 만들기</button>
+          <h2 className="mt-4 text-lg font-bold">아직 예약표가 없습니다</h2>
+          <p className="mt-2 text-sm text-[#526174]">특별실 목록을 넣어 첫 예약표를 만들어 보세요.</p>
+          <button type="button" onClick={() => navigate('/tools/special-rooms/new')} className="mt-5 min-h-[44px] rounded-lg border border-[#0F6CBD] px-5 text-sm font-bold text-[#0F6CBD] hover:bg-[#EFF6FC]">첫 예약표 만들기</button>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -89,7 +89,7 @@ export function SpecialRoomsListPage() {
 
       {pendingDelete ? (
         <RegistryConfirmDialog
-          title={`“${pendingDelete.title}” 예약판을 지울까요?`}
+          title={`“${pendingDelete.title}” 예약표를 지울까요?`}
           description={`특별실 ${pendingDelete.rooms.length}곳과 예약 ${pendingDelete.bookings.length}건이 함께 사라집니다. 지운 뒤에는 되돌릴 수 없고 배부한 링크도 열리지 않습니다.`}
           confirmLabel={deleting ? '지우는 중' : '영구 삭제'}
           onCancel={() => { if (!deleting) setPendingDelete(null); }}

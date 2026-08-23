@@ -3,15 +3,15 @@ import { expect, test } from '@playwright/test';
 /**
  * 목록을 적어 내려가다 누른 엔터가 폼을 보내면 안 된다.
  *
- * 특별실 이름을 적다 무심코 엔터를 치면 줄이 늘어나는 대신 `예약판 만들기`가 실행돼
- * 다 적기도 전에 예약판이 만들어졌다. 학생 결과 화면도 같았다. HTML 폼의 기본 동작이라
+ * 특별실 이름을 적다 무심코 엔터를 치면 줄이 늘어나는 대신 `예약표 만들기`가 실행돼
+ * 다 적기도 전에 예약표가 만들어졌다. 학생 결과 화면도 같았다. HTML 폼의 기본 동작이라
  * 새 화면에서도 되풀이되기 쉬우므로 실제 키 입력으로 잰다.
  *
  * 합성 이벤트로는 잡히지 않는다. 브라우저는 사람이 실제로 누른 엔터에만 폼을 보낸다.
  */
-test('특별실 이름 칸의 엔터는 줄을 더하고 예약판을 만들지 않는다', async ({ page }) => {
+test('특별실 이름 칸의 엔터는 줄을 더하고 예약표를 만들지 않는다', async ({ page }) => {
   await page.goto('/tools/special-rooms/new');
-  await page.getByLabel('예약판 이름').fill('2학기 특별실 예약');
+  await page.getByLabel('예약표 이름').fill('2학기 특별실 예약');
   await page.getByLabel('1번 특별실 이름').fill('과학실');
   await page.getByLabel('1번 특별실 이름').press('Enter');
 
@@ -26,7 +26,7 @@ test('특별실 이름 칸의 엔터는 줄을 더하고 예약판을 만들지 
 
 test('특별실 위치 칸의 엔터도 같다', async ({ page }) => {
   await page.goto('/tools/special-rooms/new');
-  await page.getByLabel('예약판 이름').fill('2학기 특별실 예약');
+  await page.getByLabel('예약표 이름').fill('2학기 특별실 예약');
   await page.getByLabel('1번 특별실 이름').fill('과학실');
   await page.getByLabel('1번 특별실 위치').press('Enter');
 
@@ -36,7 +36,7 @@ test('특별실 위치 칸의 엔터도 같다', async ({ page }) => {
 
 test('빈 줄에서 누른 엔터는 빈 줄을 쌓지 않고 폼도 보내지 않는다', async ({ page }) => {
   await page.goto('/tools/special-rooms/new');
-  await page.getByLabel('예약판 이름').fill('2학기 특별실 예약');
+  await page.getByLabel('예약표 이름').fill('2학기 특별실 예약');
   await page.getByLabel('1번 특별실 이름').press('Enter');
   await page.getByLabel('1번 특별실 이름').press('Enter');
 

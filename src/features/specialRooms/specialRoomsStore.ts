@@ -5,7 +5,7 @@ import type { Period, SpecialRoomBoard, SpecialRoomBoardDraft, SpecialRoomBookin
  * 데모 모드 저장소. localStorage에만 쓴다.
  *
  * E2E가 전부 데모 모드로 돌기 때문에, 이 파일이 있어야 화면 흐름을 자동으로 검증할 수 있다.
- * 서버가 지키는 규칙(같은 칸 중복, 닫힌 예약판)을 여기서도 같은 모양으로 지켜야 E2E가
+ * 서버가 지키는 규칙(같은 칸 중복, 닫힌 예약표)을 여기서도 같은 모양으로 지켜야 E2E가
  * 실제 동작과 어긋나지 않는다.
  */
 const STORAGE_KEY = 'schooldoc_special_rooms_v1';

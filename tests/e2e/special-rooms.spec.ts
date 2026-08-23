@@ -4,17 +4,17 @@ const createBoard = async (page: import('@playwright/test').Page, title: string)
   await page.goto('/tools/special-rooms/new');
   await page.evaluate(() => localStorage.removeItem('schooldoc_special_rooms_v1'));
   await page.reload();
-  await page.getByLabel('예약판 이름').fill(title);
+  await page.getByLabel('예약표 이름').fill(title);
   await page.getByLabel('1번 특별실 이름').fill('과학실');
   await page.getByLabel('1번 특별실 위치').fill('본관 3층');
   await page.getByRole('button', { name: '특별실 추가' }).click();
   await page.getByLabel('2번 특별실 이름').fill('음악실');
-  await page.getByRole('button', { name: '예약판 만들기' }).click();
+  await page.getByRole('button', { name: '예약표 만들기' }).click();
   await expect(page).toHaveURL(/\/tools\/special-rooms\/[0-9a-f-]+$/);
   return page.getByLabel('예약 링크 주소').inputValue();
 };
 
-test('예약판을 만들고 링크로 들어가 시간표에서 예약한다', async ({ page }) => {
+test('예약표를 만들고 링크로 들어가 시간표에서 예약한다', async ({ page }) => {
   const link = await createBoard(page, '2학기 특별실 예약');
   expect(link).toContain('/s/rooms/');
 

@@ -3,10 +3,10 @@
  *
  * 예전에는 만들 때 적은 뒤로 둘 다 볼 수도 고칠 수도 없었다. 안내 문구는 공개 화면에만
  * 나오고 담당자 화면에는 없어서, 적었는지조차 링크를 직접 열어 봐야 알 수 있었다.
- * 오타 하나에 예약판을 새로 만들어야 했다.
+ * 오타 하나에 예약표를 새로 만들어야 했다.
  *
  * 안내 문구는 비워도 된다. 비우면 공개 화면에서 그 자리가 아예 사라진다. DB도
- * `description text not null default ''`라 빈 문자열을 받는다. 제목만 있으면 예약판이
+ * `description text not null default ''`라 빈 문자열을 받는다. 제목만 있으면 예약표가
  * 성립한다.
  *
  * 길이는 DB의 check 제약과 같은 값으로 막는다. 서버가 거절한 뒤 알리는 것보다 적는 동안
@@ -40,10 +40,10 @@ export const checkBoardInfo = (draft: BoardInfoDraft): BoardInfoCheck => {
   const value = { title, description };
 
   if (!title) {
-    return { ok: false, value, error: '예약판 이름을 입력해 주세요.', field: 'title' };
+    return { ok: false, value, error: '예약표 이름을 입력해 주세요.', field: 'title' };
   }
   if (title.length > TITLE_MAX) {
-    return { ok: false, value, error: `예약판 이름은 ${TITLE_MAX}자까지 쓸 수 있습니다.`, field: 'title' };
+    return { ok: false, value, error: `예약표 이름은 ${TITLE_MAX}자까지 쓸 수 있습니다.`, field: 'title' };
   }
   if (description.length > DESCRIPTION_MAX) {
     return { ok: false, value, error: `안내 문구는 ${DESCRIPTION_MAX}자까지 쓸 수 있습니다.`, field: 'description' };
