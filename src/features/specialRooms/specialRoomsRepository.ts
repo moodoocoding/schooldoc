@@ -1,4 +1,6 @@
 import { supabase } from '../../utils/supabaseClient';
+import { termEndFrom, type RepeatOutcome } from './specialRoomsRepeat';
+import { toDateKey } from './specialRoomWeek';
 import type {
   Period,
   SchoolDay,
@@ -108,6 +110,11 @@ const assemble = async (rows: BoardRow[]): Promise<SpecialRoomBoard[]> => {
     schoolDays: (daysResult.data ?? [])
       .filter((day) => day.board_id === row.id)
       .map((day): SchoolDay => ({ date: day.day, eventName: day.event_name, isOffDay: day.is_off_day })),
+    termEndDate: termEndFrom(
+      (daysResult.data ?? []).filter((day) => day.board_id === row.id)
+        .map((day) => ({ date: day.day as string, eventName: day.event_name as string })),
+      toDateKey(new Date()),
+    ),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }));
@@ -155,6 +162,10 @@ export const setRemoteBooking = async (
   await callPublic({ action: 'setBooking', token, password, roomId, date, period, label });
   notify();
 };
+
+export const setRemoteRepeat = async (
+  token: string, password: string, roomId: string, date: string, period: Period, label: string, until: string,
+) => callPublic<RepeatOutcome>({ action: 'setRepeat', token, password, roomId, date, period, label, until });
 
 export const clearRemoteBooking = async (
   token: string, password: string, roomId: string, date: string, period: Period,

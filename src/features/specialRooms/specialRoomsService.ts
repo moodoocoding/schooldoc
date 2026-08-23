@@ -46,6 +46,15 @@ export const setBooking = async (
   else await remote.setRemoteBooking(token, password, roomId, date, period, label);
 };
 
+/** 매주 같은 시간을 한 번에 잡는다. 펼치는 규칙은 `specialRoomsRepeat`에 있다. */
+export const setRepeat = async (
+  token: string, password: string, roomId: string, date: string, period: Period, label: string, until: string,
+) => (
+  isSpecialRoomsDemoMode
+    ? local.setRepeat(token, roomId, date, period, label, until)
+    : remote.setRemoteRepeat(token, password, roomId, date, period, label, until)
+);
+
 export const clearBooking = async (
   token: string, password: string, roomId: string, date: string, period: Period,
 ) => {

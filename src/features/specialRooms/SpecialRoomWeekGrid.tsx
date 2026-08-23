@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { LoaderCircle, X } from 'lucide-react';
 import { BookingSheet } from './BookingSheet';
+import type { RepeatOutcome } from './specialRoomsRepeat';
 import {
   periodsFor,
   weekdaysFor,
@@ -22,6 +23,10 @@ interface SpecialRoomWeekGridProps {
   periodCount: number;
   /** 토요일까지 보여 줄지. */
   includeSaturday: boolean;
+  /** 이번 학기 마지막 날. 반복 예약의 `학기 말까지`에 쓴다. */
+  termEndDate?: string;
+  /** 매주 반복해서 잡는다. 없으면 시트에 반복 영역이 나오지 않는다. */
+  onRepeat?: (date: string, period: Period, label: string, until: string) => Promise<RepeatOutcome>;
   bookings: SpecialRoomBooking[];
   schoolDays: SchoolDay[];
   readOnly?: boolean;
@@ -47,6 +52,8 @@ export function SpecialRoomWeekGrid({
   roomName,
   periodCount,
   includeSaturday,
+  termEndDate = '',
+  onRepeat,
   bookings,
   schoolDays,
   readOnly = false,
@@ -221,6 +228,15 @@ export function SpecialRoomWeekGrid({
           cellName={`${formatDayLabel(editing.date)} ${editing.period}교시`}
           title={`${weekdays[dates.indexOf(editing.date)]} ${formatDayLabel(editing.date)} · ${editing.period}교시`}
           roomName={roomName}
+          date={editing.date}
+          weekdayLabel={weekdays[dates.indexOf(editing.date)] ?? ''}
+          period={editing.period}
+          termEndDate={termEndDate}
+          onRepeat={(label, until) => (
+            onRepeat
+              ? onRepeat(editing.date, editing.period, label, until)
+              : Promise.resolve({ created: [], skippedOffDay: [], skippedTaken: [] })
+          )}
           current={booked.get(bookingKey(editing.date, editing.period))?.label ?? ''}
           saving={savingCell === bookingKey(editing.date, editing.period)}
           onSubmit={(label) => commit(editing.date, editing.period, label)}

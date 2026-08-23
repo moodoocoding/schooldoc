@@ -32,7 +32,8 @@ const metadataBoardKeys = (): string[] => {
     }
   }
   const body = EDGE.slice(start, end);
-  return [...body.matchAll(/^\s{10}([A-Za-z][A-Za-z0-9]*):/gm)].map((match) => match[1]);
+  // `key: value`와 축약 표기 `key,`를 둘 다 센다. 축약을 놓치면 넣어 둔 값을 빠졌다고 한다.
+  return [...body.matchAll(/^\s{10}([A-Za-z][A-Za-z0-9]*)\s*[:,]/gm)].map((match) => match[1]);
 };
 
 /** `SpecialRoomBoard` 안의 필드 이름을 모은다. */
