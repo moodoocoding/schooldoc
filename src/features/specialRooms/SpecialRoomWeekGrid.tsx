@@ -175,6 +175,12 @@ export function SpecialRoomWeekGrid({
                           readOnly ? 'cursor-default' : 'cursor-pointer hover:bg-[#F1F6FB]'
                         } ${editingKey === key ? 'ring-2 ring-inset ring-[#0F6CBD]' : ''} disabled:cursor-wait`}
                       >
+                        {/*
+                          빈 칸에는 아무것도 그리지 않는다. 한 주에 40칸이라 표시 하나를
+                          두면 그것이 마흔 개가 되어, 정작 눈에 들어와야 할 예약을 덮는다.
+                          누를 수 있다는 것은 표 아래 안내와 커서·hover가 알린다.
+                          보조기기에는 칸의 접근 가능한 이름(`… 예약하기`)이 알린다.
+                        */}
                         {isSaving ? (
                           <LoaderCircle className="h-4 w-4 animate-spin text-[#0F6CBD]" />
                         ) : booking ? (
@@ -187,12 +193,7 @@ export function SpecialRoomWeekGrid({
                           >
                             {booking.label}
                           </span>
-                        ) : (
-                          // 빈 칸도 비었다는 것이 보여야 한다. 아무것도 없으면 고장으로 읽힌다.
-                          <span aria-hidden="true" className={readOnly ? 'text-sm text-[#DCE3EA]' : 'text-base text-[#C8D0DA]'}>
-                            {readOnly ? '·' : '+'}
-                          </span>
-                        )}
+                        ) : null}
                       </button>
                     </td>
                   );
