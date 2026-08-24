@@ -100,6 +100,7 @@ test('예약 지우기 버튼으로 지운다', async ({ page }) => {
 
   // 비우고 저장하는 것 말고, 지우려고 온 사람을 위한 길이 따로 있어야 한다.
   await page.getByRole('button', { name: /6-1반 고치기$/ }).click();
+  await page.getByRole('button', { name: '바꾸기' }).click();
   await page.getByRole('button', { name: '예약 지우기' }).click();
   await expect(page.getByRole('button', { name: /6-1반 고치기$/ })).toHaveCount(0);
 });
@@ -138,5 +139,6 @@ test('긴 이름은 칸에서 잘리지만 시트에서는 전부 읽힌다', as
   expect(clipped.boxHeight, '칩이 한 줄 높이여야 한다').toBeLessThanOrEqual(clipped.lineHeight + 10);
 
   await cell.click();
+  await page.getByRole('button', { name: '바꾸기' }).click();
   await expect(page.getByRole('textbox', { name: /사용 내용$/ })).toHaveValue(long);
 });
