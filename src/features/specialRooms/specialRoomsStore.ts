@@ -1,5 +1,6 @@
 import { cleanBookingLabel, toDateKey } from './specialRoomWeek';
 import { repeatDates, termEndFrom } from './specialRoomsRepeat';
+import { closureAt } from './specialRoomsClosure';
 import type { Period, SpecialRoomBoard, SpecialRoomBoardDraft, SpecialRoomBooking } from './types';
 
 /**
@@ -82,6 +83,7 @@ export const createBoard = (ownerId: string, draft: SpecialRoomBoardDraft) => {
       location: room.location.trim(),
     })),
     bookings: [],
+    closures: [],
     schoolDays: [],
     createdAt: now,
     updatedAt: now,
@@ -162,6 +164,32 @@ export const setBooking = (
  * 데모 저장소의 반복 넣기. 실제 서버와 같은 규칙을 따라야 화면이 갈라지지 않는다.
  * 휴업일과 이미 찬 칸을 건너뛰고, 무엇을 건너뛰었는지 그대로 돌려준다.
  */
+export const addClosure = (ownerId: string, boardId: string, draft: {
+  roomId: string; startDate: string; endDate: string; reason: string;
+}) => {
+  writeAll(readAll().map((board) => (
+    board.id === boardId && board.ownerId === ownerId
+      ? {
+        ...board,
+        closures: [...board.closures, { id: crypto.randomUUID(), ...draft, reason: draft.reason.trim() }],
+        updatedAt: new Date().toISOString(),
+      }
+      : board
+  )));
+};
+
+export const removeClosure = (ownerId: string, boardId: string, closureId: string) => {
+  writeAll(readAll().map((board) => (
+    board.id === boardId && board.ownerId === ownerId
+      ? {
+        ...board,
+        closures: board.closures.filter((closure) => closure.id !== closureId),
+        updatedAt: new Date().toISOString(),
+      }
+      : board
+  )));
+};
+
 export const setRepeat = (
   token: string, roomId: string, date: string, period: Period, label: string, until: string,
 ) => {
@@ -175,7 +203,10 @@ export const setRepeat = (
       .map((booking) => booking.date));
     const added: StoredBoard['bookings'] = [];
     for (const day of repeatDates(date, until)) {
-      if (offDays.has(day)) { outcome.skippedOffDay.push(day); continue; }
+      // 휴관도 휴업일과 같이 건너뛴다. 담당이 자리를 비운 날에 자동으로 넣으면 안 된다.
+      if (offDays.has(day) || closureAt(board.closures, roomId, day)) {
+        outcome.skippedOffDay.push(day); continue;
+      }
       if (taken.has(day)) { outcome.skippedTaken.push(day); continue; }
       outcome.created.push(day);
       added.push({

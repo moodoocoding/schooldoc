@@ -8,6 +8,7 @@ import { SpecialRoomWeekGrid } from './SpecialRoomWeekGrid';
 import { getSpecialRoomsPublicOrigin, isSpecialRoomsDemoMode } from './specialRoomsConfig';
 import * as service from './specialRoomsService';
 import { BoardInfoCard } from './BoardInfoCard';
+import { ClosureCard } from './ClosureCard';
 import { SchoolPicker } from './SchoolPicker';
 import { formatWeekRange, mondayOf, shiftWeek, toDateKey, weekDates } from './specialRoomWeek';
 import type { SchoolDaysOutcome } from './specialRoomsSchoolDays';
@@ -168,7 +169,7 @@ export function SpecialRoomsManagePage() {
 
           <div className="mt-4">
             {roomId ? (
-              <SpecialRoomWeekGrid mondayKey={mondayKey} roomId={roomId} periodCount={board.periodCount} includeSaturday={board.includeSaturday} bookings={board.bookings} schoolDays={board.schoolDays} readOnly />
+              <SpecialRoomWeekGrid mondayKey={mondayKey} roomId={roomId} periodCount={board.periodCount} includeSaturday={board.includeSaturday} closures={board.closures} bookings={board.bookings} schoolDays={board.schoolDays} readOnly />
             ) : (
               <p className="py-12 text-center text-sm text-[#64748B]">등록된 특별실이 없습니다.</p>
             )}
@@ -215,6 +216,12 @@ export function SpecialRoomsManagePage() {
               </div>
             </div>
           </section>
+
+          <ClosureCard
+            board={board}
+            onAdd={(draft) => service.addClosure(ownerId, board.id, draft)}
+            onRemove={(closureId) => service.removeClosure(ownerId, board.id, closureId)}
+          />
 
           <BoardInfoCard
             board={board}

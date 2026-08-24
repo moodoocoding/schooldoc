@@ -144,6 +144,19 @@ Deno.serve(async (request) => {
         .ilike('event_name', '%방학%').order('day').limit(1).maybeSingle();
       if (vacation.error) throw vacation.error;
       const termEndDate = vacation.data ? addDays(vacation.data.day as string, -1) : '';
+
+      // 휴관은 담당자가 건다. 공개 화면은 읽기만 하고 풀 수 없다.
+      const closureRows = await db.from('special_room_closures')
+        .select('id, room_id, start_date, end_date, reason')
+        .eq('board_id', board.id).order('start_date');
+      if (closureRows.error) throw closureRows.error;
+      const closures = (closureRows.data ?? []).map((row) => ({
+        id: row.id as string,
+        roomId: (row.room_id as string | null) ?? '',
+        startDate: row.start_date as string,
+        endDate: row.end_date as string,
+        reason: row.reason as string,
+      }));
       return json(200, {
         board: {
           id: board.id,
@@ -153,6 +166,7 @@ Deno.serve(async (request) => {
           periodCount: board.period_count,
           includeSaturday: board.include_saturday,
           termEndDate,
+          closures,
           schoolName: board.school_name ?? '',
           status: board.status,
           hasPassword: Boolean(board.password_digest),
@@ -196,6 +210,21 @@ Deno.serve(async (request) => {
     // 여기부터는 자료를 바꾼다. 닫힌 예약표는 읽기만 된다.
     if (board.status !== 'open') throw new HttpError(409, '예약이 종료되었습니다.');
 
+    /*
+      휴관인 날은 잡을 수 없다. 화면에서도 막지만 서버에서 다시 본다. 화면만 막으면
+      옛 화면을 열어 둔 사람이 그대로 넣을 수 있다.
+    */
+    const closedOn = async (roomId: string, days: string[]) => {
+      const { data, error } = await db.from('special_room_closures')
+        .select('room_id, start_date, end_date')
+        .eq('board_id', board.id).lte('start_date', days[days.length - 1]).gte('end_date', days[0]);
+      if (error) throw error;
+      return new Set(days.filter((day) => (data ?? []).some((closure) => (
+        (closure.room_id === null || closure.room_id === roomId)
+        && (closure.start_date as string) <= day && day <= (closure.end_date as string)
+      ))));
+    };
+
     const roomId = await readRoom(board.id, body.roomId);
     const date = typeof body.date === 'string' ? body.date : '';
     if (!datePattern.test(date)) throw new HttpError(400, '날짜가 올바르지 않습니다.');
@@ -204,6 +233,9 @@ Deno.serve(async (request) => {
     if (action === 'setBooking') {
       const label = typeof body.label === 'string' ? body.label.trim().replace(/\s+/g, ' ') : '';
       if (!label || label.length > 40) throw new HttpError(422, '내용을 40자 이내로 입력해 주세요.');
+      if ((await closedOn(roomId, [date])).has(date)) {
+        throw new HttpError(409, '그날은 특별실을 쓸 수 없습니다.');
+      }
 
       // 있으면 고치고 없으면 만든다. 아무나 고칠 수 있는 공유 시트 규칙이다.
       const { data: existing, error: findError } = await db.from('special_room_bookings')
@@ -254,6 +286,7 @@ Deno.serve(async (request) => {
       }
       if (dates.length === 0) dates.push(date);
 
+      const closedDays = await closedOn(roomId, dates);
       const [offDayResult, takenResult] = await Promise.all([
         db.from('special_room_school_days').select('day')
           .eq('board_id', board.id).eq('is_off_day', true).in('day', dates),
@@ -266,9 +299,11 @@ Deno.serve(async (request) => {
       const offDays = new Set((offDayResult.data ?? []).map((row) => row.day as string));
       const taken = new Set((takenResult.data ?? []).map((row) => row.booking_date as string));
 
-      const skippedOffDay = dates.filter((day) => offDays.has(day));
-      const skippedTaken = dates.filter((day) => !offDays.has(day) && taken.has(day));
-      const created = dates.filter((day) => !offDays.has(day) && !taken.has(day));
+      // 휴관도 휴업일과 같이 건너뛴다. 담당이 자리를 비운 날에 자동으로 넣으면 안 된다.
+      const blocked = (day: string) => offDays.has(day) || closedDays.has(day);
+      const skippedOffDay = dates.filter(blocked);
+      const skippedTaken = dates.filter((day) => !blocked(day) && taken.has(day));
+      const created = dates.filter((day) => !blocked(day) && !taken.has(day));
 
       if (created.length > 0) {
         const { error } = await db.from('special_room_bookings').insert(

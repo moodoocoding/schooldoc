@@ -75,14 +75,16 @@ const callAdmin = async <T>(body: Record<string, unknown>) => {
 const assemble = async (rows: BoardRow[]): Promise<SpecialRoomBoard[]> => {
   if (rows.length === 0) return [];
   const ids = rows.map((row) => row.id);
-  const [roomsResult, bookingsResult, daysResult] = await Promise.all([
+  const [roomsResult, bookingsResult, daysResult, closuresResult] = await Promise.all([
     client().from('special_rooms').select('id, board_id, position, name, location').in('board_id', ids).order('position'),
     client().from('special_room_bookings').select('id, board_id, room_id, booking_date, period, label, updated_at').in('board_id', ids),
     client().from('special_room_school_days').select('board_id, day, event_name, is_off_day').in('board_id', ids),
+    client().from('special_room_closures').select('id, board_id, room_id, start_date, end_date, reason').in('board_id', ids).order('start_date'),
   ]);
   if (roomsResult.error) fail('특별실 목록을 불러오지 못했습니다', roomsResult.error);
   if (bookingsResult.error) fail('예약을 불러오지 못했습니다', bookingsResult.error);
   if (daysResult.error) fail('학사일정을 불러오지 못했습니다', daysResult.error);
+  if (closuresResult.error) fail('휴관을 불러오지 못했습니다', closuresResult.error);
 
   return rows.map((row) => ({
     id: row.id,
@@ -110,6 +112,16 @@ const assemble = async (rows: BoardRow[]): Promise<SpecialRoomBoard[]> => {
     schoolDays: (daysResult.data ?? [])
       .filter((day) => day.board_id === row.id)
       .map((day): SchoolDay => ({ date: day.day, eventName: day.event_name, isOffDay: day.is_off_day })),
+    closures: (closuresResult.data ?? [])
+      .filter((closure) => closure.board_id === row.id)
+      .map((closure) => ({
+        id: closure.id as string,
+        // null은 `모든 특별실`이라는 뜻이다. 화면에서는 빈 문자열로 다룬다.
+        roomId: (closure.room_id as string | null) ?? '',
+        startDate: closure.start_date as string,
+        endDate: closure.end_date as string,
+        reason: closure.reason as string,
+      })),
     termEndDate: termEndFrom(
       (daysResult.data ?? []).filter((day) => day.board_id === row.id)
         .map((day) => ({ date: day.day as string, eventName: day.event_name as string })),
@@ -228,6 +240,27 @@ export const createRemoteBoard = async (draft: SpecialRoomBoardDraft) => {
 export const setRemoteBoardStatus = async (boardId: string, status: 'open' | 'closed') => {
   const { error } = await client().from('special_room_boards').update({ status }).eq('id', boardId);
   if (error) fail('예약표 상태를 바꾸지 못했습니다', error);
+  notify();
+};
+
+export const addRemoteClosure = async (boardId: string, draft: {
+  roomId: string; startDate: string; endDate: string; reason: string;
+}) => {
+  const { error } = await client().from('special_room_closures').insert({
+    board_id: boardId,
+    // 빈 문자열은 `모든 특별실`이라는 뜻이라 null로 저장한다.
+    room_id: draft.roomId || null,
+    start_date: draft.startDate,
+    end_date: draft.endDate,
+    reason: draft.reason.trim(),
+  });
+  if (error) fail('휴관을 저장하지 못했습니다', error);
+  notify();
+};
+
+export const removeRemoteClosure = async (closureId: string) => {
+  const { error } = await client().from('special_room_closures').delete().eq('id', closureId);
+  if (error) fail('휴관을 지우지 못했습니다', error);
   notify();
 };
 
