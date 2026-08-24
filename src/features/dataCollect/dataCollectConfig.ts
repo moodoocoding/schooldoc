@@ -8,16 +8,6 @@ export const isDataCollectDemoMode = (
   )
 );
 
-const DATA_COLLECT_DEVELOPER_EMAIL = 'panthea0@gmail.com';
-
-/**
- * 자료 수합이 정식 공개되기 전, 지정한 Google 계정에만 관리자 화면을 연다.
- * 이 값은 메뉴 표시를 위한 미리보기 플래그이며 Supabase 권한 경계가 아니다.
- */
-export const isDataCollectDeveloper = (user?: { email?: string | null } | null) => (
-  user?.email?.trim().toLowerCase() === DATA_COLLECT_DEVELOPER_EMAIL
-);
-
 export const dataCollectOwnerId = (authenticatedId?: string) => (
   isDataCollectDemoMode ? 'demo-teacher' : authenticatedId ?? ''
 );

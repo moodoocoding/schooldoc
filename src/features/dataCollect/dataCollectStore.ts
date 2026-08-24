@@ -6,10 +6,16 @@ const STORAGE_KEY = 'schooldoc_data_collect_v1';
 const CHANGE_EVENT = 'schooldoc-data-collect-change';
 const makeId = () => crypto.randomUUID();
 
+const normalizeCollection = (collection: DataCollection): DataCollection => ({
+  ...collection,
+  closedAt: collection.closedAt ?? (collection.status === 'closed' ? collection.updatedAt : undefined),
+});
+
 const read = (): DataCollection[] => {
   if (!isDataCollectDemoMode) return [];
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as DataCollection[];
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as DataCollection[];
+    return Array.isArray(parsed) ? parsed.map(normalizeCollection) : [];
   } catch {
     return [];
   }
@@ -77,6 +83,7 @@ export const updateDataCollectionStatus = (id: string, status: DataCollection['s
   write(read().map((collection) => collection.id === id ? {
     ...collection,
     status,
+    closedAt: status === 'closed' ? new Date().toISOString() : undefined,
     updatedAt: new Date().toISOString(),
   } : collection));
 };

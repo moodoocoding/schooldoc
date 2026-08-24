@@ -36,6 +36,7 @@ export const buildDuplicateDraft = (source: ConsentLocalDraft, seed: DuplicateSe
   passwordHash: '',
   responseCount: 0,
   status: 'open',
+  closedAt: undefined,
 });
 
 /** 화면에 무엇이 비워지는지 알리기 위한 목록. */

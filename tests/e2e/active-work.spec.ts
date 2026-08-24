@@ -7,7 +7,15 @@ test.describe('진행 중인 업무', () => {
     await expect(page.getByRole('heading', { name: '전체 업무 도구 (10)' })).toBeVisible();
     await expect(page.getByRole('heading', { name: '진행 중인 업무' })).toHaveCount(0);
     await expect(page.getByText('자료 수합', { exact: true })).toBeVisible();
+    const dataCollectCard = page.getByRole('button', { name: /자료 수합/ }).first();
+    await expect(dataCollectCard).not.toContainText('개발 중');
+    await dataCollectCard.click();
+    await expect(page).toHaveURL(/\/tools\/data-collect$/);
+    await page.goto('/');
     await expect(page.getByText('특별실 예약', { exact: true })).toBeVisible();
+    const toolNames = await page.locator('h3').allTextContents();
+    expect(toolNames.indexOf('특별실 예약')).toBe(4);
+    expect(toolNames.indexOf('문서 서명')).toBe(7);
   });
 
   test('도구 제목은 목록으로, 개별 업무는 관리 화면으로 이동한다', async ({ page }) => {

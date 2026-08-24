@@ -15,15 +15,11 @@ import { ConsentFormsWorkspace } from './features/consentForms/ConsentFormsWorks
 import { PublicConsentResponsePage } from './features/consentForms/PublicConsentResponsePage';
 import { DataCollectWorkspace } from './features/dataCollect/DataCollectWorkspace';
 import { PublicDataCollectPage } from './features/dataCollect/PublicDataCollectPage';
-import { isDataCollectDeveloper } from './features/dataCollect/dataCollectConfig';
-import { useTeacherAuth } from './auth/teacherAuth';
 import type { SidebarTab, SchoolTool } from './types/schooldoc';
 
 function AdminApp() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useTeacherAuth();
-  const dataCollectDeveloper = isDataCollectDeveloper(user);
   const [activeTab, setActiveTab] = useState<SidebarTab>('home');
   const [isOpenMobile, setIsOpenMobile] = useState<boolean>(false);
   const [quickMenuIds, setQuickMenuIds] = useState<string[]>(['notice-collect', 'student-lookup']);
@@ -57,16 +53,14 @@ function AdminApp() {
       name: '자료 수합',
       desc: '필요한 제출 항목을 만들고 파일과 응답을 한곳에서 받습니다.',
       iconName: 'inbox',
-      status: dataCollectDeveloper ? 'ready' : 'in_progress',
-      statusText: dataCollectDeveloper ? '개발자 미리보기' : '개발 중',
+      status: 'ready',
     },
-    'doc-sign': {
-      id: 'doc-sign',
-      name: '문서 서명',
-      desc: 'PDF의 서명 위치를 지정하고 비대면 서명을 받습니다.',
-      iconName: 'file-pen',
-      status: 'in_progress',
-      statusText: '개발 중',
+    'special-room': {
+      id: 'special-room',
+      name: '특별실 예약',
+      desc: '특별실의 사용 가능 시간을 확인하고 예약합니다.',
+      iconName: 'calendar-clock',
+      status: 'ready',
     },
     'receipt-auto': {
       id: 'receipt-auto',
@@ -84,12 +78,13 @@ function AdminApp() {
       status: 'in_progress',
       statusText: '개발 중',
     },
-    'special-room': {
-      id: 'special-room',
-      name: '특별실 예약',
-      desc: '특별실의 사용 가능 시간을 확인하고 예약합니다.',
-      iconName: 'calendar-clock',
-      status: 'ready',
+    'doc-sign': {
+      id: 'doc-sign',
+      name: '문서 서명',
+      desc: 'PDF의 서명 위치를 지정하고 비대면 서명을 받습니다.',
+      iconName: 'file-pen',
+      status: 'in_progress',
+      statusText: '개발 중',
     },
     'lost-found': {
       id: 'lost-found',

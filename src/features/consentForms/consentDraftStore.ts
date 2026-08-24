@@ -26,6 +26,7 @@ export interface ConsentDraftSnapshot {
   deadline: string;
   passwordEnabled: boolean;
   allowResubmission: boolean;
+  retentionMonths: number;
   fileName: string;
   file: Blob;
 }

@@ -112,6 +112,14 @@ const purgeForm = async (formId: string, userId: string) => {
   if (form.source_path) {
     const removed = await db.storage.from(DOCUMENT_BUCKET).remove([form.source_path]);
     if (removed.error) throw removed.error;
+    const slash = form.source_path.lastIndexOf('/');
+    const parent = slash >= 0 ? form.source_path.slice(0, slash) : '';
+    const fileName = slash >= 0 ? form.source_path.slice(slash + 1) : form.source_path;
+    const remaining = await db.storage.from(DOCUMENT_BUCKET).list(parent, { limit: 100, search: fileName });
+    if (remaining.error) throw remaining.error;
+    if ((remaining.data ?? []).some((entry) => entry.name === fileName)) {
+      throw new Error('원본 PDF를 지우지 못해 수합을 남겨 두었습니다.');
+    }
   }
 
   const deleted = await db.from('consent_forms').delete().eq('id', formId);
@@ -125,6 +133,15 @@ const purgeForm = async (formId: string, userId: string) => {
   });
   // 기록 실패가 파기 자체를 되돌리지는 못한다. 남기지 못했다는 사실만 알린다.
   if (logged.error) console.error('purge log failed', logged.error);
+
+  const privacyLogged = await db.from('privacy_purge_log').insert({
+    owner_id: userId,
+    resource_kind: 'consent-form',
+    resource_id: formId,
+    record_count: form.response_count,
+    file_count: signaturePaths.length + (form.source_path ? 1 : 0),
+  });
+  if (privacyLogged.error) console.error('privacy purge log failed', privacyLogged.error);
 
   return { id: formId, title: form.title, responseCount: form.response_count, signatureCount: signaturePaths.length };
 };

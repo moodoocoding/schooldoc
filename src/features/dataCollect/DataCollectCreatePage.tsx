@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, ArrowLeft, CalendarClock, CheckCircle2, ClipboardPaste, FileSpreadsheet, FileUp, ListPlus, RotateCcw, Trash2, Users, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTeacherAuth } from '../../auth/teacherAuth';
+import { getDefaultRetentionMonths, loadPrivacyRetentionSettings } from '../settings/privacyRetentionSettings';
 import { dataCollectOwnerId } from './dataCollectConfig';
 import { createDataCollection } from './dataCollectService';
 import { analyzeDataCollectionRows, validateCollectionFile, type DataCollectionImportAnalysis } from './dataCollectUtils';
@@ -135,8 +136,17 @@ const resolveDeadlinePreset = (value: string) => {
 export function DataCollectCreatePage() {
   const navigate = useNavigate();
   const { user } = useTeacherAuth();
+  const [retentionMonths, setRetentionMonths] = useState(() => getDefaultRetentionMonths(user?.id ?? ''));
   const [savedDraft] = useState(readSavedDraft);
   const [showRestoreNotice, setShowRestoreNotice] = useState(Boolean(savedDraft));
+
+  useEffect(() => {
+    let active = true;
+    void loadPrivacyRetentionSettings(user?.id ?? '').then((settings) => {
+      if (active) setRetentionMonths(settings.defaultRetentionMonths);
+    });
+    return () => { active = false; };
+  }, [user?.id]);
   const [mode, setMode] = useState<DataCollectionMode>(savedDraft?.mode ?? 'fixed');
   const [title, setTitle] = useState(savedDraft?.title ?? '');
   const [description, setDescription] = useState(savedDraft?.description ?? '');
@@ -353,7 +363,7 @@ export function DataCollectCreatePage() {
         dueAt,
         password,
         allowResubmit,
-        retentionMonths: 12,
+        retentionMonths,
       }, requestType === 'review' ? sourceFile : undefined);
       window.localStorage.removeItem(DRAFT_KEY);
       navigate(`/tools/data-collect/${created.id}`);

@@ -30,9 +30,10 @@ interface ConsentFormRow {
   page_count: number;
   page_sizes: ConsentPageSize[] | null;
   retention_months: number | null;
+  closed_at: string | null;
 }
 
-const formColumns = 'id, public_token, title, file_name, source_path, description, fields, page_count, page_sizes, retention_months, recipient_mode, recipient_count, deadline, password_digest, allow_resubmission, response_count, status, created_at';
+const formColumns = 'id, public_token, title, file_name, source_path, description, fields, page_count, page_sizes, retention_months, recipient_mode, recipient_count, deadline, password_digest, allow_resubmission, response_count, status, closed_at, created_at';
 const mapForm = (row: ConsentFormRow): ConsentLocalDraft => ({
   id: row.id,
   title: row.title,
@@ -50,6 +51,7 @@ const mapForm = (row: ConsentFormRow): ConsentLocalDraft => ({
   allowResubmission: row.allow_resubmission,
   responseCount: row.response_count,
   status: row.status,
+  closedAt: row.closed_at ?? undefined,
   sourcePath: row.source_path,
   pageCount: row.page_count,
   pageSizes: row.page_sizes?.length ? row.page_sizes : Array.from({ length: row.page_count }, () => ({ width: 210, height: 297 })),
@@ -117,6 +119,7 @@ export const createRemoteConsentForm = async ({
       recipient_count: recipientMode === 'named' ? recipientCount : 0,
       deadline: settings.deadline || null,
       allow_resubmission: settings.allowResubmission,
+      retention_months: settings.retentionMonths,
     }).select(formColumns).single();
     if (error || !data) fail('가정통신문 수합을 만들지 못했습니다', error);
     if (settings.passwordEnabled && settings.password.trim()) {
