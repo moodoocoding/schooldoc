@@ -83,8 +83,8 @@ test('교사 생성부터 학생 이의와 재확인까지 로컬 흐름이 이�
   const qrRecipientName = page.getByTestId('student-result-qr-name');
   await expect(qrRecipientName).toHaveText('김하늘');
   await expect(qrRecipientName).toHaveCSS('overflow-y', 'visible');
-  // QR만 세야 한다. 카드에는 이미지 저장 버튼의 아이콘도 svg로 들어 있다.
-  await expect(page.locator('[id^="student-result-qr-"] svg')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: /학생 QR 이미지 저장/ })).toHaveCount(0);
+  await expect(page.getByTestId('student-result-qr-card').locator('svg')).toHaveCount(1);
   const qrPdfDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'PDF 다운로드' }).click();
   const downloadedQrPdf = await qrPdfDownload;
@@ -281,31 +281,6 @@ test('결과 안내를 지우기 전에 함께 사라지는 것을 숫자로 알
   await page.getByRole('button', { name: '1학기 수행평가 결과 삭제' }).click();
   await page.getByRole('alertdialog').getByRole('button', { name: '영구 삭제' }).click();
   await expect(page.getByRole('heading', { name: '아직 결과 안내가 없습니다' })).toBeVisible();
-});
-
-test('개인 QR을 한 명씩 이미지로 저장한다', async ({ page }) => {
-  // 배부물 전체를 PDF로 받는 것과 별개로, QR 하나만 떼어 보낼 수 있어야 한다.
-  await page.goto('/tools/student-results/new');
-  await page.getByPlaceholder('예: 2학기 수행평가 결과').fill('QR 저장 확인');
-  await page.getByLabel('1번 학생 성명').fill('김하늘');
-  await page.getByLabel('1번 학생 확인번호').fill('4821');
-  await page.getByLabel('1번 학생 평가 점수 점수').fill('92');
-  await page.getByRole('button', { name: '결과 안내 만들기' }).click();
-  await expect(page).toHaveURL(/\/tools\/student-results\/[0-9a-f-]+$/);
-
-  await page.goto(`${page.url()}/qr-print`);
-  const saveButton = page.getByRole('button', { name: '김하늘 학생 QR 이미지 저장' });
-  await expect(saveButton).toBeVisible();
-
-  const download = await Promise.all([
-    page.waitForEvent('download'),
-    saveButton.click(),
-  ]).then(([event]) => event);
-
-  expect(download.suggestedFilename()).toBe('QR 저장 확인_김하늘_개인QR.png');
-  const path = await download.path();
-  const { statSync } = await import('node:fs');
-  expect(statSync(path!).size).toBeGreaterThan(1000);
 });
 
 test('학생이 결과를 열면 교사 표에 바로 반영된다', async ({ context, page }) => {

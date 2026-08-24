@@ -1,8 +1,7 @@
 import { useRef, useState } from 'react';
-import { AlertCircle, ArrowLeft, Download, ImageDown, LoaderCircle, QrCode } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Download, LoaderCircle, QrCode } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { qrImageFileName, saveQrImage } from '../../utils/qrImage';
 import { getStudentResultsPublicOrigin } from './studentResultsConfig';
 import { paginateStudentResultRecipients } from './studentResultsUtils';
 import { useStudentResultEvent } from './useStudentResults';
@@ -18,7 +17,6 @@ export function StudentResultsQrPrintPage() {
   const pagesRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState('');
-  const [savingQrId, setSavingQrId] = useState('');
 
   if (loading) return <div className="py-20 text-center text-sm font-semibold text-[#526174]">QR 자료를 불러오는 중입니다.</div>;
   if (!event) {
@@ -36,19 +34,6 @@ export function StudentResultsQrPrintPage() {
     : event.recipients;
   const pages = paginateStudentResultRecipients(printableRecipients, STUDENTS_PER_PAGE);
   const personalLink = (token: string) => `${getStudentResultsPublicOrigin()}/s/results/${event.publicToken}?recipient=${token}`;
-  /** 개인 QR 하나만 이미지로 저장한다. 학생 한 명에게만 따로 보낼 때 쓴다. */
-  const downloadQrImage = async (recipientId: string, name: string) => {
-    if (savingQrId) return;
-    setSavingQrId(recipientId);
-    setExportError('');
-    try {
-      await saveQrImage(document.getElementById(`student-result-qr-${recipientId}`), qrImageFileName(`${event.title}_${name}`, '개인QR', '학생 결과 안내'));
-    } catch (error) {
-      setExportError(error instanceof Error ? error.message : 'QR 이미지를 저장하지 못했습니다.');
-    } finally {
-      setSavingQrId('');
-    }
-  };
 
   const downloadPdf = async () => {
     if (isExporting) return;
@@ -81,8 +66,6 @@ export function StudentResultsQrPrintPage() {
             clonedDocument.querySelectorAll<HTMLElement>('.student-result-qr-print-page').forEach((page) => {
               page.style.boxShadow = 'none';
             });
-            // 저장 버튼은 화면에만 둔다. PDF에 찍히면 배부물이 지저분해진다.
-            clonedDocument.querySelectorAll<HTMLElement>('.qr-save-button').forEach((button) => button.remove());
           },
         });
         if (index > 0) pdf.addPage('a4', 'portrait');
@@ -160,7 +143,7 @@ export function StudentResultsQrPrintPage() {
                           {recipient.studentKey}
                         </p>
                       </div>
-                      <div id={`student-result-qr-${recipient.id}`} className="mt-2 flex h-[116px] w-[116px] items-center justify-center bg-white">
+                      <div className="mt-2 flex h-[116px] w-[116px] items-center justify-center bg-white">
                         <QRCodeSVG
                           value={personalLink(recipient.personalToken)}
                           size={116}
@@ -169,16 +152,6 @@ export function StudentResultsQrPrintPage() {
                         />
                       </div>
                       <p className="mt-2 text-[9px] leading-[1.4] text-[#526174]">카메라로 스캔하여 결과를 확인하세요.</p>
-                      <button
-                        type="button"
-                        disabled={savingQrId !== ''}
-                        onClick={() => void downloadQrImage(recipient.id, recipient.name)}
-                        aria-label={`${recipient.name} 학생 QR 이미지 저장`}
-                        className="qr-save-button mt-1 inline-flex min-h-[28px] items-center gap-1 rounded-md px-2 text-[10px] font-bold text-[#0F6CBD] hover:bg-[#EFF6FC] disabled:text-[#94A3B8] print:hidden"
-                      >
-                        {savingQrId === recipient.id ? <LoaderCircle className="h-3 w-3 animate-spin" /> : <ImageDown className="h-3 w-3" />}
-                        {savingQrId === recipient.id ? '저장 중' : '이미지 저장'}
-                      </button>
                     </article>
                   );
                 })}
