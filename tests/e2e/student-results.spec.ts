@@ -167,6 +167,43 @@ test('XLSX 파일을 읽어 학생 결과를 채운다', async ({ page }, testIn
   await expect(page.getByLabel('1번 학생 피드백')).toHaveValue('수학 문제 해결력이 좋습니다.');
 });
 
+test('전 과목 0점 학생은 동의를 받은 뒤에만 미응시자로 제외한다', async ({ page }) => {
+  const importCsv = async () => {
+    await page.getByTestId('student-results-file-input').setInputFiles({
+      name: '미응시_포함.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from([
+        '시험 결과,,,',
+        '성명,국어/20,수학/20,확인번호',
+        '김미응시,0,0,4821',
+        '이응시,18,19,5732',
+      ].join('\n'), 'utf8'),
+    });
+  };
+
+  await page.goto('/tools/student-results/new');
+  await importCsv();
+  await expect(page.getByText('전 과목 점수가 0점이거나 비어 있는 학생 1명')).toBeVisible();
+  await page.getByRole('button', { name: '분석 결과 적용' }).click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toContainText('김미응시');
+  await dialog.getByRole('button', { name: '확인 창 닫기' }).click();
+  await expect(page.getByPlaceholder('예: 2학기 수행평가 결과')).toHaveValue('');
+
+  await page.getByRole('button', { name: '분석 결과 적용' }).click();
+  await page.getByRole('button', { name: '명단에 유지하고 적용' }).click();
+  await expect(page.getByLabel('1번 학생 성명')).toHaveValue('김미응시');
+  await expect(page.getByLabel('2번 학생 성명')).toHaveValue('이응시');
+
+  await page.getByRole('button', { name: '가져오기 취소' }).click();
+  await importCsv();
+  await page.getByRole('button', { name: '분석 결과 적용' }).click();
+  await page.getByRole('button', { name: '제외하고 적용' }).click();
+  await expect(page.getByLabel('1번 학생 성명')).toHaveValue('이응시');
+  await expect(page.getByLabel('2번 학생 성명')).toHaveCount(0);
+  await expect(page.getByText('전 과목 점수가 0점 또는 미입력인 학생 1명을 미응시자로 제외했습니다')).toBeVisible();
+});
+
 test('텍스트 PDF의 안내와 결과 표를 분석해 입력 영역을 채운다', async ({ page }) => {
   const pdf = new jsPDF();
   pdf.text('2026 Semester Result', 15, 20);

@@ -4,7 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import { insertRowAfter, isRowAddKey } from '../../utils/rowEntry';
 import { studentResultsOwnerId } from './studentResultsConfig';
-import { analyzeStudentResultFile, studentResultImportAccept, type StudentResultImportAnalysis } from './studentResultsImport';
+import {
+  analyzeStudentResultFile,
+  findPossibleStudentResultNonParticipants,
+  studentResultImportAccept,
+  type StudentResultImportAnalysis,
+} from './studentResultsImport';
+import { StudentResultConfirmDialog } from './StudentResultConfirmDialog';
 import { createStudentResultEvent } from './studentResultsService';
 import {
   isTextEntryTarget,
@@ -41,6 +47,7 @@ export function StudentResultsCreatePage() {
   const [importAnalysis, setImportAnalysis] = useState<StudentResultImportAnalysis | null>(null);
   const [pendingImportFileName, setPendingImportFileName] = useState('');
   const [pendingImport, setPendingImport] = useState<StudentResultImportAnalysis | null>(null);
+  const [nonParticipantDialogOpen, setNonParticipantDialogOpen] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [undoNotice, setUndoNotice] = useState('');
   const [saving, setSaving] = useState(false);
@@ -151,6 +158,7 @@ export function StudentResultsCreatePage() {
     setError('');
     setErrorFieldId('');
     setFileImportError('');
+    setNonParticipantDialogOpen(false);
     try {
       const analysis = await analyzeStudentResultFile(file);
       setPendingImportFileName(file.name);
@@ -164,25 +172,58 @@ export function StudentResultsCreatePage() {
     }
   };
 
-  const applyImport = () => {
-    if (!pendingImport) return;
+  const commitImport = (analysis: StudentResultImportAnalysis) => {
     remember('결과 파일 불러오기');
-    setTitle(pendingImport.title);
-    setDescription(pendingImport.description);
-    setColumns(pendingImport.columns);
-    setRecipients(pendingImport.recipients);
+    setTitle(analysis.title);
+    setDescription(analysis.description);
+    setColumns(analysis.columns);
+    setRecipients(analysis.recipients);
     setImportedFileName(pendingImportFileName);
-    setImportAnalysis(pendingImport);
+    setImportAnalysis(analysis);
     setPendingImport(null);
     setPendingImportFileName('');
+    setNonParticipantDialogOpen(false);
     setError('');
     setErrorFieldId('');
     setFileImportError('');
   };
 
+  const possibleNonParticipants = pendingImport
+    ? findPossibleStudentResultNonParticipants(pendingImport)
+    : [];
+
+  const applyImport = () => {
+    if (!pendingImport) return;
+    if (possibleNonParticipants.length > 0) {
+      setNonParticipantDialogOpen(true);
+      return;
+    }
+    commitImport(pendingImport);
+  };
+
+  const keepPossibleNonParticipants = () => {
+    if (!pendingImport) return;
+    commitImport(pendingImport);
+  };
+
+  const excludePossibleNonParticipants = () => {
+    if (!pendingImport) return;
+    const excluded = new Set(possibleNonParticipants);
+    const names = possibleNonParticipants.map((recipient) => recipient.name).join(', ');
+    commitImport({
+      ...pendingImport,
+      recipients: pendingImport.recipients.filter((recipient) => !excluded.has(recipient)),
+      warnings: [
+        ...pendingImport.warnings,
+        `전 과목 점수가 0점 또는 미입력인 학생 ${possibleNonParticipants.length}명을 미응시자로 제외했습니다: ${names}`,
+      ],
+    });
+  };
+
   const cancelPendingImport = () => {
     setPendingImport(null);
     setPendingImportFileName('');
+    setNonParticipantDialogOpen(false);
     setFileImportError('');
   };
 
@@ -339,6 +380,13 @@ export function StudentResultsCreatePage() {
               </ul>
             ) : null}
 
+            {possibleNonParticipants.length > 0 ? (
+              <div className="mt-3 flex items-start gap-2 border border-[#F5D08A] bg-[#FFF9ED] px-3 py-2 text-xs font-semibold leading-5 text-[#76520E]">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                전 과목 점수가 0점이거나 비어 있는 학생 {possibleNonParticipants.length}명은 적용할 때 미응시자로 제외할지 확인합니다.
+              </div>
+            ) : null}
+
             <div className="mt-5 flex flex-wrap justify-end gap-2">
               <button type="button" onClick={cancelPendingImport} className="min-h-[44px] rounded-lg border border-[#C8D0DA] bg-white px-4 text-sm font-bold">취소</button>
               <button type="button" onClick={applyImport} className="min-h-[44px] rounded-lg bg-[#0F6CBD] px-5 text-sm font-bold text-white hover:bg-[#0B5B9F]">분석 결과 적용</button>
@@ -409,6 +457,18 @@ export function StudentResultsCreatePage() {
           <span className="h-px flex-1 bg-[#DCE3EA]" />
         </div>
       </section>
+
+      {nonParticipantDialogOpen && pendingImport && possibleNonParticipants.length > 0 ? (
+        <StudentResultConfirmDialog
+          title={`미응시 추정 학생 ${possibleNonParticipants.length}명을 제외할까요?`}
+          description={`모든 과목 점수가 0점이거나 비어 있는 학생은 ${possibleNonParticipants.map((recipient) => recipient.name).join(', ')}입니다. 실제 미응시가 맞는지 확인해 주세요. 제외하면 가져올 명단에서 삭제됩니다.`}
+          cancelLabel="명단에 유지하고 적용"
+          confirmLabel="제외하고 적용"
+          onDismiss={() => setNonParticipantDialogOpen(false)}
+          onCancel={keepPossibleNonParticipants}
+          onConfirm={excludePossibleNonParticipants}
+        />
+      ) : null}
 
       <section className="border-y border-[#DCE3EA] bg-white px-4 py-6 sm:px-6">
         <div>

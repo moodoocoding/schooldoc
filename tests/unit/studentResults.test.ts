@@ -12,7 +12,11 @@ import {
 } from '../../src/features/studentResults/studentResultsStore';
 import { getStudentResultValidationIssue, paginateStudentResultRecipients, validateStudentResultDraft } from '../../src/features/studentResults/studentResultsUtils';
 import type { StudentResultDraft } from '../../src/features/studentResults/types';
-import { analyzeStudentResultRows, reconstructStudentResultPdfRows } from '../../src/features/studentResults/studentResultsImport';
+import {
+  analyzeStudentResultRows,
+  findPossibleStudentResultNonParticipants,
+  reconstructStudentResultPdfRows,
+} from '../../src/features/studentResults/studentResultsImport';
 
 const memory = new Map<string, string>();
 const localStorageStub = {
@@ -173,6 +177,20 @@ describe('학생 결과 파일 분석', () => {
     expect(analysis.warnings.join(' ')).toContain('학년');
   });
 
+  it('전 과목이 0점 또는 미입력인 학생만 미응시 후보로 찾는다', () => {
+    const analysis = analyzeStudentResultRows([
+      ['성명', '국어/20', '수학/20'],
+      ['김미응시', 0, 0],
+      ['박미입력', '', ''],
+      ['이응시', 0, 1],
+    ]);
+
+    expect(findPossibleStudentResultNonParticipants(analysis).map((recipient) => recipient.name)).toEqual([
+      '김미응시',
+      '박미입력',
+    ]);
+  });
+
   it('PDF 글자의 좌표를 표의 행과 열로 복원한다', () => {
     const item = (text: string, x: number, y: number) => ({ text, x, y });
     const rows = reconstructStudentResultPdfRows([[
@@ -210,5 +228,52 @@ describe('학생 결과 파일 분석', () => {
       feedback: 'Good work',
     });
     expect(Object.values(analysis.recipients[0].values)).toEqual([93]);
+  });
+
+  it('PDF에서 조각난 과목 머리글을 실제 점수 열에 맞춰 합친다', () => {
+    const item = (text: string, x: number, y: number) => ({ text, x, y });
+    const rows = reconstructStudentResultPdfRows([[
+      item('기초학력 진단·보정 결과서', 190, 780),
+      item('이름', 72.52, 703.4),
+      item('국어', 135.09, 703.4),
+      item('(', 148.84, 703.4),
+      item('가형', 152.16, 703.4),
+      item(')', 165.91, 703.4),
+      item('수학', 207.87, 703.4),
+      item('(', 221.61, 703.4),
+      item('가형', 224.94, 703.4),
+      item(')', 238.68, 703.4),
+      item('전체', 493.54, 703.4),
+      item('맞은', 509.2, 703.4),
+      item('개수', 524.86, 703.4),
+      item('강서윤', 69.08, 685.4),
+      item('20', 147.29, 685.4),
+      item('19', 220.61, 685.4),
+      item('39/40', 503.8, 685.4),
+      item('경태현', 69.08, 666.65),
+      item('19', 147.83, 666.65),
+      item('16', 220.61, 666.65),
+      item('35/40', 503.21, 666.65),
+      item('김다은', 69.08, 648.65),
+      item('0/40', 505.63, 648.65),
+    ]]);
+
+    expect(rows).toEqual([
+      ['기초학력 진단·보정 결과서'],
+      ['이름', '국어(가형)', '수학(가형)', '전체 맞은 개수'],
+      ['강서윤', '20', '19', '39/40'],
+      ['경태현', '19', '16', '35/40'],
+      ['김다은', '', '', '0/40'],
+    ]);
+
+    const analysis = analyzeStudentResultRows(rows, 'PDF 1쪽');
+    expect(analysis.columns.map(({ label, maxScore }) => ({ label, maxScore }))).toEqual([
+      { label: '국어(가형)', maxScore: 20 },
+      { label: '수학(가형)', maxScore: 20 },
+    ]);
+    expect(analysis.recipients).toHaveLength(3);
+    expect(Object.values(analysis.recipients[0].values)).toEqual([20, 19]);
+    expect(analysis.recipients[2]).toMatchObject({ name: '김다은' });
+    expect(Object.values(analysis.recipients[2].values)).toEqual(['', '']);
   });
 });

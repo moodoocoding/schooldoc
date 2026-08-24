@@ -19,6 +19,16 @@ export interface StudentResultImportAnalysis {
   warnings: string[];
 }
 
+/** 전 과목 점수가 0점이거나 비어 있어 미응시 가능성이 있는 학생을 찾는다. */
+export const findPossibleStudentResultNonParticipants = (analysis: StudentResultImportAnalysis) => (
+  analysis.columns.length === 0 ? [] : analysis.recipients.filter((recipient) => (
+    analysis.columns.every((column) => {
+      const value = recipient.values[column.id];
+      return value === '' || value === 0;
+    })
+  ))
+);
+
 const normalizeHeader = (value: unknown) => String(value ?? '')
   .normalize('NFKC')
   .trim()
@@ -33,9 +43,11 @@ const FEEDBACK_HEADERS = new Set(['피드백', '종합의견', '교사의견', '
 const METADATA_HEADERS = new Set(['학년', '반', '학급', '소속', '학교', '학교명', '출석번호']);
 const MAX_IMPORT_FILE_SIZE = 20 * 1024 * 1024;
 const MAX_PDF_PAGES = 100;
+const PDF_COLUMN_X_TOLERANCE = 12;
 
 const text = (value: unknown) => String(value ?? '').trim();
 const isNumericCell = (value: unknown) => value !== '' && value !== null && value !== undefined && Number.isFinite(Number(value));
+const isNumericPdfToken = (value: unknown) => /^[-+]?\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?)?$/.test(text(value));
 
 const scoreHeader = (header: string) => {
   const explicitMax = header.match(/(?:\(|\[|\/)\s*(\d+(?:\.\d+)?)\s*점?\s*(?:\)|\])?/)?.[1]
@@ -107,7 +119,59 @@ const cellsFromPdfLine = (
     ), 0);
     cells[nearestIndex].push(item.text.trim());
   });
-  return cells.map((parts) => parts.join(' ').replace(/\s+/g, ' ').trim());
+  return cells.map((parts) => parts
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([([])/g, '$1')
+    .replace(/([([])\s+/g, '$1')
+    .replace(/\s+([)\]])/g, '$1')
+    .trim());
+};
+
+const knownPdfHeader = (value: string) => {
+  const normalized = normalizeHeader(value);
+  return NAME_HEADERS.has(normalized)
+    || KEY_HEADERS.has(normalized)
+    || CODE_HEADERS.has(normalized)
+    || FEEDBACK_HEADERS.has(normalized)
+    || METADATA_HEADERS.has(normalized);
+};
+
+const mergeNearbyPdfAnchors = (anchors: readonly number[]) => {
+  const clusters: number[][] = [];
+  anchors.toSorted((a, b) => a - b).forEach((anchor) => {
+    const cluster = clusters.at(-1);
+    const center = cluster ? cluster.reduce((sum, value) => sum + value, 0) / cluster.length : null;
+    if (cluster && center !== null && Math.abs(center - anchor) <= PDF_COLUMN_X_TOLERANCE) cluster.push(anchor);
+    else clusters.push([anchor]);
+  });
+  return clusters.map((cluster) => cluster.reduce((sum, value) => sum + value, 0) / cluster.length);
+};
+
+const inferPdfColumnAnchors = (
+  pageLines: readonly (readonly (readonly StudentResultPdfTextItem[])[])[],
+  header: { pageIndex: number; lineIndex: number; items: readonly StudentResultPdfTextItem[] },
+) => {
+  const nameItem = header.items.find((item) => NAME_HEADERS.has(normalizeHeader(item.text)));
+  if (!nameItem) return header.items.map((item) => item.x);
+
+  const numericAnchors: number[] = [];
+  pageLines.forEach((lines, pageIndex) => {
+    lines.forEach((items, lineIndex) => {
+      if (pageIndex < header.pageIndex || (pageIndex === header.pageIndex && lineIndex <= header.lineIndex)) return;
+      if (headerLineScore(items) >= 0) return;
+      const hasNameCell = items.some((item) => (
+        !isNumericPdfToken(item.text)
+        && Math.abs(item.x - nameItem.x) <= PDF_COLUMN_X_TOLERANCE * 4
+      ));
+      if (!hasNameCell) return;
+      numericAnchors.push(...items.filter((item) => isNumericPdfToken(item.text)).map((item) => item.x));
+    });
+  });
+
+  if (numericAnchors.length === 0) return header.items.map((item) => item.x);
+  const reservedAnchors = header.items.filter((item) => knownPdfHeader(item.text)).map((item) => item.x);
+  return mergeNearbyPdfAnchors([...reservedAnchors, ...numericAnchors]);
 };
 
 /** PDF 글자의 위치를 표의 열로 되돌린다. 숫자는 추측하지 않고 원문에 있는 값만 사용한다. */
@@ -127,8 +191,8 @@ export const reconstructStudentResultPdfRows = (
   );
   if (!header || header.score < 0) return pageLines.flatMap((lines) => lines.map((items) => items.map((item) => item.text)));
 
-  const canonicalHeaders = header.items.map((item) => item.text.trim());
-  const canonicalAnchors = header.items.map((item) => item.x);
+  const canonicalAnchors = inferPdfColumnAnchors(pageLines, header);
+  const canonicalHeaders = cellsFromPdfLine(header.items, canonicalAnchors);
   const nameIndex = canonicalHeaders.findIndex((value) => NAME_HEADERS.has(normalizeHeader(value)));
   const rows: string[][] = [];
 
@@ -155,7 +219,9 @@ export const reconstructStudentResultPdfRows = (
 
       const cells = cellsFromPdfLine(items, anchors);
       const hasName = Boolean(cells[nameIndex]?.trim());
-      const hasNumericValue = cells.some((value, index) => index !== nameIndex && isNumericCell(value));
+      const hasNumericValue = cells.some((value, index) => (
+        index !== nameIndex && (isNumericCell(value) || isNumericPdfToken(value))
+      ));
       if (hasName && hasNumericValue) rows.push(cells);
     });
   });
