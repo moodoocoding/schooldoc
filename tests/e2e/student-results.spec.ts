@@ -80,6 +80,9 @@ test('교사 생성부터 학생 이의와 재확인까지 로컬 흐름이 이�
   await expect(page.getByRole('heading', { name: '개인 QR PDF' })).toBeVisible();
   await expect(page.getByText('선택 1명 · PDF A4 세로')).toBeVisible();
   await expect(page.getByTestId('student-result-qr-card')).toHaveCount(1);
+  const qrRecipientName = page.getByTestId('student-result-qr-name');
+  await expect(qrRecipientName).toHaveText('김하늘');
+  await expect(qrRecipientName).toHaveCSS('overflow-y', 'visible');
   // QR만 세야 한다. 카드에는 이미지 저장 버튼의 아이콘도 svg로 들어 있다.
   await expect(page.locator('[id^="student-result-qr-"] svg')).toHaveCount(1);
   const qrPdfDownload = page.waitForEvent('download');

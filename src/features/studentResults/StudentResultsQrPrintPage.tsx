@@ -150,8 +150,15 @@ export function StudentResultsQrPrintPage() {
                   return (
                     <article key={recipient.id} data-testid="student-result-qr-card" className="flex min-h-0 flex-col items-center rounded-lg border border-[#C8D0DA] px-4 py-3 text-center">
                       <div className="w-full min-w-0 border-b border-[#E2E8F0] pb-2">
-                        <p className="truncate text-[17px] font-extrabold text-[#0F172A]">{recipient.name}</p>
-                        <p className="mt-0.5 truncate text-[10px] font-semibold text-[#64748B]">{recipient.studentKey}</p>
+                        <p
+                          data-testid="student-result-qr-name"
+                          className="max-w-full break-words px-1 text-[17px] font-extrabold leading-[1.45] text-[#0F172A] [overflow-wrap:anywhere]"
+                        >
+                          {recipient.name}
+                        </p>
+                        <p className="mt-0.5 max-w-full break-all px-1 text-[10px] font-semibold leading-[1.45] text-[#64748B]">
+                          {recipient.studentKey}
+                        </p>
                       </div>
                       <div id={`student-result-qr-${recipient.id}`} className="mt-2 flex h-[116px] w-[116px] items-center justify-center bg-white">
                         <QRCodeSVG
