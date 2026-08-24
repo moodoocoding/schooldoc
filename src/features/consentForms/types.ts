@@ -38,6 +38,7 @@ export interface ConsentShareSettings {
   passwordEnabled: boolean;
   password: string;
   allowResubmission: boolean;
+  retentionMonths: number;
 }
 
 export interface ConsentLocalDraft {
@@ -57,6 +58,8 @@ export interface ConsentLocalDraft {
   allowResubmission: boolean;
   responseCount: number;
   status: 'open' | 'closed';
+  /** 업무 종료 시각. 진행 중이면 비어 있다. */
+  closedAt?: string;
   pageCount?: number;
   pageSizes?: ConsentPageSize[];
   /** 보관 개월. 지나면 정리 화면에 모이지만 자동으로 지워지지는 않는다. */

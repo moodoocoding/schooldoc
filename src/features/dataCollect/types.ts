@@ -45,6 +45,8 @@ export interface DataCollection {
   submissions: DataCollectionSubmission[];
   createdAt: string;
   updatedAt: string;
+  /** 수합 종료 시각. 다시 열면 비워진다. */
+  closedAt?: string;
 }
 
 export interface DataCollectionDraft {

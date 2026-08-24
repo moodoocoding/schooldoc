@@ -129,7 +129,7 @@ export function ConsentFormsManagePage() {
       return;
     }
     const passwordHash = passwordEnabled && newPassword.trim() ? await hashConsentPassword(newPassword.trim()) : passwordEnabled ? draft.passwordHash : '';
-    const updated = updateConsentLocalDraft(draft.id, { title: title.trim() || draft.title, deadline, allowResubmission, passwordEnabled, passwordHash });
+    const updated = updateConsentLocalDraft(draft.id, { title: title.trim() || draft.title, deadline, allowResubmission, passwordEnabled, passwordHash, retentionMonths });
     if (updated) setDraft(updated);
     setNewPassword('');
     setEditing(false);
@@ -144,7 +144,8 @@ export function ConsentFormsManagePage() {
       if (updated) setDraft(updated);
       return;
     }
-    const updated = updateConsentLocalDraft(draft.id, { status: draft.status === 'open' ? 'closed' : 'open' });
+    const closing = draft.status === 'open';
+    const updated = updateConsentLocalDraft(draft.id, { status: closing ? 'closed' : 'open', closedAt: closing ? new Date().toISOString() : undefined });
     if (updated) setDraft(updated);
   };
 

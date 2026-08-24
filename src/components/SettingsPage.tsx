@@ -9,6 +9,9 @@ import type { SelectedSchool } from '../features/specialRooms/types';
 import { useAppearanceSettings } from '../features/settings/appearanceContext';
 import { SCHOOLDOC_THEMES } from '../features/settings/appearanceSettings';
 import { loadTeacherProfile, saveTeacherProfile } from '../features/settings/profileSettings';
+import { PrivacyRetentionPanel } from '../features/settings/PrivacyRetentionPanel';
+import { isConsentFormsDemoMode } from '../features/consentForms/consentFormsConfig';
+import { isDataCollectDemoMode } from '../features/dataCollect/dataCollectConfig';
 
 export const SettingsPage: React.FC = () => {
   const { configured, displayName, error, loading, signIn, user } = useTeacherAuth();
@@ -19,7 +22,6 @@ export const SettingsPage: React.FC = () => {
   const [teacherName, setTeacherName] = useState<string>('');
   const [gradeClass, setGradeClass] = useState<string>('');
   const [profileSaved, setProfileSaved] = useState<boolean>(false);
-  const [autoPurgeDays, setAutoPurgeDays] = useState<number>(90);
   const accountLabel = displayName || '교사 계정';
 
   useEffect(() => {
@@ -228,9 +230,12 @@ export const SettingsPage: React.FC = () => {
         {activeTab === 'signature' && (
           <div className="p-6 sm:p-8 space-y-6">
             <div className="space-y-2">
-              <h3 className="text-base font-bold text-[#0F172A]">전자서명 및 도장 등록</h3>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-base font-bold text-[#0F172A]">전자서명 및 도장 등록</h3>
+                <span className="rounded-md border border-[#B9D9F2] bg-[#EFF6FC] px-2 py-1 text-[11px] font-bold text-[#0F6CBD]">개발 중</span>
+              </div>
               <p className="text-xs text-[#64748B]">
-                가정통신문 결재 및 교직원 서명 수합 시 자동으로 합성될 서명 이미지를 관리합니다.
+                서명과 도장을 계정에 저장하고 문서 업무에서 불러오는 기능을 준비하고 있습니다. 현재는 다른 기능에 연결되지 않습니다.
               </p>
             </div>
 
@@ -241,11 +246,11 @@ export const SettingsPage: React.FC = () => {
                 </div>
                 <span className="text-xs font-bold text-[#0F172A] block">직인 / 직인 도장 이미지</span>
                 <button
-                  disabled={!isLoggedIn}
+                  disabled
                   className="bg-white border border-[#DCE3EA] hover:border-[#0F6CBD] text-[#0F172A] text-xs font-semibold px-4 py-2 rounded-lg flex items-center justify-center gap-1.5 mx-auto disabled:opacity-50"
                 >
                   <Upload className="w-3.5 h-3.5" />
-                  <span>PNG 이미지 업로드</span>
+                  <span>PNG 이미지 업로드 · 개발 중</span>
                 </button>
               </div>
 
@@ -255,10 +260,10 @@ export const SettingsPage: React.FC = () => {
                 </div>
                 <span className="text-xs font-bold text-[#0F172A] block">터치 서명 직접 그리기</span>
                 <button
-                  disabled={!isLoggedIn}
+                  disabled
                   className="bg-white border border-[#DCE3EA] hover:border-[#0F6CBD] text-[#0F172A] text-xs font-semibold px-4 py-2 rounded-lg flex items-center justify-center gap-1.5 mx-auto disabled:opacity-50"
                 >
-                  <span>캔버스 서명 작성</span>
+                  <span>캔버스 서명 작성 · 개발 중</span>
                 </button>
               </div>
             </div>
@@ -267,33 +272,8 @@ export const SettingsPage: React.FC = () => {
 
         {/* Tab 3: Security */}
         {activeTab === 'security' && (
-          <div className="p-6 sm:p-8 space-y-6">
-            <div className="space-y-4 max-w-lg">
-              <h3 className="text-base font-bold text-[#0F172A]">개인정보 보관 및 파기 설정</h3>
-              <p className="text-xs text-[#64748B]">
-                개인정보보호법에 의거, 수합 완료된 제출 서류 및 개인키의 자동 삭제 기간을 설정합니다.
-              </p>
-
-              <div className="space-y-2 pt-2">
-                <label className="text-xs font-bold text-[#0F172A] block">수합 서류 자동 파기 기간</label>
-                <div className="flex gap-3">
-                  {[30, 90, 365].map((days) => (
-                    <button
-                      key={days}
-                      onClick={() => setAutoPurgeDays(days)}
-                      disabled={!isLoggedIn}
-                      className={`px-4 py-2 rounded-lg text-xs font-bold border transition ${
-                        autoPurgeDays === days
-                          ? 'bg-[#0F6CBD] text-white border-[#0F6CBD]'
-                          : 'bg-white text-[#334155] border-[#DCE3EA] hover:bg-[#F6F8FB]'
-                      } disabled:opacity-50`}
-                    >
-                      {days}일 후 자동 파기
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+          <div className="p-6 sm:p-8">
+            <PrivacyRetentionPanel userId={user?.id ?? ''} isLoggedIn={isLoggedIn || isConsentFormsDemoMode || isDataCollectDemoMode} />
           </div>
         )}
 

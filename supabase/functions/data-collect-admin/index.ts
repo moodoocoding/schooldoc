@@ -46,7 +46,7 @@ const ensurePath = (path: string, userId: string, collectionId?: string) => {
   if (parts.length < 2 || parts[0] !== userId || (collectionId && parts[1] !== collectionId)) throw new HttpError(422, '파일 저장 경로가 올바르지 않습니다.');
 };
 
-interface CollectionRow { id: string; owner_id: string; public_token: string; title: string; description: string; kind: string; mode: string; allow_walk_in: boolean; template_path: string | null; template_name_ciphertext: string | null; template_size: number | null; template_mime: string | null; status: 'open' | 'closed'; due_at: string | null; password_digest: string | null; allow_resubmit: boolean; retention_months: number; created_at: string; updated_at: string; }
+interface CollectionRow { id: string; owner_id: string; public_token: string; title: string; description: string; kind: string; mode: string; allow_walk_in: boolean; template_path: string | null; template_name_ciphertext: string | null; template_size: number | null; template_mime: string | null; status: 'open' | 'closed'; due_at: string | null; password_digest: string | null; allow_resubmit: boolean; retention_months: number; closed_at: string | null; created_at: string; updated_at: string; }
 interface TargetRow { id: string; collection_id: string; row_number: number; label_ciphertext: string; owner_ciphertext: string; display_label: string; display_owner: string; personal_token: string; }
 interface FileRow { id: string; collection_id: string; target_id: string | null; response_kind: 'confirmed' | 'corrected' | 'submitted'; revision: number; is_current: boolean; storage_path: string | null; original_name_ciphertext: string | null; content_hash: string | null; byte_size: number | null; mime_type: string | null; note_ciphertext: string | null; uploaded_at: string; }
 
@@ -81,7 +81,7 @@ const serialize = async (collection: CollectionRow, userId: string) => {
       return { id: target.id, rowNumber: target.row_number, label: identity.label, owner: identity.owner, personalToken: target.personal_token };
     })),
     submissions: await Promise.all(files.map(async (file) => ({ id: file.id, targetId: file.target_id ?? '', revision: file.revision, decision: file.response_kind, note: file.note_ciphertext ? await dataCollectCrypto.decryptPayload<string>(file.note_ciphertext) : '', uploadedAt: file.uploaded_at, file: file.storage_path ? { originalName: file.original_name_ciphertext ? await dataCollectCrypto.decryptPayload<string>(file.original_name_ciphertext) : '제출 파일', mimeType: file.mime_type ?? 'application/octet-stream', byteSize: file.byte_size ?? 0, dataUrl: signed.urls.get(file.storage_path) ?? '' } : undefined }))),
-    createdAt: collection.created_at, updatedAt: collection.updated_at,
+    createdAt: collection.created_at, updatedAt: collection.updated_at, closedAt: collection.closed_at ?? undefined,
   };
 };
 
@@ -192,10 +192,16 @@ Deno.serve(async (request) => {
       const row = await db.from('data_collections').select('id').eq('id', id).eq('owner_id', userId).maybeSingle();
       if (row.error) throw row.error;
       if (!row.data) throw new HttpError(404, '자료 수합을 찾을 수 없습니다.');
+      const targetCount = await db.from('data_collection_targets').select('id', { count: 'exact', head: true }).eq('collection_id', id);
+      if (targetCount.error) throw targetCount.error;
+      const fileCount = await db.from('data_collection_files').select('id', { count: 'exact', head: true }).eq('collection_id', id);
+      if (fileCount.error) throw fileCount.error;
       await removeAll(COLLECTION_TEMPLATE_BUCKET, dataCollectTemplatePrefix(userId, id));
       await removeAll(FILE_BUCKET, dataCollectSubmissionPrefix(id));
       const deleted = await db.from('data_collections').delete().eq('id', id).eq('owner_id', userId);
       if (deleted.error) throw deleted.error;
+      const logged = await db.from('privacy_purge_log').insert({ owner_id: userId, resource_kind: 'data-collect', resource_id: id, record_count: targetCount.count ?? 0, file_count: fileCount.count ?? 0 });
+      if (logged.error) console.error('privacy purge log failed', logged.error);
       return json(200, { deleted: true });
     }
     throw new HttpError(400, '지원하지 않는 요청입니다.');

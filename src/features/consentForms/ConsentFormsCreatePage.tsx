@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, ArrowLeft, Check, FileText, LoaderCircle, RotateCcw, Upload } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTeacherAuth } from '../../auth/teacherAuth';
+import { getDefaultRetentionMonths, loadPrivacyRetentionSettings } from '../settings/privacyRetentionSettings';
 import { analyzeConsentDocument, consentDocumentAccept } from './consentDocumentImport';
 import { ConsentFieldEditor } from './ConsentFieldEditor';
 import { ConsentRecipientsStep } from './ConsentRecipientsStep';
@@ -25,6 +27,7 @@ const fileToDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
 
 export function ConsentFormsCreatePage() {
   const navigate = useNavigate();
+  const { user } = useTeacherAuth();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('edit') ?? '';
   const localEditDraft = editId && isConsentFormsDemoMode ? getConsentLocalDraft(editId) : null;
@@ -45,9 +48,18 @@ export function ConsentFormsCreatePage() {
   const [fields, setFields] = useState<ConsentFieldDraft[]>(editDraft?.fields ?? []);
   const [recipientMode, setRecipientMode] = useState<ConsentRecipientMode>(editDraft?.recipientMode ?? 'named');
   const [recipients, setRecipients] = useState<ConsentRecipientDraft[]>([]);
-  const [shareSettings, setShareSettings] = useState<ConsentShareSettings>({ deadline: editDraft?.deadline ?? '', passwordEnabled: editDraft?.passwordEnabled ?? false, password: '', allowResubmission: editDraft?.allowResubmission ?? false });
+  const [shareSettings, setShareSettings] = useState<ConsentShareSettings>({ deadline: editDraft?.deadline ?? '', passwordEnabled: editDraft?.passwordEnabled ?? false, password: '', allowResubmission: editDraft?.allowResubmission ?? false, retentionMonths: editDraft?.retentionMonths ?? getDefaultRetentionMonths(user?.id ?? '') });
   const [restoredAt, setRestoredAt] = useState('');
   const restoredRef = useRef(false);
+
+  useEffect(() => {
+    if (editDraft) return;
+    let active = true;
+    void loadPrivacyRetentionSettings(user?.id ?? '').then((settings) => {
+      if (active) setShareSettings((current) => ({ ...current, retentionMonths: settings.defaultRetentionMonths }));
+    });
+    return () => { active = false; };
+  }, [editDraft, user?.id]);
 
   useEffect(() => () => { if (objectUrl) URL.revokeObjectURL(objectUrl); }, [objectUrl]);
 
@@ -92,12 +104,12 @@ export function ConsentFormsCreatePage() {
       setFileName(draft.fileName);
       setObjectUrl(URL.createObjectURL(file));
       setRecipientMode(draft.recipientMode);
-      setShareSettings({ deadline: draft.deadline, passwordEnabled: draft.passwordEnabled, password: '', allowResubmission: draft.allowResubmission });
+      setShareSettings({ deadline: draft.deadline, passwordEnabled: draft.passwordEnabled, password: '', allowResubmission: draft.allowResubmission, retentionMonths: draft.retentionMonths ?? getDefaultRetentionMonths(user?.id ?? '') });
       setStep(restoredStep(draft));
       setRestoredAt(draft.savedAt);
     })();
     return () => { active = false; };
-  }, [editId]);
+  }, [editId, user?.id]);
 
   // 작업 내용을 이어서 임시 보관한다. 잦은 저장을 막으려 잠시 모았다 쓴다.
   useEffect(() => {
@@ -106,7 +118,7 @@ export function ConsentFormsCreatePage() {
       void saveConsentDraft({
         savedAt: new Date().toISOString(), editId, title, description, step, fields, analysis,
         recipientMode, deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled,
-        allowResubmission: shareSettings.allowResubmission, fileName: fileName || analysis.fileName, file: sourceFile,
+        allowResubmission: shareSettings.allowResubmission, retentionMonths: shareSettings.retentionMonths, fileName: fileName || analysis.fileName, file: sourceFile,
       });
     }, 600);
     return () => window.clearTimeout(timer);
@@ -131,7 +143,7 @@ export function ConsentFormsCreatePage() {
         setDescription(form.description);
         setFields(form.fields);
         setRecipientMode(form.recipientMode);
-        setShareSettings({ deadline: form.deadline, passwordEnabled: form.passwordEnabled, password: '', allowResubmission: form.allowResubmission });
+        setShareSettings({ deadline: form.deadline, passwordEnabled: form.passwordEnabled, password: '', allowResubmission: form.allowResubmission, retentionMonths: form.retentionMonths ?? getDefaultRetentionMonths(user?.id ?? '') });
         setSourceFile(file);
         setFileName(file.name);
         setAnalysis(nextAnalysis);
@@ -142,7 +154,7 @@ export function ConsentFormsCreatePage() {
     };
     void load();
     return () => { active = false; };
-  }, [editId]);
+  }, [editId, user?.id]);
 
   const resetFile = () => {
     void clearConsentDraft();
@@ -175,7 +187,7 @@ export function ConsentFormsCreatePage() {
     try {
       if (!isConsentFormsDemoMode) {
         if (editDraft) {
-          await updateRemoteConsentForm(editDraft.id, { title: title.trim() || editDraft.title, description: description.trim(), fields, pageCount: analysis.pageCount, pageSizes: analysis.pageSizes, fileName: sourceFile.name, sourceFile, deadline: shareSettings.deadline, allowResubmission: shareSettings.allowResubmission, passwordEnabled: shareSettings.passwordEnabled, password: shareSettings.password });
+          await updateRemoteConsentForm(editDraft.id, { title: title.trim() || editDraft.title, description: description.trim(), fields, pageCount: analysis.pageCount, pageSizes: analysis.pageSizes, fileName: sourceFile.name, sourceFile, deadline: shareSettings.deadline, allowResubmission: shareSettings.allowResubmission, passwordEnabled: shareSettings.passwordEnabled, password: shareSettings.password, retentionMonths: shareSettings.retentionMonths });
           await clearConsentDraft();
           navigate(`/tools/consent-forms/${editDraft.id}`);
         } else {
@@ -196,11 +208,11 @@ export function ConsentFormsCreatePage() {
       }
       const passwordHash = shareSettings.passwordEnabled ? shareSettings.password.trim() ? await hashConsentPassword(shareSettings.password.trim()) : editDraft?.passwordHash ?? '' : '';
       if (editDraft) {
-        updateConsentLocalDraft(editDraft.id, { title, fileName: analysis.fileName, fieldCount: fields.length, description, fields, pageCount: analysis.pageCount, pageSizes: analysis.pageSizes, deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled, passwordHash: passwordHash || editDraft.passwordHash, allowResubmission: shareSettings.allowResubmission, sourcePdfDataUrl: await fileToDataUrl(sourceFile) });
+        updateConsentLocalDraft(editDraft.id, { title, fileName: analysis.fileName, fieldCount: fields.length, description, fields, pageCount: analysis.pageCount, pageSizes: analysis.pageSizes, deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled, passwordHash: passwordHash || editDraft.passwordHash, allowResubmission: shareSettings.allowResubmission, retentionMonths: shareSettings.retentionMonths, sourcePdfDataUrl: await fileToDataUrl(sourceFile) });
         await clearConsentDraft();
         navigate(`/tools/consent-forms/${editDraft.id}`);
       } else {
-        addConsentLocalDraft({ id: crypto.randomUUID(), title, fileName: analysis.fileName, fieldCount: fields.length, recipientMode, recipientCount: recipientMode === 'named' ? recipients.length : 0, createdAt: new Date().toISOString(), description, fields, publicToken: crypto.randomUUID(), deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled, passwordHash, allowResubmission: shareSettings.allowResubmission, responseCount: 0, status: 'open', pageCount: analysis.pageCount, pageSizes: analysis.pageSizes, sourcePdfDataUrl: await fileToDataUrl(sourceFile) });
+        addConsentLocalDraft({ id: crypto.randomUUID(), title, fileName: analysis.fileName, fieldCount: fields.length, recipientMode, recipientCount: recipientMode === 'named' ? recipients.length : 0, createdAt: new Date().toISOString(), description, fields, publicToken: crypto.randomUUID(), deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled, passwordHash, allowResubmission: shareSettings.allowResubmission, responseCount: 0, status: 'open', retentionMonths: shareSettings.retentionMonths, pageCount: analysis.pageCount, pageSizes: analysis.pageSizes, sourcePdfDataUrl: await fileToDataUrl(sourceFile) });
         await clearConsentDraft();
         navigate('/tools/consent-forms');
       }

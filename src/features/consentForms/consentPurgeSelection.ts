@@ -1,4 +1,5 @@
 import type { ConsentLocalDraft } from './types';
+import { retentionDueAt } from '../settings/privacyRetention';
 
 /**
  * 보유 기간이 지난 수합을 골라 정리 화면에 모은다.
@@ -11,17 +12,12 @@ export const retentionMonthsOf = (form: Pick<ConsentLocalDraft, 'retentionMonths
   return Number.isInteger(months) && (months as number) > 0 ? months as number : DEFAULT_RETENTION_MONTHS;
 };
 
-/** 만든 날로부터 보유 개월이 지난 시점. 말일 넘침은 자바스크립트 규칙을 그대로 따른다. */
-export const retentionDeadline = (createdAt: string, months: number) => {
-  const created = new Date(createdAt);
-  if (Number.isNaN(created.getTime())) return null;
-  const deadline = new Date(created);
-  deadline.setMonth(deadline.getMonth() + months);
-  return deadline;
-};
+/** 업무 종료 시점부터 보유 개월을 더한다. */
+export const retentionDeadline = retentionDueAt;
 
 export const isPastRetention = (form: ConsentLocalDraft, now: Date) => {
-  const deadline = retentionDeadline(form.createdAt, retentionMonthsOf(form));
+  if (form.status !== 'closed' || !form.closedAt) return false;
+  const deadline = retentionDeadline(form.closedAt, retentionMonthsOf(form));
   return deadline ? deadline.getTime() <= now.getTime() : false;
 };
 
