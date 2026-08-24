@@ -12,7 +12,7 @@ import {
 } from '../../src/features/studentResults/studentResultsStore';
 import { getStudentResultValidationIssue, paginateStudentResultRecipients, validateStudentResultDraft } from '../../src/features/studentResults/studentResultsUtils';
 import type { StudentResultDraft } from '../../src/features/studentResults/types';
-import { analyzeStudentResultRows } from '../../src/features/studentResults/studentResultsImport';
+import { analyzeStudentResultRows, reconstructStudentResultPdfRows } from '../../src/features/studentResults/studentResultsImport';
 
 const memory = new Map<string, string>();
 const localStorageStub = {
@@ -129,7 +129,7 @@ describe('학생 QR 인쇄 페이지 분할', () => {
   });
 });
 
-describe('학생 결과 엑셀 분석', () => {
+describe('학생 결과 파일 분석', () => {
   it('제목과 실제 머리글을 찾고 열 순서와 무관하게 결과를 구성한다', () => {
     const rows = [
       ['2026학년도 2학기 수행평가 결과'],
@@ -171,5 +171,44 @@ describe('학생 결과 엑셀 분석', () => {
     expect(analysis.warnings.join(' ')).toContain('확인번호가 없는 학생 2명');
     expect(analysis.warnings.join(' ')).toContain('소속');
     expect(analysis.warnings.join(' ')).toContain('학년');
+  });
+
+  it('PDF 글자의 좌표를 표의 행과 열로 복원한다', () => {
+    const item = (text: string, x: number, y: number) => ({ text, x, y });
+    const rows = reconstructStudentResultPdfRows([[
+      item('2026 Semester Result', 20, 800),
+      item('Please review your results.', 20, 780),
+      item('id', 20, 740),
+      item('name', 80, 740),
+      item('accesscode', 140, 740),
+      item('Math/100', 220, 740),
+      item('feedback', 300, 740),
+      item('30101', 20, 710),
+      item('Kim', 80, 710),
+      item('Sky', 98, 710),
+      item('4821', 140, 710),
+      item('93', 220, 710),
+      item('Good work', 300, 710),
+      item('1', 300, 20),
+    ]]);
+
+    expect(rows).toEqual([
+      ['2026 Semester Result'],
+      ['Please review your results.'],
+      ['id', 'name', 'accesscode', 'Math/100', 'feedback'],
+      ['30101', 'Kim Sky', '4821', '93', 'Good work'],
+    ]);
+
+    const analysis = analyzeStudentResultRows(rows, 'PDF 1쪽');
+    expect(analysis.title).toBe('2026 Semester Result');
+    expect(analysis.description).toBe('Please review your results.');
+    expect(analysis.columns).toMatchObject([{ label: 'Math', maxScore: 100 }]);
+    expect(analysis.recipients[0]).toMatchObject({
+      studentKey: '30101',
+      name: 'Kim Sky',
+      verificationCode: '4821',
+      feedback: 'Good work',
+    });
+    expect(Object.values(analysis.recipients[0].values)).toEqual([93]);
   });
 });

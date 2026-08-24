@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { jsPDF } from 'jspdf';
 import writeXlsxFile from 'write-excel-file/node';
 
 test('교사 생성부터 학생 이의와 재확인까지 로컬 흐름이 이어진다', async ({ context, page }) => {
@@ -95,7 +96,15 @@ test('교사 생성부터 학생 이의와 재확인까지 로컬 흐름이 이�
 
 test('시트의 안내와 뒤섞인 열을 분석해 세 입력 영역을 채운다', async ({ page }) => {
   await page.goto('/tools/student-results/new');
-  await page.getByLabel('학생 결과 엑셀 파일').setInputFiles({
+  await expect(page.getByRole('heading', { name: '파일로 한 번에 채우기' })).toBeVisible();
+  const fileSelectButton = page.getByRole('button', { name: '결과 파일 선택' });
+  await page.getByRole('button', { name: '목록으로' }).focus();
+  await page.keyboard.press('Tab');
+  await expect(fileSelectButton).toBeFocused();
+  const initialFileButtonBox = await fileSelectButton.boundingBox();
+  const initialTitleBox = await page.getByPlaceholder('예: 2학기 수행평가 결과').boundingBox();
+  expect(initialFileButtonBox!.y).toBeLessThan(initialTitleBox!.y);
+  await page.getByTestId('student-results-file-input').setInputFiles({
     name: '2학기_평가결과.csv',
     mimeType: 'text/csv',
     buffer: Buffer.from([
@@ -122,6 +131,16 @@ test('시트의 안내와 뒤섞인 열을 분석해 세 입력 영역을 채운
   await page.getByRole('button', { name: '가져오기 취소' }).click();
   await expect(page.getByPlaceholder('예: 2학기 수행평가 결과')).toHaveValue('');
   await expect(page.getByLabel('1번 학생 성명')).toHaveValue('');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileFileButton = page.getByRole('button', { name: '결과 파일 선택' });
+  await expect(mobileFileButton).toBeVisible();
+  const mobileFileButtonBox = await mobileFileButton.boundingBox();
+  const mobileTitleBox = await page.getByPlaceholder('예: 2학기 수행평가 결과').boundingBox();
+  expect(mobileFileButtonBox!.y).toBeLessThan(mobileTitleBox!.y);
+  expect(mobileFileButtonBox!.width).toBeGreaterThan(250);
+  const mobileWidth = await page.evaluate(() => ({ viewport: window.innerWidth, document: document.documentElement.scrollWidth }));
+  expect(mobileWidth.document).toBe(mobileWidth.viewport);
 });
 
 test('XLSX 파일을 읽어 학생 결과를 채운다', async ({ page }, testInfo) => {
@@ -134,7 +153,7 @@ test('XLSX 파일을 읽어 학생 결과를 채운다', async ({ page }, testIn
   ]).toFile(filePath);
 
   await page.goto('/tools/student-results/new');
-  await page.getByLabel('학생 결과 엑셀 파일').setInputFiles(filePath);
+  await page.getByTestId('student-results-file-input').setInputFiles(filePath);
 
   await expect(page.getByText('Sheet1 · 머리글 3행 · 결과 항목 2개 · 학생 1명')).toBeVisible();
   await page.getByRole('button', { name: '분석 결과 적용' }).click();
@@ -143,6 +162,55 @@ test('XLSX 파일을 읽어 학생 결과를 채운다', async ({ page }, testIn
   await expect(page.getByLabel('1번 학생 국어 점수')).toHaveValue('88');
   await expect(page.getByLabel('1번 학생 수학 점수')).toHaveValue('94');
   await expect(page.getByLabel('1번 학생 피드백')).toHaveValue('수학 문제 해결력이 좋습니다.');
+});
+
+test('텍스트 PDF의 안내와 결과 표를 분석해 입력 영역을 채운다', async ({ page }) => {
+  const pdf = new jsPDF();
+  pdf.text('2026 Semester Result', 15, 20);
+  pdf.text('Please review your results.', 15, 30);
+  pdf.text('id', 15, 45);
+  pdf.text('name', 40, 45);
+  pdf.text('accesscode', 75, 45);
+  pdf.text('Math/100', 115, 45);
+  pdf.text('feedback', 150, 45);
+  pdf.text('30101', 15, 55);
+  pdf.text('Kim Sky', 40, 55);
+  pdf.text('4821', 75, 55);
+  pdf.text('93', 115, 55);
+  pdf.text('Good work', 150, 55);
+
+  await page.goto('/tools/student-results/new');
+  await page.getByTestId('student-results-file-input').setInputFiles({
+    name: 'semester-result.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from(pdf.output('arraybuffer')),
+  });
+
+  await expect(page.getByText('PDF 1쪽 · 머리글 3행 · 결과 항목 1개 · 학생 1명')).toBeVisible();
+  await expect(page.getByText('PDF의 글자 위치를 바탕으로 표를 복원했습니다.')).toBeVisible();
+  await page.getByRole('button', { name: '분석 결과 적용' }).click();
+  await expect(page.getByPlaceholder('예: 2학기 수행평가 결과')).toHaveValue('2026 Semester Result');
+  await expect(page.getByPlaceholder('학생에게 보여줄 안내')).toHaveValue('Please review your results.');
+  await expect(page.getByLabel('1번 항목명')).toHaveValue('Math');
+  await expect(page.getByLabel('Math 배점')).toHaveValue('100');
+  await expect(page.getByLabel('1번 학생 성명')).toHaveValue('Kim Sky');
+  await expect(page.getByLabel('1번 학생 Math 점수')).toHaveValue('93');
+  await expect(page.getByLabel('1번 학생 피드백')).toHaveValue('Good work');
+});
+
+test('글자가 없는 스캔 PDF는 임의로 추측하지 않고 교체 방법을 안내한다', async ({ page }) => {
+  const scannedPdf = new jsPDF();
+
+  await page.goto('/tools/student-results/new');
+  await page.getByTestId('student-results-file-input').setInputFiles({
+    name: 'scanned-result.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from(scannedPdf.output('arraybuffer')),
+  });
+
+  await expect(page.getByRole('alert')).toContainText('PDF에서 글자를 찾지 못했습니다.');
+  await expect(page.getByRole('alert')).toContainText('텍스트를 선택할 수 있는 PDF나 엑셀 파일');
+  await expect(page.getByPlaceholder('예: 2학기 수행평가 결과')).toHaveValue('');
 });
 
 test('실수로 지운 학생 행을 Ctrl+Z와 되돌리기 버튼으로 살린다', async ({ page }) => {
