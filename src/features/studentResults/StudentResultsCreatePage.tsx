@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
-import { AlertCircle, ArrowLeft, CheckCircle2, FileSpreadsheet, LoaderCircle, Plus, Trash2, Undo2, Upload, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { AlertCircle, ArrowLeft, CheckCircle2, FileSearch, LoaderCircle, Plus, Trash2, Undo2, Upload, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import { insertRowAfter, isRowAddKey } from '../../utils/rowEntry';
 import { studentResultsOwnerId } from './studentResultsConfig';
-import { analyzeStudentResultFile, type StudentResultImportAnalysis } from './studentResultsImport';
+import { analyzeStudentResultFile, studentResultImportAccept, type StudentResultImportAnalysis } from './studentResultsImport';
 import { createStudentResultEvent } from './studentResultsService';
 import {
   isTextEntryTarget,
@@ -35,6 +35,7 @@ export function StudentResultsCreatePage() {
   const [allowDispute, setAllowDispute] = useState(true);
   const [error, setError] = useState('');
   const [errorFieldId, setErrorFieldId] = useState('');
+  const [fileImportError, setFileImportError] = useState('');
   const [importing, setImporting] = useState(false);
   const [importedFileName, setImportedFileName] = useState('');
   const [importAnalysis, setImportAnalysis] = useState<StudentResultImportAnalysis | null>(null);
@@ -43,6 +44,7 @@ export function StudentResultsCreatePage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [undoNotice, setUndoNotice] = useState('');
   const [saving, setSaving] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const snapshotNow = (): FormSnapshot => ({
     title,
@@ -148,6 +150,7 @@ export function StudentResultsCreatePage() {
     setImporting(true);
     setError('');
     setErrorFieldId('');
+    setFileImportError('');
     try {
       const analysis = await analyzeStudentResultFile(file);
       setPendingImportFileName(file.name);
@@ -155,7 +158,7 @@ export function StudentResultsCreatePage() {
     } catch (importError) {
       setPendingImport(null);
       setPendingImportFileName('');
-      setError(importError instanceof Error ? importError.message : '엑셀 파일을 분석하지 못했습니다.');
+      setFileImportError(importError instanceof Error ? importError.message : '결과 파일을 분석하지 못했습니다.');
     } finally {
       setImporting(false);
     }
@@ -163,7 +166,7 @@ export function StudentResultsCreatePage() {
 
   const applyImport = () => {
     if (!pendingImport) return;
-    remember('엑셀 불러오기');
+    remember('결과 파일 불러오기');
     setTitle(pendingImport.title);
     setDescription(pendingImport.description);
     setColumns(pendingImport.columns);
@@ -174,17 +177,20 @@ export function StudentResultsCreatePage() {
     setPendingImportFileName('');
     setError('');
     setErrorFieldId('');
+    setFileImportError('');
   };
 
   const cancelPendingImport = () => {
     setPendingImport(null);
     setPendingImportFileName('');
+    setFileImportError('');
   };
 
   const undoImport = () => {
     undo();
     setImportAnalysis(null);
     setImportedFileName('');
+    setFileImportError('');
   };
 
   const focusIssue = (message: string, fieldId: string) => {
@@ -269,7 +275,7 @@ export function StudentResultsCreatePage() {
         <p className="text-xs font-bold text-[#0F6CBD]">새 결과 안내</p>
         <h1 className="mt-1 text-2xl font-extrabold">안내 정보와 학생 결과 입력</h1>
         <p className="mt-2 text-sm text-[#526174]">
-          엑셀을 분석해 전체 입력란을 채운 뒤, 필요한 부분을 직접 수정할 수 있습니다.
+          파일을 불러오면 아래 입력란을 자동으로 채웁니다. 파일이 없으면 바로 직접 입력할 수 있습니다.
         </p>
       </div>
 
@@ -280,33 +286,24 @@ export function StudentResultsCreatePage() {
         </div>
       ) : null}
 
-      <section className="border-y border-[#DCE3EA] bg-white px-4 py-6 sm:px-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h2 className="text-base font-bold">1. 안내 정보</h2>
-            <p className="mt-1 text-xs leading-5 text-[#64748B]">
-              엑셀의 제목, 머리글과 학생 행을 분석해 안내 정보·결과 항목·학생 결과를 자동으로 채웁니다.
-            </p>
-          </div>
-          <label className={`inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-lg border px-4 text-sm font-bold ${importing ? 'cursor-wait border-[#C8D0DA] text-[#64748B]' : 'border-[#0F6CBD] text-[#0F6CBD] hover:bg-[#EFF6FC]'}`}>
-            {importing ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            {importing ? '시트 분석 중' : '엑셀 시트 분석'}
-            <input
-              type="file"
-              accept=".xlsx,.csv"
-              onChange={(event) => void handleFileImport(event)}
-              disabled={importing}
-              className="sr-only"
-              aria-label="학생 결과 엑셀 파일"
-            />
-          </label>
-        </div>
+      <section aria-labelledby="student-result-quick-start" className="border-y border-[#DCE3EA] bg-white px-4 py-6 sm:px-6">
+        <input
+          ref={importInputRef}
+          data-testid="student-results-file-input"
+          type="file"
+          accept={studentResultImportAccept}
+          onChange={(event) => void handleFileImport(event)}
+          disabled={importing}
+          tabIndex={-1}
+          aria-hidden="true"
+          className="sr-only"
+        />
 
         {pendingImport ? (
-          <div className="mt-4 border-y border-[#B9D9F2] bg-[#F7FBFE] px-4 py-5" aria-label="엑셀 분석 결과 검토">
+          <div className="rounded-lg border border-[#B9D9F2] bg-[#F7FBFE] px-4 py-5 sm:px-5" aria-label="파일 분석 결과 검토">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-xs font-bold text-[#0F6CBD]">분석 결과 검토</p>
+                <p id="student-result-quick-start" className="text-xs font-bold text-[#0F6CBD]">빠른 시작 · 분석 결과 검토</p>
                 <p className="mt-1 truncate text-sm font-extrabold text-[#0F172A]">{pendingImportFileName}</p>
                 <p className="mt-1 text-xs text-[#334155]">
                   {pendingImport.sheetName} · 머리글 {pendingImport.headerRowNumber}행 · 결과 항목 {pendingImport.columns.length}개 · 학생 {pendingImport.recipients.length}명
@@ -348,11 +345,12 @@ export function StudentResultsCreatePage() {
             </div>
           </div>
         ) : importAnalysis ? (
-          <div className="mt-4 border border-[#A9D8B8] bg-[#F2FBF5] px-4 py-3">
+          <div className="rounded-lg border border-[#A9D8B8] bg-[#F2FBF5] px-4 py-4 sm:px-5">
             <div className="flex items-start justify-between gap-3">
               <div className="flex min-w-0 items-start gap-3">
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#16803C]" />
               <div className="min-w-0">
+                <p id="student-result-quick-start" className="text-xs font-bold text-[#126B32]">빠른 시작 · 파일 적용 완료</p>
                 <p className="truncate text-sm font-bold text-[#126B32]">{importedFileName}</p>
                 <p className="mt-1 text-xs text-[#334155]">
                   {importAnalysis.sheetName} · 머리글 {importAnalysis.headerRowNumber}행 · 결과 항목 {importAnalysis.columns.length}개 · 학생 {importAnalysis.recipients.length}명
@@ -364,16 +362,59 @@ export function StudentResultsCreatePage() {
                 ) : null}
               </div>
               </div>
-              {lastChange === '엑셀 불러오기' ? <button type="button" onClick={undoImport} className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-lg border border-[#16803C] px-3 text-xs font-bold text-[#126B32]"><Undo2 className="h-4 w-4" />가져오기 취소</button> : null}
+              {lastChange === '결과 파일 불러오기' ? <button type="button" onClick={undoImport} className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-lg border border-[#16803C] px-3 text-xs font-bold text-[#126B32]"><Undo2 className="h-4 w-4" />가져오기 취소</button> : null}
             </div>
           </div>
         ) : (
-          <div className="mt-4 flex items-start gap-3 bg-[#F6F8FB] px-4 py-3 text-xs leading-5 text-[#526174]">
-            <FileSpreadsheet className="mt-0.5 h-5 w-5 shrink-0 text-[#0F6CBD]" />
-            <p>XLSX 또는 CSV 파일을 지원합니다. 성명/이름 머리글이 필요하며, 배점은 `발표(20점)` 또는 `발표/20`처럼 적으면 정확히 인식합니다.</p>
+          <div className={`rounded-lg border px-4 py-5 sm:px-5 ${fileImportError ? 'border-[#F2B8B5] bg-[#FFF8F8]' : 'border-[#B9D9F2] bg-[#F7FBFE]'}`}>
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white text-[#0F6CBD]" aria-hidden="true">
+                  <FileSearch className="h-5 w-5" />
+                </span>
+                <div>
+                  <p className="text-xs font-bold text-[#0F6CBD]">빠른 시작</p>
+                  <h2 id="student-result-quick-start" className="mt-1 text-base font-extrabold text-[#0F172A]">파일로 한 번에 채우기</h2>
+                  <p className="mt-1 text-xs leading-5 text-[#526174]">
+                    XLSX·CSV·PDF에서 제목, 결과 항목과 학생별 점수를 자동으로 불러옵니다.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={importing}
+                onClick={() => importInputRef.current?.click()}
+                className="inline-flex min-h-[48px] w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-[#0F6CBD] px-5 text-sm font-bold text-white hover:bg-[#0B5B9F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F6CBD] disabled:cursor-wait disabled:bg-[#AAB7C4] md:w-auto"
+              >
+                {importing ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {importing ? '파일 분석 중' : fileImportError ? '다른 파일 선택' : '결과 파일 선택'}
+              </button>
+            </div>
+            {fileImportError ? (
+              <div role="alert" className="mt-4 flex items-start gap-2 border-t border-[#FECACA] pt-3 text-sm font-semibold leading-6 text-[#B42318]">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{fileImportError}</span>
+              </div>
+            ) : (
+              <p className="mt-4 border-t border-[#D7E8F5] pt-3 text-xs leading-5 text-[#526174]">
+                텍스트를 선택할 수 있는 PDF · 최대 20MB · 스캔 이미지 PDF는 지원하지 않습니다.
+              </p>
+            )}
           </div>
         )}
 
+        <div className="mt-6 flex items-center gap-3 text-xs font-semibold text-[#64748B]" aria-hidden="true">
+          <span className="h-px flex-1 bg-[#DCE3EA]" />
+          <span>{importAnalysis ? '적용된 내용을 아래에서 확인·수정하세요' : '또는 아래에서 직접 입력'}</span>
+          <span className="h-px flex-1 bg-[#DCE3EA]" />
+        </div>
+      </section>
+
+      <section className="border-y border-[#DCE3EA] bg-white px-4 py-6 sm:px-6">
+        <div>
+          <h2 className="text-base font-bold">1. 안내 정보</h2>
+          <p className="mt-1 text-xs leading-5 text-[#64748B]">제목과 학생에게 보여줄 안내 문구를 입력하거나, 파일에서 불러온 내용을 확인해 주세요.</p>
+        </div>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <label className="text-sm font-semibold text-[#334155]">
             제목
@@ -415,7 +456,7 @@ export function StudentResultsCreatePage() {
         </div>
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-[900px] w-full border-collapse text-sm">
-            <thead><tr className="bg-[#F6F8FB] text-left text-xs text-[#526174]"><th className="border border-[#DCE3EA] p-3">식별값</th><th className="border border-[#DCE3EA] p-3">성명</th><th className="border border-[#DCE3EA] p-3">확인번호</th>{columns.map((column) => <th key={column.id} className="border border-[#DCE3EA] p-3">{column.label || '미입력 항목'} / {column.maxScore}</th>)}<th className="border border-[#DCE3EA] p-3">피드백</th><th className="w-12 border border-[#DCE3EA] p-3"><span className="sr-only">삭제</span></th></tr></thead>
+            <thead><tr className="bg-[#F6F8FB] text-left text-xs text-[#526174]"><th className="border border-[#DCE3EA] p-3">식별값</th><th className="border border-[#DCE3EA] p-3">성명</th><th className="border border-[#DCE3EA] p-3">확인번호</th>{columns.map((column) => <th key={column.id} className="border border-[#DCE3EA] p-3">{column.label || '미입력 항목'} / {column.maxScore}</th>)}<th className="border border-[#DCE3EA] p-3">피드백</th><th className="relative w-12 border border-[#DCE3EA] p-3"><span className="sr-only">삭제</span></th></tr></thead>
             <tbody>
               {recipients.map((recipient, index) => (
                 <tr key={index}>
