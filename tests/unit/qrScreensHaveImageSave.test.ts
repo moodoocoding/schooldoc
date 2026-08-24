@@ -3,11 +3,11 @@ import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
 
 /**
- * QR을 그리는 화면에는 예외 없이 이미지 저장이 함께 있어야 한다.
+ * 하나의 공유 QR을 보여주는 화면에는 이미지 저장이 함께 있어야 한다.
  *
- * 이 규칙은 한 번 지켜졌다가 다음 기능으로 이어지지 않았다. 가정통신문 관리 화면에만
- * 만들어져 있었고 등록부와 학생 결과에는 없었다. 사람이 기억하는 대신 여기서 걸리게 한다.
- * 새 기능에 QR을 넣으면 이 테스트가 먼저 실패한다.
+ * 개인 QR PDF는 여러 학생의 QR을 인쇄·배부하는 화면이라 카드마다 같은 저장 버튼을 반복하지
+ * 않는다. 이 화면의 대표 동작은 PDF 다운로드 하나이며 아래 명시적 예외 검사가 그 결정을
+ * 지킨다.
  */
 const walk = (directory: string): string[] => readdirSync(directory).flatMap((entry) => {
   const path = join(directory, entry);
@@ -18,11 +18,12 @@ const sourceFiles = walk('src').filter((path) => path.endsWith('.tsx') || path.e
 
 const drawsQrCode = (source: string) => /QRCodeSVG|QRCodeCanvas/.test(source);
 const offersImageSave = (source: string) => /saveQrImage|svgToPngBlob/.test(source);
+const studentResultQrPdfPath = 'src/features/studentResults/StudentResultsQrPrintPage.tsx';
 
-describe('QR을 그리는 화면은 이미지 저장을 함께 제공한다', () => {
+describe('하나의 공유 QR을 그리는 화면은 이미지 저장을 함께 제공한다', () => {
   const qrScreens = sourceFiles
     .map((path) => ({ path, source: readFileSync(path, 'utf8') }))
-    .filter(({ source }) => drawsQrCode(source));
+    .filter(({ path, source }) => path !== studentResultQrPdfPath && drawsQrCode(source));
 
   test('QR을 그리는 화면을 실제로 찾았다', () => {
     // 선택자가 낡아 아무것도 못 찾으면 아래 검사가 통째로 무의미해진다.
@@ -32,5 +33,11 @@ describe('QR을 그리는 화면은 이미지 저장을 함께 제공한다', ()
   test.each(qrScreens.map(({ path }) => path))('%s 에 이미지 저장이 있다', (path) => {
     const source = readFileSync(path, 'utf8');
     expect(offersImageSave(source)).toBe(true);
+  });
+
+  test('개인 QR PDF는 반복 이미지 저장을 제공하지 않는다', () => {
+    const source = readFileSync(studentResultQrPdfPath, 'utf8');
+    expect(drawsQrCode(source)).toBe(true);
+    expect(offersImageSave(source)).toBe(false);
   });
 });
