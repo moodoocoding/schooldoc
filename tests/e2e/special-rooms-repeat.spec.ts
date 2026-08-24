@@ -33,6 +33,35 @@ test('빈 칸에는 매주 반복 선택이 있다', async ({ page }) => {
   await expect(page.getByLabel('매주 반복해서 잡기')).toBeVisible();
 });
 
+test('반복 체크를 켜면 저장 버튼이 사라지고 반복해서 잡기만 남는다', async ({ page }) => {
+  // 저장과 반복해서 잡기가 함께 보이면 반복을 다 골라 놓고도 저장을 눌러 이 하루만
+  // 조용히 저장해 버리는 실수가 난다. 실행 버튼은 그 순간 하나여야 한다.
+  await openPublicBoard(page);
+  await openFirstEmptyCell(page);
+  await page.getByRole('textbox', { name: /사용 내용$/ }).fill('6-1반');
+
+  await expect(page.getByRole('button', { name: '저장' })).toBeVisible();
+
+  await page.getByLabel('매주 반복해서 잡기').check();
+  await expect(page.getByRole('button', { name: '저장' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '반복해서 잡기' })).toBeVisible();
+
+  await page.getByLabel('매주 반복해서 잡기').uncheck();
+  await expect(page.getByRole('button', { name: '저장' })).toBeVisible();
+});
+
+test('반복 체크가 켜져 있으면 엔터도 저장이 아니라 반복해서 잡기를 실행한다', async ({ page }) => {
+  await openPublicBoard(page);
+  await openFirstEmptyCell(page);
+  await page.getByRole('textbox', { name: /사용 내용$/ }).fill('6-1반');
+  await page.getByLabel('매주 반복해서 잡기').check();
+  await page.getByRole('button', { name: '4주' }).click();
+
+  await page.getByRole('textbox', { name: /사용 내용$/ }).press('Enter');
+
+  await expect(page.getByRole('status')).toContainText('4번 잡았습니다');
+});
+
 test('이미 잡힌 칸을 고칠 때는 반복을 권하지 않는다', async ({ page }) => {
   // 남의 예약을 학기 내내 덮어 버리는 사고를 막는다.
   await openPublicBoard(page);

@@ -91,6 +91,11 @@ export function BookingSheet({
   const over = draft.length > BOOKING_LABEL_MAX;
   const dates = repeatDates(date, until);
   const preview = repeatPreview(dates, weekdayLabel, period);
+  // 반복 패널이 실제로 보이는 동안만 `저장`을 감춘다. `repeating` 자체가 아니라 이걸 써야
+  // 하는 이유는, 반복이 성공하면 지금 칸도 막 채워져 `current`가 생기고 그 순간 반복
+  // 패널이 사라지는데(아래 `{current ? null : (반복 패널)}`), 그때는 이 칸을 보통 칸처럼
+  // 다시 고칠 수 있어야 하므로 `저장`이 돌아와야 한다.
+  const repeatPanelVisible = repeating && !current;
 
   const runRepeat = async () => {
     if (saving || busy || !draft.trim()) return;
@@ -169,7 +174,10 @@ export function BookingSheet({
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
                 event.preventDefault();
-                submit();
+                // 반복 패널이 보이는 동안은 엔터도 반복해서 잡기를 실행한다. 화면에 없는
+                // `저장` 버튼이 몰래 눌리면 안 된다.
+                if (repeatPanelVisible) void runRepeat();
+                else submit();
               }
             }}
             maxLength={BOOKING_LABEL_MAX}
@@ -276,26 +284,33 @@ export function BookingSheet({
           </p>
         ) : null}
 
-        <div className="mt-4 flex items-center gap-2">
-          {current ? (
+        {/*
+          반복 패널이 보이는 동안은 `저장`을 감춘다. 그대로 두면 `반복해서 잡기`와 `저장`
+          두 개가 동시에 보여, 반복을 다 골라 놓고도 `저장`을 눌러 이 하루만 조용히
+          저장해 버리는 실수가 난다. 실행 버튼은 그 순간 하나여야 한다.
+        */}
+        {repeatPanelVisible ? null : (
+          <div className="mt-4 flex items-center gap-2">
+            {current ? (
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => { if (!saving) onSubmit(''); }}
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-[#F0C4C0] px-3 text-sm font-bold text-[#B42318] hover:bg-[#FEF2F2] disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />예약 지우기
+              </button>
+            ) : null}
             <button
               type="button"
               disabled={saving}
-              onClick={() => { if (!saving) onSubmit(''); }}
-              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-[#F0C4C0] px-3 text-sm font-bold text-[#B42318] hover:bg-[#FEF2F2] disabled:opacity-50"
+              onClick={submit}
+              className="ml-auto inline-flex min-h-[44px] flex-1 items-center justify-center rounded-lg bg-[#0F6CBD] px-4 text-sm font-bold text-white hover:bg-[#0B5B9F] disabled:bg-[#AAB7C4] sm:flex-none"
             >
-              <Trash2 className="h-4 w-4" />예약 지우기
+              {saving ? '저장 중' : '저장'}
             </button>
-          ) : null}
-          <button
-            type="button"
-            disabled={saving}
-            onClick={submit}
-            className="ml-auto inline-flex min-h-[44px] flex-1 items-center justify-center rounded-lg bg-[#0F6CBD] px-4 text-sm font-bold text-white hover:bg-[#0B5B9F] disabled:bg-[#AAB7C4] sm:flex-none"
-          >
-            {saving ? '저장 중' : '저장'}
-          </button>
-        </div>
+          </div>
+        )}
         </>
         )}
       </div>
