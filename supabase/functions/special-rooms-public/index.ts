@@ -68,6 +68,9 @@ interface BoardRow {
   public_token: string;
   title: string;
   description: string;
+  // getBoard가 실제로 골라 오는 값인데 여기 빠져 있어 deno check가 막혔다.
+  period_count: number;
+  include_saturday: boolean;
   school_name: string | null;
   status: 'open' | 'closed';
   password_digest: string | null;
@@ -128,28 +131,35 @@ Deno.serve(async (request) => {
     const board = await getBoard(token);
 
     if (action === 'metadata') {
-      const { data: rooms, error } = await db.from('special_rooms')
-        .select('id, position, name, location').eq('board_id', board.id).order('position');
-      if (error) throw error;
-
       /*
-        이번 학기 마지막 날을 찾아 둔다. 반복 예약의 `학기 말까지` 빠른 선택에 쓴다.
-        NEIS 학사일정의 행사 이름에 `여름방학`·`겨울방학`이 들어온다. 방학 첫날부터는
+        셋 다 예약표만 알면 되고 서로의 답을 쓰지 않는다. 줄 세우면 화면을 열 때마다
+        DB를 세 번 다녀오는 시간이 그대로 더해진다. 실측에서 이 동작 하나가 다섯 번을
+        오갔고, 그중 이 셋이 마지막 세 번이었다.
+
+        가운데 것은 이번 학기 마지막 날을 찾는다. 반복 예약의 `학기 말까지` 빠른 선택에
+        쓴다. NEIS 학사일정의 행사 이름에 `여름방학`·`겨울방학`이 들어온다. 방학 첫날부터는
         잡을 이유가 없으므로 그 앞날까지만 반복한다. 공개 화면은 이번 주 학사일정만
         받으므로 여기서 계산해 주지 않으면 알 길이 없다.
+
+        마지막 것은 휴관이다. 담당자가 걸고 공개 화면은 읽기만 한다.
       */
       const today = new Date().toISOString().slice(0, 10);
-      const vacation = await db.from('special_room_school_days')
-        .select('day').eq('board_id', board.id).gt('day', today)
-        .ilike('event_name', '%방학%').order('day').limit(1).maybeSingle();
+      const [roomRows, vacation, closureRows] = await Promise.all([
+        db.from('special_rooms')
+          .select('id, position, name, location').eq('board_id', board.id).order('position'),
+        db.from('special_room_school_days')
+          .select('day').eq('board_id', board.id).gt('day', today)
+          .ilike('event_name', '%방학%').order('day').limit(1).maybeSingle(),
+        db.from('special_room_closures')
+          .select('id, room_id, start_date, end_date, reason')
+          .eq('board_id', board.id).order('start_date'),
+      ]);
+      if (roomRows.error) throw roomRows.error;
       if (vacation.error) throw vacation.error;
-      const termEndDate = vacation.data ? addDays(vacation.data.day as string, -1) : '';
-
-      // 휴관은 담당자가 건다. 공개 화면은 읽기만 하고 풀 수 없다.
-      const closureRows = await db.from('special_room_closures')
-        .select('id, room_id, start_date, end_date, reason')
-        .eq('board_id', board.id).order('start_date');
       if (closureRows.error) throw closureRows.error;
+
+      const rooms = roomRows.data;
+      const termEndDate = vacation.data ? addDays(vacation.data.day as string, -1) : '';
       const closures = (closureRows.data ?? []).map((row) => ({
         id: row.id as string,
         roomId: (row.room_id as string | null) ?? '',
