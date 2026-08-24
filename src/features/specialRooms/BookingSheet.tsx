@@ -11,6 +11,19 @@ import {
   type RepeatOutcome,
 } from './specialRoomsRepeat';
 
+/**
+ * 마지막 글자에 받침이 있는지 본다. `이/가` 조사를 고르는 데 쓴다.
+ * 한글이 아니면(숫자·영문으로 끝나는 이름 등) 받침이 있는 쪽으로 본다 — `6-1반`, `3팀`처럼
+ * 학교에서 흔한 이름은 받침 있는 글자로 끝나는 경우가 많다.
+ */
+export const hasBatchim = (text: string) => {
+  const last = text.trim().at(-1);
+  if (!last) return true;
+  const code = last.charCodeAt(0) - 0xac00;
+  if (code < 0 || code > 11171) return true;
+  return code % 28 !== 0;
+};
+
 interface BookingSheetProps {
   /** 반복해서 잡을 때 첫 날짜. `2026-08-25` 꼴이다. */
   date: string;
@@ -40,23 +53,40 @@ interface BookingSheetProps {
  *
  * 비우고 저장하면 예약이 취소된다. 예전 동작을 그대로 두되, 지우려고 온 사람을 위해
  * `예약 지우기`도 따로 둔다. 비우는 것으로만 지울 수 있으면 지우는 방법을 알기 어렵다.
+ *
+ * 이미 잡힌 칸을 열면 곧바로 고칠 수 있게 하지 않는다. 누구나 남의 예약을 고치고 지울 수
+ * 있는 화면이라, 실수로 옆 칸을 눌러 남의 것을 덮는 사고가 난다. 이름을 붙여 누구 것인지
+ * 보여 주는 대신(개인정보가 되고, 가입 없이 쓰는 취지와도 안 맞는다), 바꾸기 전에
+ * "이미 '6-1반'이 잡혀 있습니다. 바꿀까요?"를 한 번 묻는다. 자기 것을 고치러 왔어도 똑같이
+ * 묻는다 — 누구 것인지 구분할 방법이 없으니, 그 정도는 감수하기로 했다.
  */
 export function BookingSheet({
   cellName, title, roomName, current, saving, onSubmit, onClose,
   date, weekdayLabel, period, termEndDate, onRepeat,
 }: BookingSheetProps) {
   const [draft, setDraft] = useState(current);
+  const [confirmed, setConfirmed] = useState(!current);
   const [repeating, setRepeating] = useState(false);
   const [until, setUntil] = useState(date);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState('');
   const dialogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
-  useDialogFocus(dialogRef, onClose, inputRef);
+  // 확인이 필요 없으면 입력칸에, 필요하면 안전한 `취소`에 처음 초점을 둔다.
+  useDialogFocus(dialogRef, onClose, confirmed ? inputRef : cancelRef);
 
-  // 다른 칸을 눌러 시트가 이어서 열리면 그 칸의 값으로 갈아 끼운다.
-  useEffect(() => setDraft(current), [current, cellName]);
+  // 다른 칸을 눌러 시트가 이어서 열리면 그 칸의 값으로 갈아 끼운다. `current`도 봐야 하는
+  // 이유는, 실시간으로 다른 사람이 같은 칸을 고치면 열어 둔 채로도 최신 값을 봐야 하기
+  // 때문이다.
+  useEffect(() => { setDraft(current); }, [current, cellName]);
+
+  // 확인 여부는 칸이 바뀔 때만 다시 정한다. `current`를 여기 넣으면 안 된다 — 반복해서
+  // 잡기가 성공하면 지금 연 칸도 막 채워져 `current`가 빈 값에서 값 있는 걸로 바뀌는데,
+  // 그때마다 확인창이 다시 뜨면서 "N번 잡았습니다" 결과가 가려진다. 실제로 그렇게 됐었다.
+  useEffect(() => { setConfirmed(!current); }, [cellName]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 
   const over = draft.length > BOOKING_LABEL_MAX;
   const dates = repeatDates(date, until);
@@ -104,6 +134,32 @@ export function BookingSheet({
           </button>
         </div>
 
+        {!confirmed ? (
+          <div className="mt-4">
+            <p className="text-sm leading-6 text-[#334155]">
+              이미 <span className="font-bold text-[#0F172A]">{current}</span>
+              {hasBatchim(current) ? '이' : '가'} 잡혀 있습니다. 바꿀까요?
+            </p>
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                ref={cancelRef}
+                type="button"
+                onClick={onClose}
+                className="inline-flex min-h-[44px] flex-1 items-center justify-center rounded-lg border border-[#C8D0DA] px-4 text-sm font-bold text-[#334155] hover:bg-[#F6F8FB]"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmed(true)}
+                className="inline-flex min-h-[44px] flex-1 items-center justify-center rounded-lg bg-[#0F6CBD] px-4 text-sm font-bold text-white hover:bg-[#0B5B9F]"
+              >
+                바꾸기
+              </button>
+            </div>
+          </div>
+        ) : (
+        <>
         <label className="mt-4 grid gap-1.5 text-xs font-bold text-[#334155]">
           사용할 학급이나 용도
           <input
@@ -240,6 +296,8 @@ export function BookingSheet({
             {saving ? '저장 중' : '저장'}
           </button>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

@@ -49,14 +49,16 @@ test('같은 칸을 다시 눌러 내용을 고치고, 비우면 예약이 취�
   const booked = page.getByRole('button', { name: /6-1반 고치기$/ });
   await expect(booked).toBeVisible();
 
-  // 고치기
+  // 고치기. 이미 잡힌 칸이라 바꾸기 전에 한 번 확인한다.
   await booked.click();
+  await page.getByRole('button', { name: '바꾸기' }).click();
   await page.getByRole('textbox', { name: /사용 내용$/ }).fill('5-3반 과학');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('button', { name: /5-3반 과학 고치기$/ })).toBeVisible();
 
   // 비우면 취소된다. 별도 삭제 버튼 없이 시트처럼 동작한다.
   await page.getByRole('button', { name: /5-3반 과학 고치기$/ }).click();
+  await page.getByRole('button', { name: '바꾸기' }).click();
   await page.getByRole('textbox', { name: /사용 내용$/ }).fill('');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('button', { name: /5-3반 과학 고치기$/ })).toHaveCount(0);

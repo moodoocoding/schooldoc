@@ -41,6 +41,7 @@ test('이미 잡힌 칸을 고칠 때는 반복을 권하지 않는다', async (
   await page.getByRole('button', { name: '저장' }).click();
 
   await page.getByRole('button', { name: /6-1반 고치기$/ }).click();
+  await page.getByRole('button', { name: '바꾸기' }).click();
   await expect(page.getByLabel('매주 반복해서 잡기')).toHaveCount(0);
 });
 
@@ -91,6 +92,7 @@ test('반복으로 넣은 한 주만 지워도 나머지는 남는다', async ({
   // 다음 주 것만 지운다.
   await page.getByRole('button', { name: '다음 주' }).click();
   await page.getByRole('button', { name: /5-1반 과학 고치기$/ }).click();
+  await page.getByRole('button', { name: '바꾸기' }).click();
   await page.getByRole('button', { name: '예약 지우기' }).click();
   await expect(page.getByRole('button', { name: /5-1반 과학 고치기$/ })).toHaveCount(0);
 
