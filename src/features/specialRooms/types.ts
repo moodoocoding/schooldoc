@@ -39,6 +39,22 @@ export interface SchoolDay {
   isOffDay: boolean;
 }
 
+/**
+ * 특별실을 못 쓰는 기간. 담당 교사 출장·연가, 시설 점검, 시험 기간에 쓴다.
+ * 학사일정과 나누는 이유는 출처와 범위가 다르기 때문이다. 학사일정은 NEIS에서 받아
+ * 학교 전체에 걸리고, 휴관은 담당자가 특별실 하나에 건다.
+ */
+export interface SpecialRoomClosure {
+  id: string;
+  /** 빈 문자열이면 그 예약표의 모든 특별실이 닫힌다. */
+  roomId: string;
+  /** YYYY-MM-DD */
+  startDate: string;
+  /** YYYY-MM-DD */
+  endDate: string;
+  reason: string;
+}
+
 export interface SpecialRoomBoard {
   id: string;
   publicToken: string;
@@ -60,6 +76,7 @@ export interface SpecialRoomBoard {
   rooms: SpecialRoom[];
   bookings: SpecialRoomBooking[];
   schoolDays: SchoolDay[];
+  closures: SpecialRoomClosure[];
   createdAt: string;
   updatedAt: string;
 }

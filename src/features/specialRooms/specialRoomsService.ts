@@ -3,6 +3,7 @@ import * as remote from './specialRoomsRepository';
 import * as schoolDays from './specialRoomsSchoolDays';
 import * as local from './specialRoomsStore';
 import type { BoardInfoDraft } from './specialRoomsBoardInfo';
+import type { ClosureDraft } from './specialRoomsClosure';
 import type { Period, SpecialRoomBoardDraft } from './types';
 
 /**
@@ -27,6 +28,17 @@ export const createBoard = async (ownerId: string, draft: SpecialRoomBoardDraft)
 export const updateBoardInfo = async (ownerId: string, boardId: string, info: BoardInfoDraft) => {
   if (isSpecialRoomsDemoMode) local.updateBoardInfo(ownerId, boardId, info);
   else await remote.updateRemoteBoardInfo(boardId, info);
+};
+
+/** 휴관을 건다. 담당자만 할 수 있다. */
+export const addClosure = async (ownerId: string, boardId: string, draft: ClosureDraft) => {
+  if (isSpecialRoomsDemoMode) local.addClosure(ownerId, boardId, draft);
+  else await remote.addRemoteClosure(boardId, draft);
+};
+
+export const removeClosure = async (ownerId: string, boardId: string, closureId: string) => {
+  if (isSpecialRoomsDemoMode) local.removeClosure(ownerId, boardId, closureId);
+  else await remote.removeRemoteClosure(closureId);
 };
 
 export const deleteBoard = async (ownerId: string, boardId: string) => {

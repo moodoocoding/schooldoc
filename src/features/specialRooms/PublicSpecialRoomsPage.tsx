@@ -187,6 +187,7 @@ export function PublicSpecialRoomsPage() {
             periodCount={board.periodCount}
             includeSaturday={board.includeSaturday}
             termEndDate={board.termEndDate}
+            closures={board.closures}
             onRepeat={async (date, period, label, until) => {
               const outcome = await service.setRepeat(token, password, roomId, date, period, label, until);
               await load();

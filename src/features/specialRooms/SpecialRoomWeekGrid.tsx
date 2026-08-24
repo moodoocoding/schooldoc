@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { LoaderCircle, X } from 'lucide-react';
 import { BookingSheet } from './BookingSheet';
 import type { RepeatOutcome } from './specialRoomsRepeat';
+import { closureAt } from './specialRoomsClosure';
 import {
   periodsFor,
   weekdaysFor,
@@ -12,7 +13,7 @@ import {
   indexSchoolDays,
   weekDates,
 } from './specialRoomWeek';
-import type { Period, SchoolDay, SpecialRoomBooking } from './types';
+import type { Period, SchoolDay, SpecialRoomBooking, SpecialRoomClosure } from './types';
 
 interface SpecialRoomWeekGridProps {
   mondayKey: string;
@@ -25,6 +26,8 @@ interface SpecialRoomWeekGridProps {
   includeSaturday: boolean;
   /** 이번 학기 마지막 날. 반복 예약의 `학기 말까지`에 쓴다. */
   termEndDate?: string;
+  /** 담당자가 건 휴관. 그 칸은 회색으로 덮고 누를 수 없다. */
+  closures?: SpecialRoomClosure[];
   /** 매주 반복해서 잡는다. 없으면 시트에 반복 영역이 나오지 않는다. */
   onRepeat?: (date: string, period: Period, label: string, until: string) => Promise<RepeatOutcome>;
   bookings: SpecialRoomBooking[];
@@ -53,6 +56,7 @@ export function SpecialRoomWeekGrid({
   periodCount,
   includeSaturday,
   termEndDate = '',
+  closures = [],
   onRepeat,
   bookings,
   schoolDays,
@@ -180,16 +184,20 @@ export function SpecialRoomWeekGrid({
                   const cellName = `${formatDayLabel(date)} ${period}교시`;
                   // 휴업일만 실제로 보이는 회색으로 덮는다. 오늘은 왼쪽 선으로 알린다.
                   // 밝기가 4밖에 차이 나지 않는 배경은 아무 것도 알리지 못한다.
-                  const tone = note?.isOffDay ? 'bg-[#F1F3F6]' : 'bg-white';
+                  const closed = closureAt(closures, roomId, date);
+                  const tone = closed ? 'bg-[#EEF1F4]' : note?.isOffDay ? 'bg-[#F1F3F6]' : 'bg-white';
                   const todayEdge = isToday ? 'border-l-2 border-l-[#0F6CBD]' : 'border-l border-l-[#EEF1F4]';
 
                   return (
                     <td key={key} className={`${todayEdge} p-0 ${tone} ${afterLunch} ${lastRow}`}>
                       <button
                         type="button"
-                        disabled={readOnly || isSaving}
+                        disabled={readOnly || isSaving || Boolean(closed)}
                         onClick={() => openCell(date, period)}
-                        aria-label={booking ? `${cellName} ${booking.label} 고치기` : `${cellName} 예약하기`}
+                        aria-label={closed
+                          ? `${cellName} 휴관${closed.reason ? ` · ${closed.reason}` : ''}`
+                          : booking ? `${cellName} ${booking.label} 고치기` : `${cellName} 예약하기`}
+                        title={closed?.reason || undefined}
                         className={`flex h-[44px] w-full items-center justify-center px-0.5 sm:h-[52px] sm:px-1.5 ${
                           readOnly ? 'cursor-default' : 'cursor-pointer hover:bg-[#F1F6FB]'
                         } ${editingKey === key ? 'ring-2 ring-inset ring-[#0F6CBD]' : ''} disabled:cursor-wait`}
@@ -202,6 +210,12 @@ export function SpecialRoomWeekGrid({
                         */}
                         {isSaving ? (
                           <LoaderCircle className="h-4 w-4 animate-spin text-[#0F6CBD]" />
+                        ) : closed ? (
+                          // 휴관은 예약을 덮는다. 예약이 남아 있어도 그날 오면 안 되기 때문이다.
+                          // 지우지는 않으므로 휴관을 풀면 그대로 돌아온다.
+                          <span className="w-full truncate rounded px-1 text-[10px] font-bold text-[#8A94A6] sm:text-xs">
+                            {closed.reason || '휴관'}
+                          </span>
                         ) : booking ? (
                           // 예약은 칸을 통째로 칠하지 않고 블록으로 얹는다. 시간표처럼 읽힌다.
                           // 한 줄로 자르고 전체는 시트에서 본다. 61px 칸에 두 줄을 넣으려던
