@@ -20,6 +20,21 @@
         "VITE_PUBLIC_APP_URL": "http://127.0.0.1:5174",
         "VITE_SPECIAL_ROOMS_DEMO_MODE": "true"
       }
+    },
+    {
+      "name": "schooldoc-dev-live",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "5175",
+        "--strictPort"
+      ],
+      "port": 5175,
+      "url": "http://127.0.0.1:5175",
+      "autoPort": false
     }
   ]
 }
