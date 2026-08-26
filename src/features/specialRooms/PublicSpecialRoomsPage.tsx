@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, CalendarDays, ChevronLeft, ChevronRight, DoorOpen } from 'lucide-react';
+import { AlertCircle, CalendarDays, Check, ChevronLeft, ChevronRight, DoorOpen, LoaderCircle } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { SpecialRoomWeekGrid } from './SpecialRoomWeekGrid';
 import { isSpecialRoomsDemoMode } from './specialRoomsConfig';
@@ -10,7 +10,7 @@ import { addDays, bookingKey, formatWeekRange, mondayOf, shiftWeek, toDateKey } 
 import { applyBooking, removeBooking } from './specialRoomsOptimistic';
 import type { Period, SpecialRoomBoard } from './types';
 
-const inputClass = 'min-h-[52px] w-full rounded-lg border border-[#DCE3EA] bg-white px-4 text-base text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#0F6CBD] focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]/15';
+const inputClass = 'min-h-[52px] w-full rounded-lg border border-[var(--sr-border)] bg-[var(--sr-surface)] px-4 text-base text-[var(--sr-text)] placeholder:text-[var(--sr-text-subtle)] focus:border-[var(--sr-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--sr-accent-soft)]';
 
 /**
  * 가입하지 않은 교사가 링크로 들어와 쓰는 화면.
@@ -28,6 +28,7 @@ export function PublicSpecialRoomsPage() {
   const [roomId, setRoomId] = useState('');
   const [mondayKey, setMondayKey] = useState(() => mondayOf(toDateKey(new Date())));
   const [savingCell, setSavingCell] = useState('');
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [actionError, setActionError] = useState('');
 
   // `loadWeek`가 board 전체에 의존하면 board가 바뀔 때마다 새로 만들어져 구독이 다시 붙는다.
@@ -128,46 +129,48 @@ export function PublicSpecialRoomsPage() {
     if (board && !roomId && board.rooms.length > 0) setRoomId(board.rooms[0].id);
   }, [board, roomId]);
 
-  if (loading) return <main className="py-20 text-center text-sm font-semibold text-[#526174]">불러오는 중입니다.</main>;
+  if (loading) return <main className="special-room-planner min-h-screen bg-[var(--sr-canvas)] py-20 text-center text-sm font-semibold text-[var(--sr-text-muted)]">불러오는 중입니다.</main>;
   if (!board) {
     return (
-      <main className="py-20 text-center">
-        <p className="font-bold text-[#0F172A]">{error || '예약표를 찾을 수 없습니다.'}</p>
+      <main className="special-room-planner min-h-screen bg-[var(--sr-canvas)] py-20 text-center">
+        <p className="font-bold text-[var(--sr-text)]">{error || '예약표를 찾을 수 없습니다.'}</p>
       </main>
     );
   }
 
   if (board.isPasswordProtected && !unlocked) {
     return (
-      <main className="mx-auto w-full max-w-md px-4 py-16">
-        <h1 className="text-xl font-extrabold text-[#0F172A]">{board.title}</h1>
-        <p className="mt-2 text-sm text-[#526174]">예약표를 열려면 비밀번호가 필요합니다.</p>
-        <form
-          className="mt-6 grid gap-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void (async () => {
-              try {
-                if (isSpecialRoomsDemoMode) {
-                  if (!store.verifyPassword(token, password)) throw new Error('비밀번호가 맞지 않습니다.');
-                } else {
-                  await remote.unlockRemoteBoard(token, password);
+      <main className="special-room-planner min-h-screen bg-[var(--sr-canvas)] px-4 py-16">
+        <div className="mx-auto w-full max-w-md rounded-2xl border border-[var(--sr-border)] bg-[var(--sr-surface)] p-6 shadow-[0_20px_50px_-40px_rgba(36,49,44,0.55)]">
+          <h1 className="text-xl font-extrabold text-[var(--sr-text)]">{board.title}</h1>
+          <p className="mt-2 text-sm text-[var(--sr-text-muted)]">예약표를 열려면 비밀번호가 필요합니다.</p>
+          <form
+            className="mt-6 grid gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void (async () => {
+                try {
+                  if (isSpecialRoomsDemoMode) {
+                    if (!store.verifyPassword(token, password)) throw new Error('비밀번호가 맞지 않습니다.');
+                  } else {
+                    await remote.unlockRemoteBoard(token, password);
+                  }
+                  setUnlocked(true);
+                  setPasswordError('');
+                } catch (unlockError) {
+                  setPasswordError(unlockError instanceof Error ? unlockError.message : '비밀번호가 맞지 않습니다.');
                 }
-                setUnlocked(true);
-                setPasswordError('');
-              } catch (unlockError) {
-                setPasswordError(unlockError instanceof Error ? unlockError.message : '비밀번호가 맞지 않습니다.');
-              }
-            })();
-          }}
-        >
-          <label className="grid gap-2 text-sm font-bold text-[#334155]">
-            비밀번호
-            <input type="password" className={inputClass} value={password} onChange={(event) => setPassword(event.target.value)} />
-          </label>
-          {passwordError ? <p role="alert" className="text-sm font-semibold text-[#B42318]">{passwordError}</p> : null}
-          <button type="submit" className="min-h-[52px] rounded-lg bg-[#0F6CBD] text-base font-bold text-white">열기</button>
-        </form>
+              })();
+            }}
+          >
+            <label className="grid gap-2 text-sm font-bold text-[var(--sr-text)]">
+              비밀번호
+              <input type="password" className={inputClass} value={password} onChange={(event) => setPassword(event.target.value)} />
+            </label>
+            {passwordError ? <p role="alert" className="text-sm font-semibold text-[#B42318]">{passwordError}</p> : null}
+            <button type="submit" className="min-h-[52px] rounded-lg bg-[var(--sr-accent)] text-base font-bold text-white hover:bg-[var(--sr-accent-strong)]">열기</button>
+          </form>
+        </div>
       </main>
     );
   }
@@ -184,9 +187,8 @@ export function PublicSpecialRoomsPage() {
    * 실패하면 누르기 전 상태로 되돌리고 무엇이 잘못됐는지 알린다. 되돌릴 수 있어야 하므로
    * 이전 목록을 그대로 들고 있는다.
    *
-   * 칸에 회전 표시를 얹지 않는 것도 같은 이유다. 누른 즉시 값이 그려지는데 그 위에 회전
-   * 표시를 덮으면 정작 방금 적은 내용이 가려진다. 그래서 `savingCell`은 연속 저장을 막는
-   * 빗장으로만 쓰고 표에는 넘기지 않는다.
+   * 칸을 회전 표시로 덮지 않고, 작은 동기화 표시와 표 위 상태 문구만 보여 준다. 누른 즉시
+   * 그린 값을 가리지 않으면서도 실제 서버 저장이 끝났는지는 알 수 있어야 한다.
    */
   const run = async (
     cellKey: string,
@@ -197,13 +199,16 @@ export function PublicSpecialRoomsPage() {
     const previous = board.bookings;
     setBoard((current) => (current ? { ...current, bookings: optimistic(current.bookings) } : current));
     setSavingCell(cellKey);
+    setSaveState('saving');
     setActionError('');
     try {
       await work();
       // 서버가 만든 진짜 값으로 확정한다. 실시간 구독이 같은 변경을 알려 와도 한 번만 받는다.
       refreshWeek();
+      setSaveState('saved');
     } catch (workError) {
       setBoard((current) => (current ? { ...current, bookings: previous } : current));
+      setSaveState('idle');
       setActionError(workError instanceof Error ? workError.message : '예약을 처리하지 못했습니다.');
     } finally {
       setSavingCell('');
@@ -211,64 +216,78 @@ export function PublicSpecialRoomsPage() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-8">
-      <header className="border-b border-[#DCE3EA] pb-5">
-        <p className="text-xs font-bold text-[#0F6CBD]">특별실 예약</p>
-        <h1 className="mt-1 text-2xl font-extrabold text-[#0F172A]">{board.title}</h1>
-        {board.description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-[#526174]">{board.description}</p> : null}
+    <main className="special-room-planner min-h-screen w-full bg-[var(--sr-canvas)] px-4 py-8 text-[var(--sr-text)] sm:py-10">
+      <header className="mx-auto max-w-[1040px] pb-4">
+        <p className="text-xs font-extrabold tracking-[0.08em] text-[var(--sr-accent)]">특별실 예약</p>
+        <h1 className="mt-1.5 text-2xl font-extrabold tracking-[-0.025em] text-[var(--sr-text)]">{board.title}</h1>
+        {board.description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--sr-text-muted)]">{board.description}</p> : null}
         {closed ? (
-          <p role="status" className="mt-3 inline-flex rounded-md bg-[#EEF1F4] px-3 py-1 text-xs font-bold text-[#526174]">
+          <p role="status" className="mt-3 inline-flex rounded-md bg-[var(--sr-closed)] px-3 py-1 text-xs font-bold text-[var(--sr-text-muted)]">
             예약이 종료되어 보기만 할 수 있습니다
           </p>
         ) : null}
       </header>
 
-      {board.rooms.length > 1 ? (
-        <div role="tablist" aria-label="특별실 선택" className="mt-5 flex flex-wrap gap-2">
-          {board.rooms.map((room) => (
-            <button
-              key={room.id}
-              type="button"
-              role="tab"
-              aria-selected={roomId === room.id}
-              onClick={() => setRoomId(room.id)}
-              className={`inline-flex min-h-[44px] items-center gap-2 rounded-lg border px-4 text-sm font-bold ${
-                roomId === room.id
-                  ? 'border-[#0F6CBD] bg-[#0F6CBD] text-white'
-                  : 'border-[#C8D0DA] bg-white text-[#334155] hover:border-[#8ABBE0]'
-              }`}
-            >
-              <DoorOpen className="h-4 w-4" />{room.name}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      <section aria-label="예약 주간 선택" className="mx-auto mt-3 w-full max-w-[1040px] rounded-xl border border-[var(--sr-border)] bg-[var(--sr-surface)] px-3 py-3 shadow-[0_16px_38px_-34px_rgba(36,49,44,0.7)] sm:px-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <DoorOpen className="h-4 w-4 shrink-0 text-[var(--sr-accent)]" aria-hidden="true" />
+            {board.rooms.length > 1 ? (
+              <div role="tablist" aria-label="특별실 선택" className="flex min-w-0 flex-wrap gap-1.5">
+                {board.rooms.map((room) => (
+                  <button
+                    key={room.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={roomId === room.id}
+                    onClick={() => setRoomId(room.id)}
+                    className={`inline-flex min-h-[44px] items-center rounded-lg border px-3 text-sm font-bold transition-colors ${
+                      roomId === room.id
+                        ? 'border-[var(--sr-accent)] bg-[var(--sr-accent)] text-white shadow-sm'
+                        : 'border-transparent bg-transparent text-[var(--sr-text-muted)] hover:bg-[var(--sr-surface-hover)] hover:text-[var(--sr-text)]'
+                    }`}
+                  >
+                    {room.name}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="truncate text-sm font-bold text-[var(--sr-text)]">{board.rooms[0]?.name || '특별실'}</p>
+            )}
+          </div>
 
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm font-bold text-[#0F172A]">
-          <CalendarDays className="h-4 w-4 text-[#0F6CBD]" />
-          {formatWeekRange(mondayKey)}
+          <div className="grid w-full grid-cols-[minmax(0,1fr)_44px_auto_44px] items-center gap-1.5 sm:flex sm:w-auto sm:gap-2">
+            <span className="inline-flex min-w-0 items-center gap-1.5 text-xs font-bold text-[var(--sr-text-muted)] sm:mr-1 sm:text-sm">
+              <CalendarDays className="h-4 w-4 text-[var(--sr-accent)]" aria-hidden="true" />
+              <span className="truncate">{formatWeekRange(mondayKey)}</span>
+            </span>
+            <button type="button" onClick={() => setMondayKey(shiftWeek(mondayKey, -1))} aria-label="지난 주" title="지난 주" className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[var(--sr-border)] bg-[var(--sr-surface)] text-[var(--sr-text-muted)] hover:border-[var(--sr-accent)] hover:text-[var(--sr-accent)]">
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button type="button" onClick={() => setMondayKey(mondayOf(toDateKey(new Date())))} className="min-h-[44px] whitespace-nowrap rounded-lg border border-[var(--sr-border)] bg-[var(--sr-surface)] px-2.5 text-xs font-bold text-[var(--sr-text)] hover:border-[var(--sr-accent)] hover:text-[var(--sr-accent)] sm:px-4 sm:text-sm">
+              이번 주
+            </button>
+            <button type="button" onClick={() => setMondayKey(shiftWeek(mondayKey, 1))} aria-label="다음 주" title="다음 주" className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[var(--sr-border)] bg-[var(--sr-surface)] text-[var(--sr-text-muted)] hover:border-[var(--sr-accent)] hover:text-[var(--sr-accent)]">
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setMondayKey(shiftWeek(mondayKey, -1))} aria-label="지난 주" className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[#C8D0DA] text-[#334155]">
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <button type="button" onClick={() => setMondayKey(mondayOf(toDateKey(new Date())))} className="min-h-[44px] rounded-lg border border-[#C8D0DA] px-4 text-sm font-bold text-[#334155]">
-            이번 주
-          </button>
-          <button type="button" onClick={() => setMondayKey(shiftWeek(mondayKey, 1))} aria-label="다음 주" className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-[#C8D0DA] text-[#334155]">
-            <ChevronRight className="h-5 w-5" />
-          </button>
+
+        <div className="flex min-h-6 items-center justify-end pt-1">
+          <p aria-live="polite" aria-atomic="true" className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[var(--sr-text-subtle)] sm:text-xs">
+            {saveState === 'saving' ? (<><LoaderCircle className="h-3.5 w-3.5 animate-spin text-[var(--sr-accent)]" />저장 중</>) : null}
+            {saveState === 'saved' ? (<><Check className="h-3.5 w-3.5 text-[var(--sr-accent)]" />저장됨</>) : null}
+          </p>
         </div>
-      </div>
+      </section>
 
       {actionError ? (
-        <p role="alert" className="mt-4 flex items-start gap-2 border-y border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm font-semibold text-[#B42318]">
+        <p role="alert" className="mx-auto mt-2 flex max-w-[1040px] items-start gap-2 rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm font-semibold text-[#B42318]">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{actionError}
         </p>
       ) : null}
 
-      <div className="mt-4">
+      <div className="mt-2">
         {roomId ? (
           <SpecialRoomWeekGrid
             mondayKey={mondayKey}
@@ -286,6 +305,7 @@ export function PublicSpecialRoomsPage() {
             bookings={board.bookings}
             schoolDays={board.schoolDays}
             readOnly={closed}
+            savingCell={savingCell}
             onSave={(date, period, label) => void run(
               bookingKey(date, period),
               (bookings) => applyBooking(bookings, { roomId, date, period: period as Period }, label),
@@ -298,7 +318,7 @@ export function PublicSpecialRoomsPage() {
             )}
           />
         ) : (
-          <p className="py-16 text-center text-sm text-[#64748B]">등록된 특별실이 없습니다.</p>
+          <p className="py-16 text-center text-sm text-[var(--sr-text-subtle)]">등록된 특별실이 없습니다.</p>
         )}
       </div>
 

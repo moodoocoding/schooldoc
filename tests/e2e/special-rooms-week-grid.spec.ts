@@ -44,6 +44,12 @@ test('375px에서 5일이 모두 보이고 가로 스크롤이 없다', async ({
   expect(fit?.inside, '요일 다섯 칸이 모두 화면 안에 있어야 한다').toBe(5);
   expect(fit?.horizontal, '표 안에서 옆으로 밀 것이 없어야 한다').toBe(0);
   expect(fit?.documentOverflow).toBe(0);
+
+  const navigationTops = await page.evaluate(() => (
+    [...document.querySelectorAll('section[aria-label="예약 주간 선택"] button')]
+      .map((button) => Math.round(button.getBoundingClientRect().top))
+  ));
+  expect(Math.max(...navigationTops) - Math.min(...navigationTops), '주간 이동 버튼이 한 줄에 있어야 한다').toBeLessThanOrEqual(1);
 });
 
 test('320px처럼 더 좁은 화면에서도 문서가 가로로 넘치지 않는다', async ({ page }) => {
@@ -61,6 +67,50 @@ test('데스크톱에서도 5일이 그대로 보인다', async ({ page }) => {
   const fit = await weekFit(page);
   expect(fit?.inside).toBe(5);
   expect(fit?.horizontal).toBe(0);
+});
+
+test('데스크톱에서는 폭을 제한하고 행 높이를 넉넉하게 쓴다', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await openBoard(page);
+
+  const layout = await page.evaluate(() => {
+    const table = document.querySelector('table');
+    const day = table?.querySelector('thead th:nth-child(2)');
+    const cell = table?.querySelector('tbody td button');
+    if (!table || !day || !cell) return null;
+    return {
+      tableWidth: Math.round(table.getBoundingClientRect().width),
+      dayHeight: Math.round(day.getBoundingClientRect().height),
+      cellHeight: Math.round(cell.getBoundingClientRect().height),
+    };
+  });
+
+  expect(layout?.tableWidth).toBeLessThanOrEqual(1040);
+  expect(layout?.tableWidth).toBeGreaterThanOrEqual(900);
+  expect(layout?.dayHeight).toBeGreaterThanOrEqual(64);
+  expect(layout?.cellHeight).toBeGreaterThanOrEqual(64);
+});
+
+test('공개 예약표는 웜 그레이·포레스트·테라코타의 주간 플래너 배색을 쓴다', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await openBoard(page);
+
+  const palette = await page.evaluate(() => {
+    const main = document.querySelector('main.special-room-planner');
+    const today = document.querySelector('th[aria-current="date"]');
+    if (!main || !today) return null;
+    return {
+      canvas: getComputedStyle(main).backgroundColor,
+      accent: getComputedStyle(main).getPropertyValue('--sr-accent').trim(),
+      today: getComputedStyle(today).borderTopColor,
+    };
+  });
+
+  expect(palette).toEqual({
+    canvas: 'rgb(244, 243, 239)',
+    accent: '#315f50',
+    today: 'rgb(199, 101, 76)',
+  });
 });
 
 test('칸을 누르면 시트가 열려 어디를 잡는지 알려 준다', async ({ page }) => {
@@ -87,6 +137,7 @@ test('시트에서 적어 저장하면 표에 반영되고 시트가 닫힌다',
 
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /6-1반 고치기$/ })).toBeVisible();
+  await expect(page.getByText('저장됨', { exact: true })).toBeVisible();
 });
 
 test('예약 지우기 버튼으로 지운다', async ({ page }) => {

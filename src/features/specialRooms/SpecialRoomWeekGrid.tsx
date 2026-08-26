@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LoaderCircle, X } from 'lucide-react';
+import { LoaderCircle } from 'lucide-react';
 import { BookingSheet } from './BookingSheet';
 import type { RepeatOutcome } from './specialRoomsRepeat';
 import { closureAt } from './specialRoomsClosure';
@@ -98,7 +98,7 @@ export function SpecialRoomWeekGrid({
   const editingKey = editing ? bookingKey(editing.date, editing.period) : '';
 
   return (
-    <div className="rounded-md border border-[#EEF1F4]">
+    <div className="special-room-planner mx-auto w-full max-w-[1040px] overflow-hidden rounded-xl border border-[var(--sr-border)] bg-[var(--sr-surface)] shadow-[0_20px_50px_-42px_rgba(36,49,44,0.65)]">
       {/*
         한 주가 통째로 보여야 한다. 오늘이 찼으면 다른 날을 잡는 것이 이 화면의 기본
         동작인데, 예전에는 `min-w-[720px]` 때문에 375px 화면에서 5일 중 2일만 보이고
@@ -107,15 +107,17 @@ export function SpecialRoomWeekGrid({
         (`6-1반`, `과학실험`, `6학년1반`)은 그 폭에 한 줄로 읽힌다.
       */}
       <table className="w-full table-fixed border-collapse text-sm">
-        <caption className="sr-only">월요일부터 금요일까지 1교시부터 8교시까지의 특별실 예약 표</caption>
+        <caption className="sr-only">
+          {weekdays[0]}요일부터 {weekdays[weekdays.length - 1]}요일까지 1교시부터 {periodCount}교시까지의 특별실 예약 표
+        </caption>
         {/* 칸 내용이나 편집 상태에 따라 열이 흔들리지 않도록 폭을 고정한다. */}
         <colgroup>
-          <col className="w-[34px] sm:w-[64px]" />
+          <col className="w-[36px] sm:w-[64px]" />
           {weekdays.map((day) => <col key={day} style={{ width: `${100 / weekdays.length}%` }} />)}
         </colgroup>
         <thead>
           <tr>
-            <th scope="col" className="border-b border-[#C8D0DA] bg-[#F6F8FB] px-1 py-2 text-[10px] font-bold text-[#64748B] sm:text-[11px]">
+            <th scope="col" className="h-[56px] border-b border-[var(--sr-border-strong)] bg-[var(--sr-surface-muted)] px-1 text-[10px] font-bold text-[var(--sr-text-subtle)] sm:h-[68px] sm:text-[11px]">
               교시
             </th>
             {dates.map((date, index) => {
@@ -126,9 +128,9 @@ export function SpecialRoomWeekGrid({
                   key={date}
                   scope="col"
                   aria-current={isToday ? 'date' : undefined}
-                  className={`border-b border-l border-[#C8D0DA] px-0.5 py-2 align-top sm:px-2 sm:py-2.5 ${
-                    note?.isOffDay ? 'bg-[#F1F3F6]' : 'bg-[#F6F8FB]'
-                  } ${isToday ? 'border-t-2 border-t-[#0F6CBD]' : 'border-t-2 border-t-transparent'}`}
+                  className={`h-[56px] border-b border-l border-[var(--sr-border-strong)] px-0.5 py-2 align-middle sm:h-[68px] sm:px-2 ${
+                    note?.isOffDay ? 'bg-[var(--sr-closed)]' : isToday ? 'bg-[var(--sr-today-soft)]' : 'bg-[var(--sr-surface-muted)]'
+                  } ${isToday ? 'border-t-[3px] border-t-[var(--sr-today)]' : 'border-t-[3px] border-t-transparent'}`}
                 >
                   {/*
                     달력과 시간표에서 휴업일은 빨강이다. 교사가 이미 아는 관례라 설명이 필요
@@ -136,24 +138,24 @@ export function SpecialRoomWeekGrid({
                     오늘은 면을 칠하지 않고 위쪽 선으로 표시한다. 옅은 배경을 두 가지 쓰면
                     밝기 차이가 1% 밖에 나지 않아 둘 다 흰색으로 보인다.
                   */}
-                  {/* 좁은 화면에서는 요일 아래 날짜를 두 줄로 눌러 담는다. */}
+                  {/* 좁은 화면에서는 요일 아래 날짜를 두 줄로, 데스크톱에서는 한 줄로 읽는다. */}
                   <span className="flex flex-col items-center gap-0 sm:flex-row sm:justify-center sm:gap-1.5">
-                    <span className={`text-xs font-bold sm:text-sm ${note?.isOffDay ? 'text-[#C0261B]' : 'text-[#0F172A]'}`}>
+                    <span className={`text-xs font-bold sm:text-sm ${note?.isOffDay ? 'text-[#C0261B]' : isToday ? 'text-[var(--sr-today)]' : 'text-[var(--sr-text)]'}`}>
                       {weekdays[index]}
                     </span>
-                    <span className={`text-[10px] font-semibold sm:text-xs ${note?.isOffDay ? 'text-[#C0261B]' : 'text-[#64748B]'}`}>
+                    <span className={`text-[10px] font-semibold sm:text-xs ${note?.isOffDay ? 'text-[#C0261B]' : 'text-[var(--sr-text-subtle)]'}`}>
                       {formatDayLabel(date)}
                     </span>
                   </span>
                   {/* 색만으로 알리지 않는다. 흑백으로 봐도 글자로 구분된다. */}
                   {isToday ? (
-                    <span className="mx-auto mt-1 block w-fit rounded bg-[#0F6CBD] px-1.5 py-0.5 text-[10px] font-bold text-white">오늘</span>
+                    <span className="mx-auto mt-1 block w-fit rounded bg-[var(--sr-today)] px-1.5 py-0.5 text-[9px] font-bold text-white sm:text-[10px]">오늘</span>
                   ) : null}
                   {note?.events.length ? (
                     <span
                       title={note.events.join(' · ')}
                       className={`mx-auto mt-1 block w-fit max-w-full truncate rounded px-1.5 py-0.5 text-[10px] font-bold ${
-                        note.isOffDay ? 'bg-[#FBE4E2] text-[#8C1D18]' : 'bg-[#E7EDF4] text-[#41566E]'
+                        note.isOffDay ? 'bg-[#FBE4E2] text-[#8C1D18]' : 'bg-[var(--sr-accent-soft)] text-[var(--sr-accent-strong)]'
                       }`}
                     >
                       {note.events.join(' · ')}
@@ -168,11 +170,11 @@ export function SpecialRoomWeekGrid({
           {periods.map((period) => {
             // 점심 자리에 선을 하나 두면 몇 교시인지 세지 않고도 위아래를 가늠한다.
             // 6교시 학교는 4교시 뒤, 8~9교시 학교도 4교시 뒤가 보통이다.
-            const afterLunch = period === LUNCH_AFTER_PERIOD ? 'border-b-2 border-b-[#C8D0DA]' : 'border-b border-b-[#EEF1F4]';
+            const afterLunch = period === LUNCH_AFTER_PERIOD ? 'border-b-2 border-b-[var(--sr-border-strong)]' : 'border-b border-b-[var(--sr-grid)]';
             const lastRow = period === periods[periods.length - 1] ? 'border-b-0' : '';
             return (
               <tr key={period}>
-                <th scope="row" className={`bg-[#F6F8FB] px-1 py-2 text-[10px] font-bold text-[#64748B] sm:text-[11px] ${afterLunch} ${lastRow}`}>
+                <th scope="row" className={`h-[48px] bg-[var(--sr-surface-muted)] px-1 text-[10px] font-bold text-[var(--sr-text-subtle)] sm:h-[64px] sm:text-xs lg:h-[68px] ${afterLunch} ${lastRow}`}>
                   {period}교시
                 </th>
                 {dates.map((date) => {
@@ -185,22 +187,28 @@ export function SpecialRoomWeekGrid({
                   // 휴업일만 실제로 보이는 회색으로 덮는다. 오늘은 왼쪽 선으로 알린다.
                   // 밝기가 4밖에 차이 나지 않는 배경은 아무 것도 알리지 못한다.
                   const closed = closureAt(closures, roomId, date);
-                  const tone = closed ? 'bg-[#EEF1F4]' : note?.isOffDay ? 'bg-[#F1F3F6]' : 'bg-white';
-                  const todayEdge = isToday ? 'border-l-2 border-l-[#0F6CBD]' : 'border-l border-l-[#EEF1F4]';
+                  const tone = closed
+                    ? 'bg-[var(--sr-closed)]'
+                    : note?.isOffDay
+                      ? 'bg-[var(--sr-closed)]'
+                      : isToday
+                        ? 'bg-[var(--sr-today-wash)]'
+                        : 'bg-[var(--sr-surface)]';
 
                   return (
-                    <td key={key} className={`${todayEdge} p-0 ${tone} ${afterLunch} ${lastRow}`}>
+                    <td key={key} className={`border-l border-l-[var(--sr-grid)] p-0 ${tone} ${afterLunch} ${lastRow}`}>
                       <button
                         type="button"
                         disabled={readOnly || isSaving || Boolean(closed)}
+                        aria-busy={isSaving || undefined}
                         onClick={() => openCell(date, period)}
                         aria-label={closed
                           ? `${cellName} 휴관${closed.reason ? ` · ${closed.reason}` : ''}`
                           : booking ? `${cellName} ${booking.label} 고치기` : `${cellName} 예약하기`}
                         title={closed?.reason || undefined}
-                        className={`flex h-[44px] w-full items-center justify-center px-0.5 sm:h-[52px] sm:px-1.5 ${
-                          readOnly ? 'cursor-default' : 'cursor-pointer hover:bg-[#F1F6FB]'
-                        } ${editingKey === key ? 'ring-2 ring-inset ring-[#0F6CBD]' : ''} disabled:cursor-wait`}
+                        className={`group relative flex h-[48px] w-full items-center justify-center p-1 sm:h-[64px] sm:p-2 lg:h-[68px] ${
+                          readOnly ? 'cursor-default' : 'cursor-pointer transition-colors hover:bg-[var(--sr-surface-hover)]'
+                        } ${editingKey === key ? 'ring-2 ring-inset ring-[var(--sr-accent)]' : ''} disabled:cursor-default`}
                       >
                         {/*
                           빈 칸에는 아무것도 그리지 않는다. 한 주에 40칸이라 표시 하나를
@@ -208,24 +216,35 @@ export function SpecialRoomWeekGrid({
                           누를 수 있다는 것은 표 아래 안내와 커서·hover가 알린다.
                           보조기기에는 칸의 접근 가능한 이름(`… 예약하기`)이 알린다.
                         */}
-                        {isSaving ? (
-                          <LoaderCircle className="h-4 w-4 animate-spin text-[#0F6CBD]" />
-                        ) : closed ? (
+                        {closed ? (
                           // 휴관은 예약을 덮는다. 예약이 남아 있어도 그날 오면 안 되기 때문이다.
                           // 지우지는 않으므로 휴관을 풀면 그대로 돌아온다.
-                          <span className="w-full truncate rounded px-1 text-[10px] font-bold text-[#8A94A6] sm:text-xs">
+                          <span className="flex min-h-[28px] w-full items-center justify-center truncate rounded-md border border-[var(--sr-border-strong)] bg-[var(--sr-closed)] px-1 text-[10px] font-bold text-[var(--sr-text-subtle)] sm:min-h-[44px] sm:text-xs">
                             {closed.reason || '휴관'}
                           </span>
                         ) : booking ? (
-                          // 예약은 칸을 통째로 칠하지 않고 블록으로 얹는다. 시간표처럼 읽힌다.
-                          // 한 줄로 자르고 전체는 시트에서 본다. 61px 칸에 두 줄을 넣으려던
-                          // 앞선 시도는 `line-clamp`가 듣지 않아 글자 중간이 잘렸다.
-                          <span
-                            title={booking.label}
-                            className="w-full truncate rounded border border-[#BBD6EE] bg-[#EFF6FC] px-1 py-1 text-[10px] font-bold text-[#0F5B9E] sm:rounded-md sm:px-2 sm:text-xs"
-                          >
-                            {booking.label}
+                          <>
+                            {/* 모바일은 한 줄, 폭이 넉넉한 데스크톱은 두 줄까지 보여 준다. */}
+                            <span
+                              title={booking.label}
+                              className="w-full truncate rounded-md border-l-[3px] border-l-[var(--sr-accent)] bg-[var(--sr-event)] px-1.5 py-1 text-left text-[10px] font-bold text-[var(--sr-event-text)] sm:hidden"
+                            >
+                              {booking.label}
+                            </span>
+                            <span
+                              title={booking.label}
+                              className="hidden min-h-[44px] w-full items-center rounded-md border-l-[3px] border-l-[var(--sr-accent)] bg-[var(--sr-event)] px-3 py-1.5 text-left text-xs font-bold leading-5 text-[var(--sr-event-text)] sm:flex"
+                            >
+                              <span className="line-clamp-2">{booking.label}</span>
+                            </span>
+                          </>
+                        ) : readOnly ? null : (
+                          <span aria-hidden="true" className="hidden items-center gap-1 text-[11px] font-bold text-[var(--sr-accent)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 sm:inline-flex">
+                            <span className="text-base font-normal leading-none">+</span> 예약
                           </span>
+                        )}
+                        {isSaving ? (
+                          <LoaderCircle className="absolute right-1.5 top-1.5 h-3.5 w-3.5 animate-spin text-[var(--sr-accent)]" aria-hidden="true" />
                         ) : null}
                       </button>
                     </td>
@@ -259,10 +278,9 @@ export function SpecialRoomWeekGrid({
       ) : null}
 
       {!readOnly ? (
-        <p className="mt-3 text-xs text-[#64748B]">
-          빈 칸을 눌러 사용할 학급이나 용도를 적습니다. 내용을 지우고 저장하면 예약이 취소됩니다.
-          <X className="mx-1 inline h-3 w-3" />
-          누구나 고치고 지울 수 있으니 남의 예약을 확인한 뒤 바꿔 주세요.
+        <p className="border-t border-[var(--sr-grid)] bg-[var(--sr-surface-muted)] px-3 py-2.5 text-[11px] leading-5 text-[var(--sr-text-muted)] sm:px-4 sm:text-xs">
+          <span className="font-semibold text-[var(--sr-text)]">빈 칸을 눌러 예약하세요.</span>{' '}
+          누구나 예약을 수정할 수 있으니 기존 내용을 확인해 주세요.
         </p>
       ) : null}
     </div>
