@@ -14,6 +14,29 @@ const createBoard = async (page: import('@playwright/test').Page, title: string)
   return page.getByLabel('예약 링크 주소').inputValue();
 };
 
+test('프로필의 소속 학교를 새 예약표에 자동으로 입력한다', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('schooldoc_teacher_profile_v1:local-demo-teacher', JSON.stringify({
+      school: {
+        name: '새빛초등학교',
+        officeCode: 'B10',
+        schoolCode: '7010123',
+      },
+      teacherName: '김선생',
+      gradeClass: '5학년 1반',
+    }));
+  });
+
+  await page.goto('/tools/special-rooms/new');
+
+  await expect(page.getByRole('button', { name: '새빛초등학교' })).toBeVisible();
+  await expect(page.getByText('프로필에 저장한 소속 학교를 자동으로 불러왔습니다.')).toBeVisible();
+
+  await page.getByRole('button', { name: '연결한 학교 지우기' }).click();
+  await expect(page.getByRole('button', { name: '눌러서 학교를 찾습니다' })).toBeVisible();
+  await expect(page.getByText('프로필에 저장한 소속 학교를 자동으로 불러왔습니다.')).toHaveCount(0);
+});
+
 test('예약표를 만들고 링크로 들어가 시간표에서 예약한다', async ({ page }) => {
   const link = await createBoard(page, '2학기 특별실 예약');
   expect(link).toContain('/s/rooms/');

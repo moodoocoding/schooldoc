@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTeacherAuth } from '../../auth/teacherAuth';
+import { loadTeacherProfile } from '../settings/profileSettings';
 import { insertRowAfter, isRowAddKey } from '../../utils/rowEntry';
 import { isSpecialRoomsDemoMode } from './specialRoomsConfig';
 import { SchoolPicker } from './SchoolPicker';
@@ -15,9 +16,10 @@ export function SpecialRoomsCreatePage() {
   const navigate = useNavigate();
   const { user } = useTeacherAuth();
   const ownerId = user?.id ?? (isSpecialRoomsDemoMode ? 'local-demo-teacher' : '');
+  const profileSchool = useMemo(() => loadTeacherProfile(ownerId, '').school, [ownerId]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [school, setSchool] = useState<SelectedSchool | null>(null);
+  const [school, setSchool] = useState<SelectedSchool | null>(profileSchool);
   const [periodCount, setPeriodCount] = useState(DEFAULT_PERIOD_COUNT);
   const [includeSaturday, setIncludeSaturday] = useState(false);
   const [password, setPassword] = useState('');
@@ -25,6 +27,20 @@ export function SpecialRoomsCreatePage() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [focusRoom, setFocusRoom] = useState(-1);
+
+  // 프로필을 불러오기 전에 인증이 끝나는 경우에도 학교 칸이 비어 있을 때만 채운다.
+  // 사용자가 직접 지우거나 다른 학교를 고른 뒤에는 같은 값으로 다시 덮어쓰지 않는다.
+  useEffect(() => {
+    if (!profileSchool) return;
+    setSchool((current) => current ?? profileSchool);
+  }, [profileSchool]);
+
+  const usesProfileSchool = Boolean(
+    school
+      && profileSchool
+      && school.officeCode === profileSchool.officeCode
+      && school.schoolCode === profileSchool.schoolCode,
+  );
 
   // 엔터로 끼운 줄에 곧바로 이어 적을 수 있어야 한다.
   useEffect(() => {
@@ -93,6 +109,11 @@ export function SpecialRoomsCreatePage() {
         <div className="grid gap-2 text-sm font-bold text-[#334155]">
           학교
           <SchoolPicker value={school} onChange={setSchool} />
+          {usesProfileSchool ? (
+            <p className="text-xs font-normal leading-5 text-[#526174]">
+              프로필에 저장한 소속 학교를 자동으로 불러왔습니다. 학교 이름을 누르면 바꿀 수 있습니다.
+            </p>
+          ) : null}
         </div>
         {/*
           학교마다 하루가 다르다. 초등은 6교시가 끝이고 중등은 7교시, 고등은 방과후까지

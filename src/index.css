@@ -58,6 +58,37 @@
 }
 
 /*
+ * 특별실 예약표는 시간표가 아니라 주간 플래너처럼 읽혀야 한다. 공개 화면에서는 따뜻한
+ * 무채색 바탕에 포레스트·테라코타를 쓰고, 색은 선택·오늘·예약처럼 의미가 있는 곳에만
+ * 둔다. 관리자 앱 안에서는 개인 화면 테마를 그대로 따라간다.
+ */
+.special-room-planner {
+  --sr-canvas: #f4f3ef;
+  --sr-surface: #fffefc;
+  --sr-surface-muted: #f0efea;
+  --sr-surface-hover: #edf1ed;
+  --sr-text: #24312c;
+  --sr-text-muted: #67736e;
+  --sr-text-subtle: #7b8580;
+  --sr-border: #dedcd4;
+  --sr-border-strong: #c9c7be;
+  --sr-grid: #e8e5de;
+  --sr-accent: #315f50;
+  --sr-accent-strong: #274b40;
+  --sr-accent-soft: #e7efe9;
+  --sr-today: #c7654c;
+  --sr-today-soft: #fff1eb;
+  --sr-today-wash: #fffaf7;
+  --sr-event: #dcebe3;
+  --sr-event-text: #254e40;
+  --sr-closed: #eeece7;
+}
+
+.special-room-planner :where(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline-color: var(--sr-accent);
+}
+
+/*
  * 교사용 앱에만 적용하는 화면 테마다. 공개 링크와 인쇄물은 만든 사람의 개인 설정에
  * 영향을 받으면 안 되므로 App.tsx의 schooldoc-admin-shell 안에서만 기존 색 토큰을
  * 치환한다. 레이아웃과 성공·경고·오류 같은 의미 색은 그대로 둔다.
@@ -84,6 +115,28 @@
   --sd-leading-5xl: 1;
   background-color: var(--sd-canvas) !important;
   color: var(--sd-text);
+}
+
+.schooldoc-admin-shell .special-room-planner {
+  --sr-canvas: var(--sd-canvas);
+  --sr-surface: var(--sd-surface);
+  --sr-surface-muted: var(--sd-canvas);
+  --sr-surface-hover: var(--sd-surface-hover);
+  --sr-text: var(--sd-text);
+  --sr-text-muted: var(--sd-text-muted);
+  --sr-text-subtle: var(--sd-text-subtle);
+  --sr-border: var(--sd-border);
+  --sr-border-strong: var(--sd-border-strong);
+  --sr-grid: var(--sd-divider);
+  --sr-accent: var(--sd-accent);
+  --sr-accent-strong: var(--sd-accent-hover);
+  --sr-accent-soft: var(--sd-accent-soft);
+  --sr-today: var(--sd-accent);
+  --sr-today-soft: var(--sd-accent-soft);
+  --sr-today-wash: var(--sd-surface-hover);
+  --sr-event: var(--sd-accent-soft);
+  --sr-event-text: var(--sd-accent);
+  --sr-closed: var(--sd-divider);
 }
 
 html[data-schooldoc-font-size="large"] .schooldoc-admin-shell {
