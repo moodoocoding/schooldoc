@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { activeWorkProviders, loadActiveWorkSnapshot } from './activeWorkProviders';
+import { activeWorkProviders } from './activeWorkProviders';
+import { loadActiveWork } from './activeWorkService';
 import type { ActiveWorkSnapshot } from './types';
 
 const EMPTY_SNAPSHOT: ActiveWorkSnapshot = { groups: [], failures: [] };
@@ -16,7 +17,7 @@ export const useActiveWork = (userId: string) => {
     requestNumber.current = currentRequest;
     if (hasLoaded.current) setRefreshing(true);
     else setLoading(true);
-    const next = await loadActiveWorkSnapshot({ userId, now: new Date() });
+    const next = await loadActiveWork({ userId, now: new Date() });
     if (requestNumber.current === currentRequest) {
       setSnapshot(next);
       setLoading(false);
