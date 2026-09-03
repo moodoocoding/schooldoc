@@ -44,6 +44,14 @@ const ACCEPT = 'image/jpeg,image/png,image/webp,application/pdf';
 const digitsOnly = (value: string) => value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
 const fileSize = (bytes: number) => bytes >= 1_000_000 ? `${(bytes / 1_000_000).toFixed(1)}MB` : `${Math.max(1, Math.round(bytes / 1000))}KB`;
 const spentAtLabel = (value: string) => new Date(`${value}T00:00:00`).toLocaleDateString('ko-KR');
+const analysisCandidates = (file: ReceiptFile) => file.analysisCandidates.length
+  ? file.analysisCandidates
+  : file.analysis ? [file.analysis] : [];
+const pendingReviewCount = (file: ReceiptFile) => {
+  const candidates = analysisCandidates(file);
+  if (!candidates.length) return file.linkedEntryIds.length ? 0 : 1;
+  return Math.max(0, candidates.length - file.linkedEntryIds.length);
+};
 
 export function ReceiptBookDetailPage() {
   const navigate = useNavigate();
@@ -63,6 +71,7 @@ export function ReceiptBookDetailPage() {
   const [amountText, setAmountText] = useState('');
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
   const [reviewingFileId, setReviewingFileId] = useState<string | null>(null);
+  const [reviewingCandidateIndex, setReviewingCandidateIndex] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [lastTrashedId, setLastTrashedId] = useState<string | null>(null);
   const [showTrash, setShowTrash] = useState(false);
@@ -78,22 +87,26 @@ export function ReceiptBookDetailPage() {
   const entries = activeReceiptEntries(book);
   const trashedEntries = trashedReceiptEntries(book);
   const availableFiles = book.files.filter((file) => file.status === 'uploaded');
-  const unlinkedFiles = availableFiles.filter((file) => file.linkedEntryIds.length === 0);
+  const reviewFiles = availableFiles.filter((file) => pendingReviewCount(file) > 0);
   const reviewingFile = availableFiles.find((file) => file.id === reviewingFileId) ?? null;
+  const reviewingAnalysis = reviewingFile ? analysisCandidates(reviewingFile)[reviewingCandidateIndex] ?? null : null;
 
   const resetForm = () => {
     setSpentAt(localDateValue()); setMerchant(''); setPurpose(''); setAmountText('');
-    setSelectedFileIds([]); setReviewingFileId(null); setEditingId(null);
+    setSelectedFileIds([]); setReviewingFileId(null); setReviewingCandidateIndex(0); setEditingId(null);
   };
 
-  const reviewFile = (file: ReceiptFile) => {
+  const reviewFile = (file: ReceiptFile, candidateIndex = file.linkedEntryIds.length) => {
+    const candidates = analysisCandidates(file);
+    const candidate = candidates[candidateIndex] ?? null;
     setSelectedFileIds([file.id]); setReviewingFileId(file.id); setEditingId(null);
-    setSpentAt(file.analysis?.spentAt ?? ''); setMerchant(file.analysis?.merchant ?? '');
-    setAmountText(file.analysis?.amount ? String(file.analysis.amount) : ''); setPurpose('');
-    setError(''); setNotice(file.analysis ? '자동 분석값을 불러왔습니다. 원본과 비교한 뒤 사용 목적을 입력해 주세요.' : '원본 영수증을 보며 값을 입력해 주세요.');
+    setReviewingCandidateIndex(candidateIndex);
+    setSpentAt(candidate?.spentAt ?? ''); setMerchant(candidate?.merchant ?? '');
+    setAmountText(candidate?.amount ? String(candidate.amount) : ''); setPurpose('');
+    setError(''); setNotice(candidate ? '자동 분석값을 불러왔습니다. 원본과 비교한 뒤 사용 목적을 입력해 주세요.' : '원본 영수증을 보며 값을 입력해 주세요.');
     requestAnimationFrame(() => {
       entrySectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      const target = !file.analysis?.spentAt ? dateInputRef.current : !file.analysis.merchant ? merchantInputRef.current : !file.analysis.amount ? amountInputRef.current : purposeInputRef.current;
+      const target = !candidate?.spentAt ? dateInputRef.current : !candidate.merchant ? merchantInputRef.current : !candidate.amount ? amountInputRef.current : purposeInputRef.current;
       target?.focus({ preventScroll: true });
     });
   };
@@ -101,15 +114,15 @@ export function ReceiptBookDetailPage() {
   const analyze = async (storedFile: ReceiptFile, sourceFile: File) => {
     setAnalysisProgress((current) => ({ ...current, [storedFile.id]: '자동 분석 준비 중' }));
     try {
-      const draft = await analyzeReceiptFile(sourceFile, (progress) => setAnalysisProgress((current) => ({ ...current, [storedFile.id]: progress.label })));
-      saveLocalReceiptFileAnalysis(ownerId, book.id, storedFile.id, draft);
-      const analyzed = { ...storedFile, analysisStatus: 'ready' as const, analysis: draft };
-      reviewFile(analyzed);
+      const drafts = await analyzeReceiptFile(sourceFile, (progress) => setAnalysisProgress((current) => ({ ...current, [storedFile.id]: progress.label })));
+      saveLocalReceiptFileAnalysis(ownerId, book.id, storedFile.id, drafts);
+      const analyzed = { ...storedFile, analysisStatus: 'ready' as const, analysis: drafts[0] ?? null, analysisCandidates: drafts };
+      reviewFile(analyzed, 0);
       return analyzed;
     } catch {
       saveLocalReceiptFileAnalysis(ownerId, book.id, storedFile.id, null);
       setError(`${storedFile.originalName}을 자동으로 읽지 못했습니다. 원본을 보며 직접 입력할 수 있습니다.`);
-      const failed = { ...storedFile, analysisStatus: 'failed' as const, analysis: null };
+      const failed = { ...storedFile, analysisStatus: 'failed' as const, analysis: null, analysisCandidates: [] };
       reviewFile(failed);
       return failed;
     } finally {
@@ -145,14 +158,29 @@ export function ReceiptBookDetailPage() {
     if (!purpose.trim()) { setError('사용 목적을 입력해 주세요.'); purposeInputRef.current?.focus(); return; }
     if (Number(amountText) < 1) { setError('금액을 1원 이상 입력해 주세요.'); amountInputRef.current?.focus(); return; }
     const input = { spentAt, merchant: merchant.trim(), purpose: purpose.trim(), amount: Number(amountText), evidenceFileIds: selectedFileIds };
-    if (editingId) { editReceiptEntry(ownerId, book.id, editingId, input); setNotice('지출 내용을 수정했습니다.'); }
-    else { addReceiptEntry(ownerId, book.id, input); setNotice('지출 1건을 장부에 반영했습니다.'); }
-    setLastTrashedId(null); resetForm();
+    if (editingId) {
+      editReceiptEntry(ownerId, book.id, editingId, input);
+      setNotice('지출 내용을 수정했습니다.');
+      setLastTrashedId(null);
+      resetForm();
+      return;
+    }
+    addReceiptEntry(ownerId, book.id, input);
+    setLastTrashedId(null);
+    const candidates = reviewingFile ? analysisCandidates(reviewingFile) : [];
+    const nextCandidateIndex = reviewingCandidateIndex + 1;
+    if (reviewingFile && nextCandidateIndex < candidates.length) {
+      reviewFile(reviewingFile, nextCandidateIndex);
+      setNotice(`지출 1건을 반영했습니다. 이어서 영수증 ${nextCandidateIndex + 1}/${candidates.length}을 확인해 주세요.`);
+      return;
+    }
+    setNotice('지출 1건을 장부에 반영했습니다.');
+    resetForm();
   };
 
   const startEdit = (entry: ReceiptEntry) => {
     setSpentAt(entry.spentAt); setMerchant(entry.merchant); setPurpose(entry.purpose); setAmountText(String(entry.amount));
-    setSelectedFileIds(entry.evidenceFileIds); setReviewingFileId(null); setEditingId(entry.id); setError('');
+    setSelectedFileIds(entry.evidenceFileIds); setReviewingFileId(null); setReviewingCandidateIndex(0); setEditingId(entry.id); setError('');
     entrySectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
@@ -173,20 +201,31 @@ export function ReceiptBookDetailPage() {
     <section aria-labelledby="receipt-files-heading" className="border-y border-[#DCE3EA] bg-white px-4 py-6 sm:px-6">
       <div className="flex items-start justify-between gap-4"><div className="flex items-start gap-3"><FileText className="mt-0.5 h-5 w-5 shrink-0 text-[#0F6CBD]" /><div><h2 id="receipt-files-heading" className="text-lg font-bold">영수증 파일 올리기</h2><p className="mt-1 text-xs leading-5 text-[#526174]">파일을 올리면 날짜·사용처·결제금액을 바로 읽습니다.</p></div></div>
         <input ref={fileInputRef} type="file" multiple={!reanalyzeFileId} accept={ACCEPT} aria-label="영수증 증빙 파일" className="sr-only" onChange={(event) => void handleFiles(Array.from(event.target.files ?? []))} />
-        {unlinkedFiles.length === 0 ? <button type="button" disabled={uploading} onClick={() => fileInputRef.current?.click()} className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-lg border border-[#0F6CBD] px-4 text-sm font-bold text-[#0F6CBD] disabled:text-[#64748B]">{uploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}{uploading ? '자동 분석 중' : '영수증 파일 선택'}</button> : null}
+        {reviewFiles.length === 0 ? <button type="button" disabled={uploading} onClick={() => fileInputRef.current?.click()} className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-lg border border-[#0F6CBD] px-4 text-sm font-bold text-[#0F6CBD] disabled:text-[#64748B]">{uploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}{uploading ? '자동 분석 중' : '영수증 파일 선택'}</button> : null}
       </div>
       {book.files.length === 0 ? <button type="button" onClick={() => fileInputRef.current?.click()} className="mt-5 flex min-h-32 w-full flex-col items-center justify-center border-y border-dashed border-[#C8D0DA] bg-[#F8FAFC] text-sm font-bold text-[#0F6CBD]"><FileUp className="mb-2 h-6 w-6" />사진 또는 PDF 선택</button> : <ul className="mt-5 divide-y divide-[#EEF1F4] border-y border-[#DCE3EA]">{book.files.map((file) => {
         const progress = analysisProgress[file.id];
-        const analysisIsPlausible = Boolean(file.analysis)
-          && (file.analysis?.amount === null || file.analysis!.amount <= Math.max(book.totalBudget * 2, 5_000_000));
+        const candidates = analysisCandidates(file);
+        const nextCandidateIndex = Math.min(file.linkedEntryIds.length, Math.max(0, candidates.length - 1));
+        const nextAnalysis = candidates[nextCandidateIndex] ?? file.analysis;
+        const remainingReviews = pendingReviewCount(file);
+        const analysisIsPlausible = Boolean(nextAnalysis)
+          && (nextAnalysis?.amount === null || nextAnalysis!.amount <= Math.max(book.totalBudget * 2, 5_000_000));
+        const analysisLabel = progress
+          ?? (candidates.length > 1
+            ? `영수증 ${candidates.length}건 감지 · ${remainingReviews}건 확인 필요`
+            : analysisIsPlausible ? '자동 분석 완료'
+              : nextAnalysis ? '자동 분석값 재확인 필요'
+                : file.analysisStatus === 'failed' ? '자동 분석 실패'
+                  : file.analysisStatus === 'analyzing' ? '자동 분석 중' : '분석 전');
         const selectForAnalysis = () => { setReanalyzeFileId(file.id); requestAnimationFrame(() => fileInputRef.current?.click()); };
-        return <li key={file.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><p className="break-words text-sm font-bold">{file.originalName}</p><p className="mt-1 text-xs text-[#64748B]">{fileSize(file.sizeBytes)} · {progress ?? (analysisIsPlausible ? '자동 분석 완료' : file.analysis ? '자동 분석값 재확인 필요' : file.analysisStatus === 'failed' ? '자동 분석 실패' : file.analysisStatus === 'analyzing' ? '자동 분석 중' : '분석 전')}</p>{analysisIsPlausible && file.analysis ? <p className="mt-1 text-xs font-semibold text-[#126B32]">{file.analysis.spentAt || '날짜 미확인'} · {file.analysis.merchant || '사용처 미확인'} · {file.analysis.amount ? formatWon(file.analysis.amount) : '금액 미확인'}</p> : null}</div><div className="flex shrink-0 flex-wrap items-center gap-2">{file.previewUrl ? <a href={file.previewUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-[40px] items-center gap-1.5 px-3 text-xs font-bold text-[#0F6CBD]"><ExternalLink className="h-3.5 w-3.5" />원본 보기</a> : null}{!progress && file.linkedEntryIds.length === 0 ? analysisIsPlausible ? <button type="button" onClick={() => reviewFile(file)} className="min-h-[40px] rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD]">결과 수정</button> : <button type="button" onClick={selectForAnalysis} className="min-h-[40px] rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD]">원본 다시 선택해 분석</button> : null}<button type="button" disabled={file.linkedEntryIds.length > 0 || uploading} onClick={() => discardReceiptFile(ownerId, book.id, file.id)} className="min-h-[40px] px-3 text-xs font-bold text-[#B42318] disabled:text-[#94A3B8]">삭제</button></div></li>;
+        return <li key={file.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center"><div className="min-w-0 flex-1"><p className="break-words text-sm font-bold">{file.originalName}</p><p className="mt-1 text-xs text-[#64748B]">{fileSize(file.sizeBytes)} · {analysisLabel}</p>{analysisIsPlausible && nextAnalysis && remainingReviews > 0 ? <p className="mt-1 text-xs font-semibold text-[#126B32]">{nextAnalysis.spentAt || '날짜 미확인'} · {nextAnalysis.merchant || '사용처 미확인'} · {nextAnalysis.amount ? formatWon(nextAnalysis.amount) : '금액 미확인'}</p> : null}</div><div className="flex shrink-0 flex-wrap items-center gap-2">{file.previewUrl ? <a href={file.previewUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-[40px] items-center gap-1.5 px-3 text-xs font-bold text-[#0F6CBD]"><ExternalLink className="h-3.5 w-3.5" />원본 보기</a> : null}{!progress && remainingReviews > 0 ? analysisIsPlausible ? <button type="button" onClick={() => reviewFile(file, file.linkedEntryIds.length)} className="min-h-[40px] rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD]">결과 확인·수정</button> : <button type="button" onClick={selectForAnalysis} className="min-h-[40px] rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD]">원본 다시 선택해 분석</button> : null}<button type="button" disabled={file.linkedEntryIds.length > 0 || uploading} onClick={() => discardReceiptFile(ownerId, book.id, file.id)} className="min-h-[40px] px-3 text-xs font-bold text-[#B42318] disabled:text-[#94A3B8]">삭제</button></div></li>;
       })}</ul>}
     </section>
 
-    {reviewingFileId || editingId || unlinkedFiles.length === 0 ? <section ref={entrySectionRef} aria-labelledby="entry-heading" className="scroll-mt-6 border-y border-[#DCE3EA] bg-white px-4 py-6 sm:px-6">
+    {reviewingFileId || editingId || reviewFiles.length === 0 ? <section ref={entrySectionRef} aria-labelledby="entry-heading" className="scroll-mt-6 border-y border-[#DCE3EA] bg-white px-4 py-6 sm:px-6">
       <div className="flex items-start gap-3"><CircleDollarSign className="mt-0.5 h-5 w-5 shrink-0 text-[#0F6CBD]" /><div><h2 id="entry-heading" className="text-lg font-bold">{editingId ? '지출 내용 수정' : '분석 결과 확인·수정'}</h2><p className="mt-1 text-xs text-[#526174]">자동 입력값을 원본과 비교하고 사용 목적을 적어 주세요.</p></div></div>
-      {reviewingFile?.analysis ? <div className="mt-4 flex items-start gap-2 border-l-2 border-[#16803C] bg-[#E6F4EA] px-4 py-3 text-xs text-[#126B32]"><ScanLine className="h-4 w-4 shrink-0" /><span><strong>자동 분석 완료 · 신뢰도 {Math.round(reviewingFile.analysis.confidence * 100)}%</strong>{reviewingFile.analysis.warnings.length ? ` · ${reviewingFile.analysis.warnings.join(' ')}` : ''}</span></div> : reviewingFile?.analysisStatus === 'failed' ? <p className="mt-4 flex items-start gap-2 border-l-2 border-[#E6A700] bg-[#FFF9ED] px-4 py-3 text-xs text-[#76520E]"><TriangleAlert className="h-4 w-4 shrink-0" />자동으로 읽지 못했습니다. 직접 입력해 주세요.</p> : null}
+      {reviewingAnalysis ? <div className="mt-4 flex items-start gap-2 border-l-2 border-[#16803C] bg-[#E6F4EA] px-4 py-3 text-xs text-[#126B32]"><ScanLine className="h-4 w-4 shrink-0" /><span><strong>{analysisCandidates(reviewingFile!).length > 1 ? `인식한 영수증 ${reviewingCandidateIndex + 1}/${analysisCandidates(reviewingFile!).length}` : '자동 분석 완료'} · 신뢰도 {Math.round(reviewingAnalysis.confidence * 100)}%</strong>{reviewingAnalysis.warnings.length ? ` · ${reviewingAnalysis.warnings.join(' ')}` : ''}</span></div> : reviewingFile?.analysisStatus === 'failed' ? <p className="mt-4 flex items-start gap-2 border-l-2 border-[#E6A700] bg-[#FFF9ED] px-4 py-3 text-xs text-[#76520E]"><TriangleAlert className="h-4 w-4 shrink-0" />자동으로 읽지 못했습니다. 직접 입력해 주세요.</p> : null}
       <form noValidate onSubmit={submitEntry} className="mt-5 grid gap-4 md:grid-cols-[170px_1fr_1.4fr_180px]">
         <label><span className="mb-2 block text-xs font-bold">사용 날짜</span><input ref={dateInputRef} type="date" value={spentAt} onChange={(event) => setSpentAt(event.target.value)} className="min-h-[44px] w-full rounded-lg border border-[#C8D0DA] px-3" /></label>
         <label><span className="mb-2 block text-xs font-bold">사용처</span><input ref={merchantInputRef} value={merchant} onChange={(event) => setMerchant(event.target.value)} placeholder="예: 중앙문구" className="min-h-[44px] w-full rounded-lg border border-[#C8D0DA] px-3" /></label>

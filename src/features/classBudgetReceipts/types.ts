@@ -22,6 +22,7 @@ export interface ReceiptFile {
   sha256: string;
   analysisStatus: ReceiptAnalysisStatus;
   analysis: ReceiptAnalysisDraft | null;
+  analysisCandidates: ReceiptAnalysisDraft[];
   analysisErrorCode: string | null;
   analyzedAt: string | null;
   previewUrl: string;

@@ -15,6 +15,9 @@ const normalizeFile = (file: Partial<ReceiptFile>, bookId: string): ReceiptFile 
   sha256: file.sha256 ?? '',
   analysisStatus: file.analysisStatus ?? 'pending',
   analysis: file.analysis ?? null,
+  analysisCandidates: Array.isArray(file.analysisCandidates)
+    ? file.analysisCandidates
+    : file.analysis ? [file.analysis] : [],
   analysisErrorCode: file.analysisErrorCode ?? null,
   analyzedAt: file.analyzedAt ?? null,
   previewUrl: file.previewUrl ?? '',
@@ -94,6 +97,7 @@ export const uploadLocalReceiptFiles = async (ownerId: string, bookId: string, f
     uploaded.push({
       id: id('receipt-file'), bookId, status: 'uploaded', originalName: file.name, mimeType: file.type,
       sizeBytes: file.size, sha256: await digest(file), analysisStatus: 'analyzing', analysis: null,
+      analysisCandidates: [],
       analysisErrorCode: null, analyzedAt: null, previewUrl: await preview(file), linkedEntryIds: [],
       createdAt, updatedAt: createdAt,
     });
@@ -101,13 +105,14 @@ export const uploadLocalReceiptFiles = async (ownerId: string, bookId: string, f
   return update(ownerId, bookId, (book) => ({ ...book, files: [...book.files, ...uploaded], updatedAt: now() })).files.filter((file) => uploaded.some((item) => item.id === file.id));
 };
 
-export const saveLocalReceiptFileAnalysis = (ownerId: string, bookId: string, fileId: string, draft: ReceiptAnalysisDraft | null) => update(ownerId, bookId, (book) => ({
+export const saveLocalReceiptFileAnalysis = (ownerId: string, bookId: string, fileId: string, drafts: ReceiptAnalysisDraft[] | null) => update(ownerId, bookId, (book) => ({
   ...book,
   files: book.files.map((file) => file.id === fileId ? {
     ...file,
-    analysisStatus: draft ? 'ready' : 'failed',
-    analysis: draft,
-    analysisErrorCode: draft ? null : 'browser_analysis_failed',
+    analysisStatus: drafts?.length ? 'ready' : 'failed',
+    analysis: drafts?.[0] ?? null,
+    analysisCandidates: drafts ?? [],
+    analysisErrorCode: drafts?.length ? null : 'browser_analysis_failed',
     analyzedAt: now(),
     updatedAt: now(),
   } : file),

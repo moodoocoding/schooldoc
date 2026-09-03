@@ -25,4 +25,9 @@ describe('영수증 규칙 기반 분석', () => {
     expect(draft.merchant).toBe('');
     expect(draft.amount).toBeNull();
   });
+
+  test('합계 글자가 깨졌을 때 반복 인쇄된 최고 금액을 결제액으로 선택한다', () => {
+    const draft = parseReceiptText('더벤티 청주교대점\n2026-08-28 15:12\n4,300\n3,800\n10,100\n10,100\n10,100\n신용카드 10,700', 'browser-ocr', 0.7);
+    expect(draft.amount).toBe(10100);
+  });
 });
