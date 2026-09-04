@@ -16,7 +16,12 @@ import { PublicConsentResponsePage } from './features/consentForms/PublicConsent
 import { DataCollectWorkspace } from './features/dataCollect/DataCollectWorkspace';
 import { PublicDataCollectPage } from './features/dataCollect/PublicDataCollectPage';
 import { ReceiptBooksWorkspace } from './features/classBudgetReceipts/ReceiptBooksWorkspace';
-import { isClassBudgetReceiptsPreviewEnabled } from './features/classBudgetReceipts/classBudgetReceiptsConfig';
+import {
+  canAccessClassBudgetReceipts,
+  isClassBudgetReceiptsAdmin,
+  isClassBudgetReceiptsPreviewEnabled,
+} from './features/classBudgetReceipts/classBudgetReceiptsConfig';
+import { useTeacherAuth } from './auth/teacherAuth';
 import type { SidebarTab, SchoolTool } from './types/schooldoc';
 
 function AdminApp() {
@@ -26,6 +31,9 @@ function AdminApp() {
   const [isOpenMobile, setIsOpenMobile] = useState<boolean>(false);
   const [quickMenuIds, setQuickMenuIds] = useState<string[]>(['notice-collect', 'student-lookup']);
   const [isOpenNotifications, setIsOpenNotifications] = useState<boolean>(false);
+  const { user, loading: authLoading } = useTeacherAuth();
+  const isReceiptAdmin = isClassBudgetReceiptsAdmin(user);
+  const canUseReceiptBooks = canAccessClassBudgetReceipts(user);
 
   // 10 Core Services matched EXACTLY with user specification
   const allToolsMap: Record<string, SchoolTool> = {
@@ -69,8 +77,10 @@ function AdminApp() {
       name: '학급 운영비 영수증',
       desc: '학급 운영비 지출을 기록하고 전체 예산과 남은 금액을 확인합니다.',
       iconName: 'receipt',
-      status: isClassBudgetReceiptsPreviewEnabled ? 'ready' : 'in_progress',
-      statusText: isClassBudgetReceiptsPreviewEnabled ? '1차 개발 중' : '개발 중',
+      status: canUseReceiptBooks ? 'ready' : 'in_progress',
+      statusText: isClassBudgetReceiptsPreviewEnabled
+        ? '1차 개발 중'
+        : isReceiptAdmin ? '관리자 미리보기' : '개발 중',
     },
     'cert-collect': {
       id: 'cert-collect',
@@ -127,6 +137,7 @@ function AdminApp() {
     // 아직 만들지 않은 도구는 열지 않는다. 단계와 업로드가 있는 화면이 열리면
     // 동작하는 줄 알고 자료를 올리게 된다.
     if (!route) return;
+    if (toolId === 'receipt-auto' && !canUseReceiptBooks) return;
     navigate(route);
   };
 
@@ -181,7 +192,14 @@ function AdminApp() {
               : isConsentFormsRoute ? <ConsentFormsWorkspace />
               : isSpecialRoomsRoute ? <SpecialRoomsWorkspace />
               : isDataCollectRoute ? <DataCollectWorkspace />
-              : <ReceiptBooksWorkspace />}
+              : canUseReceiptBooks ? <ReceiptBooksWorkspace />
+                : <section className="mx-auto max-w-xl border-y border-[#DCE3EA] bg-white px-6 py-16 text-center">
+                  <h1 className="text-xl font-extrabold text-[#0F172A]">학급 운영비 영수증은 개발 중입니다</h1>
+                  <p className="mt-3 text-sm leading-6 text-[#526174]">
+                    {authLoading ? '관리자 계정인지 확인하고 있습니다.' : '현재는 관리자 계정에서만 미리 볼 수 있습니다.'}
+                  </p>
+                  <button type="button" onClick={() => navigate('/')} className="mt-6 min-h-[44px] rounded-lg border border-[#0F6CBD] px-5 text-sm font-bold text-[#0F6CBD]">홈으로 돌아가기</button>
+                </section>}
           </main>
         ) : (
           <main className="flex-1">
