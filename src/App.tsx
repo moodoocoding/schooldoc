@@ -15,6 +15,8 @@ import { ConsentFormsWorkspace } from './features/consentForms/ConsentFormsWorks
 import { PublicConsentResponsePage } from './features/consentForms/PublicConsentResponsePage';
 import { DataCollectWorkspace } from './features/dataCollect/DataCollectWorkspace';
 import { PublicDataCollectPage } from './features/dataCollect/PublicDataCollectPage';
+import { ReceiptBooksWorkspace } from './features/classBudgetReceipts/ReceiptBooksWorkspace';
+import { isClassBudgetReceiptsPreviewEnabled } from './features/classBudgetReceipts/classBudgetReceiptsConfig';
 import type { SidebarTab, SchoolTool } from './types/schooldoc';
 
 function AdminApp() {
@@ -64,11 +66,11 @@ function AdminApp() {
     },
     'receipt-auto': {
       id: 'receipt-auto',
-      name: '영수증 정리',
-      desc: '영수증을 촬영하면 금액과 상호명을 인식해 표로 정리합니다.',
+      name: '학급 운영비 영수증',
+      desc: '학급 운영비 지출을 기록하고 전체 예산과 남은 금액을 확인합니다.',
       iconName: 'receipt',
-      status: 'in_progress',
-      statusText: '개발 중',
+      status: isClassBudgetReceiptsPreviewEnabled ? 'ready' : 'in_progress',
+      statusText: isClassBudgetReceiptsPreviewEnabled ? '1차 개발 중' : '개발 중',
     },
     'cert-collect': {
       id: 'cert-collect',
@@ -109,6 +111,7 @@ function AdminApp() {
   const isConsentFormsRoute = location.pathname.startsWith('/tools/consent-forms');
   const isSpecialRoomsRoute = location.pathname.startsWith('/tools/special-rooms');
   const isDataCollectRoute = location.pathname.startsWith('/tools/data-collect');
+  const isReceiptBooksRoute = location.pathname.startsWith('/tools/receipts');
 
   const toolRoutes: Record<string, string> = {
     'registry-sign': '/tools/registry-sign',
@@ -116,6 +119,7 @@ function AdminApp() {
     'notice-collect': '/tools/consent-forms',
     'special-room': '/tools/special-rooms',
     'data-collect': '/tools/data-collect',
+    'receipt-auto': '/tools/receipts',
   };
 
   const handleSelectTool = (toolId: string) => {
@@ -170,13 +174,14 @@ function AdminApp() {
         건드리지 않는다.
       */}
       <div className="flex-1 flex flex-col min-w-0">
-        {isRegistryRoute || isStudentResultsRoute || isConsentFormsRoute || isSpecialRoomsRoute || isDataCollectRoute ? (
+        {isRegistryRoute || isStudentResultsRoute || isConsentFormsRoute || isSpecialRoomsRoute || isDataCollectRoute || isReceiptBooksRoute ? (
           <main className="min-w-0 overflow-x-clip p-4 sm:p-8">
             {isRegistryRoute ? <RegistryWorkspace />
               : isStudentResultsRoute ? <StudentResultsWorkspace />
               : isConsentFormsRoute ? <ConsentFormsWorkspace />
               : isSpecialRoomsRoute ? <SpecialRoomsWorkspace />
-              : <DataCollectWorkspace />}
+              : isDataCollectRoute ? <DataCollectWorkspace />
+              : <ReceiptBooksWorkspace />}
           </main>
         ) : (
           <main className="flex-1">

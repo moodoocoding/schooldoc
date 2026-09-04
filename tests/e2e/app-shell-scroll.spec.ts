@@ -17,6 +17,7 @@ const SHELL_ROUTES = [
   ['가정통신문 동의서', '/tools/consent-forms'],
   ['특별실 예약', '/tools/special-rooms/new'],
   ['자료 수합', '/tools/data-collect'],
+  ['학급 운영비 영수증', '/tools/receipts/new'],
 ] as const;
 
 const measureBottom = async (page: Page) => page.evaluate(() => {
