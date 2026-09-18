@@ -1,7 +1,7 @@
 import type { ConsentFieldDraft, ConsentFieldKind } from './types';
+import { isConsentFieldRectValid } from '../../../supabase/functions/_shared/consentFieldGeometry';
+export { consentFieldMinimumSize } from '../../../supabase/functions/_shared/consentFieldGeometry';
 
-export const MIN_FIELD_WIDTH = 10;
-export const MIN_FIELD_HEIGHT = 4;
 export const FIELD_EDGE_PADDING = 1;
 export const FIELD_GAP = 1;
 
@@ -32,10 +32,7 @@ export const getConsentFieldLayoutIssues = (fields: ConsentFieldDraft[], pageCou
     if (!supportedKinds.has(field.kind)) issues.push({ type: 'kind', fieldIds: [field.id], message: '지원하지 않는 필드 종류입니다.' });
     if (!field.label.trim() || field.label.trim().length > 80) issues.push({ type: 'label', fieldIds: [field.id], message: '필드 이름은 1~80자로 입력하세요.' });
     if (!Number.isInteger(field.pageIndex) || field.pageIndex < 0 || field.pageIndex >= pageCount) issues.push({ type: 'page', fieldIds: [field.id], message: '필드가 존재하지 않는 페이지에 있습니다.' });
-    if (![field.x, field.y, field.width, field.height].every(finite)
-      || field.x < 0 || field.y < 0
-      || field.width < MIN_FIELD_WIDTH || field.height < MIN_FIELD_HEIGHT
-      || field.x + field.width > 100 || field.y + field.height > 100) {
+    if (!isConsentFieldRectValid(field.kind, field.x, field.y, field.width, field.height)) {
       issues.push({ type: 'bounds', fieldIds: [field.id], message: '필드가 문서 경계를 벗어났거나 너무 작습니다.' });
     }
   });

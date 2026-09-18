@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, ArrowLeft, ArrowRight, CalendarDays, CheckSquare, ChevronLeft, ChevronRight, Copy, GripVertical, PenLine, Plus, Redo2, Sparkles, Trash2, Type, Undo2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { ConsentPdfPage } from './ConsentPdfPage';
-import { alignmentGuides, cloneFieldsToPage, fieldStyle, findAvailableFieldPosition, getConsentFieldLayoutIssues, pageAspectRatio, resolveConsentFieldOverlaps, snapFieldPosition } from './consentFieldLayout';
+import { alignmentGuides, cloneFieldsToPage, consentFieldMinimumSize, fieldStyle, findAvailableFieldPosition, getConsentFieldLayoutIssues, pageAspectRatio, resolveConsentFieldOverlaps, snapFieldPosition } from './consentFieldLayout';
 import type { ConsentDocumentAnalysis, ConsentFieldDraft, ConsentFieldKind } from './types';
 
 const fieldOptions: Array<{ kind: ConsentFieldKind; label: string; icon: typeof Type }> = [
@@ -42,6 +42,7 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
   const history = useRef<{ past: ConsentFieldDraft[][]; future: ConsentFieldDraft[][] }>({ past: [], future: [] });
   const [historyDepth, setHistoryDepth] = useState({ past: 0, future: 0 });
   const selected = fields.find((field) => field.id === selectedId) ?? null;
+  const selectedMinimum = consentFieldMinimumSize(selected?.kind ?? 'text');
   const pageFields = fields.filter((field) => field.pageIndex === pageIndex);
   const pagesWithFields = Array.from(new Set(fields.map((field) => field.pageIndex))).sort((a, b) => a - b);
 
@@ -208,12 +209,13 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
     const dy = ((clientY - startY) / bounds.height) * 100;
     const fromLeft = corner === 'nw' || corner === 'sw';
     const fromTop = corner === 'nw' || corner === 'ne';
+    const minimum = consentFieldMinimumSize(field.kind);
     const right = field.x + field.width;
     const bottom = field.y + field.height;
-    const x = fromLeft ? Math.max(0, Math.min(right - 10, field.x + dx)) : field.x;
-    const y = fromTop ? Math.max(0, Math.min(bottom - 4, field.y + dy)) : field.y;
-    const width = fromLeft ? right - x : Math.max(10, Math.min(100 - field.x, field.width + dx));
-    const height = fromTop ? bottom - y : Math.max(4, Math.min(100 - field.y, field.height + dy));
+    const x = fromLeft ? Math.max(0, Math.min(right - minimum.width, field.x + dx)) : field.x;
+    const y = fromTop ? Math.max(0, Math.min(bottom - minimum.height, field.y + dy)) : field.y;
+    const width = fromLeft ? right - x : Math.max(consentFieldMinimumSize(field.kind).width, Math.min(100 - field.x, field.width + dx));
+    const height = fromTop ? bottom - y : Math.max(consentFieldMinimumSize(field.kind).height, Math.min(100 - field.y, field.height + dy));
     onFieldsChange(fields.map((candidate) => candidate.id === field.id ? { ...candidate, x, y, width, height } : candidate));
   };
 
@@ -248,7 +250,7 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
   };
 
   const moveFieldByKeyboard = (event: React.KeyboardEvent, field: ConsentFieldDraft) => {
-    const step = event.shiftKey ? 2 : 0.5;
+    const step = event.shiftKey ? 2 : event.altKey ? 0.1 : 0.5;
     if (event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault();
       markHistory();
@@ -266,8 +268,8 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
     if (event.altKey) {
       onFieldsChange(fields.map((candidate) => candidate.id === field.id ? {
         ...candidate,
-        width: Math.max(10, Math.min(100 - field.x, field.width + delta.x)),
-        height: Math.max(4, Math.min(100 - field.y, field.height + delta.y)),
+        width: Math.max(consentFieldMinimumSize(field.kind).width, Math.min(100 - field.x, field.width + delta.x)),
+        height: Math.max(consentFieldMinimumSize(field.kind).height, Math.min(100 - field.y, field.height + delta.y)),
       } : candidate));
       return;
     }
@@ -319,7 +321,7 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
             <ConsentPdfPage file={file} pageNumber={pageIndex + 1} />
             {guides.vertical.map((at) => <span key={`v-${at}`} aria-hidden className="pointer-events-none absolute top-0 z-30 h-full border-l border-dashed border-[#D92D20]" style={{ left: `${at}%` }} />)}
             {guides.horizontal.map((at) => <span key={`h-${at}`} aria-hidden className="pointer-events-none absolute left-0 z-30 w-full border-t border-dashed border-[#D92D20]" style={{ top: `${at}%` }} />)}
-            {pageFields.map((field) => <div key={field.id} role="button" tabIndex={0} aria-invalid={overlappingIds.has(field.id)} onPointerDown={(event) => startDrag(event, field)} onClick={() => setSelectedId(field.id)} onKeyDown={(event) => moveFieldByKeyboard(event, field)} style={fieldStyle(field)} className={`absolute z-20 flex min-h-7 touch-none items-center justify-center overflow-visible border-2 px-1 text-[10px] font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]/35 ${field.id === selectedId ? "bg-white/85" : "bg-transparent"} ${overlappingIds.has(field.id) ? 'border-[#D92D20] text-[#B42318]' : field.id === selectedId ? 'border-[#0F6CBD] text-[#0F6CBD]' : 'border-[#64748B] text-[#334155]'}`} aria-label={`${field.label} 필드${overlappingIds.has(field.id) ? ' 겹침 오류' : ''}`} aria-describedby="field-keyboard-help">{field.id === selectedId ? <GripVertical className="mr-0.5 h-3 w-3 shrink-0" /> : null}{field.kind === 'checkbox' ? <span className="mr-1 h-3 w-3 shrink-0 border border-current bg-white" /> : null}<span className="truncate rounded-sm bg-white/85 px-1">{field.label}{field.required ? ' *' : ''}</span>{field.id === selectedId ? <>{(['nw', 'ne', 'sw', 'se'] as const).map((corner) => <button key={corner} type="button" data-resize-handle={corner} onMouseDown={(event) => startMouseResize(event, field, corner)} onPointerDown={(event) => startResize(event, field, corner)} onPointerMove={resizeField} onPointerUp={finishResize} onPointerCancel={finishResize} onClick={(event) => event.stopPropagation()} className={`absolute h-11 w-11 touch-none bg-transparent before:absolute before:left-1/2 before:top-1/2 before:h-3 before:w-3 before:-translate-x-1/2 before:-translate-y-1/2 before:rounded-full before:border-2 before:border-white before:bg-[#0F6CBD] before:shadow-sm ${corner === 'nw' ? '-left-[22px] -top-[22px] cursor-nwse-resize' : corner === 'ne' ? '-right-[22px] -top-[22px] cursor-nesw-resize' : corner === 'sw' ? '-bottom-[22px] -left-[22px] cursor-nesw-resize' : '-bottom-[22px] -right-[22px] cursor-nwse-resize'}`} aria-label={`${field.label} 필드 ${resizeCornerLabel[corner]} 크기 조절`} title={`${resizeCornerLabel[corner]} 크기 조절`} />)}</> : null}</div>)}
+            {pageFields.map((field) => <div key={field.id} role="button" tabIndex={0} aria-invalid={overlappingIds.has(field.id)} onPointerDown={(event) => startDrag(event, field)} onClick={() => setSelectedId(field.id)} onKeyDown={(event) => moveFieldByKeyboard(event, field)} style={fieldStyle(field)} className={`absolute z-20 flex min-h-0 touch-none items-center justify-center overflow-visible border-2 px-1 text-[10px] font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]/35 ${field.id === selectedId ? "bg-white/85" : "bg-transparent"} ${overlappingIds.has(field.id) ? 'border-[#D92D20] text-[#B42318]' : field.id === selectedId ? 'border-[#0F6CBD] text-[#0F6CBD]' : 'border-[#64748B] text-[#334155]'}`} aria-label={`${field.label} 필드${overlappingIds.has(field.id) ? ' 겹침 오류' : ''}`} aria-describedby="field-keyboard-help">{field.id === selectedId ? <GripVertical className="mr-0.5 h-3 w-3 shrink-0" /> : null}{field.kind === 'checkbox' ? <span className="mr-1 h-3 w-3 shrink-0 border border-current bg-white" /> : null}<span className="truncate rounded-sm bg-white/85 px-1">{field.label}{field.required ? ' *' : ''}</span>{field.id === selectedId ? <>{(['nw', 'ne', 'sw', 'se'] as const).map((corner) => <button key={corner} type="button" data-resize-handle={corner} onMouseDown={(event) => startMouseResize(event, field, corner)} onPointerDown={(event) => startResize(event, field, corner)} onPointerMove={resizeField} onPointerUp={finishResize} onPointerCancel={finishResize} onClick={(event) => event.stopPropagation()} className={`absolute h-11 w-11 touch-none bg-transparent before:absolute before:h-3 before:w-3 before:rounded-full before:border-2 before:border-white before:bg-[#0F6CBD] before:shadow-sm ${corner === 'nw' ? '-left-11 -top-11 before:bottom-0 before:right-0 before:translate-x-1/2 before:translate-y-1/2 cursor-nwse-resize' : corner === 'ne' ? '-right-11 -top-11 before:bottom-0 before:left-0 before:-translate-x-1/2 before:translate-y-1/2 cursor-nesw-resize' : corner === 'sw' ? '-bottom-11 -left-11 before:top-0 before:right-0 before:translate-x-1/2 before:-translate-y-1/2 cursor-nesw-resize' : '-bottom-11 -right-11 before:top-0 before:left-0 before:-translate-x-1/2 before:-translate-y-1/2 cursor-nwse-resize'}`} aria-label={`${field.label} 필드 ${resizeCornerLabel[corner]} 크기 조절`} title={`${resizeCornerLabel[corner]} 크기 조절`} />)}</> : null}</div>)}
             <p id="field-keyboard-help" className="sr-only">방향키로 이동하고 Alt와 방향키로 크기를 조절하며 Delete 키로 삭제합니다.</p>
           </div>
 
@@ -329,10 +331,10 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
           <div className="flex items-center justify-between gap-3"><h2 className="text-sm font-bold">필드 설정</h2>{selected ? <button type="button" onClick={() => setSelectedId(null)} className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-[#64748B] hover:bg-[#F6F8FB] lg:hidden" aria-label="필드 설정 닫기" title="닫기"><X className="h-4 w-4" /></button> : <span className="text-[11px] font-semibold text-[#64748B]">필드를 선택하세요</span>}</div>
           {!selected ? <div className="py-12 text-center text-xs leading-5 text-[#64748B]">필드를 추가하거나<br />문서 위 필드를 선택하세요.{clipboard.length ? <><br /><br /><span className="font-semibold text-[#0F6CBD]">복사한 필드 {clipboard.length}개</span><br />{modifierLabel}+V로 이 쪽에 붙여넣습니다.</> : null}</div> : <div className="mt-5 space-y-5"><div><span className="text-xs font-bold text-[#64748B]">종류</span><p className="mt-1 text-sm font-bold">{fieldOptions.find((option) => option.kind === selected.kind)?.label}</p></div><label className="block text-xs font-bold text-[#334155]">표시 이름<input value={selected.label} onFocus={markHistory} onChange={(event) => patchSelected({ label: event.target.value })} className={`mt-2 min-h-[44px] w-full rounded-lg border px-3 text-sm font-normal ${selected.label.trim() ? 'border-[#C8D0DA]' : 'border-[#D92D20]'}`} />{selected.label.trim() ? null : <span className="mt-1 block text-[#B42318]">표시 이름을 입력하세요.</span>}</label><label className="flex min-h-[44px] items-center gap-3 text-sm font-bold"><input type="checkbox" checked={selected.required} onChange={(event) => patchSelected({ required: event.target.checked })} className="h-4 w-4" />필수 응답</label><div><div className="flex items-baseline justify-between"><span className="text-xs font-bold text-[#64748B]">크기와 위치</span><span className="text-[10px] font-semibold text-[#94A3B8]">쪽 대비 %</span></div>
           <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-            <label className="text-[#526174]">너비<input type="number" min="10" max={Math.floor(100 - selected.x)} value={Math.round(selected.width)} onChange={(event) => patchSelected({ width: Math.max(10, Math.min(100 - selected.x, Number(event.target.value))) })} className="mt-1 min-h-[40px] w-full rounded-lg border border-[#C8D0DA] px-2 tabular-nums" /></label>
-            <label className="text-[#526174]">높이<input type="number" min="4" max={Math.floor(100 - selected.y)} value={Math.round(selected.height)} onChange={(event) => patchSelected({ height: Math.max(4, Math.min(100 - selected.y, Number(event.target.value))) })} className="mt-1 min-h-[40px] w-full rounded-lg border border-[#C8D0DA] px-2 tabular-nums" /></label>
-            <label className="text-[#526174]">가로 위치<input type="number" min="0" max={Math.floor(100 - selected.width)} value={Math.round(selected.x)} onChange={(event) => patchSelected({ x: Math.max(0, Math.min(100 - selected.width, Number(event.target.value))) })} className="mt-1 min-h-[40px] w-full rounded-lg border border-[#C8D0DA] px-2 tabular-nums" /></label>
-            <label className="text-[#526174]">세로 위치<input type="number" min="0" max={Math.floor(100 - selected.height)} value={Math.round(selected.y)} onChange={(event) => patchSelected({ y: Math.max(0, Math.min(100 - selected.height, Number(event.target.value))) })} className="mt-1 min-h-[40px] w-full rounded-lg border border-[#C8D0DA] px-2 tabular-nums" /></label>
+            <label className="text-[#526174]">너비<input type="number" step="0.1" min={selectedMinimum.width} max={100 - selected.x} value={Number(selected.width.toFixed(1))} onChange={(event) => patchSelected({ width: Math.max(selectedMinimum.width, Math.min(100 - selected.x, Number(event.target.value))) })} className="mt-1 min-h-[40px] w-full rounded-lg border border-[#C8D0DA] px-2 tabular-nums" /></label>
+            <label className="text-[#526174]">높이<input type="number" step="0.1" min={selectedMinimum.height} max={100 - selected.y} value={Number(selected.height.toFixed(1))} onChange={(event) => patchSelected({ height: Math.max(selectedMinimum.height, Math.min(100 - selected.y, Number(event.target.value))) })} className="mt-1 min-h-[40px] w-full rounded-lg border border-[#C8D0DA] px-2 tabular-nums" /></label>
+            <label className="text-[#526174]">가로 위치<input type="number" step="0.1" min="0" max={100 - selected.width} value={Number(selected.x.toFixed(1))} onChange={(event) => patchSelected({ x: Math.max(0, Math.min(100 - selected.width, Number(event.target.value))) })} className="mt-1 min-h-[40px] w-full rounded-lg border border-[#C8D0DA] px-2 tabular-nums" /></label>
+            <label className="text-[#526174]">세로 위치<input type="number" step="0.1" min="0" max={100 - selected.height} value={Number(selected.y.toFixed(1))} onChange={(event) => patchSelected({ y: Math.max(0, Math.min(100 - selected.height, Number(event.target.value))) })} className="mt-1 min-h-[40px] w-full rounded-lg border border-[#C8D0DA] px-2 tabular-nums" /></label>
           </div></div>
           <div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => pasteClipboard([selected])} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-[#C8D0DA] text-sm font-bold text-[#334155] hover:border-[#0F6CBD] hover:text-[#0F6CBD]"><Copy className="h-4 w-4" />복제</button><button type="button" onClick={removeSelected} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-[#FECACA] text-sm font-bold text-[#B42318] hover:bg-[#FEF2F2]"><Trash2 className="h-4 w-4" />필드 삭제</button></div></div>}
           <section aria-label="배치된 필드" className="mt-6 border-t border-[#EEF1F4] pt-5">

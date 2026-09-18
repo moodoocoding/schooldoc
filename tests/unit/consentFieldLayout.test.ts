@@ -7,6 +7,22 @@ const field = (id: string, x: number, y: number): ConsentFieldDraft => ({
 });
 
 describe('consent field layout', () => {
+  it('좁은 표의 텍스트·날짜 칸은 3% × 1%까지 허용한다', () => {
+    for (const kind of ['text', 'date'] as const) {
+      expect(getConsentFieldLayoutIssues([{ ...field('small', 20.1, 40.2), kind, width: 3, height: 1 }], 1)).toEqual([]);
+      expect(getConsentFieldLayoutIssues([{ ...field('small', 20, 40), kind, width: 30, height: 1.5 }], 1)).toEqual([]);
+      expect(getConsentFieldLayoutIssues([{ ...field('small', 20, 40), kind, width: 3, height: 0.9 }], 1).some(issue => issue.type === 'bounds')).toBe(true);
+    }
+  });
+
+  it('서명·체크박스 제한과 문서 경계·비정상 좌표 차단은 유지한다', () => {
+    for (const kind of ['signature', 'checkbox'] as const) {
+      expect(getConsentFieldLayoutIssues([{ ...field('small', 20, 40), kind, width: 3, height: 1 }], 1).some(issue => issue.type === 'bounds')).toBe(true);
+    }
+    for (const patch of [{ x: 99 }, { y: 99.5, height: 1 }, { width: NaN }, { height: Infinity }, { width: 2.9 }]) {
+      expect(getConsentFieldLayoutIssues([{ ...field('bad', 20, 40), ...patch }], 1).some(issue => issue.type === 'bounds')).toBe(true);
+    }
+  });
   it('detects overlapping fields and resolves them inside the page', () => {
     const fields = [field('first', 10, 12), field('second', 20, 14)];
     expect(getConsentFieldLayoutIssues(fields, 1).some((issue) => issue.type === 'overlap')).toBe(true);

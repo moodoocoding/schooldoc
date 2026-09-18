@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8';
 import { consentCrypto, type ConsentRecipientIdentity } from '../_shared/consentCrypto.ts';
+import { isConsentFieldRectValid } from '../_shared/consentFieldGeometry.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -94,7 +95,7 @@ const validateFields = (form: FormRow) => {
     if (!label || label.length > 80 || !Number.isInteger(pageIndex) || pageIndex < 0 || pageIndex >= form.page_count) throw new HttpError(422, '응답 필드 설정을 확인해 주세요.');
     if (!values.every((value) => typeof value === 'number' && Number.isFinite(value))) throw new HttpError(422, '응답 필드 좌표를 확인해 주세요.');
     const [x, y, width, height] = values as number[];
-    if (x < 0 || y < 0 || width < 10 || height < 4 || x + width > 100 || y + height > 100) throw new HttpError(422, '응답 필드 좌표를 확인해 주세요.');
+    if (!isConsentFieldRectValid(kind, x, y, width, height)) throw new HttpError(422, '응답 필드 좌표를 확인해 주세요.');
     ids.add(id);
   }
 };
