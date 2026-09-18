@@ -1,7 +1,7 @@
 export type ReceiptBookStatus = 'active' | 'closed';
 export type ReceiptFileStatus = 'uploaded' | 'failed';
 export type ReceiptAnalysisStatus = 'pending' | 'analyzing' | 'ready' | 'failed';
-export type ReceiptAnalysisSource = 'pdf-text' | 'browser-ocr';
+export type ReceiptAnalysisSource = 'pdf-text' | 'browser-ocr' | 'openai';
 
 export interface ReceiptAnalysisDraft {
   spentAt: string;
@@ -10,6 +10,8 @@ export interface ReceiptAnalysisDraft {
   confidence: number;
   source: ReceiptAnalysisSource;
   warnings: string[];
+  description?: string;
+  page?: number | null;
 }
 
 export interface ReceiptFile {
@@ -42,6 +44,7 @@ export interface ReceiptEntry {
   updatedAt: string;
   deletedAt: string | null;
   purgeAfter: string | null;
+  analysisCandidateKey?: string;
 }
 
 export interface ReceiptBook {
@@ -72,4 +75,5 @@ export interface ReceiptEntryInput {
   purpose: string;
   amount: number;
   evidenceFileIds: string[];
+  analysisCandidateKey?: string;
 }

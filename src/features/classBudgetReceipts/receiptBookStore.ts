@@ -1,4 +1,5 @@
 import type { CreateReceiptBookInput, ReceiptAnalysisDraft, ReceiptBook, ReceiptEntryInput, ReceiptFile } from './types';
+import { deleteReceiptOriginal, putReceiptOriginal } from './receiptOriginalStore';
 
 const STORAGE_PREFIX = 'schooldoc_class_budget_receipts_v1:';
 const EVENT_NAME = 'schooldoc-class-budget-receipts-change';
@@ -82,37 +83,41 @@ export const createReceiptBook = (ownerId: string, input: CreateReceiptBookInput
 const digest = async (file: File) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', await file.arrayBuffer())))
   .map((byte) => byte.toString(16).padStart(2, '0')).join('');
 
-const preview = (file: File) => new Promise<string>((resolve) => {
-  if (file.size > 1_000_000) { resolve(''); return; }
-  const reader = new FileReader();
-  reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
-  reader.onerror = () => resolve('');
-  reader.readAsDataURL(file);
-});
-
 export const uploadLocalReceiptFiles = async (ownerId: string, bookId: string, files: File[]) => {
   const uploaded: ReceiptFile[] = [];
+  try {
   for (const file of files) {
     const createdAt = now();
-    uploaded.push({
+    const stored: ReceiptFile = {
       id: id('receipt-file'), bookId, status: 'uploaded', originalName: file.name, mimeType: file.type,
-      sizeBytes: file.size, sha256: await digest(file), analysisStatus: 'analyzing', analysis: null,
+      sizeBytes: file.size, sha256: await digest(file), analysisStatus: 'pending', analysis: null,
       analysisCandidates: [],
-      analysisErrorCode: null, analyzedAt: null, previewUrl: await preview(file), linkedEntryIds: [],
+      analysisErrorCode: null, analyzedAt: null, previewUrl: '', linkedEntryIds: [],
       createdAt, updatedAt: createdAt,
-    });
+    };
+    if (getReceiptBook(ownerId, bookId)?.files.some(f => f.sha256 === stored.sha256) || uploaded.some(f => f.sha256 === stored.sha256)) throw new Error('이미 등록한 영수증 파일입니다. 등록된 파일에서 확인해 주세요.');
+    await putReceiptOriginal(ownerId, bookId, stored.id, file);
+    uploaded.push(stored);
   }
-  return update(ownerId, bookId, (book) => ({ ...book, files: [...book.files, ...uploaded], updatedAt: now() })).files.filter((file) => uploaded.some((item) => item.id === file.id));
+  const commit = () => update(ownerId, bookId, (book) => {
+    if (uploaded.some(u => book.files.some(f => f.sha256 === u.sha256))) throw new Error('다른 탭에서 이미 등록한 영수증입니다.');
+    return { ...book, files: [...book.files, ...uploaded], updatedAt: now() };
+  }).files.filter(f => uploaded.some(u => u.id === f.id));
+  return navigator.locks ? await navigator.locks.request(`receipt-upload:${ownerId}:${bookId}`, commit) : commit();
+  } catch (error) {
+    await Promise.allSettled(uploaded.map(f => deleteReceiptOriginal(ownerId, bookId, f.id)));
+    throw error;
+  }
 };
 
-export const saveLocalReceiptFileAnalysis = (ownerId: string, bookId: string, fileId: string, drafts: ReceiptAnalysisDraft[] | null) => update(ownerId, bookId, (book) => ({
+export const saveLocalReceiptFileAnalysis = (ownerId: string, bookId: string, fileId: string, drafts: ReceiptAnalysisDraft[] | null, errorMessage?: string) => update(ownerId, bookId, (book) => ({
   ...book,
   files: book.files.map((file) => file.id === fileId ? {
     ...file,
     analysisStatus: drafts?.length ? 'ready' : 'failed',
     analysis: drafts?.[0] ?? null,
     analysisCandidates: drafts ?? [],
-    analysisErrorCode: drafts?.length ? null : 'browser_analysis_failed',
+    analysisErrorCode: drafts?.length ? null : errorMessage ?? '자동 분석에 실패했습니다.',
     analyzedAt: now(),
     updatedAt: now(),
   } : file),
@@ -120,6 +125,8 @@ export const saveLocalReceiptFileAnalysis = (ownerId: string, bookId: string, fi
 }));
 
 export const addReceiptEntry = (ownerId: string, bookId: string, input: ReceiptEntryInput) => update(ownerId, bookId, (book) => {
+  validateEntry(input, book);
+  if (input.analysisCandidateKey && book.entries.some(e => e.analysisCandidateKey === input.analysisCandidateKey)) throw new Error('이미 반영한 분석 결과입니다. 기존 지출을 확인하거나 복원해 주세요.');
   const createdAt = now();
   const entryId = id('receipt-entry');
   return {
@@ -130,7 +137,10 @@ export const addReceiptEntry = (ownerId: string, bookId: string, input: ReceiptE
   };
 });
 
-export const editReceiptEntry = (ownerId: string, bookId: string, entryId: string, input: ReceiptEntryInput) => update(ownerId, bookId, (book) => ({
+export const editReceiptEntry = (ownerId: string, bookId: string, entryId: string, input: ReceiptEntryInput) => update(ownerId, bookId, (book) => {
+  validateEntry(input, book);
+  if (!book.entries.some(e => e.id === entryId && !e.deletedAt)) throw new Error('수정할 지출을 찾지 못했습니다.');
+  return ({
   ...book,
   entries: book.entries.map((entry) => entry.id === entryId ? { ...entry, ...input, updatedAt: now() } : entry),
   files: book.files.map((file) => {
@@ -138,7 +148,14 @@ export const editReceiptEntry = (ownerId: string, bookId: string, entryId: strin
     return { ...file, linkedEntryIds: linked ? [...new Set([...file.linkedEntryIds, entryId])] : file.linkedEntryIds.filter((idValue) => idValue !== entryId) };
   }),
   updatedAt: now(),
-}));
+}); });
+
+const validateEntry = (input: ReceiptEntryInput, book: ReceiptBook) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.spentAt) || !Number.isFinite(Date.parse(input.spentAt)) || new Date(input.spentAt).toISOString().slice(0, 10) !== input.spentAt) throw new Error('사용 날짜를 확인해 주세요.');
+  if (!input.merchant.trim() || !input.purpose.trim()) throw new Error('사용처와 사용 목적을 입력해 주세요.');
+  if (!Number.isSafeInteger(input.amount) || input.amount < 1 || input.amount > 100_000_000) throw new Error('금액은 1원 이상 1억원 이하의 정수로 입력해 주세요.');
+  if (input.evidenceFileIds.some(id => !book.files.some(f => f.id === id))) throw new Error('연결할 영수증 원본을 찾지 못했습니다.');
+};
 
 export const trashReceiptEntry = (ownerId: string, bookId: string, entryId: string) => update(ownerId, bookId, (book) => {
   const deletedAt = now();
