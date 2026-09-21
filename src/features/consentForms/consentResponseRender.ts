@@ -76,7 +76,7 @@ const drawText = (context: CanvasRenderingContext2D, text: string, rect: ReturnT
 /** 원본 문서에 이미 뜻이 적혀 있으므로 표시만 그린다. 응답 화면과 같은 모습이어야 한다. */
 const drawCheckbox = (context: CanvasRenderingContext2D, rect: ReturnType<typeof fieldRect>) => {
   const padding = Math.min(rect.height * PADDING_RATIO, 6);
-  const box = Math.min(rect.height - padding * 2, 18);
+  const box = Math.max(0, Math.min(rect.width - padding * 2, rect.height - padding * 2, 18));
   const boxLeft = rect.left + rect.width / 2 - box / 2;
   const boxTop = rect.top + rect.height / 2 - box / 2;
   context.strokeStyle = TEXT_COLOR;
@@ -243,5 +243,4 @@ export const consentQrFileName = (title: string) => `${safeFileTitle(title)}_응
 export const consentResponsesFileName = (title: string, count: number) => (
   `${safeFileTitle(title)}_응답모음_${count}건.pdf`
 );
-
 

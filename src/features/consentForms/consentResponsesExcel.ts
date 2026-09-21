@@ -11,7 +11,7 @@ export const CONSENT_EXCEL_HEADER_BASE = ['연번', '제출자', '식별값', '�
 const cellValue = (field: ConsentFieldDraft, raw: string) => {
   if (!raw) return '';
   if (field.kind === 'signature') return '서명함';
-  if (field.kind === 'checkbox') return raw === 'true' ? '예' : '';
+  if (field.kind === 'checkbox') return raw === 'true' ? field.choice ? '선택' : '예' : '';
   return formatConsentValue(field, raw);
 };
 
@@ -20,7 +20,7 @@ export const buildConsentResponsesSheet = (
   responses: ConsentResponseRecord[],
   recipients: ConsentRecipientRecord[],
 ) => {
-  const header = [...CONSENT_EXCEL_HEADER_BASE, ...fields.map((field) => field.label)];
+  const header = [...CONSENT_EXCEL_HEADER_BASE, ...fields.map((field) => field.choice ? `${field.choice.label} / ${field.label}` : field.label)];
   const rows = responses.map((response, index) => {
     const recipient = recipients.find((entry) => entry.responseId === response.id) ?? null;
     return [

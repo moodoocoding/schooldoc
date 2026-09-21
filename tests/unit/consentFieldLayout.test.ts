@@ -15,8 +15,8 @@ describe('consent field layout', () => {
     }
   });
 
-  it('서명·체크박스 제한과 문서 경계·비정상 좌표 차단은 유지한다', () => {
-    for (const kind of ['signature', 'checkbox'] as const) {
+  it('서명 제한과 문서 경계·비정상 좌표 차단은 유지한다', () => {
+    for (const kind of ['signature'] as const) {
       expect(getConsentFieldLayoutIssues([{ ...field('small', 20, 40), kind, width: 3, height: 1 }], 1).some(issue => issue.type === 'bounds')).toBe(true);
     }
     for (const patch of [{ x: 99 }, { y: 99.5, height: 1 }, { width: NaN }, { height: Infinity }, { width: 2.9 }]) {

@@ -1,3 +1,4 @@
+import { consentChoiceConfigError, consentResponseError, type QuestionField } from '../_shared/consentQuestions.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8';
 import { consentCrypto, type ConsentRecipientIdentity } from '../_shared/consentCrypto.ts';
 import { isConsentFieldRectValid } from '../_shared/consentFieldGeometry.ts';
@@ -98,6 +99,8 @@ const validateFields = (form: FormRow) => {
     if (!isConsentFieldRectValid(kind, x, y, width, height)) throw new HttpError(422, '응답 필드 좌표를 확인해 주세요.');
     ids.add(id);
   }
+  const choiceError = consentChoiceConfigError(form.fields as unknown as QuestionField[]);
+  if (choiceError) throw new HttpError(422, choiceError);
 };
 
 const parseSignature = (value: string) => {
@@ -137,6 +140,8 @@ Deno.serve(async (request) => {
 
     if (!body.values || typeof body.values !== 'object' || Array.isArray(body.values)) throw new HttpError(400, '응답 형식이 올바르지 않습니다.');
     const submitted = body.values as Record<string, unknown>;
+    const responseError = consentResponseError(form.fields as unknown as QuestionField[], submitted);
+    if (responseError) throw new HttpError(400, responseError);
     const cleanValues: Record<string, string> = {};
     const signatures: Array<{ fieldId: string; data: ReturnType<typeof parseSignature> }> = [];
     for (const field of form.fields) {

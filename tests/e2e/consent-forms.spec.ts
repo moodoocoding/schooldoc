@@ -140,11 +140,14 @@ test('PDF 가정통신문의 페이지와 원본 미리보기를 표시한다', 
   await expect(page.getByRole('heading', { name: '수정된 현장체험학습 동의서' })).toBeVisible();
   await expect(page.locator('section[aria-label="1쪽"] canvas')).toBeVisible();
   const responsePage = await page.locator('section[aria-label="1쪽"]').boundingBox();
-  const responseField = await page.getByRole('textbox', { name: '참가 의견' }).boundingBox();
+  const responseField = await page.getByRole('button', { name: '참가 의견 원본 위치' }).boundingBox();
   expect(responseField?.x).toBeGreaterThanOrEqual(responsePage?.x ?? 0);
   expect((responseField?.x ?? 0) + (responseField?.width ?? 0)).toBeLessThanOrEqual((responsePage?.x ?? 0) + (responsePage?.width ?? 0) + 1);
+  await page.getByRole('button', { name: '입력 시작' }).click();
   await page.getByRole('textbox', { name: '참가 의견' }).fill('참가합니다');
+  await page.getByRole('button', { name: '다음', exact: true }).click();
   await page.getByRole('checkbox', { name: '체크박스' }).check();
+  await page.getByRole('button', { name: '응답 확인' }).click();
   await page.getByRole('button', { name: '작성 완료' }).click();
   await expect(page.getByRole('heading', { name: '응답을 제출했습니다' })).toBeVisible();
 
@@ -155,7 +158,7 @@ test('PDF 가정통신문의 페이지와 원본 미리보기를 표시한다', 
   const submissions = page.getByRole('region', { name: '받은 응답' });
   await expect(submissions.getByText('1건')).toBeVisible();
   await expect(submissions).toContainText('참가 의견: 참가합니다');
-  await expect(submissions).toContainText('체크박스: 예');
+  await expect(submissions).toContainText('체크박스: 체크함');
   const download = page.waitForEvent('download');
   await submissions.getByRole('button', { name: '1번째 응답 PDF 내려받기' }).click();
   expect((await download).suggestedFilename()).toBe('수정된 현장체험학습 동의서_응답001.pdf');
@@ -418,7 +421,9 @@ test('개인 링크로 들어오면 누구의 문서인지 알려주고 제출�
   await page.goto('/s/consent/33333333-3333-4333-8333-333333333333?r=44444444-4444-4444-8444-444444444444');
   await expect(page.getByText('김학생 학생 보호자용')).toBeVisible();
 
+  await page.getByRole('button', { name: '입력 시작' }).click();
   await page.getByRole('textbox', { name: '보호자 의견' }).fill('참가합니다');
+  await page.getByRole('button', { name: '응답 확인' }).click();
   await page.getByRole('button', { name: '작성 완료' }).click();
   await expect(page.getByRole('heading', { name: '응답을 제출했습니다' })).toBeVisible();
 
@@ -468,7 +473,9 @@ test('결과 표 내려받기와 응답 링크 재발급을 제공한다', async
 
   const beforeLink = await page.getByLabel('응답 화면 열기').getAttribute('href');
   await page.goto(beforeLink!);
+  await page.getByRole('button', { name: '입력 시작' }).click();
   await page.getByRole('textbox', { name: '보호자 의견' }).fill('참가합니다');
+  await page.getByRole('button', { name: '응답 확인' }).click();
   await page.getByRole('button', { name: '작성 완료' }).click();
   await expect(page.getByRole('heading', { name: '응답을 제출했습니다' })).toBeVisible();
 
@@ -583,7 +590,9 @@ test('처리 중인 버튼은 다시 눌리지 않는다', async ({ page }) => {
 
   const link = await page.getByLabel('응답 화면 열기').getAttribute('href');
   await page.goto(link!);
+  await page.getByRole('button', { name: '입력 시작' }).click();
   await page.getByRole('textbox', { name: '보호자 의견' }).fill('참가합니다');
+  await page.getByRole('button', { name: '응답 확인' }).click();
   await page.getByRole('button', { name: '작성 완료' }).click();
   await expect(page.getByRole('heading', { name: '응답을 제출했습니다' })).toBeVisible();
   await page.goto(manageUrl);
@@ -642,6 +651,7 @@ test('기존 수합을 원본 PDF까지 그대로 복제한다', async ({ page }
 
   // 원본 PDF와 필드가 그대로 따라온다.
   await page.goto(copyLink!);
+  await page.getByRole('button', { name: '입력 시작' }).click();
   await expect(page.getByRole('textbox', { name: '보호자 의견' })).toBeVisible();
   await expect(page.locator('section[aria-label="1쪽"] canvas')).toBeVisible();
 

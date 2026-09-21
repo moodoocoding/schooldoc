@@ -2,7 +2,7 @@
 export const consentFieldMinimumSize = (kind: string) => (
   kind === 'text' || kind === 'date'
     ? { width: 3, height: 1 }
-    : { width: 10, height: 4 }
+    : kind === 'checkbox' ? { width: 1, height: 0.7 } : { width: 10, height: 4 }
 );
 
 export const isConsentFieldRectValid = (kind: string, x: number, y: number, width: number, height: number) => {

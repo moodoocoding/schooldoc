@@ -1,3 +1,4 @@
+import type { ConsentChoice } from '../../../supabase/functions/_shared/consentQuestions';
 export interface ConsentDocumentAnalysis {
   fileName: string;
   fileSize: number;
@@ -18,6 +19,7 @@ export interface ConsentFieldDraft {
   kind: ConsentFieldKind;
   label: string;
   required: boolean;
+  choice?: ConsentChoice;
   pageIndex: number;
   x: number;
   y: number;

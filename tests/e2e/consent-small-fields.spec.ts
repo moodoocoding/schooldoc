@@ -44,18 +44,18 @@ for (const width of [1440, 390]) test('좁은 PDF 표에 텍스트 칸 배치·�
   const href = await page.getByLabel('응답 화면 열기').getAttribute('href');
   await page.setViewportSize({width,height:900});
   await page.goto(href!);
+  await page.getByRole('button', { name: '입력 시작' }).click();
   const input = page.getByRole('textbox',{name:'텍스트 필수'});
   await expect(input).toBeVisible();
-  const rect = await input.evaluate(el => {
-    const wrapper = el.parentElement!;
-    return {height:wrapper.getBoundingClientRect().height, pageHeight:wrapper.parentElement!.getBoundingClientRect().height,
-      inputHeight:el.getBoundingClientRect().height, fontSize:parseFloat(getComputedStyle(el).fontSize)};
-  });
+  const overlay = page.getByTestId('consent-original-field');
+  const rect = await overlay.evaluate(el => ({
+    height: el.getBoundingClientRect().height, pageHeight: el.parentElement!.getBoundingClientRect().height,
+  }));
   expect(rect.height / rect.pageHeight).toBeCloseTo(.018,3);
-  expect(rect.inputHeight).toBeLessThanOrEqual(rect.height);
-  expect(rect.fontSize).toBeLessThanOrEqual(rect.inputHeight);
+  expect((await input.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await input.fill('김태호');
   await page.screenshot({path:'test-results/consent-small-field-response-' + width + '.png',fullPage:true});
+  await page.getByRole('button', { name: '응답 확인' }).click();
   await page.getByRole('button',{name:'작성 완료'}).click();
   await expect(page.getByRole('heading',{name:'응답을 제출했습니다'})).toBeVisible();
   expect(errors).toEqual([]);

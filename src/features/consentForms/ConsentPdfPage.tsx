@@ -34,5 +34,5 @@ export function ConsentPdfPage({ file, pageNumber }: { file: File; pageNumber: n
     return () => { active = false; };
   }, [file, pageNumber]);
 
-  return <div className="relative h-full w-full bg-white">{loading ? <div className="absolute inset-0 z-10 grid place-items-center bg-white"><LoaderCircle className="h-7 w-7 animate-spin text-[#0F6CBD]" /></div> : null}{error ? <div role="alert" className="absolute inset-0 z-10 grid place-items-center bg-white px-6 text-center text-sm font-semibold text-[#B42318]">{error}</div> : null}<canvas ref={canvasRef} className="h-full w-full object-contain" /></div>;
+  return <div className="relative h-full w-full bg-white">{loading ? <div aria-label="원본 PDF 렌더링 중" className="absolute inset-0 z-10 grid place-items-center bg-white"><LoaderCircle className="h-7 w-7 animate-spin text-[#0F6CBD]" /></div> : null}{error ? <div role="alert" className="absolute inset-0 z-10 grid place-items-center bg-white px-6 text-center text-sm font-semibold text-[#B42318]">{error}</div> : null}<canvas ref={canvasRef} className="h-full w-full object-contain" /></div>;
 }

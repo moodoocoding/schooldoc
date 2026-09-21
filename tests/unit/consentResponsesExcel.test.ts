@@ -30,6 +30,16 @@ const recipients: ConsentRecipientRecord[] = [
 ];
 
 describe('응답 결과 표', () => {
+  it('선택 질문은 질문명과 선택지로 열을 구별하고 아니오를 예로 표시하지 않는다', () => {
+    const choice = { id: 'q', label: '동의 여부', mode: 'single' as const, required: true, minSelections: 1 };
+    const grouped = [
+      { ...field('yes', 'checkbox', '예'), required: false, choice },
+      { ...field('no', 'checkbox', '아니오'), required: false, choice },
+    ];
+    const { header, rows } = buildConsentResponsesSheet(grouped, [{ ...response, values: { no: 'true' } }], []);
+    expect(header.slice(4)).toEqual(['동의 여부 / 예', '동의 여부 / 아니오']);
+    expect(rows[0].slice(4)).toEqual(['', '선택']);
+  });
   it('필드마다 열을 만들고 제출자를 함께 적는다', () => {
     const { header, rows } = buildConsentResponsesSheet(fields, [response], recipients);
 

@@ -271,7 +271,7 @@ export function ConsentFormsManagePage() {
       const value = response.values[field.id] ?? '';
       if (!value) return '';
       if (field.kind === 'signature') return `${field.label}: 서명함`;
-      if (field.kind === 'checkbox') return value === 'true' ? `${field.label}: 예` : '';
+      if (field.kind === 'checkbox') return value === 'true' ? field.choice ? `${field.choice.label}: ${field.label}` : `${field.label}: 체크함` : '';
       return `${field.label}: ${formatConsentValue(field, value)}`;
     })
     .filter(Boolean)

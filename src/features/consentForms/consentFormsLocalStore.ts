@@ -23,6 +23,7 @@ const normalizeDraft = (value: Partial<ConsentLocalDraft>): ConsentLocalDraft =>
   status: value.status ?? 'open',
   closedAt: value.closedAt ?? (value.status === 'closed' ? value.createdAt : undefined),
   pageCount: value.pageCount ?? Math.max(1, ...(value.fields ?? []).map((field) => field.pageIndex + 1)),
+  pageSizes: value.pageSizes,
   sourcePath: value.sourcePath,
   sourcePdfDataUrl: value.sourcePdfDataUrl,
   retentionMonths: value.retentionMonths,

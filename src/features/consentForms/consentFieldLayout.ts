@@ -1,3 +1,4 @@
+import { consentChoiceConfigError } from '../../../supabase/functions/_shared/consentQuestions';
 import type { ConsentFieldDraft, ConsentFieldKind } from './types';
 import { isConsentFieldRectValid } from '../../../supabase/functions/_shared/consentFieldGeometry';
 export { consentFieldMinimumSize } from '../../../supabase/functions/_shared/consentFieldGeometry';
@@ -9,7 +10,7 @@ const supportedKinds = new Set<ConsentFieldKind>(['text', 'checkbox', 'date', 's
 const finite = (value: number) => Number.isFinite(value);
 
 export interface ConsentFieldLayoutIssue {
-  type: 'duplicate-id' | 'kind' | 'label' | 'page' | 'bounds' | 'overlap';
+  type: 'duplicate-id' | 'kind' | 'label' | 'page' | 'bounds' | 'overlap' | 'choice';
   fieldIds: string[];
   message: string;
 }
@@ -25,6 +26,8 @@ export const fieldsOverlap = (a: ConsentFieldDraft, b: ConsentFieldDraft, gap = 
 export const getConsentFieldLayoutIssues = (fields: ConsentFieldDraft[], pageCount: number) => {
   const issues: ConsentFieldLayoutIssue[] = [];
   const ids = new Set<string>();
+  const choiceError = consentChoiceConfigError(fields);
+  if (choiceError) issues.push({ type: 'choice', fieldIds: fields.filter(field => field.choice).map(field => field.id), message: choiceError });
 
   fields.forEach((field) => {
     if (!field.id || ids.has(field.id)) issues.push({ type: 'duplicate-id', fieldIds: [field.id], message: '중복된 필드가 있습니다.' });
@@ -109,9 +112,16 @@ export const cloneFieldsToPage = (
   newId: () => string = () => crypto.randomUUID(),
 ) => {
   const placed = [...pageFields];
+  const groupIds = new Map<string, string>();
+  for (const source of sources) if (source.choice && !groupIds.has(source.choice.id)) groupIds.set(source.choice.id, newId());
   return sources.map((source) => {
     const position = findAvailableFieldPosition(placed, source);
     const clone = { ...source, id: newId(), pageIndex, ...position };
+    if (source.choice) {
+      // 단일 선택지 복제는 원래 질문에 자동 가입시키지 않는다.
+      clone.choice = sources.filter(item => item.choice?.id === source.choice?.id).length > 1
+        ? { ...source.choice, id: groupIds.get(source.choice.id)! } : undefined;
+    }
     placed.push(clone);
     return clone;
   });
