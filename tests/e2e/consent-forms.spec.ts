@@ -140,7 +140,7 @@ test('PDF 가정통신문의 페이지와 원본 미리보기를 표시한다', 
   await expect(page.getByRole('heading', { name: '수정된 현장체험학습 동의서' })).toBeVisible();
   await expect(page.locator('section[aria-label="1쪽"] canvas')).toBeVisible();
   const responsePage = await page.locator('section[aria-label="1쪽"]').boundingBox();
-  const responseField = await page.getByRole('button', { name: '참가 의견 원본 위치' }).boundingBox();
+  const responseField = await page.getByRole('button', { name: '참가 의견 입력 위치' }).boundingBox();
   expect(responseField?.x).toBeGreaterThanOrEqual(responsePage?.x ?? 0);
   expect((responseField?.x ?? 0) + (responseField?.width ?? 0)).toBeLessThanOrEqual((responsePage?.x ?? 0) + (responsePage?.width ?? 0) + 1);
   await page.getByRole('button', { name: '입력 시작' }).click();

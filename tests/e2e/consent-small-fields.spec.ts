@@ -52,7 +52,8 @@ for (const width of [1440, 390]) test('좁은 PDF 표에 텍스트 칸 배치·�
     height: el.getBoundingClientRect().height, pageHeight: el.parentElement!.getBoundingClientRect().height,
   }));
   expect(rect.height / rect.pageHeight).toBeCloseTo(.018,3);
-  expect((await input.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  if (width < 640) expect((await input.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  else expect((await input.boundingBox())!.height).toBeCloseTo(rect.height, 0);
   await input.fill('김태호');
   await page.screenshot({path:'test-results/consent-small-field-response-' + width + '.png',fullPage:true});
   await page.getByRole('button', { name: '응답 확인' }).click();

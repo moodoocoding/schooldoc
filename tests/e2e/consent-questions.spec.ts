@@ -27,36 +27,48 @@ async function seed(page: Page, customFields = fields) {
 }
 
 for (const width of [1440, 390]) for (const answer of ['예', '아니오']) {
-  test(`질문별 활성화·${answer} 선택·검토·제출 ${width}`, async ({ page }) => {
+  test(`원본 중심 자유 입력·${answer} 선택·검토·제출 ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
     await seed(page);
-    await expect(page.getByRole('heading', { name: '가정통신문을 읽어 주세요' })).toBeVisible();
-    await expect(page.getByRole('radio')).toHaveCount(0);
+    await expect(page.getByText('문서를 읽고 회색 입력칸을 눌러 작성해 주세요.', { exact: false })).toBeVisible();
+    await expect(page.getByRole('button', { name: '원본 위치 보기' })).toHaveCount(0);
+    const original = page.locator('#consent-original-yes');
+    expect(await original.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgba(100, 116, 139, 0.16)');
+    expect((await page.locator('section[aria-label="1쪽"]').boundingBox())!.y).toBeLessThan(220);
     await page.getByRole('button', { name: '입력 시작' }).click();
-    await expect(page.getByRole('textbox', { name: '보호자 성명' })).toHaveCount(0);
+    // 다음 위치로 이동할 때 입력을 강제하지 않고, 제출 전 확인에서 누락을 안내한다.
     await page.getByRole('button', { name: '다음', exact: true }).click();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await page.getByRole('button', { name: '응답 확인' }).click();
     await expect(page.getByRole('alert')).toContainText('선택해');
     const yes = page.getByRole('radio', { name: '예', exact: true });
     const no = page.getByRole('radio', { name: '아니오', exact: true });
     await yes.check(); await no.check();
     await expect(yes).not.toBeChecked();
     await page.getByRole('radio', { name: answer, exact: true }).check();
-    expect((await yes.locator('..').boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    if (width < 640) expect((await yes.locator('..').boundingBox())!.height).toBeGreaterThanOrEqual(44);
     const overlay = page.locator('#consent-original-yes');
-    expect(await overlay.evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
+    await expect(overlay).toHaveAttribute('data-active', 'true');
     expect((await overlay.boundingBox())!.width).toBeLessThan(20);
+    if (width < 640) {
+      const box = (await overlay.boundingBox())!;
+      const drawer = (await page.getByRole('region', { name: '동의 여부 · 필수' }).boundingBox())!;
+      expect(box.y).toBeGreaterThan(60);
+      expect(box.y + box.height).toBeLessThan(drawer.y);
+    }
     await page.screenshot({ path: `test-results/consent-question-${answer}-${width}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/consent-document-viewport-${answer}-${width}.png` });
     await page.getByRole('button', { name: '다음', exact: true }).click();
-    await expect(page.getByRole('radio')).toHaveCount(0);
+    if (width < 640) await expect(page.getByRole('radio')).toHaveCount(0);
     await page.getByRole('textbox', { name: '보호자 성명' }).fill('테스트 보호자');
     await page.getByRole('button', { name: '이전', exact: true }).click();
     await expect(page.getByRole('radio', { name: answer, exact: true })).toBeChecked();
     await page.getByRole('button', { name: '다음', exact: true }).click();
     await expect(page.getByRole('textbox', { name: '보호자 성명' })).toHaveValue('테스트 보호자');
     await page.getByRole('button', { name: '다음', exact: true }).click();
-    await page.getByRole('button', { name: '선택 없이 건너뛰기' }).click();
+    await page.getByRole('button', { name: '응답 확인' }).click();
     await expect(page.getByRole('heading', { name: '제출 전 확인' })).toBeVisible();
     await expect(page.getByRole('listitem').filter({ hasText: '동의 여부' })).toContainText(answer);
     await page.getByRole('button', { name: '동의 여부 수정' }).click();
@@ -74,6 +86,69 @@ for (const width of [1440, 390]) for (const answer of ['예', '아니오']) {
     expect(errors).toEqual([]);
   });
 }
+
+test('PC에서 순서와 무관하게 원본의 필드를 직접 입력하고 다시 수정한다', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await seed(page);
+  await page.getByRole('textbox', { name: '보호자 성명' }).fill('먼저 작성');
+  await expect(page.locator('footer')).toContainText('2/3 · 보호자 성명');
+  await page.getByRole('radio', { name: '아니오', exact: true }).check();
+  await page.getByRole('checkbox', { name: '추가 안내 희망' }).check();
+  await page.getByRole('textbox', { name: '보호자 성명' }).fill('최종 이름');
+  await page.getByRole('button', { name: '응답 확인' }).click();
+  await page.getByRole('button', { name: '보호자 성명 수정' }).click();
+  await expect(page.getByRole('textbox', { name: '보호자 성명' })).toHaveValue('최종 이름');
+  await expect(page.getByRole('radio', { name: '아니오', exact: true })).toBeChecked();
+  const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+  expect(result.violations).toEqual([]);
+});
+
+test('모바일에서 원본 칸 클릭·입력창 닫기·다른 칸 이동·화면 크기 변경 시 값을 보존한다', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seed(page);
+  await page.getByRole('button', { name: '보호자 성명 입력 위치' }).click();
+  await page.getByRole('textbox', { name: '보호자 성명' }).fill('테스트 이름');
+  await page.getByRole('button', { name: '입력창 닫고 원본 보기' }).click();
+  await expect(page.getByRole('textbox')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '보호자 성명 입력 위치' })).toContainText('테스트 이름');
+  await page.getByRole('button', { name: '아니오 입력 위치' }).click();
+  await page.getByRole('radio', { name: '아니오', exact: true }).check();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('radio')).toHaveCount(0);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(page.getByRole('radio', { name: '아니오', exact: true })).toBeChecked();
+  await expect(page.getByRole('textbox', { name: '보호자 성명' })).toHaveValue('테스트 이름');
+});
+
+test('두 쪽의 날짜·마지막 입력칸으로 이동해도 모바일 입력창에 가려지지 않는다', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seed(page, [fields[2], { ...fields[2], id: 'date', kind: 'date', label: '작성 날짜', pageIndex: 1, y: 92 }]);
+  await page.goto('/');
+  await page.evaluate(() => {
+    const rows = JSON.parse(localStorage.getItem('schooldoc:consent-forms:drafts')!);
+    rows[0].pageCount = 2;
+    rows[0].pageSizes.push({ width: 210, height: 297 });
+    localStorage.setItem('schooldoc:consent-forms:drafts', JSON.stringify(rows));
+  });
+  // 실제 2쪽 PDF도 만들어 페이지 렌더링까지 확인한다.
+  const pdf = new jsPDF(); pdf.text('First page', 20, 20); pdf.addPage(); pdf.text('Date at end', 20, 270);
+  await page.evaluate(source => {
+    const rows = JSON.parse(localStorage.getItem('schooldoc:consent-forms:drafts')!);
+    rows[0].sourcePdfDataUrl = source;
+    localStorage.setItem('schooldoc:consent-forms:drafts', JSON.stringify(rows));
+  }, pdf.output('datauristring'));
+  await page.goto('/s/consent/question-token');
+  await page.getByRole('button', { name: '작성 날짜 입력 위치' }).click();
+  await page.getByLabel('작성 날짜 필수').fill('2026-09-21');
+  const rect = (await page.locator('#consent-original-date').boundingBox())!;
+  const drawer = (await page.getByRole('region', { name: '작성 날짜 · 필수' }).boundingBox())!;
+  expect(rect.y).toBeGreaterThan(60);
+  expect(rect.y + rect.height).toBeLessThan(drawer.y);
+  await page.getByRole('button', { name: '이전', exact: true }).click();
+  await page.getByRole('textbox', { name: '보호자 성명' }).fill('김보호');
+  await page.getByRole('button', { name: '응답 확인' }).click();
+  await expect(page.getByRole('listitem').filter({ hasText: '작성 날짜' })).toContainText('2026-09-21');
+});
 
 test('교사는 기존 체크박스를 질문으로 묶고 새 질문을 작게 배치할 수 있다', async ({ page }) => {
   const pdf = new jsPDF(); pdf.text('Original label', 20, 35);
@@ -107,10 +182,10 @@ test('교사는 기존 체크박스를 질문으로 묶고 새 질문을 작게 
   const link = await page.getByLabel('응답 화면 열기').getAttribute('href');
   await page.goto(link!);
   await page.getByRole('button', { name: '입력 시작' }).click();
-  await expect(page.getByRole('group', { name: '참가 여부' })).toBeVisible();
+  await expect(page.locator('footer')).toContainText('참가 여부');
   await page.getByRole('radio', { name: '불참', exact: true }).check();
   await page.getByRole('button', { name: '다음', exact: true }).click();
-  await expect(page.getByRole('group', { name: '동의 여부' })).toBeVisible();
+  await expect(page.locator('footer')).toContainText('동의 여부');
 });
 
 test('모바일 단계별 입력 접근성 검사', async ({ page }) => {
@@ -126,7 +201,7 @@ test('복수 선택 최소 수·선택 항목 건너뛰기·기존 필수 체크
   await seed(page, [...multiple, { ...fields[3], required: true }]);
   await page.getByRole('button', { name: '입력 시작' }).click();
   await page.getByRole('checkbox', { name: '예', exact: true }).check();
-  await page.getByRole('button', { name: '다음', exact: true }).click();
+  await page.getByRole('button', { name: '응답 확인' }).click();
   await expect(page.getByRole('alert')).toContainText('2개 이상');
   await page.getByRole('checkbox', { name: '아니오', exact: true }).check();
   await page.getByRole('button', { name: '다음', exact: true }).click();
@@ -153,7 +228,7 @@ test('서명 단계의 적용·취소·키보드 포커스', async ({ page }) =>
   await page.mouse.move(rect.x + 30, rect.y + 50); await page.mouse.down();
   await page.mouse.move(rect.x + 100, rect.y + 90, { steps: 8 }); await page.mouse.up();
   await page.getByRole('button', { name: '서명 적용' }).click();
-  await page.getByRole('button', { name: '서명 수정' }).click();
+  await page.getByRole('button', { name: '보호자 서명 서명 수정' }).click();
   await page.getByRole('button', { name: '다시 쓰기' }).click();
   await page.getByRole('button', { name: '서명 창 닫기' }).click();
   await expect(page.getByRole('img', { name: '보호자 서명 서명' })).toBeVisible();
