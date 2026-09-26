@@ -222,6 +222,7 @@ test("설정에서 저장한 명단을 배정에 자동 적용하고 역할 수�
   await page
     .getByRole("button", { name: "학급 학생 명단", exact: true })
     .click();
+  await page.getByRole("button", { name: "명단 수정", exact: true }).click();
   await page
     .getByLabel("학생 명단 (한 줄에 번호와 이름)")
     .fill("1 새가상학생\n2 가상바다");
