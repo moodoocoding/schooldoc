@@ -1,4 +1,5 @@
 import { fieldRect } from './consentFieldLayout';
+import { loadPdfJs } from '../../utils/pdfjs';
 import type { ConsentFieldDraft, ConsentResponseRecord } from './types';
 
 /**
@@ -109,8 +110,7 @@ const drawSignature = (context: CanvasRenderingContext2D, image: ImageBitmap, re
 };
 
 const openDocument = async (file: File) => {
-  const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
+  const pdfjs = await loadPdfJs();
   return pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
 };
 
@@ -243,4 +243,3 @@ export const consentQrFileName = (title: string) => `${safeFileTitle(title)}_응
 export const consentResponsesFileName = (title: string, count: number) => (
   `${safeFileTitle(title)}_응답모음_${count}건.pdf`
 );
-

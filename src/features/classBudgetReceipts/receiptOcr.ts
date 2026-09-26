@@ -1,4 +1,5 @@
 import type { ReceiptAnalysisDraft, ReceiptAnalysisSource } from './types';
+import { loadPdfJs } from '../../utils/pdfjs';
 
 export interface ReceiptAnalysisProgress {
   stage: 'reading' | 'ocr' | 'parsing';
@@ -131,8 +132,7 @@ export const parseReceiptText = (
 };
 
 const openPdf = async (file: File) => {
-  const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
+  const pdfjs = await loadPdfJs();
   return pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
 };
 

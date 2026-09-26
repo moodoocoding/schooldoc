@@ -1,4 +1,5 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist';
+import { loadPdfJs } from '../../utils/pdfjs';
 import type { ResultColumn, ResultRecipientDraft } from './types';
 
 type SheetRows = readonly (readonly unknown[])[];
@@ -229,8 +230,7 @@ export const reconstructStudentResultPdfRows = (
 };
 
 const extractStudentResultPdfRows = async (file: File) => {
-  const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
+  const pdfjs = await loadPdfJs();
   const loadingTask = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) });
   let document: PDFDocumentProxy;
   try {

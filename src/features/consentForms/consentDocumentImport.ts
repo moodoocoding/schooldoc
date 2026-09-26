@@ -1,4 +1,5 @@
 import type { ConsentDocumentAnalysis } from './types';
+import { loadPdfJs } from '../../utils/pdfjs';
 
 const MAX_FILE_SIZE = 30 * 1024 * 1024;
 const cleanFileTitle = (name: string) => name.replace(/\.pdf$/i, '').trim();
@@ -12,8 +13,7 @@ const ensurePdf = (file: File) => {
 
 export const analyzeConsentDocument = async (file: File): Promise<ConsentDocumentAnalysis> => {
   ensurePdf(file);
-  const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
+  const pdfjs = await loadPdfJs();
   let document;
   try {
     document = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;

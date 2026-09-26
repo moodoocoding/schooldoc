@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { consentQuestions, consentQuestionError, consentResponseError, setConsentChoice } from '../../../supabase/functions/_shared/consentQuestions';
 import { SignatureCanvas } from '../registry/SignatureCanvas';
-import { ConsentPdfPage } from './ConsentPdfPage';
+import { ConsentPdfPage, type ConsentPdfState } from './ConsentPdfPage';
 import { ConsentResponseField } from './ConsentResponseField';
 import { pageAspectRatio } from './consentFieldLayout';
 import type { ConsentFieldDraft, ConsentPublicDocument } from './types';
@@ -24,6 +24,13 @@ export function ConsentResponseForm({ document, file, values, setValues, submitt
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 639px)').matches);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [error, setError] = useState('');
+  const [pdfState, setPdfState] = useState<{ file: File; pages: Record<number, ConsentPdfState> }>();
+  const onPdfStateChange = useCallback((source: File, pageNumber: number, state: ConsentPdfState) => {
+    setPdfState(previous => ({ file: source, pages: { ...(previous?.file === source ? previous.pages : {}), [pageNumber]: state } }));
+  }, []);
+  const pdfPages = pdfState?.file === file ? pdfState.pages : {};
+  const pdfReady = document.pageCount > 0 && Array.from({ length: document.pageCount }, (_, index) => pdfPages[index + 1] === 'ready').every(Boolean);
+  const pdfFailed = Object.values(pdfPages).includes('error');
   const [signatureField, setSignatureField] = useState<ConsentFieldDraft | null>(null);
   const [signatureDraft, setSignatureDraft] = useState<string | null>(null);
   const review = useRef<HTMLElement>(null);
@@ -40,6 +47,7 @@ export function ConsentResponseForm({ document, file, values, setValues, submitt
   }, []);
 
   const updateValue = (field: ConsentFieldDraft, value: string) => {
+    if (!pdfReady) return;
     setError('');
     setValues(previous => field.kind === 'checkbox'
       ? setConsentChoice(document.fields, previous, field.id, value === 'true')
@@ -50,6 +58,7 @@ export function ConsentResponseForm({ document, file, values, setValues, submitt
     globalThis.document.getElementById(`consent-response-${field.id}`)?.focus({ preventScroll: true });
   });
   const move = (index: number, fieldId?: string, keepError = false) => {
+    if (!pdfReady) return;
     if (!questions[index]) return;
     if (!keepError) setError('');
     setStep(index);
@@ -68,6 +77,7 @@ export function ConsentResponseForm({ document, file, values, setValues, submitt
     });
   };
   const openSignature = (field: ConsentFieldDraft) => {
+    if (!pdfReady) return;
     signatureReturn.current = globalThis.document.activeElement as HTMLElement | null;
     setSignatureDraft(null);
     setSignatureField(field);
@@ -77,6 +87,7 @@ export function ConsentResponseForm({ document, file, values, setValues, submitt
     requestAnimationFrame(() => signatureReturn.current?.focus({ preventScroll: true }));
   };
   const checkAndReview = () => {
+    if (!pdfReady) return;
     const invalid = questions.findIndex(question => consentQuestionError(question, values));
     if (invalid >= 0) {
       setError(consentQuestionError(questions[invalid], values) ?? '입력 내용을 확인해 주세요.');
@@ -90,7 +101,7 @@ export function ConsentResponseForm({ document, file, values, setValues, submitt
   };
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (submitting) return;
+    if (submitting || !pdfReady) return;
     if (!reviewing || consentResponseError(document.fields, values)) { checkAndReview(); return; }
     await onSubmit();
   };
@@ -104,7 +115,7 @@ export function ConsentResponseForm({ document, file, values, setValues, submitt
         {document.description ? <p className="mb-2">{document.description}</p> : null}
         <p>문서를 읽고 회색 입력칸을 눌러 작성해 주세요. 어느 칸이든 다시 수정할 수 있습니다.</p>
       </div>
-      {reviewing ? <section ref={review} tabIndex={-1} aria-label="제출 전 확인" className="mx-auto mt-4 max-w-[794px] scroll-mt-24 border border-[#C8D0DA] bg-white p-4 outline-none">
+      {pdfReady && reviewing ? <section ref={review} tabIndex={-1} aria-label="제출 전 확인" className="mx-auto mt-4 max-w-[794px] scroll-mt-24 border border-[#C8D0DA] bg-white p-4 outline-none">
         <h2 className="text-base font-bold">제출 전 확인</h2><p className="mt-1 text-sm text-[#526174]">아래 원본에 작성된 내용을 확인한 후 제출해 주세요.</p>
         <ul className="mt-2 divide-y divide-[#DCE3EA]">{questions.map((question, index) => <li key={question.id} className="flex items-center justify-between gap-3 py-2"><div className="min-w-0 text-sm"><span className="font-bold">{question.label}: </span><span className="break-words">{question.choice ? question.fields.filter(field => values[field.id] === 'true').map(field => field.label).join(', ') || '선택 안 함' : question.fields[0].kind === 'signature' ? values[question.fields[0].id] ? '서명 완료' : '서명 안 함' : question.fields[0].kind === 'checkbox' ? values[question.fields[0].id] === 'true' ? '체크함' : '체크 안 함' : values[question.fields[0].id] || '입력 안 함'}</span></div><button type="button" onClick={() => move(index)} className={`${control} shrink-0`} aria-label={`${question.label} 수정`}>수정</button></li>)}</ul>
       </section> : null}
@@ -112,16 +123,17 @@ export function ConsentResponseForm({ document, file, values, setValues, submitt
         {Array.from({ length: document.pageCount }, (_, pageIndex) => {
           const pageSize = document.pageSizes[pageIndex];
           return <section key={pageIndex} aria-label={`${pageIndex + 1}쪽`} style={{ aspectRatio: pageAspectRatio(pageSize?.width, pageSize?.height) }} className="relative mx-auto w-full max-w-[794px] overflow-hidden bg-white shadow-sm">
-            <ConsentPdfPage file={file} pageNumber={pageIndex + 1} />
-            {document.fields.filter(field => field.pageIndex === pageIndex).map(field => {
+            <ConsentPdfPage file={file} pageNumber={pageIndex + 1} onStateChange={onPdfStateChange} />
+            {pdfReady ? document.fields.filter(field => field.pageIndex === pageIndex).map(field => {
               const index = fieldQuestion(field);
               return <ConsentResponseField key={field.id} field={field} value={values[field.id] ?? ''} question={questions[index]} mobile={mobile} active={!reviewing && index === step} onActivate={() => { setStep(index); setReviewing(false); }} onOpen={() => move(index, field.id)} onChange={value => updateValue(field, value)} onSign={() => openSignature(field)} />;
-            })}
+            }) : null}
           </section>;
         })}
       </div>
       <footer className="fixed inset-x-0 bottom-0 z-40 border-t border-[#C8D0DA] bg-white px-3 py-2 shadow-sm">
-        {mobile && drawerOpen && current && !reviewing ? <section aria-labelledby="consent-mobile-title" className="mx-auto max-h-[38dvh] max-w-[794px] overflow-y-auto border-b border-[#DCE3EA] pb-3" onKeyDown={event => { if (event.key === 'Escape') { setDrawerOpen(false); focusOriginal(current.fields[0]); } }}>
+        {!pdfReady ? <p role="status" className="mx-auto max-w-[794px] py-2 text-sm text-[#526174]">{pdfFailed ? '원본을 확인할 수 없어 입력과 제출이 중단되었습니다. 표시되지 않은 페이지에서 다시 시도해 주세요.' : '원본 문서를 표시하고 있습니다. 모든 페이지가 열리면 작성할 수 있습니다.'}</p> : null}
+        {pdfReady && mobile && drawerOpen && current && !reviewing ? <section aria-labelledby="consent-mobile-title" className="mx-auto max-h-[38dvh] max-w-[794px] overflow-y-auto border-b border-[#DCE3EA] pb-3" onKeyDown={event => { if (event.key === 'Escape') { setDrawerOpen(false); focusOriginal(current.fields[0]); } }}>
           <div className="flex items-center justify-between gap-2"><h2 id="consent-mobile-title" tabIndex={-1} className="text-sm font-bold outline-none">{current.label} · {current.required ? '필수' : '선택'}</h2><button type="button" aria-label="입력창 닫고 원본 보기" onClick={() => { setDrawerOpen(false); focusOriginal(current.fields[0]); }} className="flex h-11 w-11 shrink-0 items-center justify-center"><X size={20} /></button></div>
           <fieldset><legend className="sr-only">{current.label}</legend><div className="flex flex-wrap gap-2">{current.fields.map(field => {
             const value = values[field.id] ?? '';
@@ -132,15 +144,15 @@ export function ConsentResponseForm({ document, file, values, setValues, submitt
         </section> : null}
         {error || serverError ? <p role="alert" className="mx-auto max-w-[794px] py-2 text-sm font-semibold text-[#B42318]">{error || serverError}</p> : null}
         <div className="mx-auto max-w-[794px]">
-          {!reviewing ? <p className="truncate pb-1 pt-2 text-xs text-[#526174]" aria-live="polite">{current ? `${step + 1}/${questions.length} · ${current.label}${current.choice ? current.choice.mode === 'single' ? ' · 하나만 선택' : ` · ${current.required ? `${current.choice.minSelections}개 이상 선택` : '복수 선택 가능'}` : ''}` : '회색 칸을 누르거나 입력 시작을 선택하세요.'}</p> : null}
+          {pdfReady && !reviewing ? <p className="truncate pb-1 pt-2 text-xs text-[#526174]" aria-live="polite">{current ? `${step + 1}/${questions.length} · ${current.label}${current.choice ? current.choice.mode === 'single' ? ' · 하나만 선택' : ` · ${current.required ? `${current.choice.minSelections}개 이상 선택` : '복수 선택 가능'}` : ''}` : '회색 칸을 누르거나 입력 시작을 선택하세요.'}</p> : null}
           <div className="flex items-center justify-between gap-2">
-            <button type="button" disabled={step <= 0 && !reviewing} onClick={() => move(reviewing ? Math.max(0, step) : step - 1)} className={control}>{reviewing ? '계속 수정' : '이전'}</button>
-            <div className="flex gap-2">{!reviewing && step < questions.length - 1 ? <button type="button" onClick={() => move(step + 1)} className={control}>{step < 0 ? '입력 시작' : '다음'}</button> : null}<button type="submit" disabled={submitting} className="min-h-[48px] rounded-lg bg-[#0F6CBD] px-4 text-sm font-bold text-white disabled:opacity-50">{submitting ? '제출 중' : reviewing ? '작성 완료' : '응답 확인'}</button></div>
+            <button type="button" disabled={!pdfReady || (step <= 0 && !reviewing)} onClick={() => move(reviewing ? Math.max(0, step) : step - 1)} className={control}>{reviewing ? '계속 수정' : '이전'}</button>
+            <div className="flex gap-2">{!reviewing && step < questions.length - 1 ? <button type="button" disabled={!pdfReady} onClick={() => move(step + 1)} className={control}>{step < 0 ? '입력 시작' : '다음'}</button> : null}<button type="submit" disabled={submitting || !pdfReady} className="min-h-[48px] rounded-lg bg-[#0F6CBD] px-4 text-sm font-bold text-white disabled:opacity-50">{submitting ? '제출 중' : reviewing ? '작성 완료' : '응답 확인'}</button></div>
           </div>
         </div>
       </footer>
     </form>
-    {signatureField ? <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0F172A]/55 p-2 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="signature-title" onKeyDown={event => {
+    {pdfReady && signatureField ? <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0F172A]/55 p-2 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="signature-title" onKeyDown={event => {
       if (event.key === 'Escape') { event.stopPropagation(); closeSignature(); }
       if (event.key === 'Tab') {
         const controls = event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)');

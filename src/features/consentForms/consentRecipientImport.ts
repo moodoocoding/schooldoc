@@ -1,3 +1,5 @@
+import { loadPdfJs } from '../../utils/pdfjs';
+
 export interface ImportedConsentRecipient {
   name: string;
   identifier: string;
@@ -109,8 +111,7 @@ export const parseConsentRecipientRows = (
 };
 
 const extractPdfRows = async (file: File) => {
-  const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
+  const pdfjs = await loadPdfJs();
   const document = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
   const rows: string[][] = [];
   for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
