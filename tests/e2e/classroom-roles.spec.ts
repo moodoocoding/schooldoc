@@ -86,7 +86,9 @@ test("자동 명단 → 2단계 배정 → 공용 제출·재제출 → 월간 �
   await studentPage
     .getByRole("button", { name: "했어요", exact: true })
     .click();
-  await expect(studentPage.getByRole("status")).toContainText("저장했어요");
+  await expect(
+    studentPage.getByRole("status").filter({ hasText: "저장했어요" }),
+  ).toBeVisible();
   await expect(
     studentPage.getByRole("heading", { name: "내 이름을 선택해 주세요" }),
   ).toBeVisible();
@@ -99,7 +101,9 @@ test("자동 명단 → 2단계 배정 → 공용 제출·재제출 → 월간 �
   await studentPage
     .getByRole("button", { name: "못했어요", exact: true })
     .click();
-  await expect(studentPage.getByRole("status")).toContainText("못했어요");
+  await expect(
+    studentPage.getByRole("status").filter({ hasText: "못했어요" }),
+  ).toBeVisible();
   await studentPage.screenshot({
     path: test.info().outputPath("student-mobile.png"),
     fullPage: true,
