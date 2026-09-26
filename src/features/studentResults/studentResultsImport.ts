@@ -1,5 +1,6 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { loadPdfJs } from '../../utils/pdfjs';
+import { normalizeImportHeader as normalizeHeader, readDelimitedImportFile, readExcelImportFile } from '../../utils/tabularImport';
 import type { ResultColumn, ResultRecipientDraft } from './types';
 
 type SheetRows = readonly (readonly unknown[])[];
@@ -29,13 +30,6 @@ export const findPossibleStudentResultNonParticipants = (analysis: StudentResult
     })
   ))
 );
-
-const normalizeHeader = (value: unknown) => String(value ?? '')
-  .normalize('NFKC')
-  .trim()
-  .toLocaleLowerCase('ko-KR')
-  .replace(/\([^)]*\)|\[[^\]]*\]/g, '')
-  .replace(/[\s._·\-:/\\]+/g, '');
 
 const NAME_HEADERS = new Set(['성명', '이름', '학생명', 'name']);
 const KEY_HEADERS = new Set(['학번', '학생번호', '번호', '연번', '순번', 'id', '식별값']);
@@ -403,19 +397,11 @@ export const analyzeStudentResultFile = async (file: File) => {
   }
 
   if (isCsv) {
-    const { default: Papa } = await import('papaparse');
-    const result = await new Promise<unknown[][]>((resolve, reject) => {
-      Papa.parse<unknown[]>(file, {
-        skipEmptyLines: false,
-        complete: (parsed) => parsed.errors.length ? reject(new Error(parsed.errors[0].message)) : resolve(parsed.data),
-        error: reject,
-      });
-    });
+    const result = await readDelimitedImportFile(file);
     return analyzeStudentResultRows(result, 'CSV', fallbackTitle);
   }
 
-  const { default: readWorkbook } = await import('read-excel-file/web-worker');
-  const sheets = await readWorkbook(file);
+  const sheets = await readExcelImportFile(file);
   const analyses = sheets.flatMap(({ sheet, data }) => {
     try {
       return [analyzeStudentResultRows(data, sheet, fallbackTitle)];
