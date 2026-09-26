@@ -181,7 +181,8 @@ try {
     await student.goto(sharedUrl);
     await student.getByRole('button', { name: '1번 가상새봄', exact: true }).click();
     await student.getByRole('button', { name: '했어요', exact: true }).click();
-    await expect(student.getByRole('status')).toContainText('저장했어요');
+    // A refresh status may coexist briefly with the persisted save confirmation.
+    await expect(student.getByRole('status').filter({ hasText: '저장했어요' })).toBeVisible();
     await expect(student.getByRole('heading', { name: '내 이름을 선택해 주세요' })).toBeVisible();
     await student.screenshot({ path: 'test-results/roles-remote-student.png', fullPage: true });
     assert.ok(await student.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
@@ -216,6 +217,17 @@ try {
 } catch (error) {
   // Do not print SDK payloads, session tokens, or assertion diffs from remote data.
   console.error(`FAIL at ${stage}: ${error.name}`);
+  console.error(String(error.message)
+    .replace(/https?:\/\/[^\s)]+/g, '[url]')
+    .replace(/eyJ[A-Za-z0-9_.-]+/g, '[redacted token]')
+    .replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, '[synthetic id]'));
+  if (browser) {
+    for (const [i, context] of browser.contexts().entries()) {
+      for (const [j, page] of context.pages().entries()) {
+        await page.screenshot({ path: `test-results/roles-remote-failure-${i}-${j}.png`, fullPage: true }).catch(() => {});
+      }
+    }
+  }
   const sourceLine = error.stack?.split('\n').find((line) => line.includes('classroomRoles.smoke.mjs:'));
   if (sourceLine) console.error(sourceLine.trim());
   process.exitCode = 1;
