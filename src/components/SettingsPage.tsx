@@ -12,12 +12,13 @@ import { loadTeacherProfile, saveTeacherProfile } from '../features/settings/pro
 import { PrivacyRetentionPanel } from '../features/settings/PrivacyRetentionPanel';
 import { isConsentFormsDemoMode } from '../features/consentForms/consentFormsConfig';
 import { isDataCollectDemoMode } from '../features/dataCollect/dataCollectConfig';
+import { ClassRosterSettings } from '../features/classroomRoles/ClassRosterSettings';
 
 export const SettingsPage: React.FC = () => {
   const { configured, displayName, error, loading, signIn, user } = useTeacherAuth();
   const { settings: appearance, setFontSize, setTheme } = useAppearanceSettings();
   const isLoggedIn = Boolean(user);
-  const [activeTab, setActiveTab] = useState<'profile' | 'signature' | 'security' | 'display'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'signature' | 'security' | 'display' | 'roster'>('profile');
   const [school, setSchool] = useState<SelectedSchool | null>(null);
   const [teacherName, setTeacherName] = useState<string>('');
   const [gradeClass, setGradeClass] = useState<string>('');
@@ -105,6 +106,7 @@ export const SettingsPage: React.FC = () => {
       <div className="bg-white rounded-xl border border-[#DCE3EA] shadow-xs overflow-hidden">
         {/* Tab Header Buttons */}
         <div className="flex border-b border-[#DCE3EA] bg-[#F6F8FB] overflow-x-auto scrollbar-none">
+          <button onClick={() => setActiveTab('roster')} className={`min-h-[44px] whitespace-nowrap border-b-2 px-5 py-3.5 text-xs font-bold ${activeTab === 'roster' ? 'border-[#0F6CBD] bg-white text-[#0F6CBD]' : 'border-transparent text-[#64748B]'}`}>학급 학생 명단</button>
           <button
             onClick={() => setActiveTab('profile')}
             className={`px-5 py-3.5 text-xs font-bold transition-all border-b-2 flex items-center gap-2 whitespace-nowrap min-h-[44px] ${
@@ -155,6 +157,7 @@ export const SettingsPage: React.FC = () => {
         </div>
 
         {/* Tab 1: Profile */}
+        {activeTab === 'roster' && <div className="p-6 sm:p-8"><ClassRosterSettings /></div>}
         {activeTab === 'profile' && (
           <form onSubmit={handleSaveSettings} className="p-6 sm:p-8 space-y-6">
             <div className="space-y-4 max-w-lg">

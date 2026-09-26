@@ -16,6 +16,8 @@ import { PublicConsentResponsePage } from './features/consentForms/PublicConsent
 import { DataCollectWorkspace } from './features/dataCollect/DataCollectWorkspace';
 import { PublicDataCollectPage } from './features/dataCollect/PublicDataCollectPage';
 import { ReceiptBooksWorkspace } from './features/classBudgetReceipts/ReceiptBooksWorkspace';
+import { ClassroomRolesWorkspace } from './features/classroomRoles/ClassroomRolesWorkspace';
+import { PublicClassroomRolesPage } from './features/classroomRoles/PublicClassroomRolesPage';
 import {
   canAccessClassBudgetReceipts,
   isClassBudgetReceiptsAdmin,
@@ -37,6 +39,13 @@ function AdminApp() {
 
   // 10 Core Services matched EXACTLY with user specification
   const allToolsMap: Record<string, SchoolTool> = {
+    'classroom-roles': {
+      id: 'classroom-roles',
+      name: '1인 1역',
+      desc: '우리 반 역할을 배정하고 학생들의 매일 실천을 기록합니다.',
+      iconName: 'clipboard-list',
+      status: 'ready',
+    },
     'student-lookup': {
       id: 'student-lookup',
       name: '학생 결과 안내',
@@ -122,8 +131,10 @@ function AdminApp() {
   const isSpecialRoomsRoute = location.pathname.startsWith('/tools/special-rooms');
   const isDataCollectRoute = location.pathname.startsWith('/tools/data-collect');
   const isReceiptBooksRoute = location.pathname.startsWith('/tools/receipts');
+  const isClassroomRolesRoute = location.pathname.startsWith('/tools/classroom-roles');
 
   const toolRoutes: Record<string, string> = {
+    'classroom-roles': '/tools/classroom-roles',
     'registry-sign': '/tools/registry-sign',
     'student-lookup': '/tools/student-results',
     'notice-collect': '/tools/consent-forms',
@@ -185,13 +196,14 @@ function AdminApp() {
         건드리지 않는다.
       */}
       <div className="flex-1 flex flex-col min-w-0">
-        {isRegistryRoute || isStudentResultsRoute || isConsentFormsRoute || isSpecialRoomsRoute || isDataCollectRoute || isReceiptBooksRoute ? (
+        {isRegistryRoute || isStudentResultsRoute || isConsentFormsRoute || isSpecialRoomsRoute || isDataCollectRoute || isReceiptBooksRoute || isClassroomRolesRoute ? (
           <main className="min-w-0 overflow-x-clip p-4 sm:p-8">
             {isRegistryRoute ? <RegistryWorkspace />
               : isStudentResultsRoute ? <StudentResultsWorkspace />
               : isConsentFormsRoute ? <ConsentFormsWorkspace />
               : isSpecialRoomsRoute ? <SpecialRoomsWorkspace />
               : isDataCollectRoute ? <DataCollectWorkspace />
+              : isClassroomRolesRoute ? <Routes><Route path="/tools/classroom-roles/*" element={<ClassroomRolesWorkspace />} /></Routes>
               : canUseReceiptBooks ? <ReceiptBooksWorkspace />
                 : <section className="mx-auto max-w-xl border-y border-[#DCE3EA] bg-white px-6 py-16 text-center">
                   <h1 className="text-xl font-extrabold text-[#0F172A]">학급 운영비 영수증은 개발 중입니다</h1>
@@ -232,6 +244,7 @@ function AdminApp() {
 function App() {
   return (
     <Routes>
+      <Route path="/s/roles/:token" element={<PublicClassroomRolesPage />} />
       <Route path="/s/registry/:token" element={<PublicRegistrySignPage />} />
       <Route path="/s/results/:token" element={<PublicStudentResultPage />} />
       <Route path="/s/consent/:token" element={<PublicConsentResponsePage />} />

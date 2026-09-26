@@ -18,7 +18,7 @@ const sourceFiles = walk('src').filter((path) => path.endsWith('.tsx') || path.e
 
 const drawsQrCode = (source: string) => /QRCodeSVG|QRCodeCanvas/.test(source);
 const offersImageSave = (source: string) => /saveQrImage|svgToPngBlob/.test(source);
-const studentResultQrPdfPath = 'src/features/studentResults/StudentResultsQrPrintPage.tsx';
+const studentResultQrPdfPath = join('src', 'features', 'studentResults', 'StudentResultsQrPrintPage.tsx');
 
 describe('하나의 공유 QR을 그리는 화면은 이미지 저장을 함께 제공한다', () => {
   const qrScreens = sourceFiles

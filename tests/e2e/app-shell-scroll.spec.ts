@@ -18,6 +18,13 @@ const SHELL_ROUTES = [
   ['특별실 예약', '/tools/special-rooms/new'],
   ['자료 수합', '/tools/data-collect'],
   ['학급 운영비 영수증', '/tools/receipts/new'],
+  ['1인 1역 홈', '/tools/classroom-roles'],
+  ['1인 1역 배정', '/tools/classroom-roles/assign'],
+  ['1인 1역 역할 목록', '/tools/classroom-roles/roles'],
+  ['1인 1역 실천판', '/tools/classroom-roles/board'],
+  ['1인 1역 기록', '/tools/classroom-roles/records'],
+  ['1인 1역 교체', '/tools/classroom-roles/rotate'],
+  ['1인 1역 설정', '/tools/classroom-roles/settings'],
 ] as const;
 
 const measureBottom = async (page: Page) => page.evaluate(() => {

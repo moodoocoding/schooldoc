@@ -8,3 +8,10 @@ static_files = [
 
 [functions.consent-forms-public]
 verify_jwt = false
+
+# Admin validates the bearer with auth.getUser; public validates the class token.
+[functions.classroom-roles-admin]
+verify_jwt = false
+
+[functions.classroom-roles-public]
+verify_jwt = false
