@@ -38,6 +38,16 @@ npx deno test --no-config --allow-read --allow-env --allow-sys tests/server/clas
 
 SQL 검사는 PGlite 0.5.8의 메모리 PostgreSQL에 새 스키마만 적용하며 원격 자료를 읽거나 변경하지 않는다. [PGlite API](https://pglite.dev/docs/api)의 `exec`, `query`, `close`를 사용한다.
 
+### 명시적 원격 스모크 검사
+
+`node tests/integration/classroomRoles.smoke.mjs`는 일반 테스트에 포함되지 않는다. 허용된 시험 대상에서만 실행한다.
+환경 변수 `ROLES_SMOKE_PROJECT`와 `ROLES_SMOKE_ALLOW_WRITE`에 같은 프로젝트 ID를 지정해야 하며,
+`ROLES_SMOKE_KEYS`에는 인증된 CLI가 반환한 API 키 JSON을 프로세스 환경으로만 전달한다. 값은 출력하거나 파일로 저장하지 않는다.
+`ROLES_SMOKE_ORIGIN`을 지정하면 배포된 화면까지 Chrome으로 확인한다.
+가상 교사 두 명만 생성하고 `finally`에서 해당 계정과 종속 자료를 정리한다. 정리 실패는 실패로 처리하고 대상 식별자를 보고한다.
+브라우저 교사 인증은 새 시험 계정의 실제 Supabase 세션을 사용한다. Google OAuth 팝업 자체를 검증하는 테스트는 아니다.
+학생은 별도 비로그인 브라우저 컨텍스트에서 접근한다. 화면 캡처는 Git 제외 `test-results/`에 저장된다.
+
 ## 개발 데모
 
 `VITE_CLASSROOM_ROLES_DEMO_MODE=true`는 Vite 개발 모드에서만 작동한다. 가상 명단으로 테스트한다. localStorage에 저장되므로 다른 브라우저/기기로 동기화되지 않는다. 프로덕션 빌드에서는 이 플래그로 인증을 우회할 수 없다.
