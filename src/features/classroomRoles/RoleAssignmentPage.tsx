@@ -82,6 +82,10 @@ export function RoleAssignmentPage({
     0,
     students.length - roles.reduce((total, role) => total + role.capacity, 0),
   );
+  const reviewRows = roles.map((role) => ({
+    role,
+    members: students.filter((student) => assignments[student.id] === role.id),
+  })).filter(({ members }) => members.length > 0);
   useEffect(() => {
     const dialog = reviewDialogRef.current;
     if (reviewOpen && dialog && !dialog.open) dialog.showModal();
@@ -453,31 +457,39 @@ export function RoleAssignmentPage({
           <dialog
             ref={reviewDialogRef}
             aria-labelledby="role-review-heading"
-            className="m-auto w-[min(92vw,580px)] max-h-[80vh] overflow-y-auto rounded-xl border border-[#DCE3EA] bg-white p-5 shadow-xl backdrop:bg-black/40"
+            className="fixed left-0 right-0 top-1/2 m-auto h-fit w-[min(94vw,1040px)] max-h-[88dvh] max-w-none -translate-y-1/2 overflow-hidden rounded-xl border border-[#DCE3EA] bg-white p-0 shadow-xl backdrop:bg-black/40"
             onClose={() => {
               setReviewOpen(false);
               (window.matchMedia('(min-width: 1024px)').matches ? reviewButtonRef : mobileReviewButtonRef).current?.focus();
             }}
           >
-            <h2 id="role-review-heading" className="text-xl font-bold">배정 확인</h2>
-            <p className="mt-2 text-sm">{start} ~ {end} · {students.length}명</p>
-            {start > roleToday() && <p className="mt-1 text-sm text-[#526174]">학생 화면에는 {start}부터 새 역할이 표시됩니다.</p>}
-            <div className="mt-4 space-y-3">
-              {roles.filter((role) => students.some((student) => assignments[student.id] === role.id)).map((role) => (
-                <section key={role.id} className="rounded-lg border border-[#DCE3EA] p-3">
-                  <h3 className="font-semibold">{role.name}</h3>
-                  <p className="mt-1 break-words text-sm text-[#526174]">
-                    {students.filter((student) => assignments[student.id] === role.id).map((student) => `${student.number}번 ${student.name}`).join(", ")}
-                  </p>
-                </section>
-              ))}
-            </div>
-            <p className="mt-4 text-sm font-semibold text-[#9A3412]">확정 후 이 배정은 직접 수정할 수 없습니다.</p>
-            <div className="mt-4 flex justify-end gap-2">
-              <button type="button" disabled={busy} className={roleSecondary} onClick={() => setReviewOpen(false)}>돌아가기</button>
-              <button type="button" disabled={busy} className={roleButton} onClick={() => void publish()}>
-                {busy ? "확정 중…" : "확정하기"}
-              </button>
+            <div className="flex max-h-[min(88dvh,800px)] flex-col">
+              <header className="shrink-0 border-b border-[#E2E8F0] px-5 pb-4 pt-5 sm:px-6">
+                <h2 id="role-review-heading" className="text-xl font-bold">배정 확인</h2>
+                <p className="mt-1 text-sm text-[#526174]">{start} ~ {end} · {students.length}명 · {reviewRows.length}개 역할</p>
+                {start > roleToday() && <p className="mt-1 text-sm text-[#526174]">학생 화면에는 {start}부터 새 역할이 표시됩니다.</p>}
+              </header>
+              <div className="min-h-0 overflow-y-auto px-5 py-2 sm:px-6" data-role-review-list>
+                <ul aria-label="역할별 배정" className="grid grid-cols-1 gap-x-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {reviewRows.map(({ role, members }) => (
+                    <li key={role.id} className="min-w-0 border-b border-[#E2E8F0] py-3">
+                      <h3 className="break-words text-sm font-semibold">{role.name}</h3>
+                      <p className="mt-1 break-words text-sm text-[#526174]">
+                        {members.map((student) => `${student.number} ${student.name}`).join(" · ")}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <footer className="shrink-0 border-t border-[#E2E8F0] bg-white px-5 py-4 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:px-6">
+                <p className="text-sm text-[#9A3412]">확정 후 이 배정은 직접 수정할 수 없습니다.</p>
+                <div className="mt-3 flex flex-wrap justify-end gap-2 sm:mt-0">
+                  <button type="button" disabled={busy} className={roleSecondary} onClick={() => setReviewOpen(false)}>돌아가기</button>
+                  <button type="button" disabled={busy} className={roleButton} onClick={() => void publish()}>
+                    {busy ? "확정 중…" : "확정하기"}
+                  </button>
+                </div>
+              </footer>
             </div>
           </dialog>
         </>
