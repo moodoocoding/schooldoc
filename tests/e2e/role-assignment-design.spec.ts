@@ -25,7 +25,7 @@ test("PC에서 역할 카드와 전체 학생을 보며 연속 배정·해제한
   await page.evaluate(({ board, key }) => localStorage.setItem(key, JSON.stringify(board)), { board, key: demoKey });
   await page.reload();
   await page.goto(route);
-  await page.getByRole("button", { name: "다음: 역할 설정" }).click();
+  await page.getByRole("button", { name: "다음: 역할 배정" }).click();
   for (let i = 0; i < 16; i++) {
     const role = state.roles[4 + Math.floor(i / 2)];
     const student = state.roster[i];
@@ -79,7 +79,7 @@ test("PC에서 역할 카드와 전체 학생을 보며 연속 배정·해제한
   await expect(desktop.getByRole("button", { name: "21번 백지호 추가" })).toBeFocused();
   await page.locator("[data-role-topbar]").getByRole("button", { name: "명단 수정" }).click();
   await expect(page.getByRole("heading", { name: "학생 명단" })).toBeFocused();
-  await page.getByRole("button", { name: "다음: 역할 설정" }).click();
+  await page.getByRole("button", { name: "다음: 역할 배정" }).click();
   await expect(desktop.getByRole("button", { name: "17번 송도윤 배정 해제" })).toBeVisible();
 });
 
@@ -95,7 +95,7 @@ test("큰 글자와 야간 테마에서도 PC 배정 화면을 읽고 조작할 
   }, { board, key: demoKey });
   await page.reload();
   await page.goto(route);
-  await page.getByRole("button", { name: "다음: 역할 설정" }).click();
+  await page.getByRole("button", { name: "다음: 역할 배정" }).click();
   const picker = page.locator('[data-role-desktop-picker]');
   await expect(picker.getByRole("button", { name: "1번 가상하늘 추가" })).toBeVisible();
   const colors = await picker.evaluate((element) => ({
@@ -109,4 +109,35 @@ test("큰 글자와 야간 테마에서도 PC 배정 화면을 읽고 조작할 
   await expect(picker.getByRole("button", { name: "1번 가상하늘 배정 해제" })).toBeVisible();
   expect(await picker.getByRole("button", { name: "2번 가상바다 추가" }).evaluate((element) => getComputedStyle(element).backgroundColor)).not.toBe("rgb(250, 249, 247)");
   await page.screenshot({ path: test.info().outputPath("role-assignment-midnight-large.png"), fullPage: true });
+});
+
+test("모바일 야간 테마에서도 학생 카드와 선택 상태가 읽힌다", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const state = defaultRoleState();
+  state.roster = parseRoleRoster("1 가상하늘\n2 가상바다\n3 가상나무");
+  const board = { id: crypto.randomUUID(), public_token: crypto.randomUUID(), version: 1, state };
+  await page.goto("/tools/classroom-roles");
+  await page.evaluate(({ board, key }) => {
+    localStorage.setItem(key, JSON.stringify(board));
+    localStorage.setItem("schooldoc_appearance_v1", JSON.stringify({ themeId: "midnight", fontSize: "large" }));
+  }, { board, key: demoKey });
+  await page.reload();
+  await page.goto(route);
+  await page.getByRole("button", { name: "다음: 역할 배정" }).click();
+  const card = page.locator('[data-role-mobile-picker] [data-assignment-state="unassigned"]').first();
+  const before = await card.evaluate((element) => ({
+    background: getComputedStyle(element).backgroundColor,
+    color: getComputedStyle(element).color,
+  }));
+  expect(before.background).not.toBe("rgb(255, 255, 255)");
+  await page.getByRole("checkbox", { name: "1번 가상하늘 선택" }).check();
+  const selected = page.locator('[data-role-mobile-picker] [data-assignment-state="current"]').first();
+  const after = await selected.evaluate((element) => ({
+    background: getComputedStyle(element).backgroundColor,
+    color: getComputedStyle(element).color,
+  }));
+  expect(after.background).not.toBe(before.background);
+  expect(after.color).toBe(before.color);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath("role-assignment-mobile-midnight.png") });
 });

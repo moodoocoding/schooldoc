@@ -367,6 +367,95 @@ html[data-schooldoc-font-size="large"] .schooldoc-admin-shell {
   }
 }
 
+@media (max-width: 1023px) {
+  .role-assignment-shell [data-role-mobile-header],
+  .role-assignment-shell [data-role-mobile-picker],
+  .role-assignment-shell [data-role-mobile-actions] {
+    container-type: inline-size;
+  }
+
+  .role-assignment-shell [data-role-mobile-picker] [data-assignment-state] {
+    border-color: var(--sd-border);
+    background-color: var(--sd-surface);
+    color: var(--sd-text);
+  }
+
+  .role-assignment-shell [data-role-mobile-picker] [data-assignment-state="current"] {
+    border-color: var(--sd-accent);
+    background-color: var(--sd-accent-soft);
+  }
+
+  .role-assignment-shell [data-role-mobile-picker] [data-assignment-state="other"] {
+    background-color: var(--sd-surface-hover);
+  }
+
+  .role-assignment-shell [data-role-mobile-picker] [data-assignment-state] input {
+    accent-color: var(--sd-accent);
+  }
+
+  .role-assignment-shell [data-role-mobile-picker] [role="group"] button[aria-pressed="true"],
+  .role-assignment-shell [data-role-mobile-dialog] button[aria-pressed="true"] {
+    border-color: var(--sd-accent);
+    background-color: var(--sd-accent-soft);
+    color: var(--sd-accent);
+  }
+
+  @container (max-width: 300px) {
+    .role-assignment-shell [data-role-mobile-header] > div {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .role-assignment-shell [data-role-mobile-header] > div > :first-child {
+      grid-column: 1 / -1;
+    }
+
+    .role-assignment-shell [data-role-mobile-header] > div > span {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .role-assignment-shell [data-role-mobile-header] .role-assignment-next-role {
+      grid-column: 2;
+      grid-row: 2;
+      border-left: 0;
+    }
+
+    .role-assignment-mobile-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .role-assignment-shell [data-role-mobile-picker] [role="group"] button {
+      padding-inline: .25rem;
+      font-size: var(--sd-text-xs);
+      white-space: nowrap;
+    }
+  }
+
+  @container (max-width: 270px) {
+    .role-assignment-shell [data-role-mobile-actions] > div {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .role-assignment-shell [data-role-mobile-actions] > div > :first-child {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .role-assignment-shell [data-role-mobile-actions] > div > :nth-child(2) {
+      grid-column: 1 / -1;
+      grid-row: 1;
+    }
+
+    .role-assignment-shell [data-role-mobile-actions] > div > :last-child {
+      grid-column: 2;
+      grid-row: 2;
+      padding-inline: .25rem;
+      white-space: nowrap;
+    }
+  }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

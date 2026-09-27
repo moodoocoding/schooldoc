@@ -45,6 +45,7 @@ export function RoleAssignmentPage({
     [...initialRoster].sort((a, b) => a.number - b.number),
   );
   const [editingRoster, setEditingRoster] = useState(!initialRoster.length);
+  const [rosterExpanded, setRosterExpanded] = useState(false);
   const rosterInputRef = useRef<HTMLTextAreaElement>(null);
   const rosterHeadingRef = useRef<HTMLHeadingElement>(null);
   const rosterFocus = useRef(false);
@@ -209,7 +210,7 @@ export function RoleAssignmentPage({
         </div>
       </div>
       {step === 2 && unassigned > 0 && <p id="role-review-reason" className="sr-only">모든 학생을 배정한 뒤 확인할 수 있습니다.</p>}
-      <ol className="flex flex-wrap gap-2 text-sm lg:hidden" aria-label="배정 단계">
+      <ol className={`${step === 2 ? "hidden sm:flex" : "flex"} flex-wrap gap-2 text-sm lg:hidden`} aria-label="배정 단계">
         {["명단 확인", "역할 배정"].map((label, i) => (
           <li
             aria-current={step === i + 1 ? "step" : undefined}
@@ -250,7 +251,7 @@ export function RoleAssignmentPage({
               </button>
             )}
           </div>
-          <p className="text-sm text-[#526174]">
+          <p className={`text-sm text-[#526174] ${students.length && !editingRoster ? "hidden sm:block" : ""}`}>
             {board.state.roster.length
               ? "설정 명단을 불러왔습니다."
               : previous?.students.length
@@ -311,8 +312,8 @@ export function RoleAssignmentPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {students.map((student) => (
-                    <tr key={student.id} className="border-b border-[#E2E8F0]">
+                  {students.map((student, index) => (
+                    <tr key={student.id} className={`border-b border-[#E2E8F0] ${index >= 5 && !rosterExpanded ? "hidden sm:table-row" : ""}`}>
                       <td className="px-3 py-3">{student.number}</td>
                       <td className="break-words px-3 py-3 font-medium">
                         {student.name}
@@ -321,27 +322,38 @@ export function RoleAssignmentPage({
                   ))}
                 </tbody>
               </table>
+              {students.length > 5 && (
+                <button
+                  type="button"
+                  className="min-h-11 text-sm font-semibold text-[#0F6CBD] sm:hidden"
+                  aria-expanded={rosterExpanded}
+                  onClick={() => setRosterExpanded((value) => !value)}
+                >
+                  {rosterExpanded ? "명단 접기" : "전체 명단 보기"}
+                </button>
+              )}
             </>
           )}
-          <p className="text-xs text-[#64748B]">
+          <p className={`text-xs text-[#64748B] ${editingRoster ? "" : "hidden sm:block"}`}>
             {editingRoster
               ? "최대 60명 · 같은 이름은 번호로 구분합니다."
               : "명단 변경은 배정을 확정할 때 저장됩니다."}
           </p>
           <button
-            className={roleButton}
+            className={`${roleButton} w-full sm:w-auto`}
             disabled={editingRoster || !students.length}
             onClick={next}
           >
-            다음: 역할 설정
+            다음: 역할 배정
           </button>
         </section>
       ) : (
         <>
-          <section className={`rounded-xl border border-[#DCE3EA] bg-white px-4 py-2 lg:mx-auto lg:mt-5 lg:max-w-[1488px] ${periodEditing ? 'lg:block' : 'lg:hidden'}`} aria-label="배정 기간">
+          <section className={`px-1 lg:mx-auto lg:mt-5 lg:max-w-[1488px] lg:rounded-xl lg:border lg:border-[#DCE3EA] lg:bg-white lg:px-4 lg:py-2 ${periodEditing ? 'lg:block' : 'lg:hidden'}`} aria-label="배정 기간">
             <div className="flex flex-wrap items-center gap-3 text-sm">
               <span className="font-semibold">배정 기간</span>
-              <span>{start} ~ {end}</span>
+              <span className="sm:hidden">{periodLabel}</span>
+              <span className="hidden sm:inline">{start} ~ {end}</span>
               <button
                 type="button"
                 className="min-h-11 font-semibold text-[#0F6CBD]"
@@ -410,31 +422,36 @@ export function RoleAssignmentPage({
             }}
           />
           <RoleError message={error} />
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#DCE3EA] bg-white p-3 lg:hidden">
-            <button
-              disabled={busy}
-              className={roleSecondary}
-              onClick={() => setStep(1)}
-            >
-              이전
-            </button>
-            <span className="lg:hidden">{unassigned > 0 ? (
+          <div className="h-28 lg:hidden" aria-hidden="true" />
+          <div data-role-mobile-actions className="fixed inset-x-0 bottom-0 z-30 border-t border-[#DCE3EA] bg-white px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-[0_-4px_18px_rgba(15,23,42,0.08)] lg:hidden">
+            <div className="mx-auto grid max-w-6xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+              <button
+                disabled={busy}
+                className={`${roleSecondary} shrink-0 px-3`}
+                onClick={() => setStep(1)}
+              >
+                이전
+              </button>
+              {unassigned > 0 ? (
               <button
                 type="button"
-                className="min-h-11 text-sm font-semibold text-[#0F6CBD]"
+                className="min-h-11 min-w-0 text-sm font-semibold text-[#0F6CBD]"
+                aria-label={`미배정 ${unassigned}명 찾기`}
                 onClick={() => setFocusUnassignedSignal((value) => value + 1)}
               >
-                미배정 {unassigned}명
+                {unassigned}명 남음
               </button>
-            ) : <span role="status" className="text-sm font-semibold text-[#16803C]">모두 배정됨</span>}</span>
-            <button
-              ref={mobileReviewButtonRef}
-              disabled={busy || unassigned > 0}
-              className={`${roleButton} lg:hidden`}
-              onClick={openReview}
-            >
-              배정 확인
-            </button>
+              ) : <span role="status" className="text-center text-sm font-semibold text-[#16803C]">배정 완료</span>}
+              <button
+                ref={mobileReviewButtonRef}
+                disabled={busy || unassigned > 0}
+                aria-describedby={unassigned > 0 ? "role-review-reason" : undefined}
+                className={`${roleButton} shrink-0`}
+                onClick={openReview}
+              >
+                배정 확인
+              </button>
+            </div>
           </div>
           <dialog
             ref={reviewDialogRef}
