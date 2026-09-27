@@ -309,6 +309,30 @@ test("30명 명단의 모바일 선택·검색·키보드·접근성과 데스�
     .screenshot({ path: test.info().outputPath("role-students-desktop.png") });
 });
 
+test("23명·18역할에서 좌우 영역을 구분하고 큰 빈 공간을 남기지 않는다", async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await seed(page, false, Array.from({ length: 23 }, (_, i) => `${i + 1} 가상학생${i + 1}`).join("\n"));
+  await page.goto(`${root}/assign`);
+  await page.getByRole("button", { name: "다음: 역할 설정" }).click();
+  const roleList = page.getByRole("region", { name: "역할 목록" });
+  const studentPanel = page.getByRole("region", { name: "담당 학생 선택" });
+  const [left, right] = await Promise.all([roleList.boundingBox(), studentPanel.boundingBox()]);
+  expect(left).not.toBeNull();
+  expect(right).not.toBeNull();
+  expect(Math.abs(left!.height - right!.height)).toBeLessThanOrEqual(80);
+  const [leftColor, rightColor] = await Promise.all([
+    roleList.evaluate((element) => getComputedStyle(element).backgroundColor),
+    studentPanel.evaluate((element) => getComputedStyle(element).backgroundColor),
+  ]);
+  expect(leftColor).not.toBe(rightColor);
+  const audit = await new AxeBuilder({ page }).include('[aria-label="역할별 학생 배정"]').analyze();
+  expect(audit.violations).toEqual([]);
+  await page.screenshot({ path: test.info().outputPath("balanced-assignment-desktop.png"), fullPage: true });
+  await page.setViewportSize({ width: 1024, height: 768 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath("balanced-assignment-1024.png"), fullPage: true });
+});
+
 test("빈 명단·역할에서 시작해 새 역할에 여러 명을 배정한다", async ({
   page,
 }) => {
