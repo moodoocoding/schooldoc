@@ -176,7 +176,9 @@ try {
     const studentPanel = page.getByRole('region', { name: '담당 학생 선택' });
     const roleGridColumns = await roleList.locator('div.grid').first()
       .evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length);
-    assert.equal(roleGridColumns, 2);
+    assert.equal(roleGridColumns, 4);
+    const [rolesBox, studentsBox] = await Promise.all([roleList.boundingBox(), studentPanel.boundingBox()]);
+    assert.ok(rolesBox.y + rolesBox.height <= studentsBox.y + 1);
     assert.notEqual(
       await roleList.evaluate((element) => getComputedStyle(element).backgroundColor),
       await studentPanel.evaluate((element) => getComputedStyle(element).backgroundColor),
