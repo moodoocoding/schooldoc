@@ -121,8 +121,8 @@ test("역할별 다중 선택·정원 제한·역할 이동과 저장", async ({
   const [first, second] = board.state.roles;
   await page.goto(`${root}/assign`);
   await expect(
-    page.getByRole("table", { name: "배정할 학생 명단" }).getByRole("row"),
-  ).toHaveCount(4);
+    page.getByRole("list", { name: "배정할 학생 명단" }).getByRole("listitem"),
+  ).toHaveCount(3);
   await expect(
     page.getByRole("textbox", { name: "학생 명단", exact: true }),
   ).toHaveCount(0);
@@ -196,8 +196,8 @@ test("명단 수정은 취소할 수 있고 제외된 학생만 초안 배정에
   await page.getByLabel("학생 명단", { exact: true }).fill("1 변경된가상학생");
   await page.getByRole("button", { name: "수정 취소", exact: true }).click();
   await expect(
-    page.getByRole("table", { name: "배정할 학생 명단" }).getByRole("row"),
-  ).toHaveCount(4);
+    page.getByRole("list", { name: "배정할 학생 명단" }).getByRole("listitem"),
+  ).toHaveCount(3);
   await page.getByRole("button", { name: "명단 수정", exact: true }).click();
   await page
     .getByLabel("학생 명단", { exact: true })
@@ -227,12 +227,12 @@ test("30명 명단의 모바일 선택·검색·키보드·접근성과 데스�
   );
   await page.goto(`${root}/assign`);
   await expect(
-    page.getByRole("table", { name: "배정할 학생 명단" }).getByRole("row"),
+    page.getByRole("list", { name: "배정할 학생 명단" }).getByRole("listitem"),
   ).toHaveCount(6);
   await page.getByRole("button", { name: "전체 명단 보기" }).click();
-  await expect(page.getByRole("table", { name: "배정할 학생 명단" }).getByRole("row")).toHaveCount(31);
+  await expect(page.getByRole("list", { name: "배정할 학생 명단" }).getByRole("listitem")).toHaveCount(30);
   await page.getByRole("button", { name: "명단 접기" }).click();
-  await expect(page.getByRole("table", { name: "배정할 학생 명단" }).getByRole("row")).toHaveCount(6);
+  await expect(page.getByRole("list", { name: "배정할 학생 명단" }).getByRole("listitem")).toHaveCount(6);
   await page.screenshot({
     path: test.info().outputPath("roster-confirmation-mobile.png"),
     fullPage: true,
@@ -766,11 +766,11 @@ test("설정에서 저장한 명단을 배정에 자동 적용하고 역할 수�
   );
   await page.goto(`${root}/assign`);
   await expect(
-    page.getByRole("table", { name: "배정할 학생 명단" }),
+    page.getByRole("list", { name: "배정할 학생 명단" }),
   ).toContainText("새가상학생");
   await expect(
-    page.getByRole("table", { name: "배정할 학생 명단" }).getByRole("row"),
-  ).toHaveCount(3);
+    page.getByRole("list", { name: "배정할 학생 명단" }).getByRole("listitem"),
+  ).toHaveCount(2);
   await expect(
     page.getByRole("textbox", { name: "학생 명단", exact: true }),
   ).toHaveCount(0);
