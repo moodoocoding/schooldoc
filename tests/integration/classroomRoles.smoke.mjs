@@ -158,7 +158,11 @@ try {
     const errors = [];
     page.on('pageerror', () => errors.push('teacher page error'));
     await page.goto(root);
-    await expect(page.getByRole('region', { name: '1인 1역 기능' }).getByRole('link')).toHaveCount(6);
+    const homeLinks = page.getByRole('region', { name: '1인 1역 기능' }).getByRole('link');
+    await expect(homeLinks).toHaveCount(6);
+    await expect(homeLinks.nth(0)).toContainText('학생 역할 배정');
+    await expect(homeLinks.nth(1)).toContainText('운영 설정');
+    await expect(homeLinks.nth(2)).toContainText('역할 목록');
     await page.getByRole('button', { name: '설정', exact: true }).click();
     await page.getByRole('button', { name: '학급 학생 명단', exact: true }).click();
     await page.getByLabel('학생 명단 (한 줄에 번호와 이름)').fill('1 가상새봄\n2 가상푸름');
@@ -166,13 +170,20 @@ try {
     await expect(page.getByRole('status')).toContainText('학생 명단을 저장했습니다');
     await page.goto(`${root}/assign`);
     await expect(page.getByText('설정에 저장된 학생 명단을 자동으로 불러왔습니다.')).toBeVisible();
+    await expect(page.getByRole('table', { name: '배정할 학생 명단' }).getByRole('row')).toHaveCount(3);
     await page.getByRole('button', { name: '다음: 역할 설정' }).click();
-    await page.getByLabel('1번 가상새봄 역할', { exact: true }).selectOption(other.state.roles[0].id);
-    await page.getByLabel('2번 가상푸름 역할', { exact: true }).selectOption(other.state.roles[1].id);
+    await page.getByRole('button', { name: `${other.state.roles[0].name} 학생 선택`, exact: true }).click();
+    await page.getByLabel(`${other.state.roles[0].name} 정원`, { exact: true }).fill('2');
+    await page.getByRole('checkbox', { name: '1번 가상새봄 선택', exact: true }).check();
+    await page.getByRole('checkbox', { name: '2번 가상푸름 선택', exact: true }).check();
+    await expect(page.getByRole('region', { name: '담당 학생 선택' })).toContainText('선택 2명 · 남은 0자리');
     await expect(page.getByRole('status')).toContainText('미배정 학생 0명');
-    await page.getByRole('checkbox').check();
+    await page.getByRole('checkbox', { name: '배정 내용 확인', exact: true }).check();
     await page.getByRole('button', { name: '배정 확정하기' }).click();
     await expect(page).toHaveURL(`${root}/board`);
+    const savedAssignment = await call('admin', { action: 'load' }, b.jwt);
+    assert.deepEqual(Object.values(savedAssignment.state.periods[0].assignments),
+      [other.state.roles[0].id, other.state.roles[0].id]);
     const sharedUrl = await page.getByLabel('학생 공용 주소').inputValue();
     stage = 'deployed independent student browser';
     const studentContext = await browser.newContext({ viewport: { width: 390, height: 844 } });

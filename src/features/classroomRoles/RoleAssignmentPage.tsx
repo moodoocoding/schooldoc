@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   parseRoleRoster,
-  roleForStudent,
   roleMonthRange,
   roleToday,
   validateRoleStateChange,
@@ -18,6 +17,7 @@ import {
   rolePanel,
   roleSecondary,
 } from "./RoleControls";
+import { RoleStudentPicker } from "./RoleStudentPicker";
 
 export function RoleAssignmentPage({
   board,
@@ -41,7 +41,21 @@ export function RoleAssignmentPage({
   const [text, setText] = useState(
     initialRoster.map((s) => `${s.number} ${s.name}`).join("\n"),
   );
-  const [students, setStudents] = useState<RoleStudent[]>([]);
+  const [students, setStudents] = useState<RoleStudent[]>(() =>
+    [...initialRoster].sort((a, b) => a.number - b.number),
+  );
+  const [editingRoster, setEditingRoster] = useState(!initialRoster.length);
+  const rosterInputRef = useRef<HTMLTextAreaElement>(null);
+  const rosterHeadingRef = useRef<HTMLHeadingElement>(null);
+  const rosterFocus = useRef(false);
+  useEffect(() => {
+    if (!rosterFocus.current) return;
+    (editingRoster
+      ? rosterInputRef.current
+      : rosterHeadingRef.current
+    )?.focus();
+    rosterFocus.current = false;
+  }, [editingRoster]);
   const [roles, setRoles] = useState<ClassroomRole[]>(
     structuredClone(board.state.roles),
   );
@@ -55,21 +69,36 @@ export function RoleAssignmentPage({
     role.capacity -
     Object.values(assignments).filter((id) => id === role.id).length;
   const unassigned = students.filter((s) => !assignments[s.id]).length;
-  const next = () => {
+  const applyRoster = () => {
     try {
-      const parsed = parseRoleRoster(text, [...students, ...initialRoster]);
+      const parsed = parseRoleRoster(text, [
+        ...students,
+        ...initialRoster,
+      ]).sort((a, b) => a.number - b.number);
       if (!parsed.length) throw new Error("학생을 한 명 이상 입력해 주세요.");
       setStudents(parsed);
-      setAssignments((a) =>
+      setAssignments((current) =>
         Object.fromEntries(
-          Object.entries(a).filter(([id]) => parsed.some((s) => s.id === id)),
+          Object.entries(current).filter(([id]) =>
+            parsed.some((student) => student.id === id),
+          ),
         ),
       );
-      setStep(2);
+      setText(
+        parsed.map((student) => `${student.number} ${student.name}`).join("\n"),
+      );
+      setConfirmed(false);
       setError("");
+      rosterFocus.current = true;
+      setEditingRoster(false);
     } catch (e) {
       setError((e as Error).message);
     }
+  };
+  const next = () => {
+    if (editingRoster || !students.length) return;
+    setStep(2);
+    setError("");
   };
   const publish = async () => {
     const state = {
@@ -99,7 +128,7 @@ export function RoleAssignmentPage({
   return (
     <div className="space-y-5">
       <ol className="grid grid-cols-2 gap-2 text-sm" aria-label="배정 단계">
-        {["학생 명단 받기", "학생별 역할 설정하기"].map((label, i) => (
+        {["학생 명단 확인", "역할별 학생 선택"].map((label, i) => (
           <li
             aria-current={step === i + 1 ? "step" : undefined}
             className={`rounded-xl border p-4 ${step === i + 1 ? "border-[#0F6CBD] bg-[#EFF6FC] font-bold" : "border-[#DCE3EA]"}`}
@@ -119,25 +148,108 @@ export function RoleAssignmentPage({
       <RoleError message={error} />
       {step === 1 ? (
         <section className={`${rolePanel} space-y-5`}>
-          <h2 className="text-xl font-bold">학생 명단을 확인해 주세요</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2
+              ref={rosterHeadingRef}
+              tabIndex={-1}
+              className="text-xl font-bold focus:outline-none"
+            >
+              학생 명단을 확인해 주세요
+            </h2>
+            {!editingRoster && (
+              <button
+                className={roleSecondary}
+                onClick={() => {
+                  setError("");
+                  rosterFocus.current = true;
+                  setEditingRoster(true);
+                }}
+              >
+                명단 수정
+              </button>
+            )}
+          </div>
           <p className="text-sm text-[#526174]">
             {board.state.roster.length
               ? "설정에 저장된 학생 명단을 자동으로 불러왔습니다."
-              : "한 줄에 번호와 이름을 붙여 넣으세요. 배정을 확정하면 설정의 명단에도 저장됩니다."}
+              : previous?.students.length
+                ? "이전 배정의 학생 명단을 불러왔습니다."
+                : "한 줄에 번호와 이름을 붙여 넣으세요."}
           </p>
-          <RoleField label="학생 명단">
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              className={roleInput}
-              rows={12}
-              placeholder={"1 김하늘\n2 이바다"}
-            />
-          </RoleField>
+          {editingRoster ? (
+            <>
+              <RoleField label="학생 명단">
+                <textarea
+                  ref={rosterInputRef}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  className={roleInput}
+                  rows={8}
+                  placeholder={"1 김하늘\n2 이바다"}
+                />
+              </RoleField>
+              <div className="flex flex-wrap gap-2">
+                <button className={roleSecondary} onClick={applyRoster}>
+                  명단 적용
+                </button>
+                {!!students.length && (
+                  <button
+                    className={roleSecondary}
+                    onClick={() => {
+                      setText(
+                        students
+                          .map((student) => `${student.number} ${student.name}`)
+                          .join("\n"),
+                      );
+                      setError("");
+                      rosterFocus.current = true;
+                      setEditingRoster(false);
+                    }}
+                  >
+                    수정 취소
+                  </button>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="font-semibold text-[#0F6CBD]">
+                총 {students.length}명 · 번호순
+              </p>
+              <table className="w-full table-fixed border-collapse text-left text-sm">
+                <caption className="sr-only">배정할 학생 명단</caption>
+                <thead className="bg-[#F8FAFC]">
+                  <tr className="border-b border-[#DCE3EA]">
+                    <th scope="col" className="w-20 px-3 py-3">
+                      번호
+                    </th>
+                    <th scope="col" className="px-3 py-3">
+                      이름
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map((student) => (
+                    <tr key={student.id} className="border-b border-[#E2E8F0]">
+                      <td className="px-3 py-3">{student.number}</td>
+                      <td className="break-words px-3 py-3 font-medium">
+                        {student.name}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
           <p className="text-xs text-[#64748B]">
-            동명이인은 번호로 구분합니다. 최대 60명.
+            동명이인은 번호로 구분합니다. 최대 60명. 명단 변경은 배정을 확정할
+            때 설정에도 저장됩니다.
           </p>
-          <button className={roleButton} onClick={next}>
+          <button
+            className={roleButton}
+            disabled={editingRoster || !students.length}
+            onClick={next}
+          >
             다음: 역할 설정
           </button>
         </section>
@@ -188,43 +300,19 @@ export function RoleAssignmentPage({
                 종류
               </span>
             </div>
+            {unassigned > 0 && (
+              <p className="break-words text-sm leading-6 text-[#526174]">
+                미배정:{" "}
+                {students
+                  .filter((student) => !assignments[student.id])
+                  .map((student) => `${student.number}번 ${student.name}`)
+                  .join(", ")}
+              </p>
+            )}
             <details>
               <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold">
-                역할 추가 / 정원 조정 / 남은 자리 확인
+                새 역할 추가
               </summary>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {roles.map((r) => (
-                  <label
-                    key={r.id}
-                    className="flex items-center justify-between gap-3 rounded-lg bg-[#F8FAFC] p-3 text-sm"
-                  >
-                    <span>
-                      {r.name}
-                      <small className="block text-[#526174]">
-                        남은 자리 {remaining(r)}개
-                      </small>
-                    </span>
-                    <input
-                      type="number"
-                      aria-label={`${r.name} 정원`}
-                      min={1}
-                      max={60}
-                      className={`${roleInput} max-w-20`}
-                      value={r.capacity}
-                      onChange={(e) => {
-                        setRoles(
-                          roles.map((item) =>
-                            item.id === r.id
-                              ? { ...r, capacity: Number(e.target.value) }
-                              : item,
-                          ),
-                        );
-                        setConfirmed(false);
-                      }}
-                    />
-                  </label>
-                ))}
-              </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <label className="grow">
                   <span className="text-sm">새 역할 이름</span>
@@ -258,62 +346,29 @@ export function RoleAssignmentPage({
               </div>
             </details>
           </section>
-          <section
-            className={`${rolePanel} space-y-3`}
-            aria-label="학생별 역할 배정"
-          >
-            {students.map((s) => (
-              <div
-                key={s.id}
-                className="grid gap-2 border-b border-[#E2E8F0] py-3 sm:grid-cols-2"
-              >
-                <div>
-                  <p className="font-bold">
-                    {s.number}번 {s.name}
-                  </p>
-                  {rotate && previous && (
-                    <p className="mt-1 text-xs text-[#526174]">
-                      이전 역할:{" "}
-                      {roleForStudent(previous, s.id)?.name ?? "이전 배정 없음"}
-                    </p>
-                  )}
-                </div>
-                <label className="text-sm">
-                  <span className="sr-only">
-                    {s.number}번 {s.name} 역할
-                  </span>
-                  <select
-                    aria-label={`${s.number}번 ${s.name} 역할`}
-                    className={roleInput}
-                    value={assignments[s.id] ?? ""}
-                    onChange={(e) => {
-                      setAssignments({
-                        ...assignments,
-                        [s.id]: e.target.value,
-                      });
-                      setConfirmed(false);
-                    }}
-                  >
-                    <option value="">역할을 선택하세요</option>
-                    {roles.map((r) => (
-                      <option
-                        key={r.id}
-                        value={r.id}
-                        disabled={
-                          remaining(r) <= 0 && assignments[s.id] !== r.id
-                        }
-                      >
-                        {r.name} · 남은 {remaining(r)}자리
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            ))}
-          </section>
+          <RoleStudentPicker
+            students={students}
+            roles={roles}
+            assignments={assignments}
+            previous={rotate ? previous : undefined}
+            disabled={busy}
+            onChange={(nextAssignments) => {
+              setAssignments(nextAssignments);
+              setConfirmed(false);
+            }}
+            onCapacityChange={(roleId, capacity) => {
+              setRoles((current) =>
+                current.map((role) =>
+                  role.id === roleId ? { ...role, capacity } : role,
+                ),
+              );
+              setConfirmed(false);
+            }}
+          />
           <label className="flex items-start gap-3 text-sm leading-6">
             <input
               type="checkbox"
+              aria-label="배정 내용 확인"
               className="mt-1 h-5 w-5"
               checked={confirmed}
               onChange={(e) => setConfirmed(e.target.checked)}

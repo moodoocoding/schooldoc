@@ -52,7 +52,10 @@ test('CSV 분석 → 미리보기 → 적용 → 저장하며 기존 학생 식�
   expect(saved.roster[0].id).toBe(state.roster[0].id);
   expect(saved.periods).toEqual(state.periods);
   await page.goto('/tools/classroom-roles/assign');
-  await expect(page.getByLabel('학생 명단', { exact: true })).toHaveValue('1 가상하늘\n3 가상새봄');
+  const assignmentRoster = page.getByRole('table', { name: '배정할 학생 명단' });
+  await expect(assignmentRoster.getByRole('row')).toHaveCount(3);
+  await expect(assignmentRoster.getByRole('row').nth(1)).toHaveText('1가상하늘');
+  await expect(assignmentRoster.getByRole('row').nth(2)).toHaveText('3가상새봄');
   expect(errors).toEqual([]);
 });
 

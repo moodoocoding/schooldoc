@@ -38,6 +38,14 @@ export type RolePageProps = {
   busy: boolean;
 };
 const tiles = [
+  ["assign", "학생 역할 배정", "명단 확인 후 학생별 역할을 정해요", Users],
+  [
+    "settings",
+    "운영 설정",
+    "실천 요일 · 제외일 · 학생 화면 공개 설정",
+    Settings2,
+  ],
+  ["roles", "역할 목록", "우리 반에 필요한 역할과 정원을 관리해요", ListChecks],
   [
     "board",
     "오늘의 실천판",
@@ -45,19 +53,11 @@ const tiles = [
     ClipboardCheck,
   ],
   ["records", "실천 기록", "선택한 달의 학생별 기록과 날짜별 상세", History],
-  ["assign", "학생 역할 배정", "명단 확인 후 학생별 역할을 정해요", Users],
-  ["roles", "역할 목록", "우리 반에 필요한 역할과 정원을 관리해요", ListChecks],
   [
     "rotate",
     "역할 교체",
     "이전 배정을 참고해 다음 기간을 준비해요",
     CalendarClock,
-  ],
-  [
-    "settings",
-    "운영 설정",
-    "실천 요일 · 제외일 · 학생 화면 공개 설정",
-    Settings2,
   ],
 ] as const;
 
@@ -144,7 +144,7 @@ function RolesHome({ board }: { board: RoleBoard }) {
       <section aria-label="1인 1역 기능">
         <h2 className="mb-4 text-lg font-bold">1인 1역 기능</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {tiles.map(([path, title, desc, Icon], index) => (
+          {tiles.map(([path, title, desc, Icon]) => (
             <Link
               to={`${ROLES_ROOT}/${path}`}
               className={`${rolePanel} group transition hover:border-[#0F6CBD] hover:shadow-sm focus-visible:outline-2 focus-visible:outline-[#0F6CBD]`}
@@ -153,7 +153,9 @@ function RolesHome({ board }: { board: RoleBoard }) {
               <div className="flex justify-between">
                 <Icon className="h-7 w-7 text-[#0F6CBD]" aria-hidden="true" />
                 <span className="text-xs text-[#64748B]">
-                  {index < 3 ? "학급 실천" : "운영 관리"}
+                  {path === "board" || path === "records"
+                    ? "학급 실천"
+                    : "운영 관리"}
                 </span>
               </div>
               <h3 className="mt-5 text-lg font-bold">{title}</h3>
