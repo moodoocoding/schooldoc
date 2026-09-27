@@ -35,12 +35,14 @@ export function RoleAssignmentPage({
   const initialRoster = board.state.roster.length
     ? board.state.roster
     : (previous?.students ?? []);
+  const today = roleToday();
   const initialStart = previous
     ? new Date(Date.parse(`${previous.end}T00:00:00Z`) + 86400000)
         .toISOString()
         .slice(0, 10)
-    : roleMonthRange(roleToday().slice(0, 7)).start;
-  const [step, setStep] = useState(() => searchParams.get("step") === "roles" && initialRoster.length > 0 ? 2 : 1);
+    : roleMonthRange(today.slice(0, 7)).start;
+  const suggestedStart = rotate && initialStart < today ? today : initialStart;
+  const [step, setStep] = useState(() => rotate ? 1 : searchParams.get("step") === "roles" && initialRoster.length > 0 ? 2 : 1);
   const [text, setText] = useState(
     initialRoster.map((s) => `${s.number} ${s.name}`).join("\n"),
   );
@@ -64,9 +66,10 @@ export function RoleAssignmentPage({
     structuredClone(board.state.roles),
   );
   const [assignments, setAssignments] = useState<Record<string, string>>({});
-  const [start, setStart] = useState(initialStart);
-  const [end, setEnd] = useState(roleMonthRange(initialStart.slice(0, 7)).end);
+  const [start, setStart] = useState(suggestedStart);
+  const [end, setEnd] = useState(roleMonthRange(suggestedStart.slice(0, 7)).end);
   const [error, setError] = useState("");
+  const [periodError, setPeriodError] = useState("");
   const [periodEditing, setPeriodEditing] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [focusUnassignedSignal, setFocusUnassignedSignal] = useState(0);
@@ -75,10 +78,10 @@ export function RoleAssignmentPage({
   const reviewButtonRef = useRef<HTMLButtonElement>(null);
   const mobileReviewButtonRef = useRef<HTMLButtonElement>(null);
   const unassigned = students.filter((s) => !assignments[s.id]).length;
-  const monthlyRange = roleMonthRange(start.slice(0, 7));
-  const periodLabel = start === monthlyRange.start && end === monthlyRange.end
+  const monthlyRange = start ? roleMonthRange(start.slice(0, 7)) : null;
+  const periodLabel = start && monthlyRange && start === monthlyRange.start && end === monthlyRange.end
     ? `${Number(start.slice(5, 7))}월`
-    : `${start} ~ ${end}`;
+    : start && end ? `${start} ~ ${end}` : "기간 미정";
   const seatShortage = Math.max(
     0,
     students.length - roles.reduce((total, role) => total + role.capacity, 0),
@@ -128,6 +131,11 @@ export function RoleAssignmentPage({
   };
   const next = () => {
     if (editingRoster || !students.length) return;
+    if (rotate && (!start || !end || start < suggestedStart || start > end)) {
+      setPeriodError("기존 배정과 겹치지 않는 시작일과 종료일을 선택해 주세요.");
+      return;
+    }
+    setPeriodError("");
     setStep(2);
     setError("");
   };
@@ -177,6 +185,44 @@ export function RoleAssignmentPage({
       setReviewOpen(false);
     }
   };
+  const periodFields = (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <RoleField label="시작일">
+        <input
+          type="date"
+          className={roleInput}
+          value={start}
+          min={rotate ? suggestedStart : undefined}
+          disabled={busy}
+          onChange={(event) => {
+            const nextStart = event.target.value;
+            setStart(nextStart);
+            if (nextStart && end < nextStart) {
+              setEnd(roleMonthRange(nextStart.slice(0, 7)).end);
+            }
+            setDraftChanged(true);
+            setPeriodError("");
+            setError("");
+          }}
+        />
+      </RoleField>
+      <RoleField label="종료일">
+        <input
+          type="date"
+          className={roleInput}
+          value={end}
+          min={rotate ? start || suggestedStart : undefined}
+          disabled={busy}
+          onChange={(event) => {
+            setEnd(event.target.value);
+            setDraftChanged(true);
+            setPeriodError("");
+            setError("");
+          }}
+        />
+      </RoleField>
+    </div>
+  );
   return (
     <div className="space-y-3 lg:space-y-0" data-role-assignment-step={step}>
       <div data-role-topbar className="hidden lg:flex min-h-[84px] items-center justify-between gap-5 border-b border-[#E4E5E0] bg-white px-10">
@@ -198,7 +244,7 @@ export function RoleAssignmentPage({
               requestAnimationFrame(() => rosterHeadingRef.current?.focus());
             }} className="min-h-11 shrink-0 px-2 text-sm text-[#4F544F]">명단 수정</button>
           )}
-          {step === 2 && (
+          {step === 2 && !rotate && (
             <button type="button" onClick={() => setPeriodEditing((value) => !value)} className="min-h-11 shrink-0 px-2 text-sm text-[#4F544F]">기간 변경</button>
           )}
           {step === 2 && (
@@ -218,7 +264,7 @@ export function RoleAssignmentPage({
       </div>
       {step === 2 && unassigned > 0 && <p id="role-review-reason" className="sr-only">모든 학생을 배정한 뒤 확인할 수 있습니다.</p>}
       <ol className={`${step === 2 ? "hidden sm:flex" : "flex"} flex-wrap gap-2 text-sm lg:hidden`} aria-label="배정 단계">
-        {["명단 확인", "역할 배정"].map((label, i) => (
+        {(rotate ? ["기간·명단", "역할 배정"] : ["명단 확인", "역할 배정"]).map((label, i) => (
           <li
             aria-current={step === i + 1 ? "step" : undefined}
             className={`rounded-full border px-3 py-1 ${step === i + 1 ? "border-[#0F6CBD] bg-[#EFF6FC] font-bold" : "border-[#DCE3EA]"}`}
@@ -228,15 +274,29 @@ export function RoleAssignmentPage({
           </li>
         ))}
       </ol>
-      {rotate && (
-        <p className="text-sm text-[#526174] lg:px-10 lg:pt-4">
-          {previous
-            ? `이전 배정 ${previous.start} ~ ${previous.end} · 새 기간을 준비합니다.`
-            : "첫 배정을 만든 뒤 다음 기간부터 역할을 교체할 수 있습니다."}
-        </p>
+      {rotate && step === 1 && (
+        <section className={`${rolePanel} space-y-3 lg:mx-auto lg:mt-8 lg:max-w-4xl`} aria-label="교체 기간">
+          <h2 className="text-xl font-bold">교체 기간</h2>
+          <p className="text-sm text-[#526174]">
+            {previous
+              ? `현재 배정 ${previous.start} ~ ${previous.end} · 새 역할의 시작일과 종료일을 정하세요.`
+              : "첫 배정의 시작일과 종료일을 정하세요."}
+          </p>
+          {periodFields}
+          <RoleError message={periodError} />
+          {previous && previous.end >= today && (
+            <p className="text-sm text-[#526174]">
+              운영 중에도 교체할 수 있습니다. 더 일찍 시작하려면 {" "}
+              <Link to="/tools/classroom-roles/settings" onClick={guardLeave} className="font-semibold text-[#0F6CBD] underline underline-offset-2">
+                운영 설정에서 기존 종료일을 오늘로 변경
+              </Link>
+              한 뒤 새 배정을 내일부터 시작해 주세요. 오늘까지의 배정과 기록은 유지됩니다.
+            </p>
+          )}
+        </section>
       )}
       {step === 1 ? (
-        <section className={`${rolePanel} space-y-4 lg:mx-auto lg:mt-8 lg:max-w-4xl`}>
+        <section className={`${rolePanel} space-y-4 lg:mx-auto ${rotate ? "lg:mt-4" : "lg:mt-8"} lg:max-w-4xl`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2
               ref={rosterHeadingRef}
@@ -308,7 +368,7 @@ export function RoleAssignmentPage({
               </p>
               <ul
                 aria-label="배정할 학생 명단"
-                className="grid grid-cols-1 gap-x-4 text-sm min-[360px]:grid-cols-2 lg:grid-cols-4"
+                className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8.5rem),1fr))] gap-x-4 text-sm lg:grid-cols-4"
               >
                 {students.map((student, index) => (
                   <li
@@ -351,46 +411,23 @@ export function RoleAssignmentPage({
         </section>
       ) : (
         <>
-          <section className={`px-1 lg:mx-auto lg:mt-5 lg:max-w-[1488px] lg:rounded-xl lg:border lg:border-[#DCE3EA] lg:bg-white lg:px-4 lg:py-2 ${periodEditing ? 'lg:block' : 'lg:hidden'}`} aria-label="배정 기간">
+          <section className={`px-1 lg:mx-auto lg:mt-5 lg:max-w-[1488px] lg:rounded-xl lg:border lg:border-[#DCE3EA] lg:bg-white lg:px-4 lg:py-2 ${rotate || periodEditing ? 'lg:block' : 'lg:hidden'}`} aria-label={rotate ? "교체 기간" : "배정 기간"}>
             <div className="flex flex-wrap items-center gap-3 text-sm">
-              <span className="font-semibold">배정 기간</span>
+              <span className="font-semibold">{rotate ? "교체 기간" : "배정 기간"}</span>
               <span className="sm:hidden">{periodLabel}</span>
               <span className="hidden sm:inline">{start} ~ {end}</span>
-              <button
+              {!rotate && <button
                 type="button"
                 className="min-h-11 font-semibold text-[#0F6CBD]"
                 disabled={busy}
                 onClick={() => setPeriodEditing((value) => !value)}
               >
                 기간 변경
-              </button>
+              </button>}
             </div>
-            {periodEditing && (
-              <div className="grid gap-3 border-t border-[#E2E8F0] py-3 sm:grid-cols-2">
-                <RoleField label="시작일">
-                  <input
-                    type="date"
-                    className={roleInput}
-                    value={start}
-                    disabled={busy}
-                    onChange={(event) => {
-                      setStart(event.target.value);
-                      setDraftChanged(true);
-                    }}
-                  />
-                </RoleField>
-                <RoleField label="종료일">
-                  <input
-                    type="date"
-                    className={roleInput}
-                    value={end}
-                    disabled={busy}
-                    onChange={(event) => {
-                      setEnd(event.target.value);
-                      setDraftChanged(true);
-                    }}
-                  />
-                </RoleField>
+            {(rotate || periodEditing) && (
+              <div className="border-t border-[#E2E8F0] py-3">
+                {periodFields}
               </div>
             )}
           </section>

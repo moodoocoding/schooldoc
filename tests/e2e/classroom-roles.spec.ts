@@ -772,16 +772,31 @@ test("결석 정정, 공유 중지, 링크 재발급, 읽기 전용 전자칠판
 test("역할 교체는 이전 배정 유지, 다음 기간·잔여 정원 표시", async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
   const board = await seed(page, true);
   await page.goto(`${root}/rotate`);
+  const firstStepPeriod = page.getByRole("region", { name: "교체 기간" });
+  await expect(firstStepPeriod).toBeVisible();
+  const dateAudit = await new AxeBuilder({ page }).include('section[aria-label="교체 기간"]').analyze();
+  expect(dateAudit.violations).toEqual([]);
+  await page.screenshot({ path: test.info().outputPath("rotation-date-desktop.png"), fullPage: true });
+  const initialStart = await firstStepPeriod.getByLabel("시작일", { exact: true }).inputValue();
+  expect(initialStart > board.state.periods[0].end).toBe(true);
+  await expect(firstStepPeriod.getByText("운영 설정에서 기존 종료일을 오늘로 변경")).toBeVisible();
+  const selectedStart = new Date(Date.parse(`${board.state.periods[0].end}T00:00:00Z`) + 35 * 86400000)
+    .toISOString().slice(0, 10);
+  await firstStepPeriod.getByLabel("시작일", { exact: true }).fill(selectedStart);
+  await expect(firstStepPeriod.getByLabel("종료일", { exact: true }))
+    .toHaveValue(roleMonthRange(selectedStart.slice(0, 7)).end);
   await page.getByRole("button", { name: "다음: 역할 배정" }).click();
+  await expect(page.getByRole("region", { name: "교체 기간" }).getByLabel("시작일", { exact: true }))
+    .toHaveValue(selectedStart);
   await page.getByRole("button", { name: "이전 역할 보기" }).click();
   await expect(
     page.getByText(`이전: ${board.state.roles[0].name}`).filter({ visible: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "기간 변경" }).click();
   const start = await page.getByLabel("시작일", { exact: true }).inputValue();
-  expect(start > board.state.periods[0].end).toBe(true);
+  expect(start).toBe(selectedStart);
   await expect(
     page.getByRole("button", { name: "배정 확인", exact: true }),
   ).toHaveAttribute("aria-disabled", "true");
@@ -790,6 +805,40 @@ test("역할 교체는 이전 배정 유지, 다음 기간·잔여 정원 표시
     demoKey,
   );
   expect(stored.state.periods).toHaveLength(1);
+});
+test("모바일 역할 교체는 첫 화면에서 날짜를 고르고 잘못된 날짜를 즉시 안내한다", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seed(page, true);
+  await page.goto(`${root}/rotate?step=roles`);
+  const period = page.getByRole("region", { name: "교체 기간" });
+  await expect(period.getByLabel("시작일", { exact: true })).toBeVisible();
+  await expect(period.getByLabel("종료일", { exact: true })).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("rotation-date-mobile.png"), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(await page.getByRole("list", { name: "배정할 학생 명단" })
+    .evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" ").length)).toBe(1);
+  await page.screenshot({ path: test.info().outputPath("rotation-date-mobile-large-text.png"), fullPage: true });
+  await period.getByLabel("시작일", { exact: true }).fill("");
+  await page.getByRole("button", { name: "다음: 역할 배정" }).click();
+  await expect(period.getByRole("alert")).toContainText("시작일과 종료일");
+  await expect(page.locator('[data-role-assignment-step="1"]')).toBeVisible();
+});
+test("운영 중인 배정은 오늘 종료하고 내일부터 새 역할을 준비할 수 있다", async ({ page }) => {
+  const board = await seed(page, true);
+  await page.goto(`${root}/settings`);
+  await page.getByLabel("운영 종료일").fill(roleToday());
+  await page.getByRole("button", { name: "운영 설정 저장" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "저장했습니다" })).toBeVisible();
+  await page.goto(`${root}/rotate`);
+  const tomorrow = new Date(Date.parse(`${roleToday()}T00:00:00Z`) + 86400000)
+    .toISOString().slice(0, 10);
+  await expect(page.getByRole("region", { name: "교체 기간" })
+    .getByLabel("시작일", { exact: true })).toHaveValue(tomorrow);
+  const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), demoKey);
+  expect(stored.state.periods[0].end).toBe(roleToday());
+  expect(stored.state.periods[0].assignments).toEqual(board.state.periods[0].assignments);
 });
 test("잘못된 명단·겹친 기간은 입력을 유지하고 안내", async ({ page }) => {
   const board = await seed(page, true);
@@ -833,7 +882,7 @@ test("설정에서 저장한 명단을 배정에 자동 적용하고 역할 수�
   await page
     .getByRole("button", { name: "학생 명단 저장", exact: true })
     .click();
-  await expect(page.getByRole("status")).toContainText(
+  await expect(page.getByRole("status").filter({ hasText: "학생 명단을 저장했습니다" })).toContainText(
     "학생 명단을 저장했습니다",
   );
   await page.goto(`${root}/assign`);
