@@ -621,22 +621,17 @@ test("자동 명단 → 2단계 배정 → 공용 제출·재제출 → 월간 �
   await studentPage
     .getByRole("button", { name: "1번 가상하늘", exact: true })
     .click();
+  const studentDetail = studentPage.getByRole("dialog", { name: "칠판 도우미" });
+  await expect(studentDetail).toBeVisible();
   await studentPage
     .getByRole("button", { name: "했어요", exact: true })
     .click();
   await expect(
     studentPage.getByRole("status").filter({ hasText: "저장했어요" }),
   ).toBeVisible();
-  await expect(
-    studentPage.getByRole("heading", { name: "내 이름을 선택해 주세요" }),
-  ).toBeVisible();
-  await studentPage
-    .getByRole("button", { name: "1번 가상하늘", exact: true })
-    .click();
-  await expect(
-    studentPage.getByText("오늘 기록:", { exact: false }),
-  ).toContainText("했어요");
-  await expect(studentPage.getByRole("heading", { name: /이번 주 실천/ })).toBeVisible();
+  await expect(studentDetail).toBeVisible();
+  await expect(studentDetail.getByRole("button", { name: "했어요", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(studentDetail.getByText("이번 주", { exact: false })).toBeVisible();
   await studentPage.screenshot({ path: test.info().outputPath("student-week-mobile.png"), fullPage: true });
   await studentPage
     .getByRole("button", { name: "못했어요", exact: true })
@@ -644,6 +639,10 @@ test("자동 명단 → 2단계 배정 → 공용 제출·재제출 → 월간 �
   await expect(
     studentPage.getByRole("status").filter({ hasText: "못했어요" }),
   ).toBeVisible();
+  await expect(studentDetail.getByRole("button", { name: "못했어요", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await studentDetail.getByRole("button", { name: "상세 닫기" }).click();
+  await expect(studentDetail).not.toBeVisible();
+  await expect(studentPage.getByRole("button", { name: "1번 가상하늘", exact: true })).toBeFocused();
   await studentPage.screenshot({
     path: test.info().outputPath("student-mobile.png"),
     fullPage: true,

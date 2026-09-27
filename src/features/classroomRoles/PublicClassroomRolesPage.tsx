@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import {
   isRolesDemo,
@@ -7,40 +7,63 @@ import {
   writeRoleRecord,
   type PublicRoleBoard,
 } from "./roleApi";
-import {
-  RoleError,
-  roleButton,
-  rolePanel,
-  roleSecondary,
-} from "./RoleControls";
+import { RoleError, roleSecondary } from "./RoleControls";
+
+const weekdays = ["월", "화", "수", "목", "금", "토", "일"];
+type Student = PublicRoleBoard["students"][number];
+
+function maskedName(name: string) {
+  return name.length <= 1 ? "○" : name[0] + "○".repeat(name.length - 1);
+}
+
+function weekMark(day: PublicRoleBoard["week"][number], today: string) {
+  if (day.date > today) {
+    return { symbol: "·", label: "아직 오지 않은 날", tone: "text-[#8A97A6]" };
+  }
+  if (!day.eligible || day.status === "exempt") {
+    return { symbol: "·", label: "실천일 아님", tone: "text-[#8A97A6]" };
+  }
+  if (day.status === "done") {
+    return { symbol: "O", label: "했어요", tone: "text-[#117447]" };
+  }
+  if (day.status === "not_done") {
+    return { symbol: "X", label: "못했어요", tone: "text-[#A84B2E]" };
+  }
+  return { symbol: "—", label: "미기록", tone: "text-[#64748B]" };
+}
 
 export function PublicClassroomRolesPage() {
   const { token = "" } = useParams();
   const [params] = useSearchParams();
   const display = params.get("view") === "display";
   const [board, setBoard] = useState<PublicRoleBoard | null>(null);
-  const [selected, setSelected] = useState("");
+  const [selectedId, setSelectedId] = useState("");
+  const [loadedSelectedId, setLoadedSelectedId] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [retry, setRetry] = useState(0);
   const [loading, setLoading] = useState(true);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const tileRefs = useRef(new Map<string, HTMLButtonElement>());
+  const student = board?.students.find((item) => item.id === selectedId);
+
   useEffect(() => {
     let cancelled = false;
     let inFlight = false;
-    setLoading(true);
-    setError("");
+    setLoadedSelectedId("");
     const refresh = async () => {
       if (inFlight) return;
       inFlight = true;
       try {
-        const next = await loadPublicRoleBoard(token, selected || undefined);
+        const next = await loadPublicRoleBoard(token, selectedId || undefined);
         if (!cancelled) {
           setBoard(next);
+          setLoadedSelectedId(selectedId);
           setError("");
         }
-      } catch (e) {
-        if (!cancelled) setError((e as Error).message);
+      } catch (cause) {
+        if (!cancelled) setError((cause as Error).message);
       } finally {
         inFlight = false;
         if (!cancelled) setLoading(false);
@@ -52,14 +75,28 @@ export function PublicClassroomRolesPage() {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [token, selected, retry]);
-  const student = board?.students.find((s) => s.id === selected);
-  const weekDone = board?.week.filter((day) => day.eligible && day.status === "done").length ?? 0;
-  const weekEligible = board?.week.filter((day) => day.eligible && day.status !== "exempt" && day.date <= (board?.today ?? "")).length ?? 0;
+  }, [token, selectedId, retry]);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (selectedId && student && !dialog.open) dialog.showModal();
+    if ((!selectedId || !student) && dialog.open) dialog.close();
+  }, [selectedId, student]);
+
+  const closeDetail = () => dialogRef.current?.close();
+  const onDetailClose = () => {
+    const id = selectedId;
+    setSelectedId("");
+    setMessage("");
+    window.requestAnimationFrame(() => tileRefs.current.get(id)?.focus());
+  };
+
   const submit = async (status: "done" | "not_done") => {
-    if (!student || !board?.periodId || busy || loading || error) return;
+    if (!student || !board?.periodId || busy || loading || error || !student.eligible) return;
     setBusy(true);
     setError("");
+    setMessage("");
     try {
       await writeRoleRecord({
         token,
@@ -68,203 +105,224 @@ export function PublicClassroomRolesPage() {
         date: board.today,
         status,
       });
-      setMessage(
-        `${student.number}번 ${student.name}: '${ROLE_STATUS_LABELS[status]}' 기록을 저장했어요.`,
-      );
-      setSelected("");
-      setRetry((n) => n + 1);
-    } catch (e) {
-      setError((e as Error).message);
+      setMessage(ROLE_STATUS_LABELS[status] + "로 저장했어요.");
+      setRetry((value) => value + 1);
+    } catch (cause) {
+      setError((cause as Error).message);
     } finally {
       setBusy(false);
     }
   };
-  const masked = (name: string) =>
-    name.length <= 1 ? "○" : name[0] + "○".repeat(name.length - 1);
+
+  const tileStatus = (item: Student) => {
+    if (!item.eligible) return "오늘 실천일 아님";
+    if (!board?.showStatus) return "";
+    return "오늘 " + ROLE_STATUS_LABELS[item.status ?? "missing"];
+  };
+  const statusTone = (item: Student) =>
+    !item.eligible ? "bg-[#F2F4F6] text-[#566474]"
+      : item.status === "done" ? "bg-[#E7F6ED] text-[#176C43]"
+        : item.status === "not_done" ? "bg-[#FFF0E8] text-[#A44627]"
+          : "bg-[#EDF3F8] text-[#36576E]";
+  const tileClass =
+    "flex min-h-32 min-w-0 flex-col gap-3 rounded-xl border border-[#DCE3EA] bg-white p-4 text-left" +
+    (display ? " justify-center sm:min-h-[18dvh]" : " justify-between");
+  const tileContents = (item: Student) => (
+    <>
+      <span className={"block break-words font-bold leading-snug text-[#152336] " +
+        (display ? "text-lg sm:text-2xl" : "text-lg sm:text-xl")}>
+        {item.role.name}
+      </span>
+      <span className="block">
+        <span className="block break-words text-sm font-semibold text-[#334155]">
+          {item.number}번 {display && board?.maskDisplayNames ? maskedName(item.name) : item.name}
+        </span>
+        {tileStatus(item) && (
+          <span className={"mt-2 inline-block rounded-full px-2.5 py-1 font-bold " +
+            (display ? "text-sm sm:text-base " : "text-xs sm:text-sm ") + statusTone(item)}>
+            {tileStatus(item)}
+          </span>
+        )}
+      </span>
+    </>
+  );
+  const week = loadedSelectedId === selectedId ? board?.week ?? [] : [];
+  const weekDone = week.filter((day) => day.eligible && day.status === "done").length;
+  const weekEligible = week.filter(
+    (day) => day.eligible && day.status !== "exempt" && day.date <= (board?.today ?? ""),
+  ).length;
+
   return (
-    <main className="min-h-screen bg-[#F6F8FB] px-4 py-8 text-[#0F172A] sm:px-8">
-      <div
-        className={`mx-auto space-y-6 ${display ? "max-w-7xl" : "max-w-3xl"}`}
-      >
-        <header>
-          <p className="text-sm font-semibold text-[#0F6CBD]">
-            스스로, 함께 가꾸는 우리 반
-          </p>
-          <h1 className="mt-2 text-2xl font-extrabold sm:text-3xl">
+    <main className="min-h-screen bg-[#F6F8FB] px-4 py-5 text-[#0F172A] sm:px-8">
+      <div className={"mx-auto space-y-4 " + (display ? "max-w-none" : "max-w-7xl")}>
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
             {board?.title ?? "우리 반 1인 1역"}
           </h1>
-          <p className="mt-2 text-sm text-[#526174]">
-            {board?.today}{" "}
-            {display ? "· 전자칠판 보기 (입력 없음)" : "· 오늘의 실천 체크"}
-          </p>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-[#526174]">{board?.today}</span>
+            {display && (
+              <button
+                type="button"
+                className={roleSecondary}
+                onClick={() =>
+                  void document.documentElement.requestFullscreen?.().catch(() =>
+                    setError("전체 화면을 지원하지 않는 브라우저입니다."),
+                  )
+                }
+              >
+                전체 화면
+              </button>
+            )}
+          </div>
           {isRolesDemo && (
-            <p className="mt-2 text-xs">
-              개발 데모 · 같은 브라우저에서만 동작합니다.
+            <p className="w-full text-xs text-[#526174]">
+              개발 데모 · 이 브라우저에만 저장됩니다.
             </p>
           )}
         </header>
-        <RoleError message={error} />
-        {error && (
-          <button
-            className={roleSecondary}
-            onClick={() => setRetry((n) => n + 1)}
-          >
+        {!selectedId && <RoleError message={error} />}
+        {error && !selectedId && (
+          <button type="button" className={roleSecondary} onClick={() => setRetry((value) => value + 1)}>
             다시 불러오기
           </button>
         )}
-        {message && (
-          <p
-            role="status"
-            className="rounded-xl bg-emerald-50 p-4 font-semibold text-emerald-800"
-          >
-            {message}
-          </p>
-        )}
-        {loading ? (
+        {loading && !board ? (
           <p role="status">불러오는 중…</p>
-        ) : error ? null : !board?.periodId ? (
-          <section className={rolePanel}>
+        ) : !board?.periodId ? (
+          <section className="rounded-xl border border-[#DCE3EA] bg-white p-5">
             {board?.message || "사용할 수 없는 학급 화면입니다."}
           </section>
-        ) : display ? (
-          <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-4">
-            {board.students.map((s) => (
-              <article key={s.id} className={`${rolePanel} text-center`}>
-                <h2 className="text-xl font-bold">{s.role.name}</h2>
-                <p className="mt-3 text-lg">
-                  {s.number}번{" "}
-                  {board.maskDisplayNames ? masked(s.name) : s.name}
-                </p>
-                {board.showStatus && (
-                  <p className="mt-3 font-semibold text-[#0F6CBD]">
-                    {
-                      ROLE_STATUS_LABELS[
-                        s.status ?? (s.eligible ? "missing" : "exempt")
-                      ]
-                    }
-                  </p>
-                )}
-              </article>
-            ))}
-          </div>
-        ) : student ? (
-          <section className={`${rolePanel} space-y-6`}>
-            <button
-              className={roleSecondary}
-              disabled={busy}
-              onClick={() => setSelected("")}
-            >
-              ← 이름 다시 선택
-            </button>
-            <div>
-              <p className="text-sm text-[#526174]">
-                {student.number}번 {student.name}의 역할
-              </p>
-              <h2 className="mt-2 text-3xl font-extrabold">
-                {student.role.name}
-              </h2>
-              <p className="mt-4 whitespace-pre-wrap text-base leading-7">
-                {student.role.description ||
-                  "우리 반에서 약속한 역할을 실천해요."}
-              </p>
-            </div>
-            <div className="rounded-xl border border-[#DCE3EA] bg-[#F8FAFC] p-4">
-              <h3 className="font-bold">이번 주 실천 {weekDone}/{weekEligible}일</h3>
-              <div className="mt-3 grid grid-cols-7 gap-1 text-center">
-                {board.week.map((day, index) => {
-                  const symbol = day.date > board.today || !day.eligible || day.status === "exempt" ? "·" : day.status === "done" ? "O" : day.status === "not_done" ? "X" : "—";
-                  const label = symbol === "O" ? "했어요" : symbol === "X" ? "못했어요" : symbol === "—" ? "미기록" : "실천일 아님 또는 미래";
-                  return <div key={day.date} className="min-w-0 rounded-lg bg-white px-1 py-2" aria-label={`${day.date} ${label}`}><span className="block text-xs text-[#526174]">{["월", "화", "수", "목", "금", "토", "일"][index]}</span><span className="mt-1 block font-bold">{symbol}</span></div>;
-                })}
-              </div>
-              <p className="mt-2 text-xs text-[#64748B]">O 했어요 · X 못했어요 · — 미기록 · · 실천일 아님</p>
-            </div>
-            {student.status && (
-              <p>
-                오늘 기록: <strong>{ROLE_STATUS_LABELS[student.status]}</strong>{" "}
-                · 다시 누르면 수정돼요.
-              </p>
-            )}
-            {student.eligible ? (
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  className="min-h-28 rounded-2xl bg-[#0F6CBD] px-4 text-xl font-bold text-white disabled:opacity-50"
-                  disabled={busy}
-                  onClick={() => void submit("done")}
-                >
-                  {busy ? "저장 중…" : "했어요"}
-                </button>
-                <button
-                  className="min-h-28 rounded-2xl border-2 border-[#CBD5E1] bg-white px-4 text-xl font-bold disabled:opacity-50"
-                  disabled={busy}
-                  onClick={() => void submit("not_done")}
-                >
-                  {busy ? "저장 중…" : "못했어요"}
-                </button>
-              </div>
-            ) : (
-              <p className="rounded-xl bg-[#EFF6FC] p-4">
-                오늘은 이 역할을 하지 않는 날이에요.
-              </p>
-            )}
-            <p className="text-sm text-[#64748B]">
-              버튼을 누르면 바로 저장돼요. 결석 등으로 역할이 없었다면 선생님께
-              알려 주세요.
-            </p>
-          </section>
         ) : (
-          <section className="space-y-4">
-            <h2 className="text-xl font-bold">내 이름을 선택해 주세요</h2>
-            <p className="text-sm text-[#526174]">
-              자신의 번호와 이름을 확인해요. 친구의 기록은 바꾸지 않아요.
-            </p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {board.students.map((s) => (
+          <section aria-label="학생 역할과 오늘 상태">
+            {board.students.length === 0 && (
+              <p className="rounded-xl border border-[#DCE3EA] bg-white p-5 text-[#526174]">
+                아직 배정된 학생이 없어요.
+              </p>
+            )}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+              {board.students.map((item) => display ? (
+                <article key={item.id} className={tileClass}>
+                  {tileContents(item)}
+                </article>
+              ) : (
                 <button
-                  className={`${rolePanel} min-h-24 text-center hover:border-[#0F6CBD]`}
-                  key={s.id}
-                  aria-label={`${s.number}번 ${s.name}`}
+                  key={item.id}
+                  type="button"
+                  ref={(element) => {
+                    if (element) tileRefs.current.set(item.id, element);
+                    else tileRefs.current.delete(item.id);
+                  }}
+                  className={tileClass + " hover:border-[#0F6CBD] hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F6CBD]"}
+                  aria-label={item.number + "번 " + item.name}
+                  aria-describedby={"student-tile-" + item.id}
+                  disabled={Boolean(error)}
                   onClick={() => {
                     setMessage("");
-                    setSelected(s.id);
+                    setSelectedId(item.id);
                   }}
                 >
-                  <span className="text-sm text-[#64748B]">{s.number}번</span>
-                  <span className="mt-1 block text-lg font-bold">{s.name}</span>
-                  <span className="mt-1 block text-xs text-[#526174]">{s.role.name}</span>
-                  {board.showStatus && (
-                    <span className="mt-2 block text-xs text-[#0F6CBD]">
-                      오늘 · {
-                        ROLE_STATUS_LABELS[
-                          s.status ?? (s.eligible ? "missing" : "exempt")
-                        ]
-                      }
-                    </span>
-                  )}
+                  {tileContents(item)}
+                  <span id={"student-tile-" + item.id} className="sr-only">
+                    {item.role.name} · {tileStatus(item) || "오늘 상태 비공개"}
+                  </span>
                 </button>
               ))}
             </div>
           </section>
         )}
-        {display && (
-          <button
-            className={roleButton}
-            onClick={() =>
-              void document.documentElement
-                .requestFullscreen?.()
-                .catch(() =>
-                  setError("전체 화면을 지원하지 않는 브라우저입니다."),
-                )
-            }
-          >
-            전체 화면
-          </button>
-        )}
-        <footer className="text-center text-xs text-[#64748B]">
-          학급 공용 화면 · 학생 자기보고 · 개인정보가 포함된 링크를 학급 밖에
-          공유하지 마세요.
-        </footer>
       </div>
+      <dialog
+        ref={dialogRef}
+        onClose={onDetailClose}
+        aria-labelledby="public-role-detail-title"
+        className="w-[min(94vw,520px)] max-h-[calc(100dvh-24px)] overflow-y-auto rounded-2xl border border-[#DCE3EA] bg-white p-0 text-[#0F172A] shadow-2xl backdrop:bg-[#122032]/50"
+      >
+        {student && board && (
+          <div className="space-y-5 p-5 sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-[#526174]">
+                  {student.number}번 {student.name}
+                </p>
+                <h2 id="public-role-detail-title" className="mt-1 break-words text-2xl font-extrabold">
+                  {student.role.name}
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="min-h-11 min-w-11 rounded-lg border border-[#CBD5E1] text-xl focus-visible:outline-2 focus-visible:outline-[#0F6CBD]"
+                aria-label="상세 닫기"
+                onClick={closeDetail}
+              >
+                ×
+              </button>
+            </div>
+            <div className="border-t border-[#E2E8F0] pt-4">
+              <p className="text-sm font-semibold">
+                이번 주 <strong className="ml-1 text-base">{weekDone}/{weekEligible}일</strong>
+              </p>
+              {week.length ? (
+                <div className="mt-3 grid grid-cols-7 gap-1" aria-label="이번 주 실천 기록">
+                  {week.map((day, index) => {
+                    const mark = weekMark(day, board.today);
+                    return (
+                      <div
+                        key={day.date}
+                        aria-label={day.date + " " + mark.label}
+                        className="rounded-lg bg-[#F5F7F9] px-1 py-2 text-center"
+                      >
+                        <span className="block text-xs text-[#526174]">{weekdays[index]}</span>
+                        <span className={"mt-1 block text-lg font-bold " + mark.tone}>{mark.symbol}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p role="status" className="mt-2 text-sm text-[#526174]">주간 기록을 불러오는 중…</p>
+              )}
+            </div>
+            <div className="border-t border-[#E2E8F0] pt-4">
+              {student.eligible ? (
+                <>
+                  <p className="mb-3 text-sm font-semibold">
+                    오늘 <span className="ml-1 text-[#526174]">{ROLE_STATUS_LABELS[student.status ?? "missing"]}</span>
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      aria-pressed={student.status === "done"}
+                      className={"min-h-14 rounded-xl border-2 px-3 text-lg font-bold disabled:opacity-50 " +
+                        (student.status === "done" ? "border-[#0F6CBD] bg-[#0F6CBD] text-white" : "border-[#B9CBD9] bg-white text-[#173A52]")}
+                      disabled={busy || Boolean(error)}
+                      onClick={() => void submit("done")}
+                    >
+                      {busy ? "저장 중…" : "했어요"}
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={student.status === "not_done"}
+                      className={"min-h-14 rounded-xl border-2 px-3 text-lg font-bold disabled:opacity-50 " +
+                        (student.status === "not_done" ? "border-[#A84B2E] bg-[#A84B2E] text-white" : "border-[#D2C3BC] bg-white text-[#5D4036]")}
+                      disabled={busy || Boolean(error)}
+                      onClick={() => void submit("not_done")}
+                    >
+                      {busy ? "저장 중…" : "못했어요"}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm font-semibold text-[#526174]">
+                  오늘은 실천일이 아니에요.
+                </p>
+              )}
+              {message && <p role="status" className="mt-3 text-sm font-semibold text-[#117447]">{message}</p>}
+              <RoleError message={error} />
+              {error && <button type="button" className={roleSecondary} onClick={() => setRetry((value) => value + 1)}>다시 불러오기</button>}
+            </div>
+          </div>
+        )}
+      </dialog>
     </main>
   );
 }
