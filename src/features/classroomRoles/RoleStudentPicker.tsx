@@ -143,7 +143,7 @@ export function RoleStudentPicker({
             aria-pressed={active}
             disabled={disabled}
             onClick={() => chooseRole(role.id, fromDialog)}
-            className={`flex min-h-11 w-full items-center justify-between gap-1 rounded-lg border px-2 py-2 text-left text-sm focus-visible:outline-2 focus-visible:outline-[#0F6CBD] ${active ? "border-[#0F6CBD] bg-white font-bold text-[#0B589D] shadow-sm" : "border-transparent bg-white/70 hover:border-[#A8C9E3] hover:bg-white"}`}
+            className={`flex min-h-11 w-full items-center justify-between gap-1 rounded-lg border px-2 py-2 text-left text-sm focus-visible:outline-2 focus-visible:outline-[#0F6CBD] ${active ? "border-[#0F6CBD] bg-[#D9ECFD] font-bold text-[#0B589D] shadow-sm" : "border-transparent bg-white/70 hover:border-[#A8C9E3] hover:bg-white"}`}
           >
             <span className="min-w-0 break-words">{role.name}</span>
             <span className="shrink-0 text-xs tabular-nums text-[#526174]">
@@ -253,7 +253,7 @@ export function RoleStudentPicker({
               )}
               <RoleError message={error} />
               {remaining === 0 && (
-                <p className="text-sm text-[#0F6CBD]">정원 완료 · 추가하려면 정원을 변경하세요.</p>
+                <p className="text-sm text-[#0F6CBD]">이 역할의 정원이 찼습니다. 다른 역할을 선택하거나 정원을 변경하세요.</p>
               )}
               <RoleField label="학생 찾기">
                 <input
@@ -266,15 +266,18 @@ export function RoleStudentPicker({
               </RoleField>
               <fieldset>
                 <legend className="sr-only">{activeRole.name} 담당 학생</legend>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,10rem),1fr))] gap-2">
                   {visible.map((student) => {
                     const checked = assignments[student.id] === activeRole.id;
                     const current = roles.find((role) => role.id === assignments[student.id]);
                     const unavailable = disabled || (!checked && remaining <= 0);
+                    const assignmentState = checked ? "current" : current ? "other" : "unassigned";
+                    const stateText = checked ? "이 역할 담당" : current ? `배정됨 · ${current.name}` : "미배정";
                     return (
                       <label
                         key={student.id}
-                        className={`flex min-h-11 min-w-0 items-center gap-2 rounded-lg border px-2 py-2 text-sm ${checked ? "border-[#0F6CBD] bg-[#EFF6FC]" : "border-[#DCE3EA]"} ${unavailable ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+                        data-assignment-state={assignmentState}
+                        className={`flex min-h-11 min-w-0 items-center gap-2 rounded-lg border px-2 py-2 text-sm ${checked ? "border-[#0F6CBD] bg-[#EAF3FF]" : current ? "border-[#CBD5E1] bg-[#F2F4F7]" : "border-[#E8C57A] bg-[#FFF9EB]"} ${unavailable ? "cursor-not-allowed" : "cursor-pointer hover:border-[#0F6CBD]"}`}
                       >
                         <input
                           ref={(element) => {
@@ -284,6 +287,7 @@ export function RoleStudentPicker({
                           type="checkbox"
                           className="h-5 w-5 shrink-0"
                           aria-label={`${student.number}번 ${student.name} 선택`}
+                          aria-describedby={`role-student-state-${student.id}`}
                           checked={checked}
                           disabled={unavailable}
                           onChange={(event) => {
@@ -297,7 +301,12 @@ export function RoleStudentPicker({
                         />
                         <span className="min-w-0 break-words font-medium">
                           {student.number} {student.name}
-                          {current && !checked && <span className="block text-xs font-normal text-[#526174]">{current.name}</span>}
+                          <span
+                            id={`role-student-state-${student.id}`}
+                            className={`block text-xs font-medium ${checked ? "text-[#0B589D]" : current ? "text-[#475569]" : "text-[#92400E]"}`}
+                          >
+                            {stateText}
+                          </span>
                           {previous && previousShown && (
                             <span className="block text-xs font-normal text-[#526174]">
                               이전: {roleForStudent(previous, student.id)?.name ?? "없음"}

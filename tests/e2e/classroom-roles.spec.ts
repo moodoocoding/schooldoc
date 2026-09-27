@@ -130,9 +130,21 @@ test("역할별 다중 선택·정원 제한·역할 이동·일괄 선택과 �
   await expect(page.getByRole("combobox")).toHaveCount(0);
   const checkbox = (name: string) =>
     page.getByRole("checkbox", { name, exact: true });
+  const studentCard = (name: string) => checkbox(name).locator("..");
+  await expect(studentCard("1번 가상하늘 선택")).toHaveAttribute("data-assignment-state", "unassigned");
+  await expect(studentCard("1번 가상하늘 선택")).toContainText("미배정");
   await checkbox("1번 가상하늘 선택").check();
   await checkbox("2번 가상바다 선택").check();
+  await expect(studentCard("1번 가상하늘 선택")).toHaveAttribute("data-assignment-state", "current");
+  await expect(studentCard("1번 가상하늘 선택")).toContainText("이 역할 담당");
   await expect(checkbox("3번 가상하늘 선택")).toBeDisabled();
+  await expect(studentCard("3번 가상하늘 선택")).toHaveAttribute("data-assignment-state", "unassigned");
+  await expect(studentCard("3번 가상하늘 선택")).toContainText("미배정");
+  const [currentColor, unassignedColor] = await Promise.all([
+    studentCard("1번 가상하늘 선택").evaluate((element) => getComputedStyle(element).backgroundColor),
+    studentCard("3번 가상하늘 선택").evaluate((element) => getComputedStyle(element).backgroundColor),
+  ]);
+  expect(currentColor).not.toBe(unassignedColor);
   await page.getByRole("button", { name: "정원 변경" }).click();
   await page.getByLabel(`${first.name} 정원`, { exact: true }).fill("1");
   await expect(page.getByRole("alert")).toContainText("이미 선택한 2명");
@@ -143,8 +155,14 @@ test("역할별 다중 선택·정원 제한·역할 이동·일괄 선택과 �
     .getByRole("button", { name: `${second.name} 학생 선택`, exact: true })
     .click();
   await expect(
-    page.getByRole("region", { name: "담당 학생 선택" }).getByText(first.name, { exact: true }),
+    page.getByRole("region", { name: "담당 학생 선택" }).getByText(`배정됨 · ${first.name}`, { exact: true }),
   ).toHaveCount(2);
+  await expect(studentCard("1번 가상하늘 선택")).toHaveAttribute("data-assignment-state", "other");
+  const [otherColor, stillUnassignedColor] = await Promise.all([
+    studentCard("1번 가상하늘 선택").evaluate((element) => getComputedStyle(element).backgroundColor),
+    studentCard("3번 가상하늘 선택").evaluate((element) => getComputedStyle(element).backgroundColor),
+  ]);
+  expect(otherColor).not.toBe(stillUnassignedColor);
   await checkbox("2번 가상바다 선택").click();
   const move = page.getByRole("dialog", { name: "역할 이동" });
   await expect(move).toContainText(`${first.name} → ${second.name}`);
@@ -331,6 +349,49 @@ test("23명·18역할에서 좌우 영역을 구분하고 큰 빈 공간을 남�
   await page.setViewportSize({ width: 1024, height: 768 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: test.info().outputPath("balanced-assignment-1024.png"), fullPage: true });
+});
+
+test("배정 상태 세 가지를 23명 명단에서 바로 구분하고 좁은 화면에서도 읽는다", async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
+  const board = await seed(page, false, Array.from({ length: 23 }, (_, i) =>
+    `${i + 1} ${i === 22 ? "가상학생이름이아주긴사례" : `가상학생${i + 1}`}`,
+  ).join("\n"));
+  await page.goto(`${root}/assign`);
+  await page.getByRole("button", { name: "다음: 역할 설정" }).click();
+  await page.getByRole("checkbox", { name: "1번 가상학생1 선택" }).check();
+  await page.getByRole("checkbox", { name: "2번 가상학생2 선택" }).check();
+  await page.getByRole("button", { name: `${board.state.roles[1].name} 학생 선택` }).click();
+  await page.getByRole("checkbox", { name: "3번 가상학생3 선택" }).check();
+  await page.getByRole("checkbox", { name: "4번 가상학생4 선택" }).check();
+  const panel = page.getByRole("region", { name: "담당 학생 선택" });
+  await expect(panel.locator('[data-assignment-state="current"]')).toHaveCount(2);
+  await expect(panel.locator('[data-assignment-state="other"]')).toHaveCount(2);
+  await expect(panel.locator('[data-assignment-state="unassigned"]')).toHaveCount(19);
+  await expect(panel.locator('[data-assignment-state="unassigned"]').first()).toContainText("미배정");
+  await expect(panel.locator('[data-assignment-state="other"]').first()).toContainText("배정됨 ·");
+  await expect(panel.locator('[data-assignment-state="current"]').first()).toContainText("이 역할 담당");
+  await expect(page.getByRole("button", { name: "미배정 19명" })).toBeVisible();
+  const colors = await Promise.all(
+    (["current", "other", "unassigned"] as const).map((state) =>
+      panel.locator(`[data-assignment-state="${state}"]`).first()
+        .evaluate((element) => getComputedStyle(element).backgroundColor),
+    ),
+  );
+  expect(new Set(colors).size).toBe(3);
+  const audit = await new AxeBuilder({ page }).include('[aria-label="역할별 학생 배정"]').analyze();
+  expect(audit.violations).toEqual([]);
+  await page.screenshot({ path: test.info().outputPath("assignment-states-desktop.png"), fullPage: true });
+  for (const width of [768, 390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await expect(panel.locator('[data-assignment-state="unassigned"]').first()).toBeVisible();
+    if (width === 390) {
+      await page.screenshot({ path: test.info().outputPath("assignment-states-mobile.png"), fullPage: true });
+    }
+  }
+  await page.evaluate(() => { document.documentElement.style.fontSize = "32px"; });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath("assignment-states-large-text.png"), fullPage: true });
 });
 
 test("빈 명단·역할에서 시작해 새 역할에 여러 명을 배정한다", async ({
