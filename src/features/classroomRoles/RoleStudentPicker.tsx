@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Check, Search } from "lucide-react";
 import {
   roleForStudent,
   type ClassroomRole,
@@ -41,6 +42,7 @@ export function RoleStudentPicker({
 }: Props) {
   const [activeId, setActiveId] = useState(roles[0]?.id ?? "");
   const [search, setSearch] = useState("");
+  const [candidateFilter, setCandidateFilter] = useState<"unassigned" | "all">("all");
   const [error, setError] = useState("");
   const [capacityEditing, setCapacityEditing] = useState(false);
   const [previousShown, setPreviousShown] = useState(false);
@@ -49,6 +51,7 @@ export function RoleStudentPicker({
   const [newRole, setNewRole] = useState("");
   const [newRoleError, setNewRoleError] = useState("");
   const panelRef = useRef<HTMLElement>(null);
+  const desktopPanelRef = useRef<HTMLElement>(null);
   const roleDialogRef = useRef<HTMLDialogElement>(null);
   const moveDialogRef = useRef<HTMLDialogElement>(null);
   const roleTriggerRef = useRef<HTMLButtonElement>(null);
@@ -56,6 +59,8 @@ export function RoleStudentPicker({
   const lastFocusSignalRef = useRef(0);
   const movingStudentIdRef = useRef<string | null>(null);
   const studentInputsRef = useRef(new Map<string, HTMLInputElement>());
+  const candidateButtonsRef = useRef(new Map<string, HTMLButtonElement>());
+  const candidateHeadingRef = useRef<HTMLHeadingElement>(null);
   const activeRole = roles.find((role) => role.id === activeId) ?? roles[0];
   const sorted = [...students].sort((a, b) => a.number - b.number);
   const unassigned = sorted.filter((student) => !assignments[student.id]);
@@ -68,6 +73,10 @@ export function RoleStudentPicker({
   const visible = sorted.filter(
     (student) => !query || `${student.number} ${student.name}`.includes(query),
   );
+  const desktopCandidates = visible.filter(
+    (student) => candidateFilter === "all" || !assignments[student.id],
+  );
+  const manyRoles = roles.length >= 40 && roles.length > students.length;
   const firstUnassignedId = unassigned[0]?.id;
 
   useEffect(() => {
@@ -112,6 +121,24 @@ export function RoleStudentPicker({
     } catch (cause) {
       setError((cause as Error).message);
     }
+  };
+  const addDesktopStudent = (student: RoleStudent) => {
+    const existing = roles.find((role) => role.id === assignments[student.id]);
+    if (existing?.id === activeRole?.id) {
+      choose([student.id], false);
+      return;
+    }
+    if (existing && existing.id !== activeRole?.id) {
+      movingStudentIdRef.current = student.id;
+      setMovingStudent(student);
+      return;
+    }
+    const at = desktopCandidates.findIndex((item) => item.id === student.id);
+    const next = desktopCandidates[at + 1] ?? desktopCandidates[at - 1];
+    choose([student.id], true);
+    if (candidateFilter === "unassigned") requestAnimationFrame(() => {
+      (remaining > 1 && next ? candidateButtonsRef.current.get(next.id) : candidateHeadingRef.current)?.focus();
+    });
   };
   const addRole = () => {
     if (!newRole.trim() || roles.length >= 60) return;
@@ -201,7 +228,7 @@ export function RoleStudentPicker({
           <span className="shrink-0 text-sm text-[#0F6CBD]">열기</span>
         </button>
       </div>
-      <div className={`grid overflow-hidden rounded-xl border border-[#DCE3EA] bg-white ${desktopSideBySide ? "xl:grid-cols-[minmax(0,39%)_minmax(0,1fr)]" : ""}`}>
+      <div className={`grid overflow-hidden rounded-xl border border-[#DCE3EA] bg-white lg:hidden ${desktopSideBySide ? "xl:grid-cols-[minmax(0,39%)_minmax(0,1fr)]" : ""}`}>
         <section className={`hidden min-w-0 flex-col border-b border-[#BDD8EC] bg-[#EAF3FB] p-4 md:flex md:p-5 ${desktopSideBySide ? "xl:border-b-0 xl:border-r" : ""}`} aria-label="역할 목록">
           <div className="flex min-h-12 items-start justify-between gap-2">
             <h2 className="text-lg font-bold leading-7 text-[#25415B]">역할 선택</h2>
@@ -341,6 +368,78 @@ export function RoleStudentPicker({
         </section>
       </div>
 
+      <div className={`mx-auto hidden w-full max-w-[1488px] overflow-hidden rounded-xl border border-[#E4E5E0] lg:grid ${manyRoles ? "lg:grid-cols-[minmax(0,54%)_minmax(0,1fr)]" : "lg:grid-cols-[minmax(370px,40%)_minmax(0,1fr)] xl:grid-cols-[minmax(320px,35%)_minmax(0,1fr)]"}`} data-role-desktop-picker>
+        <section className="min-w-0 border-r border-[#E4E5E0] bg-[#F7F8F6] px-6 pb-10 pt-5" aria-label="역할 목록">
+          <div className="flex min-h-16 items-start justify-between gap-2 border-b border-[#E4E5E0] pb-3" data-role-pane-header>
+            <h2 className="break-words text-[length:var(--sd-text-xl)] font-semibold leading-7">역할 선택</h2>
+            <span className="pt-1 text-xs text-[#686D66]">배정 / 정원</span>
+          </div>
+          {roles.length > 0 ? <div className={`mt-4 grid grid-cols-2 gap-2 ${manyRoles ? "xl:grid-cols-4" : ""}`}>
+            {roles.map((role) => {
+              const count = roleAssignedCount(assignments, role.id);
+              const active = activeRole?.id === role.id;
+              return <button key={role.id} type="button" aria-label={`${role.name} 학생 선택`} aria-pressed={active} data-complete={count >= role.capacity} disabled={disabled}
+                onClick={() => chooseRole(role.id)}
+                className="role-assignment-role-card flex min-h-14 min-w-0 items-center justify-between gap-2 rounded-lg px-3 py-2 text-left">
+                <span className="min-w-0 break-words text-sm font-medium leading-5">{role.name}</span>
+                <span className="shrink-0 text-xs tabular-nums">{count}/{role.capacity}</span>
+              </button>;
+            })}
+          </div> : <p className="py-4 text-sm text-[#686D66]">역할을 추가해 주세요.</p>}
+          {addRoleControls()}
+        </section>
+        <section ref={desktopPanelRef} tabIndex={-1} className="min-w-0 px-6 pb-10 pt-5 focus-visible:outline-2" aria-label="담당 학생 선택">
+          {activeRole ? <>
+            <div className="flex min-h-16 items-start justify-between gap-3 border-b border-[#E4E5E0] pb-3" data-role-pane-header>
+              <h2 className="min-w-0 break-words text-[length:var(--sd-text-xl)] font-semibold leading-7">{activeRole.name}</h2>
+              <button type="button" disabled={disabled} onClick={() => setCapacityEditing((value) => !value)} className="min-h-11 rounded-md px-3 text-sm text-[#4F544F] hover:bg-[#F7F6F3]">정원 변경</button>
+            </div>
+            {capacityEditing && <div className="mt-3 max-w-40"><RoleField label={`${activeRole.name} 정원`}><input type="number" className={roleInput} min={Math.max(1, selected)} max={60} value={activeRole.capacity} disabled={disabled} onChange={(event) => {
+              const capacity = Number(event.target.value);
+              if (!Number.isInteger(capacity) || capacity < 1 || capacity > 60) setError("정원은 1~60명으로 입력해 주세요.");
+              else if (capacity < selected) setError(`이미 선택한 ${selected}명보다 정원을 줄일 수 없습니다.`);
+              else { setError(""); onCapacityChange(activeRole.id, capacity); }
+            }} /></RoleField></div>}
+            <RoleError message={error} />
+            <div className="mb-4 mt-4 flex flex-wrap items-center justify-between gap-3">
+              <h3 ref={candidateHeadingRef} tabIndex={-1} className="text-base font-semibold focus:outline-none">학생 선택</h3>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="sr-only" htmlFor="role-candidate-filter">학생 범위</label>
+                <select id="role-candidate-filter" value={candidateFilter} onChange={(event) => setCandidateFilter(event.target.value as "unassigned" | "all")} className="min-h-11 rounded-md border border-[#D8DBD5] bg-white px-3 text-sm">
+                  <option value="all">전체 학생</option><option value="unassigned">미배정</option>
+                </select>
+                <label className="flex min-h-11 min-w-44 items-center rounded-md border border-[#D8DBD5] bg-white px-3 text-[#686D66]">
+                  <Search size={17} aria-hidden="true" className="mr-2 shrink-0" />
+                  <span className="sr-only">학생 찾기</span>
+                  <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="이름 또는 번호" className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none" />
+                </label>
+              </div>
+            </div>
+            {previous && <button type="button" onClick={() => setPreviousShown((value) => !value)} className="mb-3 min-h-11 text-sm text-[#4F544F]">이전 역할 {previousShown ? '숨기기' : '보기'}</button>}
+            {desktopCandidates.length ? <div className={`grid grid-cols-2 gap-2 ${manyRoles ? "" : "xl:grid-cols-3"}`}>
+              {desktopCandidates.map((student) => {
+                const current = roles.find((role) => role.id === assignments[student.id]);
+                const isCurrent = current?.id === activeRole.id;
+                const assignmentState = isCurrent ? "current" : current ? "other" : "unassigned";
+                return <button key={student.id} type="button" ref={(element) => {
+                  if (element) candidateButtonsRef.current.set(student.id, element);
+                  else candidateButtonsRef.current.delete(student.id);
+                }} data-assignment-state={assignmentState} aria-pressed={isCurrent}
+                  aria-label={`${student.number}번 ${student.name} ${isCurrent ? '배정 해제' : current ? '역할 이동' : '추가'}`}
+                  disabled={disabled || (!isCurrent && remaining <= 0)} onClick={() => addDesktopStudent(student)}
+                  className="role-assignment-student-card flex min-h-[62px] min-w-0 items-center gap-3 rounded-lg px-3 py-2 text-left">
+                  <span aria-hidden="true" className="role-assignment-check flex h-5 w-5 shrink-0 items-center justify-center rounded border">{isCurrent && <Check size={14} strokeWidth={3} />}</span>
+                  <span className="min-w-0 flex-1 break-words text-sm font-medium"><span className="mr-1 tabular-nums">{student.number}</span> {student.name}
+                    {current && !isCurrent && <span className="block break-words text-xs font-normal text-[#686D66]">{current.name}</span>}
+                    {previous && previousShown && <span className="block break-words text-xs font-normal text-[#686D66]">이전: {roleForStudent(previous, student.id)?.name ?? '없음'}</span>}
+                  </span>
+                </button>;
+              })}
+            </div> : <div className="border-t border-[#E4E5E0] py-8 text-sm text-[#686D66]">{search ? '검색 결과가 없습니다.' : candidateFilter === 'unassigned' ? <><p>추가할 미배정 학생이 없습니다.</p><button type="button" className="mt-2 min-h-11 text-[#B9472F]" onClick={() => setCandidateFilter('all')}>전체 학생 보기</button></> : '학생이 없습니다.'}</div>}
+          </> : <p className="text-sm text-[#686D66]">역할을 먼저 추가해 주세요.</p>}
+        </section>
+      </div>
+
       <dialog
         ref={roleDialogRef}
         aria-labelledby="role-picker-heading"
@@ -366,7 +465,7 @@ export function RoleStudentPicker({
         className="m-auto w-[min(92vw,420px)] rounded-xl border border-[#DCE3EA] bg-white p-5 shadow-xl backdrop:bg-black/40"
         onClose={() => {
           setMovingStudent(null);
-          if (movingStudentIdRef.current) studentInputsRef.current.get(movingStudentIdRef.current)?.focus();
+          if (movingStudentIdRef.current) (candidateButtonsRef.current.get(movingStudentIdRef.current) ?? studentInputsRef.current.get(movingStudentIdRef.current))?.focus();
           movingStudentIdRef.current = null;
         }}
       >

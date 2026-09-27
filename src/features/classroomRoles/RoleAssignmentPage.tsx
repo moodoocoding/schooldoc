@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   parseRoleRoster,
   roleMonthRange,
@@ -69,7 +69,12 @@ export function RoleAssignmentPage({
   const [draftChanged, setDraftChanged] = useState(false);
   const reviewDialogRef = useRef<HTMLDialogElement>(null);
   const reviewButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileReviewButtonRef = useRef<HTMLButtonElement>(null);
   const unassigned = students.filter((s) => !assignments[s.id]).length;
+  const monthlyRange = roleMonthRange(start.slice(0, 7));
+  const periodLabel = start === monthlyRange.start && end === monthlyRange.end
+    ? `${Number(start.slice(5, 7))}월`
+    : `${start} ~ ${end}`;
   const seatShortage = Math.max(
     0,
     students.length - roles.reduce((total, role) => total + role.capacity, 0),
@@ -118,6 +123,10 @@ export function RoleAssignmentPage({
     setStep(2);
     setError("");
   };
+  const guardLeave = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    const rosterChanged = editingRoster && text !== students.map((student) => `${student.number} ${student.name}`).join("\n");
+    if ((draftChanged || rosterChanged) && !window.confirm("저장하지 않은 배정은 사라집니다. 이동할까요?")) event.preventDefault();
+  };
   const draftState = () => ({
     ...board.state,
     roster: students,
@@ -161,8 +170,46 @@ export function RoleAssignmentPage({
     }
   };
   return (
-    <div className="space-y-3">
-      <ol className="flex flex-wrap gap-2 text-sm" aria-label="배정 단계">
+    <div className="space-y-3 lg:space-y-0" data-role-assignment-step={step}>
+      <div data-role-topbar className="hidden lg:flex min-h-[84px] items-center justify-between gap-5 border-b border-[#E4E5E0] bg-white px-10">
+        <h1 className="sr-only">{rotate ? "역할 교체" : "학생 역할 배정"}</h1>
+        <div className="flex min-w-0 items-center gap-9">
+          <Link to="/" onClick={guardLeave} className="inline-flex min-h-11 shrink-0 items-center gap-3 text-xl font-semibold tracking-tight text-[#252824]">
+            <span aria-hidden="true" className="inline-block h-5 w-4 rounded-sm bg-[#B9472F]" />
+            SchoolDoc
+          </Link>
+          <Link to="/tools/classroom-roles" onClick={guardLeave} className="inline-flex min-h-11 items-center gap-3 text-base text-[#4F544F]">
+            <span aria-hidden="true">←</span> 1인 1역
+          </Link>
+        </div>
+        <div className="flex min-w-0 items-center gap-7">
+          <span className="truncate text-sm text-[#4F544F]">{board.state.settings.title} · {periodLabel}</span>
+          {step === 2 && (
+            <button type="button" disabled={busy} onClick={() => {
+              setStep(1);
+              requestAnimationFrame(() => rosterHeadingRef.current?.focus());
+            }} className="min-h-11 shrink-0 px-2 text-sm text-[#4F544F]">명단 수정</button>
+          )}
+          {step === 2 && (
+            <button type="button" onClick={() => setPeriodEditing((value) => !value)} className="min-h-11 shrink-0 px-2 text-sm text-[#4F544F]">기간 변경</button>
+          )}
+          {step === 2 && (
+            <button
+              data-role-review-button
+              ref={reviewButtonRef}
+              type="button"
+              className={`min-h-11 min-w-36 rounded-md px-5 text-sm font-semibold ${busy || unassigned > 0 ? 'cursor-not-allowed bg-[#D6D7D3] text-[#545954]' : 'bg-[#252824] text-white hover:bg-[#3A3E39]'}`}
+              aria-disabled={busy || unassigned > 0}
+              aria-describedby={unassigned > 0 ? 'role-review-reason' : undefined}
+              onClick={busy || unassigned > 0 ? undefined : openReview}
+            >
+              배정 확인
+            </button>
+          )}
+        </div>
+      </div>
+      {step === 2 && unassigned > 0 && <p id="role-review-reason" className="sr-only">모든 학생을 배정한 뒤 확인할 수 있습니다.</p>}
+      <ol className="flex flex-wrap gap-2 text-sm lg:hidden" aria-label="배정 단계">
         {["명단 확인", "역할 배정"].map((label, i) => (
           <li
             aria-current={step === i + 1 ? "step" : undefined}
@@ -174,14 +221,14 @@ export function RoleAssignmentPage({
         ))}
       </ol>
       {rotate && (
-        <p className="text-sm text-[#526174]">
+        <p className="text-sm text-[#526174] lg:px-10 lg:pt-4">
           {previous
             ? `이전 배정 ${previous.start} ~ ${previous.end} · 새 기간을 준비합니다.`
             : "첫 배정을 만든 뒤 다음 기간부터 역할을 교체할 수 있습니다."}
         </p>
       )}
       {step === 1 ? (
-        <section className={`${rolePanel} space-y-4`}>
+        <section className={`${rolePanel} space-y-4 lg:mx-auto lg:mt-8 lg:max-w-4xl`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2
               ref={rosterHeadingRef}
@@ -291,7 +338,7 @@ export function RoleAssignmentPage({
         </section>
       ) : (
         <>
-          <section className="rounded-xl border border-[#DCE3EA] bg-white px-4 py-2" aria-label="배정 기간">
+          <section className={`rounded-xl border border-[#DCE3EA] bg-white px-4 py-2 lg:mx-auto lg:mt-5 lg:max-w-[1488px] ${periodEditing ? 'lg:block' : 'lg:hidden'}`} aria-label="배정 기간">
             <div className="flex flex-wrap items-center gap-3 text-sm">
               <span className="font-semibold">배정 기간</span>
               <span>{start} ~ {end}</span>
@@ -363,7 +410,7 @@ export function RoleAssignmentPage({
             }}
           />
           <RoleError message={error} />
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#DCE3EA] bg-white p-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#DCE3EA] bg-white p-3 lg:hidden">
             <button
               disabled={busy}
               className={roleSecondary}
@@ -371,7 +418,7 @@ export function RoleAssignmentPage({
             >
               이전
             </button>
-            {unassigned > 0 ? (
+            <span className="lg:hidden">{unassigned > 0 ? (
               <button
                 type="button"
                 className="min-h-11 text-sm font-semibold text-[#0F6CBD]"
@@ -379,11 +426,11 @@ export function RoleAssignmentPage({
               >
                 미배정 {unassigned}명
               </button>
-            ) : <span role="status" className="text-sm font-semibold text-[#16803C]">모두 배정됨</span>}
+            ) : <span role="status" className="text-sm font-semibold text-[#16803C]">모두 배정됨</span>}</span>
             <button
-              ref={reviewButtonRef}
+              ref={mobileReviewButtonRef}
               disabled={busy || unassigned > 0}
-              className={roleButton}
+              className={`${roleButton} lg:hidden`}
               onClick={openReview}
             >
               배정 확인
@@ -395,7 +442,7 @@ export function RoleAssignmentPage({
             className="m-auto w-[min(92vw,580px)] max-h-[80vh] overflow-y-auto rounded-xl border border-[#DCE3EA] bg-white p-5 shadow-xl backdrop:bg-black/40"
             onClose={() => {
               setReviewOpen(false);
-              reviewButtonRef.current?.focus();
+              (window.matchMedia('(min-width: 1024px)').matches ? reviewButtonRef : mobileReviewButtonRef).current?.focus();
             }}
           >
             <h2 id="role-review-heading" className="text-xl font-bold">배정 확인</h2>

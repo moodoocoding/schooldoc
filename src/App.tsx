@@ -17,6 +17,7 @@ import { DataCollectWorkspace } from './features/dataCollect/DataCollectWorkspac
 import { PublicDataCollectPage } from './features/dataCollect/PublicDataCollectPage';
 import { ReceiptBooksWorkspace } from './features/classBudgetReceipts/ReceiptBooksWorkspace';
 import { ClassroomRolesWorkspace } from './features/classroomRoles/ClassroomRolesWorkspace';
+import { useAppearanceSettings } from './features/settings/appearanceContext';
 import { PublicClassroomRolesPage } from './features/classroomRoles/PublicClassroomRolesPage';
 import {
   canAccessClassBudgetReceipts,
@@ -34,6 +35,7 @@ function AdminApp() {
   const [quickMenuIds, setQuickMenuIds] = useState<string[]>(['notice-collect', 'student-lookup']);
   const [isOpenNotifications, setIsOpenNotifications] = useState<boolean>(false);
   const { user, loading: authLoading } = useTeacherAuth();
+  const { settings: appearance } = useAppearanceSettings();
   const isReceiptAdmin = isClassBudgetReceiptsAdmin(user);
   const canUseReceiptBooks = canAccessClassBudgetReceipts(user);
 
@@ -132,6 +134,7 @@ function AdminApp() {
   const isDataCollectRoute = location.pathname.startsWith('/tools/data-collect');
   const isReceiptBooksRoute = location.pathname.startsWith('/tools/receipts');
   const isClassroomRolesRoute = location.pathname.startsWith('/tools/classroom-roles');
+  const isRoleAssignmentRoute = /^\/tools\/classroom-roles\/(assign|rotate)$/.test(location.pathname);
 
   const toolRoutes: Record<string, string> = {
     'classroom-roles': '/tools/classroom-roles',
@@ -164,7 +167,7 @@ function AdminApp() {
   };
 
   return (
-    <div className="schooldoc-admin-shell min-h-screen bg-[#F6F8FB] font-sans text-[#0F172A] flex antialiased">
+    <div data-role-default-theme={appearance.themeId === 'schooldoc-blue' ? 'true' : undefined} className={`schooldoc-admin-shell min-h-screen bg-[#F6F8FB] font-sans text-[#0F172A] flex antialiased ${isRoleAssignmentRoute ? 'role-assignment-shell' : ''}`}>
       {/* Smart Hover Sidebar Component */}
       <Sidebar
         activeTab={activeTab}
@@ -197,7 +200,7 @@ function AdminApp() {
       */}
       <div className="flex-1 flex flex-col min-w-0">
         {isRegistryRoute || isStudentResultsRoute || isConsentFormsRoute || isSpecialRoomsRoute || isDataCollectRoute || isReceiptBooksRoute || isClassroomRolesRoute ? (
-          <main className="min-w-0 overflow-x-clip p-4 sm:p-8">
+          <main className={`min-w-0 overflow-x-clip p-4 sm:p-8 ${isRoleAssignmentRoute ? 'role-assignment-main' : ''}`}>
             {isRegistryRoute ? <RegistryWorkspace />
               : isStudentResultsRoute ? <StudentResultsWorkspace />
               : isConsentFormsRoute ? <ConsentFormsWorkspace />
