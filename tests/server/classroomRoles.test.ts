@@ -292,6 +292,26 @@ Deno.test("configuration and record conflicts are surfaced as 409", () =>
     );
   }),
 );
+Deno.test("admin saves a safe period end edit but rejects a started period's start edit", () =>
+  fixture(async ({ call, state, calls }) => {
+    const next = structuredClone(state);
+    next.periods[0].end = new Date(
+      Date.parse(`${state.periods[0].end}T00:00:00Z`) + 86400000,
+    )
+      .toISOString()
+      .slice(0, 10);
+    assert((await call({ action: "save", version: 1, state: next })).status === 200);
+    assert(calls.some((entry) => entry.path.includes("classroom_role_boards") && entry.method === "PATCH"));
+    next.periods[0].start = new Date(
+      Date.parse(`${state.periods[0].start}T00:00:00Z`) + 86400000,
+    )
+      .toISOString()
+      .slice(0, 10);
+    const rejected = await call({ action: "save", version: 1, state: next });
+    assert(rejected.status === 400);
+    assert((await rejected.json()).error.includes("지난 운영 날짜"));
+  }),
+);
 Deno.test("monthly history paginates beyond PostgREST 1000 row defaults", () =>
   fixture(async ({ call, flags, calls }) => {
     flags.manyRecords = true;

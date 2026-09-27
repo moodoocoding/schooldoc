@@ -1,10 +1,15 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
+  activeRolePeriod,
   defaultRoleState,
+  roleToday,
   validateRoleState,
+  validateRoleStateChange,
   type ClassroomRole,
 } from "./roleApi";
 import type { RolePageProps } from "./ClassroomRolesWorkspace";
+import { RoleExcludedDatesCalendar } from "./RoleExcludedDatesCalendar";
 import {
   RoleDays,
   RoleError,
@@ -157,10 +162,22 @@ export function RoleCatalogPage({ board, save, busy }: RolePageProps) {
 }
 
 export function RoleSettingsPage({ board, save, busy }: RolePageProps) {
+  const today = roleToday();
+  const editablePeriods = board.state.periods
+    .filter((period) => period.end >= today)
+    .sort((a, b) => a.start.localeCompare(b.start));
+  const initialPeriod =
+    activeRolePeriod(board.state, today) ?? editablePeriods[0];
+  const [periodId, setPeriodId] = useState(initialPeriod?.id ?? "");
+  const selectedPeriod = editablePeriods.find((period) => period.id === periodId);
+  const [periodStart, setPeriodStart] = useState(initialPeriod?.start ?? "");
+  const [periodEnd, setPeriodEnd] = useState(initialPeriod?.end ?? "");
   const [settings, setSettings] = useState(
     structuredClone(board.state.settings),
   );
-  const [dates, setDates] = useState(settings.excludedDates.join("\n"));
+  const [excludedDates, setExcludedDates] = useState(
+    [...new Set(settings.excludedDates)].sort(),
+  );
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const change = (patch: Partial<typeof settings>) => {
@@ -170,25 +187,134 @@ export function RoleSettingsPage({ board, save, busy }: RolePageProps) {
   const submit = async () => {
     const state = {
       ...board.state,
+      periods: selectedPeriod
+        ? board.state.periods.map((period) =>
+            period.id === selectedPeriod.id
+              ? { ...period, start: periodStart, end: periodEnd }
+              : period,
+          )
+        : board.state.periods,
       settings: {
         ...settings,
-        excludedDates: [
-          ...new Set(dates.split(/[\s,]+/).filter(Boolean)),
-        ].sort(),
+        excludedDates,
       },
     };
     setError("");
     try {
-      validateRoleState(state);
+      validateRoleStateChange(board.state, state);
       setSaved(await save(state));
     } catch (e) {
       setError((e as Error).message);
     }
   };
   return (
-    <div className="space-y-5">
+    <div className="mx-auto max-w-3xl space-y-5">
       <RoleError message={error} />
       <section className={`${rolePanel} space-y-5`}>
+        <div>
+          <h2 className="text-lg font-bold">운영 기간</h2>
+          {selectedPeriod ? (
+            <div className="mt-3 space-y-3">
+              {editablePeriods.length > 1 && (
+                <RoleField label="수정할 운영 기간">
+                  <select
+                    className={roleInput}
+                    value={periodId}
+                    onChange={(event) => {
+                      const period = editablePeriods.find(
+                        (candidate) => candidate.id === event.target.value,
+                      );
+                      if (!period) return;
+                      setPeriodId(period.id);
+                      setPeriodStart(period.start);
+                      setPeriodEnd(period.end);
+                      setSaved(false);
+                    }}
+                  >
+                    {editablePeriods.map((period) => (
+                      <option key={period.id} value={period.id}>
+                        {period.start} ~ {period.end}
+                      </option>
+                    ))}
+                  </select>
+                </RoleField>
+              )}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <RoleField label="운영 시작일">
+                  <input
+                    type="date"
+                    className={`${roleInput} disabled:cursor-not-allowed disabled:bg-[#F8FAFC] disabled:text-[#64748B]`}
+                    value={periodStart}
+                    min={selectedPeriod.start > today ? today : undefined}
+                    disabled={busy || selectedPeriod.start <= today}
+                    onChange={(event) => {
+                      setPeriodStart(event.target.value);
+                      setSaved(false);
+                    }}
+                  />
+                </RoleField>
+                <RoleField label="운영 종료일">
+                  <input
+                    type="date"
+                    className={roleInput}
+                    value={periodEnd}
+                    min={today}
+                    disabled={busy}
+                    onChange={(event) => {
+                      setPeriodEnd(event.target.value);
+                      setSaved(false);
+                    }}
+                  />
+                </RoleField>
+              </div>
+              {selectedPeriod.start <= today && (
+                <p className="text-xs text-[#526174]">
+                  시작한 기간의 시작일과 지난 날짜는 변경할 수 없습니다.
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="mt-2 text-sm text-[#526174]">
+              진행 중인 배정이 없습니다. {" "}
+              <Link
+                className="font-semibold text-[#0F6CBD] underline underline-offset-2"
+                to="/tools/classroom-roles/assign"
+              >
+                학생 역할 배정
+              </Link>
+              에서 기간을 정해 주세요.
+            </p>
+          )}
+        </div>
+      </section>
+      <section className={`${rolePanel} space-y-5`}>
+        <RoleDays
+          label="학급 실천 요일"
+          value={settings.schoolDays}
+          onChange={(schoolDays) => change({ schoolDays })}
+        />
+        <div className="border-t border-[#E2E8F0] pt-5">
+          <RoleExcludedDatesCalendar
+            key={periodId}
+            dates={excludedDates}
+            onChange={(dates) => {
+              setExcludedDates(dates);
+              setSaved(false);
+            }}
+            initialMonth={
+              selectedPeriod?.start && selectedPeriod.start > today
+                ? selectedPeriod.start.slice(0, 7)
+                : today.slice(0, 7)
+            }
+            busy={busy}
+          />
+        </div>
+        <p className="text-xs text-[#526174]">
+          제외일은 집계에서 빼고, 제출된 기록은 유지합니다.
+        </p>
+      </section>
+      <section className={`${rolePanel} space-y-4`}>
+        <h2 className="text-lg font-bold">학생 공용 화면</h2>
         <RoleField label="학급 화면 제목">
           <input
             maxLength={60}
@@ -197,30 +323,6 @@ export function RoleSettingsPage({ board, save, busy }: RolePageProps) {
             onChange={(e) => change({ title: e.target.value })}
           />
         </RoleField>
-        <RoleDays
-          label="학급 실천 요일"
-          value={settings.schoolDays}
-          onChange={(schoolDays) => change({ schoolDays })}
-        />
-        <RoleField label="실천 제외일 (방학·체험학습 등, 한 줄에 YYYY-MM-DD)">
-          <textarea
-            rows={4}
-            className={roleInput}
-            value={dates}
-            placeholder="2026-10-09"
-            onChange={(e) => {
-              setDates(e.target.value);
-              setSaved(false);
-            }}
-          />
-        </RoleField>
-        <p className="text-xs text-[#526174]">
-          실천 요일과 제외일은 해당 날짜의 집계에 적용됩니다. 기존에 제출된
-          기록은 삭제하지 않습니다.
-        </p>
-      </section>
-      <section className={`${rolePanel} space-y-4`}>
-        <h2 className="text-lg font-bold">학생 공용 화면</h2>
         {(
           [
             ["publicEnabled", "학생 화면과 입력 허용"],
@@ -239,14 +341,13 @@ export function RoleSettingsPage({ board, save, busy }: RolePageProps) {
           </label>
         ))}
         <p className="text-sm leading-6 text-[#526174]">
-          이름을 선택하는 공용 링크입니다. 본인 인증을 하지 않으므로 다른 학생의
-          이름도 선택할 수 있습니다. 학급 안에서만 공유하고 교사가 필요할 때
-          정정해 주세요. 이름 가리기는 전자칠판 표시 옵션이며, 이름 선택
-          화면에는 실제 명단이 표시됩니다.
+          공용 링크에는 본인 인증이 없어 다른 학생 이름도 선택할 수 있습니다.
+          학급 안에서만 공유하고 기록을 확인해 주세요. 이름 가리기는
+          전자칠판에만 적용됩니다.
         </p>
       </section>
       <button
-        className={roleButton}
+        className={`${roleButton} w-full sm:w-auto`}
         disabled={busy}
         onClick={() => void submit()}
       >
