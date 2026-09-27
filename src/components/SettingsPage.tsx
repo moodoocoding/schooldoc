@@ -12,12 +12,14 @@ import { loadTeacherProfile, saveTeacherProfile } from '../features/settings/pro
 import { PrivacyRetentionPanel } from '../features/settings/PrivacyRetentionPanel';
 import { isConsentFormsDemoMode } from '../features/consentForms/consentFormsConfig';
 import { isDataCollectDemoMode } from '../features/dataCollect/dataCollectConfig';
+import { isMissionsDemo } from '../features/classMissions/missionApi';
 import { ClassRosterSettings } from '../features/classroomRoles/ClassRosterSettings';
 
 export const SettingsPage: React.FC = () => {
   const { configured, displayName, error, loading, signIn, user } = useTeacherAuth();
   const { settings: appearance, setFontSize, setTheme } = useAppearanceSettings();
   const isLoggedIn = Boolean(user);
+  const isRetentionDemo = isConsentFormsDemoMode || isDataCollectDemoMode || isMissionsDemo;
   const [activeTab, setActiveTab] = useState<'profile' | 'signature' | 'security' | 'display' | 'roster'>('profile');
   const [school, setSchool] = useState<SelectedSchool | null>(null);
   const [teacherName, setTeacherName] = useState<string>('');
@@ -64,6 +66,8 @@ export const SettingsPage: React.FC = () => {
               <ShieldCheck className="w-4 h-4 text-[#16803C]" />
               <span className="max-w-56 truncate text-xs font-bold text-[#16803C]">계정 인증됨 ({accountLabel})</span>
             </div>
+          ) : isRetentionDemo ? (
+            <span className="inline-flex items-center rounded-full border border-[#93C5FD] bg-[#EFF6FC] px-3.5 py-1.5 text-xs font-bold text-[#0B5B9F]">개발용 가상 데이터 미리보기</span>
           ) : (
             <button
               onClick={() => void signIn('/')}
@@ -78,7 +82,7 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       {/* Logged Out State Banner */}
-      {!isLoggedIn && (
+      {!isLoggedIn && !isRetentionDemo && (
         <div className="bg-[#EFF6FC] border border-[#0F6CBD]/20 rounded-xl p-6 text-center space-y-4 shadow-xs">
           <div className="w-12 h-12 rounded-full bg-[#0F6CBD] text-white flex items-center justify-center mx-auto shadow-xs">
             <Lock className="w-6 h-6" />
@@ -101,18 +105,19 @@ export const SettingsPage: React.FC = () => {
           {error ? <p role="alert" className="text-xs font-semibold text-[#B42318]">{error}</p> : null}
         </div>
       )}
+      {!isLoggedIn && isRetentionDemo ? <p role="status" className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FC] px-4 py-3 text-xs text-[#334155]">가상 데이터로 보관·파기 흐름을 확인할 수 있습니다. 계정 설정과 운영 자료는 교사 로그인 후 사용할 수 있습니다.</p> : null}
 
       {/* Main Settings Tabs & Content */}
       <div className="bg-white rounded-xl border border-[#DCE3EA] shadow-xs overflow-hidden">
         {/* Tab Header Buttons */}
         <div className="flex border-b border-[#DCE3EA] bg-[#F6F8FB] overflow-x-auto scrollbar-none">
-          <button onClick={() => setActiveTab('roster')} className={`min-h-[44px] whitespace-nowrap border-b-2 px-5 py-3.5 text-xs font-bold ${activeTab === 'roster' ? 'border-[#0F6CBD] bg-white text-[#0F6CBD]' : 'border-transparent text-[#64748B]'}`}>학급 학생 명단</button>
+          <button onClick={() => setActiveTab('roster')} className={`min-h-[44px] whitespace-nowrap border-b-2 px-5 py-3.5 text-xs font-bold ${activeTab === 'roster' ? 'border-[#0F6CBD] bg-white text-[#0F6CBD]' : 'border-transparent text-[#526174]'}`}>학급 학생 명단</button>
           <button
             onClick={() => setActiveTab('profile')}
             className={`px-5 py-3.5 text-xs font-bold transition-all border-b-2 flex items-center gap-2 whitespace-nowrap min-h-[44px] ${
               activeTab === 'profile'
                 ? 'border-[#0F6CBD] text-[#0F6CBD] bg-white font-black'
-                : 'border-transparent text-[#64748B] hover:text-[#0F172A]'
+                : 'border-transparent text-[#526174] hover:text-[#0F172A]'
             }`}
           >
             <User className="w-4 h-4" />
@@ -124,7 +129,7 @@ export const SettingsPage: React.FC = () => {
             className={`px-5 py-3.5 text-xs font-bold transition-all border-b-2 flex items-center gap-2 whitespace-nowrap min-h-[44px] ${
               activeTab === 'signature'
                 ? 'border-[#0F6CBD] text-[#0F6CBD] bg-white font-black'
-                : 'border-transparent text-[#64748B] hover:text-[#0F172A]'
+                : 'border-transparent text-[#526174] hover:text-[#0F172A]'
             }`}
           >
             <FileSignature className="w-4 h-4" />
@@ -136,7 +141,7 @@ export const SettingsPage: React.FC = () => {
             className={`px-5 py-3.5 text-xs font-bold transition-all border-b-2 flex items-center gap-2 whitespace-nowrap min-h-[44px] ${
               activeTab === 'security'
                 ? 'border-[#0F6CBD] text-[#0F6CBD] bg-white font-black'
-                : 'border-transparent text-[#64748B] hover:text-[#0F172A]'
+                : 'border-transparent text-[#526174] hover:text-[#0F172A]'
             }`}
           >
             <Bell className="w-4 h-4" />
@@ -148,7 +153,7 @@ export const SettingsPage: React.FC = () => {
             className={`px-5 py-3.5 text-xs font-bold transition-all border-b-2 flex items-center gap-2 whitespace-nowrap min-h-[44px] ${
               activeTab === 'display'
                 ? 'border-[#0F6CBD] text-[#0F6CBD] bg-white font-black'
-                : 'border-transparent text-[#64748B] hover:text-[#0F172A]'
+                : 'border-transparent text-[#526174] hover:text-[#0F172A]'
             }`}
           >
             <Sun className="w-4 h-4" />
@@ -276,7 +281,7 @@ export const SettingsPage: React.FC = () => {
         {/* Tab 3: Security */}
         {activeTab === 'security' && (
           <div className="p-6 sm:p-8">
-            <PrivacyRetentionPanel userId={user?.id ?? ''} isLoggedIn={isLoggedIn || isConsentFormsDemoMode || isDataCollectDemoMode} />
+            <PrivacyRetentionPanel userId={user?.id ?? ''} isLoggedIn={isLoggedIn || isRetentionDemo} />
           </div>
         )}
 

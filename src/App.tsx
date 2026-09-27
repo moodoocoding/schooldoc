@@ -19,6 +19,8 @@ import { ReceiptBooksWorkspace } from './features/classBudgetReceipts/ReceiptBoo
 import { ClassroomRolesWorkspace } from './features/classroomRoles/ClassroomRolesWorkspace';
 import { useAppearanceSettings } from './features/settings/appearanceContext';
 import { PublicClassroomRolesPage } from './features/classroomRoles/PublicClassroomRolesPage';
+import { ClassMissionsWorkspace } from './features/classMissions/ClassMissionsWorkspace';
+import { PublicClassMissionsPage } from './features/classMissions/PublicClassMissionsPage';
 import {
   canAccessClassBudgetReceipts,
   isClassBudgetReceiptsAdmin,
@@ -41,6 +43,13 @@ function AdminApp() {
 
   // 10 Core Services matched EXACTLY with user specification
   const allToolsMap: Record<string, SchoolTool> = {
+    'class-missions': {
+      id: 'class-missions',
+      name: '학급 미션',
+      desc: '학생의 완료 표시를 받고 미션별 현황을 확인합니다.',
+      iconName: 'clipboard-list',
+      status: 'ready',
+    },
     'classroom-roles': {
       id: 'classroom-roles',
       name: '1인 1역',
@@ -134,9 +143,11 @@ function AdminApp() {
   const isDataCollectRoute = location.pathname.startsWith('/tools/data-collect');
   const isReceiptBooksRoute = location.pathname.startsWith('/tools/receipts');
   const isClassroomRolesRoute = location.pathname.startsWith('/tools/classroom-roles');
+  const isClassMissionsRoute = location.pathname.startsWith('/tools/class-missions');
   const isRoleAssignmentRoute = /^\/tools\/classroom-roles\/(assign|rotate)$/.test(location.pathname);
 
   const toolRoutes: Record<string, string> = {
+    'class-missions': '/tools/class-missions',
     'classroom-roles': '/tools/classroom-roles',
     'registry-sign': '/tools/registry-sign',
     'student-lookup': '/tools/student-results',
@@ -199,13 +210,14 @@ function AdminApp() {
         건드리지 않는다.
       */}
       <div className="flex-1 flex flex-col min-w-0">
-        {isRegistryRoute || isStudentResultsRoute || isConsentFormsRoute || isSpecialRoomsRoute || isDataCollectRoute || isReceiptBooksRoute || isClassroomRolesRoute ? (
+        {isRegistryRoute || isStudentResultsRoute || isConsentFormsRoute || isSpecialRoomsRoute || isDataCollectRoute || isReceiptBooksRoute || isClassroomRolesRoute || isClassMissionsRoute ? (
           <main className={`min-w-0 overflow-x-clip p-4 sm:p-8 ${isRoleAssignmentRoute ? 'role-assignment-main' : ''}`}>
             {isRegistryRoute ? <RegistryWorkspace />
               : isStudentResultsRoute ? <StudentResultsWorkspace />
               : isConsentFormsRoute ? <ConsentFormsWorkspace />
               : isSpecialRoomsRoute ? <SpecialRoomsWorkspace />
               : isDataCollectRoute ? <DataCollectWorkspace />
+              : isClassMissionsRoute ? <ClassMissionsWorkspace />
               : isClassroomRolesRoute ? <Routes><Route path="/tools/classroom-roles/*" element={<ClassroomRolesWorkspace />} /></Routes>
               : canUseReceiptBooks ? <ReceiptBooksWorkspace />
                 : <section className="mx-auto max-w-xl border-y border-[#DCE3EA] bg-white px-6 py-16 text-center">
@@ -247,6 +259,7 @@ function AdminApp() {
 function App() {
   return (
     <Routes>
+      <Route path="/s/missions/:token" element={<PublicClassMissionsPage />} />
       <Route path="/s/roles/:token" element={<PublicClassroomRolesPage />} />
       <Route path="/s/registry/:token" element={<PublicRegistrySignPage />} />
       <Route path="/s/results/:token" element={<PublicStudentResultPage />} />

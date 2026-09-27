@@ -3,7 +3,8 @@ export type ActiveWorkToolId =
   | 'student-lookup'
   | 'notice-collect'
   | 'data-collect'
-  | 'special-room';
+  | 'special-room'
+  | 'class-missions';
 
 export interface ActiveWorkItem {
   id: string;
