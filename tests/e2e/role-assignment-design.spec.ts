@@ -41,7 +41,9 @@ test("PC에서 역할 카드와 전체 학생을 보며 연속 배정·해제한
   await page.getByRole("button", { name: "도서 정리 학생 선택" }).click();
   const desktop = page.locator("[data-role-desktop-picker]");
   await expect(desktop.getByRole("heading", { name: "역할 선택" })).toBeVisible();
-  await expect(desktop.getByRole("heading", { name: "학생 선택" })).toBeVisible();
+  await expect(desktop.getByRole("heading", { name: "학생 선택" })).toHaveCount(0);
+  await expect(desktop.getByRole("button", { name: "학생 검색 열기" })).toHaveCount(0);
+  await expect(desktop.locator("[data-role-pane-header]").nth(1).getByLabel("학생 범위")).toBeVisible();
   const headingAlignment = await desktop.locator("[data-role-pane-header]").evaluateAll((headers) =>
     headers.map((header) => ({
       top: header.getBoundingClientRect().top,
