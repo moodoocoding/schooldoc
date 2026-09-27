@@ -63,12 +63,30 @@ export function RoleAssignmentPage({
   const [start, setStart] = useState(initialStart);
   const [end, setEnd] = useState(roleMonthRange(initialStart.slice(0, 7)).end);
   const [error, setError] = useState("");
-  const [newRole, setNewRole] = useState("");
-  const [confirmed, setConfirmed] = useState(false);
-  const remaining = (role: ClassroomRole) =>
-    role.capacity -
-    Object.values(assignments).filter((id) => id === role.id).length;
+  const [periodEditing, setPeriodEditing] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [focusUnassignedSignal, setFocusUnassignedSignal] = useState(0);
+  const [draftChanged, setDraftChanged] = useState(false);
+  const reviewDialogRef = useRef<HTMLDialogElement>(null);
+  const reviewButtonRef = useRef<HTMLButtonElement>(null);
   const unassigned = students.filter((s) => !assignments[s.id]).length;
+  const seatShortage = Math.max(
+    0,
+    students.length - roles.reduce((total, role) => total + role.capacity, 0),
+  );
+  useEffect(() => {
+    const dialog = reviewDialogRef.current;
+    if (reviewOpen && dialog && !dialog.open) dialog.showModal();
+    if (!reviewOpen && dialog?.open) dialog.close();
+  }, [reviewOpen]);
+  useEffect(() => {
+    if (!draftChanged) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [draftChanged]);
   const applyRoster = () => {
     try {
       const parsed = parseRoleRoster(text, [
@@ -87,7 +105,7 @@ export function RoleAssignmentPage({
       setText(
         parsed.map((student) => `${student.number} ${student.name}`).join("\n"),
       );
-      setConfirmed(false);
+      setDraftChanged(true);
       setError("");
       rosterFocus.current = true;
       setEditingRoster(false);
@@ -100,61 +118,77 @@ export function RoleAssignmentPage({
     setStep(2);
     setError("");
   };
+  const draftState = () => ({
+    ...board.state,
+    roster: students,
+    roles,
+    periods: [
+      ...board.state.periods,
+      {
+        id: crypto.randomUUID(),
+        start,
+        end,
+        students,
+        roles: structuredClone(roles),
+        assignments,
+      },
+    ],
+  });
+  const openReview = () => {
+    try {
+      validateRoleStateChange(board.state, draftState());
+      setError("");
+      setReviewOpen(true);
+    } catch (cause) {
+      setError((cause as Error).message);
+    }
+  };
   const publish = async () => {
-    const state = {
-      ...board.state,
-      roster: students,
-      roles,
-      periods: [
-        ...board.state.periods,
-        {
-          id: crypto.randomUUID(),
-          start,
-          end,
-          students,
-          roles: structuredClone(roles),
-          assignments,
-        },
-      ],
-    };
+    const state = draftState();
     try {
       validateRoleStateChange(board.state, state);
       setError("");
-      if (await save(state)) navigate("/tools/classroom-roles/board");
+      if (await save(state)) {
+        setDraftChanged(false);
+        navigate("/tools/classroom-roles/board");
+      } else {
+        setError("저장하지 못했습니다. 배정은 유지되니 오류를 확인하고 다시 시도해 주세요.");
+        setReviewOpen(false);
+      }
     } catch (e) {
       setError((e as Error).message);
+      setReviewOpen(false);
     }
   };
   return (
-    <div className="space-y-5">
-      <ol className="grid grid-cols-2 gap-2 text-sm" aria-label="배정 단계">
-        {["학생 명단 확인", "역할별 학생 선택"].map((label, i) => (
+    <div className="space-y-3">
+      <ol className="flex flex-wrap gap-2 text-sm" aria-label="배정 단계">
+        {["명단 확인", "역할 배정"].map((label, i) => (
           <li
             aria-current={step === i + 1 ? "step" : undefined}
-            className={`rounded-xl border p-4 ${step === i + 1 ? "border-[#0F6CBD] bg-[#EFF6FC] font-bold" : "border-[#DCE3EA]"}`}
+            className={`rounded-full border px-3 py-1 ${step === i + 1 ? "border-[#0F6CBD] bg-[#EFF6FC] font-bold" : "border-[#DCE3EA]"}`}
             key={label}
           >
-            {i + 1}단계 · {label}
+            {i + 1}. {label}
           </li>
         ))}
       </ol>
       {rotate && (
         <p className="text-sm text-[#526174]">
           {previous
-            ? `이전 배정 ${previous.start} ~ ${previous.end}을 참고해 다음 기간을 준비합니다. 확정 전까지 기존 학생 화면은 바뀌지 않습니다.`
-            : "첫 배정을 만든 뒤 다음 기간부터 역할 교체를 이용할 수 있습니다."}
+            ? `이전 배정 ${previous.start} ~ ${previous.end} · 새 기간을 준비합니다.`
+            : "첫 배정을 만든 뒤 다음 기간부터 역할을 교체할 수 있습니다."}
         </p>
       )}
-      <RoleError message={error} />
       {step === 1 ? (
-        <section className={`${rolePanel} space-y-5`}>
+        <section className={`${rolePanel} space-y-4`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2
               ref={rosterHeadingRef}
               tabIndex={-1}
               className="text-xl font-bold focus:outline-none"
             >
-              학생 명단을 확인해 주세요
+              학생 명단
             </h2>
             {!editingRoster && (
               <button
@@ -171,11 +205,12 @@ export function RoleAssignmentPage({
           </div>
           <p className="text-sm text-[#526174]">
             {board.state.roster.length
-              ? "설정에 저장된 학생 명단을 자동으로 불러왔습니다."
+              ? "설정 명단을 불러왔습니다."
               : previous?.students.length
-                ? "이전 배정의 학생 명단을 불러왔습니다."
-                : "한 줄에 번호와 이름을 붙여 넣으세요."}
+                ? "이전 배정 명단을 불러왔습니다."
+                : "한 줄에 번호와 이름을 입력하세요."}
           </p>
+          <RoleError message={error} />
           {editingRoster ? (
             <>
               <RoleField label="학생 명단">
@@ -242,8 +277,9 @@ export function RoleAssignmentPage({
             </>
           )}
           <p className="text-xs text-[#64748B]">
-            동명이인은 번호로 구분합니다. 최대 60명. 명단 변경은 배정을 확정할
-            때 설정에도 저장됩니다.
+            {editingRoster
+              ? "최대 60명 · 같은 이름은 번호로 구분합니다."
+              : "명단 변경은 배정을 확정할 때 저장됩니다."}
           </p>
           <button
             className={roleButton}
@@ -255,106 +291,63 @@ export function RoleAssignmentPage({
         </section>
       ) : (
         <>
-          <section className={`${rolePanel} space-y-4`}>
-            <h2 className="text-xl font-bold">
-              배정 기간과 역할을 정해 주세요
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <RoleField label="시작일">
-                <input
-                  type="date"
-                  className={roleInput}
-                  value={start}
-                  onChange={(e) => {
-                    setStart(e.target.value);
-                    setConfirmed(false);
-                  }}
-                />
-              </RoleField>
-              <RoleField label="종료일">
-                <input
-                  type="date"
-                  className={roleInput}
-                  value={end}
-                  onChange={(e) => {
-                    setEnd(e.target.value);
-                    setConfirmed(false);
-                  }}
-                />
-              </RoleField>
+          <section className="rounded-xl border border-[#DCE3EA] bg-white px-4 py-2" aria-label="배정 기간">
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <span className="font-semibold">배정 기간</span>
+              <span>{start} ~ {end}</span>
+              <button
+                type="button"
+                className="min-h-11 font-semibold text-[#0F6CBD]"
+                disabled={busy}
+                onClick={() => setPeriodEditing((value) => !value)}
+              >
+                기간 변경
+              </button>
             </div>
-            <p className="text-xs text-[#526174]">
-              월 단위가 기본이며 주간·직접 기간도 가능합니다. 기존 확정 기간과
-              겹칠 수 없습니다.
-            </p>
-            <div
-              className="flex flex-wrap gap-3 rounded-xl bg-[#EFF6FC] p-4 text-sm font-bold"
-              role="status"
-            >
-              <span>미배정 학생 {unassigned}명</span>
-              <span>
-                남은 역할 자리 {roles.reduce((n, r) => n + remaining(r), 0)}개
-              </span>
-              <span>
-                자리 남은 역할 {roles.filter((r) => remaining(r) > 0).length}
-                종류
-              </span>
-            </div>
-            {unassigned > 0 && (
-              <p className="break-words text-sm leading-6 text-[#526174]">
-                미배정:{" "}
-                {students
-                  .filter((student) => !assignments[student.id])
-                  .map((student) => `${student.number}번 ${student.name}`)
-                  .join(", ")}
-              </p>
-            )}
-            <details>
-              <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold">
-                새 역할 추가
-              </summary>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <label className="grow">
-                  <span className="text-sm">새 역할 이름</span>
+            {periodEditing && (
+              <div className="grid gap-3 border-t border-[#E2E8F0] py-3 sm:grid-cols-2">
+                <RoleField label="시작일">
                   <input
+                    type="date"
                     className={roleInput}
-                    value={newRole}
-                    maxLength={40}
-                    onChange={(e) => setNewRole(e.target.value)}
+                    value={start}
+                    disabled={busy}
+                    onChange={(event) => {
+                      setStart(event.target.value);
+                      setDraftChanged(true);
+                    }}
                   />
-                </label>
-                <button
-                  className={`${roleSecondary} self-end`}
-                  disabled={!newRole.trim() || roles.length >= 60}
-                  onClick={() => {
-                    setRoles([
-                      ...roles,
-                      {
-                        id: crypto.randomUUID(),
-                        name: newRole.trim(),
-                        description: "",
-                        capacity: 1,
-                        weekdays: [1, 2, 3, 4, 5],
-                      },
-                    ]);
-                    setNewRole("");
-                    setConfirmed(false);
-                  }}
-                >
-                  역할 추가
-                </button>
+                </RoleField>
+                <RoleField label="종료일">
+                  <input
+                    type="date"
+                    className={roleInput}
+                    value={end}
+                    disabled={busy}
+                    onChange={(event) => {
+                      setEnd(event.target.value);
+                      setDraftChanged(true);
+                    }}
+                  />
+                </RoleField>
               </div>
-            </details>
+            )}
           </section>
+          {seatShortage > 0 && (
+            <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              역할 자리가 {seatShortage}개 부족합니다. 역할의 정원을 늘려 주세요.
+            </p>
+          )}
           <RoleStudentPicker
             students={students}
             roles={roles}
             assignments={assignments}
             previous={rotate ? previous : undefined}
             disabled={busy}
+            focusUnassignedSignal={focusUnassignedSignal}
             onChange={(nextAssignments) => {
               setAssignments(nextAssignments);
-              setConfirmed(false);
+              setDraftChanged(true);
             }}
             onCapacityChange={(roleId, capacity) => {
               setRoles((current) =>
@@ -362,38 +355,70 @@ export function RoleAssignmentPage({
                   role.id === roleId ? { ...role, capacity } : role,
                 ),
               );
-              setConfirmed(false);
+              setDraftChanged(true);
+            }}
+            onAddRole={(role) => {
+              setRoles((current) => [...current, role]);
+              setDraftChanged(true);
             }}
           />
-          <label className="flex items-start gap-3 text-sm leading-6">
-            <input
-              type="checkbox"
-              aria-label="배정 내용 확인"
-              className="mt-1 h-5 w-5"
-              checked={confirmed}
-              onChange={(e) => setConfirmed(e.target.checked)}
-            />
-            <span>
-              기간과 역할을 확인했습니다. 확정한 배정은 기록 보존을 위해
-              수정하지 않으며, 해당 기간이 되면 같은 학생 링크에 적용됩니다.
-            </span>
-          </label>
-          <div className="flex flex-wrap gap-3">
+          <RoleError message={error} />
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#DCE3EA] bg-white p-3">
             <button
               disabled={busy}
               className={roleSecondary}
               onClick={() => setStep(1)}
             >
-              이전: 명단 확인
+              이전
             </button>
+            {unassigned > 0 ? (
+              <button
+                type="button"
+                className="min-h-11 text-sm font-semibold text-[#0F6CBD]"
+                onClick={() => setFocusUnassignedSignal((value) => value + 1)}
+              >
+                미배정 {unassigned}명
+              </button>
+            ) : <span role="status" className="text-sm font-semibold text-[#16803C]">모두 배정됨</span>}
             <button
-              disabled={busy || unassigned > 0 || !confirmed}
+              ref={reviewButtonRef}
+              disabled={busy || unassigned > 0}
               className={roleButton}
-              onClick={() => void publish()}
+              onClick={openReview}
             >
-              {busy ? "확정 중…" : "배정 확정하기"}
+              배정 확인
             </button>
           </div>
+          <dialog
+            ref={reviewDialogRef}
+            aria-labelledby="role-review-heading"
+            className="m-auto w-[min(92vw,580px)] max-h-[80vh] overflow-y-auto rounded-xl border border-[#DCE3EA] bg-white p-5 shadow-xl backdrop:bg-black/40"
+            onClose={() => {
+              setReviewOpen(false);
+              reviewButtonRef.current?.focus();
+            }}
+          >
+            <h2 id="role-review-heading" className="text-xl font-bold">배정 확인</h2>
+            <p className="mt-2 text-sm">{start} ~ {end} · {students.length}명</p>
+            {start > roleToday() && <p className="mt-1 text-sm text-[#526174]">학생 화면에는 {start}부터 새 역할이 표시됩니다.</p>}
+            <div className="mt-4 space-y-3">
+              {roles.filter((role) => students.some((student) => assignments[student.id] === role.id)).map((role) => (
+                <section key={role.id} className="rounded-lg border border-[#DCE3EA] p-3">
+                  <h3 className="font-semibold">{role.name}</h3>
+                  <p className="mt-1 break-words text-sm text-[#526174]">
+                    {students.filter((student) => assignments[student.id] === role.id).map((student) => `${student.number}번 ${student.name}`).join(", ")}
+                  </p>
+                </section>
+              ))}
+            </div>
+            <p className="mt-4 text-sm font-semibold text-[#9A3412]">확정 후 이 배정은 직접 수정할 수 없습니다.</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" disabled={busy} className={roleSecondary} onClick={() => setReviewOpen(false)}>돌아가기</button>
+              <button type="button" disabled={busy} className={roleButton} onClick={() => void publish()}>
+                {busy ? "확정 중…" : "확정하기"}
+              </button>
+            </div>
+          </dialog>
         </>
       )}
     </div>
