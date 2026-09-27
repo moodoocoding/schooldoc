@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { defaultRoleState, parseRoleRoster } from '../../supabase/functions/_shared/classroomRoles';
 
 const root = '/tools/class-missions';
 const demoKey = 'schooldoc_class_missions_demo_v1';
+const roleDemoKey = 'schooldoc_classroom_roles_demo_v1';
 async function createClass(page: import('@playwright/test').Page, name = '가상 5학년 2반') {
   await page.goto(root);
   await page.getByRole('textbox', { name: '새 학급 이름' }).fill(name);
@@ -26,6 +28,120 @@ async function publishMission(page: import('@playwright/test').Page, name: strin
   await editor.getByRole('button', { name: '이 내용으로 발행' }).click();
   await expect(page.getByRole('region', { name: '미션 현황' })).toContainText(name);
 }
+
+test('설정 학급·학생을 자동 등록하고 기존 QR에서 새 미션을 본다', async ({ page, context }) => {
+  const roleState = defaultRoleState();
+  roleState.roster = parseRoleRoster('1 가상하늘\n2 가상바다');
+  await page.goto(root);
+  await page.evaluate(({ roleState }) => {
+    localStorage.setItem('schooldoc_teacher_profile_v1:local-demo-teacher', JSON.stringify({
+      school: null, teacherName: '가상교사', gradeClass: '3학년 2반 담임',
+    }));
+    localStorage.setItem('schooldoc_classroom_roles_demo_v1', JSON.stringify({
+      id: crypto.randomUUID(), public_token: crypto.randomUUID(), version: 1, state: roleState,
+    }));
+  }, { roleState });
+  await page.reload();
+  await expect(page.getByRole('combobox', { name: '학급 선택' })).toHaveValue(/.+/);
+  await expect(page.getByRole('combobox', { name: '학급 선택' })).toContainText('3학년 2반');
+  expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '[]').length, demoKey)).toBe(1);
+  const codesPanel = page.getByRole('region', { name: /이번에 발급한 개인 코드/ });
+  await expect(codesPanel).toContainText('2명');
+  const codes = await codesPanel.locator('strong.font-mono').allTextContents();
+  expect(codes).toHaveLength(2);
+  await page.screenshot({ path: test.info().outputPath('settings-synced-teacher-desktop.png'), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: test.info().outputPath('settings-synced-teacher-mobile.png'), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await page.getByRole('button', { name: '코드 목록 닫기' }).click();
+  await publishMission(page, '첫 번째 미션', false);
+  const before = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '[]')[0], demoKey);
+  const student = await context.newPage();
+  await student.setViewportSize({ width: 390, height: 844 });
+  await student.goto(`/s/missions/${before.publicToken}`);
+  await student.getByRole('textbox', { name: '개인 접속 코드' }).fill(codes[0]);
+  await student.getByRole('button', { name: '내 미션 보기' }).click();
+  await expect(student.getByText('첫 번째 미션')).toBeVisible();
+  await publishMission(page, '두 번째 미션', false);
+  await expect(student.getByText('두 번째 미션')).toHaveCount(0);
+  await student.getByRole('button', { name: '새로고침' }).click();
+  await expect(student.getByText('두 번째 미션')).toBeVisible();
+  await student.screenshot({ path: test.info().outputPath('same-qr-two-missions-student-mobile.png'), fullPage: true });
+  expect(await student.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const after = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '[]')[0], demoKey);
+  expect(after.publicToken).toBe(before.publicToken);
+
+  await page.evaluate((key) => {
+    const roleBoard = JSON.parse(localStorage.getItem(key) ?? '{}');
+    roleBoard.state.roster.push({ id: crypto.randomUUID(), number: 3, name: '가상새별' });
+    localStorage.setItem(key, JSON.stringify(roleBoard));
+  }, roleDemoKey);
+  await page.reload();
+  await expect(page.getByRole('region', { name: /이번에 발급한 개인 코드/ })).toContainText('1명');
+  await expect(page.getByRole('region', { name: '미션 현황' })).toContainText('대상 2명');
+  const finalBoard = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '[]')[0], demoKey);
+  expect(finalBoard.id).toBe(before.id);
+  expect(finalBoard.publicToken).toBe(before.publicToken);
+  expect(finalBoard.state.roster).toHaveLength(3);
+  expect(finalBoard.state.missions[0].targets).toHaveLength(2);
+  await student.getByRole('button', { name: '나가기' }).click();
+  await student.getByRole('textbox', { name: '개인 접속 코드' }).fill(codes[0]);
+  await student.getByRole('button', { name: '내 미션 보기' }).click();
+  await expect(student.getByRole('heading', { name: '가상하늘의 미션' })).toBeVisible();
+});
+
+test('설정 학생만 있으면 우리 반을 준비하고 번호 충돌은 보존하며 알린다', async ({ page }) => {
+  const roleState = defaultRoleState();
+  roleState.roster = parseRoleRoster('1 가상하늘\n2 가상바다');
+  await page.goto(root);
+  await page.evaluate((state) => {
+    localStorage.setItem('schooldoc_classroom_roles_demo_v1', JSON.stringify({
+      id: crypto.randomUUID(), public_token: crypto.randomUUID(), version: 1, state,
+    }));
+  }, roleState);
+  await page.reload();
+  await expect(page.getByRole('combobox', { name: '학급 선택' })).toContainText('우리 반');
+  await expect(page.getByRole('region', { name: /이번에 발급한 개인 코드/ })).toContainText('2명');
+  const before = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '[]')[0], demoKey);
+  await page.evaluate((key) => {
+    const roleBoard = JSON.parse(localStorage.getItem(key) ?? '{}');
+    roleBoard.state.roster[0].name = '가상새이름';
+    localStorage.setItem(key, JSON.stringify(roleBoard));
+  }, roleDemoKey);
+  await page.reload();
+  await expect(page.getByRole('alert')).toContainText('번호·이름이 1명 다릅니다');
+  const after = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '[]')[0], demoKey);
+  expect(after.id).toBe(before.id);
+  expect(after.state.roster[0].name).toBe('가상하늘');
+});
+
+test('마지막 미션 파기 후 중지된 학급에는 설정 학생을 다시 넣지 않는다', async ({ page }) => {
+  const roleState = defaultRoleState();
+  roleState.roster = parseRoleRoster('1 가상하늘');
+  await page.goto(root);
+  await page.evaluate((state) => {
+    localStorage.setItem('schooldoc_teacher_profile_v1:local-demo-teacher', JSON.stringify({
+      school: null, teacherName: '가상교사', gradeClass: '3학년 2반',
+    }));
+    localStorage.setItem('schooldoc_classroom_roles_demo_v1', JSON.stringify({
+      id: crypto.randomUUID(), public_token: crypto.randomUUID(), version: 1, state,
+    }));
+    localStorage.setItem('schooldoc_class_missions_demo_v1', JSON.stringify([{
+      id: crypto.randomUUID(), publicToken: crypto.randomUUID(), publicEnabled: false,
+      version: 2, updatedAt: new Date().toISOString(),
+      state: { className: '3학년 2반', roster: [], missions: [], checks: [], events: [] },
+    }]));
+  }, roleState);
+  await page.reload();
+  await expect(page.getByRole('alert')).toContainText('다시 등록하지 않습니다');
+  await expect(page.getByText(/학급 명단과 개인 접속 코드 · 0명/)).toBeVisible();
+  await expect(page.getByRole('region', { name: /이번에 발급한 개인 코드/ })).toHaveCount(0);
+  await page.getByRole('checkbox', { name: '공개 링크 사용' }).click();
+  await expect(page.getByRole('checkbox', { name: '공개 링크 사용' })).toBeChecked();
+  await page.getByRole('button', { name: '새로고침' }).click();
+  await expect(page.getByRole('region', { name: /이번에 발급한 개인 코드/ })).toContainText('1명');
+});
 
 test('교사 발행 → 학생 표시·취소·재표시 → 교사 확인, 개인 정보 격리', async ({ page, context }) => {
   const errors: string[] = [];

@@ -211,6 +211,7 @@ export const SettingsPage: React.FC = () => {
                   placeholder="예: 3학년 2반 담임"
                   className="w-full border border-[#DCE3EA] rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0F6CBD] disabled:bg-[#F6F8FB] disabled:text-[#64748B]"
                 />
+                <p className="mt-1.5 text-xs text-[#64748B]">예: 3학년 2반 담임. 이 브라우저의 프로필에 저장되며, 학급 미션을 열면 해당 학급을 준비합니다.</p>
               </div>
             </div>
 
