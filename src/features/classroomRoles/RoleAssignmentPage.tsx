@@ -19,6 +19,8 @@ import {
 } from "./RoleControls";
 import { RoleStudentPicker } from "./RoleStudentPicker";
 
+const mobileRosterPreviewCount = 6;
+
 export function RoleAssignmentPage({
   board,
   save,
@@ -299,30 +301,25 @@ export function RoleAssignmentPage({
               <p className="font-semibold text-[#0F6CBD]">
                 총 {students.length}명 · 번호순
               </p>
-              <table className="w-full table-fixed border-collapse text-left text-sm">
-                <caption className="sr-only">배정할 학생 명단</caption>
-                <thead className="bg-[#F8FAFC]">
-                  <tr className="border-b border-[#DCE3EA]">
-                    <th scope="col" className="w-20 px-3 py-3">
-                      번호
-                    </th>
-                    <th scope="col" className="px-3 py-3">
-                      이름
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {students.map((student, index) => (
-                    <tr key={student.id} className={`border-b border-[#E2E8F0] ${index >= 5 && !rosterExpanded ? "hidden sm:table-row" : ""}`}>
-                      <td className="px-3 py-3">{student.number}</td>
-                      <td className="break-words px-3 py-3 font-medium">
-                        {student.name}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {students.length > 5 && (
+              <ul
+                aria-label="배정할 학생 명단"
+                className="grid grid-cols-1 gap-x-4 text-sm min-[360px]:grid-cols-2 lg:grid-cols-4"
+              >
+                {students.map((student, index) => (
+                  <li
+                    key={student.id}
+                    className={`min-h-11 min-w-0 items-center gap-2 border-b border-[#E2E8F0] py-2 ${index >= mobileRosterPreviewCount && !rosterExpanded ? "hidden sm:flex" : "flex"}`}
+                  >
+                    <span className="w-7 shrink-0 font-semibold text-[#526174]">
+                      {student.number}
+                    </span>
+                    <span className="min-w-0 break-words font-medium">
+                      {student.name}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {students.length > mobileRosterPreviewCount && (
                 <button
                   type="button"
                   className="min-h-11 text-sm font-semibold text-[#0F6CBD] sm:hidden"
