@@ -231,10 +231,11 @@ export function ClassroomRolesWorkspace() {
   const current = tiles.find(
     ([path]) => location.pathname === `${ROLES_ROOT}/${path}`,
   );
+  const isAssignment = location.pathname === `${ROLES_ROOT}/assign` || location.pathname === `${ROLES_ROOT}/rotate`;
   const props = board ? { board, busy, save } : null;
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <header className={current ? "space-y-1" : "space-y-3"}>
+    <div className={`mx-auto space-y-6 ${isAssignment ? 'max-w-6xl lg:max-w-none lg:space-y-0' : 'max-w-6xl'}`}>
+      <header className={`${current ? "space-y-1" : "space-y-3"} ${isAssignment ? 'lg:hidden' : ''}`}>
         {current && (
           <Link
             className="inline-flex min-h-11 items-center gap-2 text-sm text-[#526174]"
