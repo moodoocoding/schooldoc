@@ -8,6 +8,7 @@ import {
   roleDates,
   roleMonthRange,
   roleToday,
+  roleWeekDates,
   validateClassroomRoles,
   validateRoleRecord,
   validateRoleRoster,
@@ -271,6 +272,9 @@ describe("1인 1역 공통 검증", () => {
     ).toBeUndefined();
   });
   test("날짜 순회는 월 경계·빈 기간·잘못된 날짜를 처리", () => {
+    expect(roleWeekDates("2026-10-01")).toEqual([
+      "2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04",
+    ]);
     expect(roleDates("2026-10-30", "2026-11-02")).toEqual([
       "2026-10-30",
       "2026-10-31",
@@ -279,5 +283,19 @@ describe("1인 1역 공통 검증", () => {
     ]);
     expect(roleDates("2026-10-02", "2026-10-01")).toEqual([]);
     expect(roleDates("invalid", "2026-10-01")).toEqual([]);
+  });
+  test("공개 주간 기록은 선택한 학생에게만 전달한다", () => {
+    const state = fixture();
+    const period = state.periods[0];
+    const [first, second] = state.roster;
+    const records: RoleRecord[] = [
+      { period_id: period.id, student_id: first.id, record_date: "2026-10-05", status: "done", source: "student", updated_at: "" },
+      { period_id: period.id, student_id: first.id, record_date: "2026-10-06", status: "not_done", source: "student", updated_at: "" },
+      { period_id: period.id, student_id: second.id, record_date: "2026-10-06", status: "done", source: "teacher", updated_at: "" },
+    ];
+    expect(publicRoleProjection(state, records, "2026-10-07").week).toEqual([]);
+    const selected = publicRoleProjection(state, records, "2026-10-07", first.id);
+    expect(selected.week.map((day) => day.status)).toEqual(["done", "not_done", undefined, undefined, undefined, undefined, undefined]);
+    expect(JSON.stringify(selected)).not.toContain("updated_at");
   });
 });

@@ -54,6 +54,8 @@ export function PublicClassroomRolesPage() {
     };
   }, [token, selected, retry]);
   const student = board?.students.find((s) => s.id === selected);
+  const weekDone = board?.week.filter((day) => day.eligible && day.status === "done").length ?? 0;
+  const weekEligible = board?.week.filter((day) => day.eligible && day.status !== "exempt" && day.date <= (board?.today ?? "")).length ?? 0;
   const submit = async (status: "done" | "not_done") => {
     if (!student || !board?.periodId || busy || loading || error) return;
     setBusy(true);
@@ -166,6 +168,17 @@ export function PublicClassroomRolesPage() {
                   "우리 반에서 약속한 역할을 실천해요."}
               </p>
             </div>
+            <div className="rounded-xl border border-[#DCE3EA] bg-[#F8FAFC] p-4">
+              <h3 className="font-bold">이번 주 실천 {weekDone}/{weekEligible}일</h3>
+              <div className="mt-3 grid grid-cols-7 gap-1 text-center">
+                {board.week.map((day, index) => {
+                  const symbol = day.date > board.today || !day.eligible || day.status === "exempt" ? "·" : day.status === "done" ? "O" : day.status === "not_done" ? "X" : "—";
+                  const label = symbol === "O" ? "했어요" : symbol === "X" ? "못했어요" : symbol === "—" ? "미기록" : "실천일 아님 또는 미래";
+                  return <div key={day.date} className="min-w-0 rounded-lg bg-white px-1 py-2" aria-label={`${day.date} ${label}`}><span className="block text-xs text-[#526174]">{["월", "화", "수", "목", "금", "토", "일"][index]}</span><span className="mt-1 block font-bold">{symbol}</span></div>;
+                })}
+              </div>
+              <p className="mt-2 text-xs text-[#64748B]">O 했어요 · X 못했어요 · — 미기록 · · 실천일 아님</p>
+            </div>
             {student.status && (
               <p>
                 오늘 기록: <strong>{ROLE_STATUS_LABELS[student.status]}</strong>{" "}
@@ -210,6 +223,7 @@ export function PublicClassroomRolesPage() {
                 <button
                   className={`${rolePanel} min-h-24 text-center hover:border-[#0F6CBD]`}
                   key={s.id}
+                  aria-label={`${s.number}번 ${s.name}`}
                   onClick={() => {
                     setMessage("");
                     setSelected(s.id);
@@ -217,9 +231,10 @@ export function PublicClassroomRolesPage() {
                 >
                   <span className="text-sm text-[#64748B]">{s.number}번</span>
                   <span className="mt-1 block text-lg font-bold">{s.name}</span>
+                  <span className="mt-1 block text-xs text-[#526174]">{s.role.name}</span>
                   {board.showStatus && (
                     <span className="mt-2 block text-xs text-[#0F6CBD]">
-                      {
+                      오늘 · {
                         ROLE_STATUS_LABELS[
                           s.status ?? (s.eligible ? "missing" : "exempt")
                         ]

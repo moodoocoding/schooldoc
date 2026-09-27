@@ -56,6 +56,7 @@ export type PublicRoleBoard = {
   })[];
   maskDisplayNames: boolean;
   showStatus: boolean;
+  week: { date: string; eligible: boolean; status?: RoleStatus }[];
 };
 
 export const ROLE_STATUS_LABELS = {
@@ -73,6 +74,12 @@ export const validRoleDate = (value: unknown): value is string =>
   new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
 export const roleWeekday = (date: string) =>
   new Date(`${date}T00:00:00Z`).getUTCDay();
+export const roleWeekDates = (date: string) => {
+  const monday = Date.parse(`${date}T00:00:00Z`) - ((roleWeekday(date) + 6) % 7) * 86400000;
+  return Array.from({ length: 7 }, (_, index) =>
+    new Date(monday + index * 86400000).toISOString().slice(0, 10),
+  );
+};
 export const activeRolePeriod = (state: RoleState, date: string) =>
   state.periods.find((p) => p.start <= date && date <= p.end);
 export const roleForStudent = (period: RolePeriod, studentId: string) =>
@@ -350,6 +357,7 @@ export function publicRoleProjection(
 ): PublicRoleBoard {
   const period = activeRolePeriod(state, today);
   const enabled = state.settings.publicEnabled;
+  const selected = enabled && period?.students.some((s) => s.id === selectedId);
   return {
     title: state.settings.title,
     today,
@@ -361,6 +369,17 @@ export function publicRoleProjection(
         : "",
     maskDisplayNames: state.settings.maskDisplayNames,
     showStatus: state.settings.showPublicStatus,
+    week: selected
+      ? roleWeekDates(today).map((date) => {
+          const dayPeriod = activeRolePeriod(state, date);
+          const eligible = Boolean(dayPeriod?.students.some((s) => s.id === selectedId) &&
+            isRoleDay(state, dayPeriod, selectedId!, date));
+          const record = dayPeriod && records.find((r) =>
+            r.period_id === dayPeriod.id && r.student_id === selectedId && r.record_date === date
+          );
+          return { date, eligible, ...(record ? { status: record.status } : {}) };
+        })
+      : [],
     students:
       !enabled || !period
         ? []

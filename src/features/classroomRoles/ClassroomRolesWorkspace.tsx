@@ -30,7 +30,8 @@ import {
 import { useRoleRecords } from "./useRoleRecords";
 import { RoleAssignmentPage } from "./RoleAssignmentPage";
 import { RoleCatalogPage, RoleSettingsPage } from "./RoleConfigurationPages";
-import { RolePracticePage, RoleHistoryPage } from "./RoleRecordPages";
+import { RoleHistoryPage } from "./RoleRecordPages";
+import { RolePracticeBoardPage } from "./RolePracticeBoardPage";
 export const ROLES_ROOT = "/tools/classroom-roles";
 export type RolePageProps = {
   board: RoleBoard;
@@ -299,7 +300,7 @@ export function ClassroomRolesWorkspace() {
           />
           <Route path="roles" element={<RoleCatalogPage {...props} />} />
           <Route path="settings" element={<RoleSettingsPage {...props} />} />
-          <Route path="board" element={<RolePracticePage {...props} />} />
+          <Route path="board" element={<RolePracticeBoardPage {...props} />} />
           <Route path="records" element={<RoleHistoryPage {...props} />} />
           <Route path="*" element={<RolesHome board={props.board} />} />
         </Routes>

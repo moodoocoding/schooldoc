@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   parseRoleRoster,
   roleMonthRange,
@@ -28,6 +28,7 @@ export function RoleAssignmentPage({
   rotate = false,
 }: RolePageProps & { rotate?: boolean }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const previous = [...board.state.periods].sort((a, b) =>
     b.end.localeCompare(a.end),
   )[0];
@@ -39,7 +40,7 @@ export function RoleAssignmentPage({
         .toISOString()
         .slice(0, 10)
     : roleMonthRange(roleToday().slice(0, 7)).start;
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(() => searchParams.get("step") === "roles" && initialRoster.length > 0 ? 2 : 1);
   const [text, setText] = useState(
     initialRoster.map((s) => `${s.number} ${s.name}`).join("\n"),
   );
