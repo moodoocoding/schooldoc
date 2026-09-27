@@ -172,6 +172,15 @@ try {
     await expect(page.getByText('설정 명단을 불러왔습니다.')).toBeVisible();
     await expect(page.getByRole('table', { name: '배정할 학생 명단' }).getByRole('row')).toHaveCount(3);
     await page.getByRole('button', { name: '다음: 역할 설정' }).click();
+    const roleList = page.getByRole('region', { name: '역할 목록' });
+    const studentPanel = page.getByRole('region', { name: '담당 학생 선택' });
+    const roleGridColumns = await roleList.locator('div.grid').first()
+      .evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length);
+    assert.equal(roleGridColumns, 2);
+    assert.notEqual(
+      await roleList.evaluate((element) => getComputedStyle(element).backgroundColor),
+      await studentPanel.evaluate((element) => getComputedStyle(element).backgroundColor),
+    );
     await page.getByRole('button', { name: `${other.state.roles[0].name} 학생 선택`, exact: true }).click();
     await page.getByRole('button', { name: '정원 변경' }).click();
     await page.getByLabel(`${other.state.roles[0].name} 정원`, { exact: true }).fill('2');
@@ -201,7 +210,7 @@ try {
     await page.getByRole('button', { name: '기록 새로고침' }).click();
     await expect(page.getByLabel('1번 가상새봄 기록 정정')).toHaveValue('done');
     await page.getByLabel('2번 가상푸름 기록 정정').selectOption('exempt');
-    await expect(page.getByRole('status')).toContainText('교사 정정');
+    await expect(page.getByRole('status').filter({ hasText: '교사 정정' })).toContainText('교사 정정');
     await page.goto(`${root}/records`);
     await page.getByRole('button', { name: /1번 가상새봄/ }).click();
     await expect(page.locator('#role-student-history')).toContainText('학생 자기보고');
