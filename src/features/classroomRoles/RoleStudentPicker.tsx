@@ -131,7 +131,7 @@ export function RoleStudentPicker({
     setNewRoleError("");
   };
   const roleChoices = (fromDialog: boolean) => (
-    <div className="space-y-1">
+    <div className={fromDialog ? "space-y-1" : "grid grid-cols-2 gap-1"}>
       {roles.map((role) => {
         const count = roleAssignedCount(assignments, role.id);
         const active = activeRole?.id === role.id;
@@ -143,7 +143,7 @@ export function RoleStudentPicker({
             aria-pressed={active}
             disabled={disabled}
             onClick={() => chooseRole(role.id, fromDialog)}
-            className={`flex min-h-11 w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm focus-visible:outline-2 focus-visible:outline-[#0F6CBD] ${active ? "bg-[#EFF6FC] font-bold text-[#0F6CBD]" : "hover:bg-[#F1F5F9]"}`}
+            className={`flex min-h-11 w-full items-center justify-between gap-1 rounded-lg border px-2 py-2 text-left text-sm focus-visible:outline-2 focus-visible:outline-[#0F6CBD] ${active ? "border-[#0F6CBD] bg-white font-bold text-[#0B589D] shadow-sm" : "border-transparent bg-white/70 hover:border-[#A8C9E3] hover:bg-white"}`}
           >
             <span className="min-w-0 break-words">{role.name}</span>
             <span className="shrink-0 text-xs tabular-nums text-[#526174]">
@@ -199,9 +199,9 @@ export function RoleStudentPicker({
           <span className="shrink-0 text-xs text-[#0F6CBD]">역할 변경</span>
         </button>
       </div>
-      <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
-        <section className="hidden min-w-0 rounded-xl border border-[#DCE3EA] bg-white p-3 lg:block" aria-label="역할 목록">
-          <h2 className="px-3 pb-2 text-sm font-semibold">역할 <span className="text-[#64748B]">배정/정원</span></h2>
+      <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+        <section className="hidden min-w-0 rounded-xl border border-[#BDD8EC] bg-[#EAF3FB] p-3 lg:block" aria-label="역할 목록">
+          <h2 className="px-2 pb-2 text-sm font-semibold text-[#25415B]">역할 <span className="text-[#526174]">배정/정원</span></h2>
           {roleChoices(false)}
           {addRoleControls()}
         </section>
