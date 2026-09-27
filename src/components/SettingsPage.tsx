@@ -195,10 +195,11 @@ export const SettingsPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-[#0F172A] block mb-1.5">
-                  담당 학년 / 학급 / 직책
+                <label htmlFor="teacher-grade-class" className="text-xs font-bold text-[#0F172A] block mb-1.5">
+                  담당학급
                 </label>
                 <input
+                  id="teacher-grade-class"
                   type="text"
                   value={gradeClass}
                   onChange={(e) => { setGradeClass(e.target.value); setProfileSaved(false); }}
