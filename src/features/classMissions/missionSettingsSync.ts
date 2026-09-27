@@ -9,13 +9,11 @@ const DEFAULT_CLASS_NAME = '우리 반';
 export const MISSIONS_DEMO_PROFILE_ID = 'local-demo-teacher';
 
 export function settingsMissionClassName(value: string): string {
-  const trimmed = value.trim().replace(/\s+/g, ' ');
-  const gradeAndClass = trimmed.match(/(\d{1,2})\s*학년\s*(\d{1,2})\s*반/)
-    ?? trimmed.match(/(\d{1,2})\s*[-/]\s*(\d{1,2})(?:\s*반)?/);
+  const trimmed = value.trim().replace(/\s+/g, ' ').replace(/\s+담임(?:교사)?$/, '');
+  const gradeAndClass = trimmed.match(/^(\d{1,2})\s*학년\s*(\d{1,2})\s*반$/)
+    ?? trimmed.match(/^(\d{1,2})\s*[-/]\s*(\d{1,2})(?:\s*반)?$/);
   if (gradeAndClass) return `${Number(gradeAndClass[1])}학년 ${Number(gradeAndClass[2])}반`;
-  const namedClass = trimmed.match(/^(.+?반)(?:\s+담임(?:교사)?)?$/);
-  if (namedClass) return namedClass[1];
-  return /학급/.test(trimmed) ? trimmed.replace(/\s+담임(?:교사)?$/, '') : '';
+  return /반$|학급$/.test(trimmed) ? trimmed : '';
 }
 
 const classKey = (name: string) => (settingsMissionClassName(name) || name).replace(/\s+/g, '').toLowerCase();
@@ -46,26 +44,39 @@ export interface MissionSettingsSyncResult {
 }
 
 async function applyMissionSettings(userId: string, displayName: string): Promise<MissionSettingsSyncResult> {
+  if (isMissionsDemo !== isRolesDemo) {
+    return {
+      boards: await listMissionBoards(), selectedBoardId: '', issuedCodes: [], notice: '',
+      warning: '설정 명단과 학급 미션의 저장 모드가 달라 자동 등록하지 않았습니다. 개발용 데모 설정을 확인해 주세요.',
+    };
+  }
   const className = settingsMissionClassName(loadTeacherProfile(userId, displayName).gradeClass);
   const [boardsResult, rosterResult] = await Promise.allSettled([
     listMissionBoards(),
-    !isMissionsDemo || isRolesDemo ? loadRoleBoard().then((board) => board.state.roster) : Promise.resolve([] as RoleStudent[]),
+    loadRoleBoard().then((board) => board.state.roster),
   ]);
   if (boardsResult.status === 'rejected') throw boardsResult.reason;
   let boards = boardsResult.value;
   const configuredRoster = rosterResult.status === 'fulfilled' ? rosterResult.value : [];
   const rosterLoadFailed = rosterResult.status === 'rejected';
 
-  let target = className ? boards.find((board) => classKey(board.state.className) === classKey(className)) : undefined;
+  const matchingBoards = className ? boards.filter((board) => classKey(board.state.className) === classKey(className)) : [];
+  if (matchingBoards.length > 1) {
+    return {
+      boards, selectedBoardId: '', issuedCodes: [], notice: '',
+      warning: '설정 학급과 이름이 같은 학급이 여러 개라 학생을 자동 등록하지 않았습니다. 학급을 확인해 주세요.',
+    };
+  }
+  let target = matchingBoards[0];
   let created = false;
   if (className && !target) {
-    target = await createMissionBoard(className);
+    target = await createMissionBoard(className, { fromSettings: true });
     boards = [...boards, target];
     created = true;
   } else if (!className && configuredRoster.length) {
     if (boards.length === 1) target = boards[0];
     else if (boards.length === 0) {
-      target = await createMissionBoard(DEFAULT_CLASS_NAME);
+      target = await createMissionBoard(DEFAULT_CLASS_NAME, { fromSettings: true });
       boards = [target];
       created = true;
     }
@@ -79,7 +90,7 @@ async function applyMissionSettings(userId: string, displayName: string): Promis
         ? '설정 학생을 등록할 학급을 정할 수 없습니다. 환경 설정의 담당 학급을 입력해 주세요.' : '',
   };
   if (!target || !configuredRoster.length) return base;
-  if (!created && !target.publicEnabled && !target.state.roster.length && !target.state.missions.length) {
+  if (!target.publicEnabled && !target.state.roster.length && !target.state.missions.length) {
     return { ...base, warning: '학생 링크가 중지된 빈 학급에는 설정 명단을 다시 등록하지 않습니다. 새로 시작하려면 공개 링크를 켜고 새로고침해 주세요.' };
   }
   try {

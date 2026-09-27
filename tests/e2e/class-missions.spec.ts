@@ -91,6 +91,58 @@ test('설정 학급·학생을 자동 등록하고 기존 QR에서 새 미션을
   await expect(student.getByRole('heading', { name: '가상하늘의 미션' })).toBeVisible();
 });
 
+test('설정 학급은 이전 연도 학급과 분리하여 만든다', async ({ page }) => {
+  const roleState = defaultRoleState();
+  roleState.roster = parseRoleRoster('1 가상올해학생');
+  const oldClass = {
+    id: crypto.randomUUID(), publicToken: crypto.randomUUID(), publicEnabled: true,
+    version: 1, updatedAt: new Date().toISOString(),
+    state: { className: '2025학년도 3학년 2반', roster: [], missions: [], checks: [], events: [] },
+  };
+  await page.goto(root);
+  await page.evaluate(({ state, oldClass }) => {
+    localStorage.setItem('schooldoc_teacher_profile_v1:local-demo-teacher', JSON.stringify({
+      school: null, teacherName: '가상교사', gradeClass: '3학년 2반',
+    }));
+    localStorage.setItem('schooldoc_classroom_roles_demo_v1', JSON.stringify({
+      id: crypto.randomUUID(), public_token: crypto.randomUUID(), version: 1, state,
+    }));
+    localStorage.setItem('schooldoc_class_missions_demo_v1', JSON.stringify([oldClass]));
+  }, { state: roleState, oldClass });
+  await page.reload();
+  const boards = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '[]'), demoKey);
+  expect(boards).toHaveLength(2);
+  expect(boards.find((board: typeof oldClass) => board.id === oldClass.id)?.state.roster).toHaveLength(0);
+  expect(boards.find((board: typeof oldClass) => board.state.className === '3학년 2반')?.state.roster).toHaveLength(1);
+  await expect(page.getByRole('combobox', { name: '학급 선택' })).toContainText('3학년 2반');
+});
+
+test('동일한 이름의 학급이 둘이면 설정 학생을 임의의 학급에 넣지 않는다', async ({ page }) => {
+  const roleState = defaultRoleState();
+  roleState.roster = parseRoleRoster('1 가상하늘');
+  await page.goto(root);
+  await page.evaluate((state) => {
+    localStorage.setItem('schooldoc_teacher_profile_v1:local-demo-teacher', JSON.stringify({
+      school: null, teacherName: '가상교사', gradeClass: '3학년 2반',
+    }));
+    localStorage.setItem('schooldoc_classroom_roles_demo_v1', JSON.stringify({
+      id: crypto.randomUUID(), public_token: crypto.randomUUID(), version: 1, state,
+    }));
+    localStorage.setItem('schooldoc_class_missions_demo_v1', JSON.stringify(
+      ['3학년 2반', '3학년2반'].map((className) => ({
+        id: crypto.randomUUID(), publicToken: crypto.randomUUID(), publicEnabled: true,
+        version: 1, updatedAt: new Date().toISOString(),
+        state: { className, roster: [], missions: [], checks: [], events: [] },
+      })),
+    ));
+  }, roleState);
+  await page.reload();
+  await expect(page.getByRole('alert')).toContainText('이름이 같은 학급이 여러 개');
+  const boards = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '[]'), demoKey);
+  expect(boards).toHaveLength(2);
+  expect(boards.every((board: { state: { roster: unknown[] } }) => board.state.roster.length === 0)).toBe(true);
+});
+
 test('설정 학생만 있으면 우리 반을 준비하고 번호 충돌은 보존하며 알린다', async ({ page }) => {
   const roleState = defaultRoleState();
   roleState.roster = parseRoleRoster('1 가상하늘\n2 가상바다');

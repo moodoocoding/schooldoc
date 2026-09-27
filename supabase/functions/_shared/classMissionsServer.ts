@@ -70,6 +70,23 @@ function projection(row: BoardRow, state: StoredMissionState): MissionBoard {
     publicEnabled: row.public_enabled, updatedAt: row.updated_at,
     state: { ...state, roster: state.roster.map(({ id, number, name }) => ({ id, number, name })) } };
 }
+async function settingsBoardId(ownerId: string, className: string): Promise<string> {
+  const lookup = await seal.nameLookup(`class-missions-settings:${ownerId}:${className}`);
+  const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(lookup)));
+  bytes[6] = (bytes[6] & 0x0f) | 0x80;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes.slice(0, 16)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+async function existingSettingsBoard(db: Client, boardId: string, ownerId: string, className: string): Promise<MissionBoard | null> {
+  const { data, error } = await db.from('class_mission_boards').select('*').eq('id', boardId).eq('owner_id', ownerId).maybeSingle();
+  if (error) fail('학급을 확인하지 못했습니다.', 503);
+  if (!data) return null;
+  const row = data as BoardRow;
+  const state = await decrypt(row);
+  if (state.className !== className) fail('자동 생성한 학급의 이름이 변경되었습니다. 설정 학급을 확인해 주세요.', 409);
+  return projection(row, state);
+}
 async function saveRow(db: Client, row: BoardRow, next: StoredMissionState,
   extra: Record<string, unknown> = {}): Promise<BoardRow> {
   const { data, error } = await db.from('class_mission_boards').update({
@@ -98,13 +115,28 @@ async function handleAdmin(db: Client, body: Record<string, unknown>, ownerId: s
   }
   if (body.action === 'createBoard') {
     const className = validateClassName(body.className);
+    const boardId = body.fromSettings === true ? await settingsBoardId(ownerId, className) : null;
+    if (boardId) {
+      const existing = await existingSettingsBoard(db, boardId, ownerId, className);
+      if (existing) return json({ board: existing });
+    }
     const { count, error: countError } = await db.from('class_mission_boards').select('id', { count: 'exact', head: true }).eq('owner_id', ownerId);
     if (countError) fail('학급 수를 확인하지 못했습니다.', 503);
-    if ((count ?? 0) >= 12) fail('학급은 최대 12개까지 만들 수 있습니다.');
+    if ((count ?? 0) >= 12) {
+      if (boardId) {
+        const existing = await existingSettingsBoard(db, boardId, ownerId, className);
+        if (existing) return json({ board: existing });
+      }
+      fail('학급은 최대 12개까지 만들 수 있습니다.');
+    }
     const state: StoredMissionState = { className, roster: [], missions: [], checks: [], events: [] };
     const { data, error } = await db.from('class_mission_boards').insert({
-      owner_id: ownerId, encrypted_payload: await seal.encryptPayload(state),
+      ...(boardId ? { id: boardId } : {}), owner_id: ownerId, encrypted_payload: await seal.encryptPayload(state),
     }).select('*').single();
+    if (boardId && error?.code === '23505') {
+      const existing = await existingSettingsBoard(db, boardId, ownerId, className);
+      if (existing) return json({ board: existing });
+    }
     if (error || !data) fail('학급을 만들지 못했습니다.', 503);
     return json({ board: projection(data as BoardRow, state) });
   }

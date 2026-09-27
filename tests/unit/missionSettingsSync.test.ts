@@ -9,6 +9,8 @@ describe('학급 미션 설정 연동', () => {
     expect(settingsMissionClassName('3학년2반')).toBe('3학년 2반');
     expect(settingsMissionClassName('3-2 담임')).toBe('3학년 2반');
     expect(settingsMissionClassName('햇살반 담임')).toBe('햇살반');
+    expect(settingsMissionClassName('2025학년도 3학년 2반')).toBe('2025학년도 3학년 2반');
+    expect(settingsMissionClassName('가상 3학년 2반 담임')).toBe('가상 3학년 2반');
     expect(settingsMissionClassName('교과전담')).toBe('');
   });
 
