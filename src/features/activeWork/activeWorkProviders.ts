@@ -6,6 +6,7 @@ import { listDataCollections, subscribeDataCollections } from '../dataCollect/da
 import { isRegistryDemoMode } from '../registry/registryConfig';
 import { listRegistries, subscribeRegistries } from '../registry/registryService';
 import { isSpecialRoomsDemoMode } from '../specialRooms/specialRoomsConfig';
+import { isMissionsDemo, listMissionBoards, missionCounts, missionToday } from '../classMissions/missionApi';
 import { listBoards, subscribeSpecialRooms } from '../specialRooms/specialRoomsService';
 import { isStudentResultsDemoMode, studentResultsOwnerId } from '../studentResults/studentResultsConfig';
 import { listStudentResultEvents, subscribeStudentResults } from '../studentResults/studentResultsService';
@@ -20,7 +21,8 @@ export const isActiveWorkDemoMode = isRegistryDemoMode
   || isStudentResultsDemoMode
   || isConsentFormsDemoMode
   || isDataCollectDemoMode
-  || isSpecialRoomsDemoMode;
+  || isSpecialRoomsDemoMode
+  || isMissionsDemo;
 
 const hasPassed = (value: string, now: Date) => {
   if (!value) return false;
@@ -173,6 +175,36 @@ const specialRoomsProvider: ActiveWorkProvider = {
   },
 };
 
+const classMissionsProvider: ActiveWorkProvider = {
+  toolId: 'class-missions',
+  toolName: '학급 미션',
+  listPath: '/tools/class-missions',
+  load: async ({ userId }) => {
+    if (!userId && !isMissionsDemo) return [];
+    const boards = await listMissionBoards();
+    return boards.flatMap((board) => board.state.missions
+      .filter((mission) => mission.status === 'open')
+      .map((mission): ActiveWorkItem => {
+        const counts = missionCounts(board.state, mission);
+        const denominator = mission.targets.length - counts.exempt;
+        const completed = counts.reported + counts.pending + counts.confirmed;
+        const overdue = mission.dueDate < missionToday();
+        return {
+          id: mission.id,
+          toolId: 'class-missions',
+          toolName: '학급 미션',
+          title: `${board.state.className} · ${mission.title}`,
+          statusLabel: overdue ? '마감 지남' : '진행 중',
+          progressLabel: `${completed}/${denominator}명 완료 표시${counts.pending ? ` · 확인 대기 ${counts.pending}명` : ''}`,
+          updatedAt: mission.updatedAt,
+          listPath: '/tools/class-missions',
+          detailPath: `/tools/class-missions?board=${board.id}&mission=${mission.id}`,
+          overdue,
+        };
+      }));
+  },
+};
+
 /**
  * 새 도구는 이 배열에 공급자 하나만 추가하면 진행 업무 화면에 합류한다.
  * 각 공급자는 자기 도메인의 목록을 공통 ActiveWorkItem으로만 바꾼다.
@@ -183,6 +215,7 @@ export const activeWorkProviders: ActiveWorkProvider[] = [
   consentFormsProvider,
   dataCollectProvider,
   specialRoomsProvider,
+  classMissionsProvider,
 ];
 
 export const loadActiveWorkSnapshot = async (

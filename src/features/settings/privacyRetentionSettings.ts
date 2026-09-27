@@ -5,6 +5,7 @@ import { purgeConsentForms } from '../consentForms/consentPurgeApi';
 import { dataCollectOwnerId, isDataCollectDemoMode } from '../dataCollect/dataCollectConfig';
 import { deleteDataCollection as deleteLocalDataCollection, listDataCollections as listLocalDataCollections } from '../dataCollect/dataCollectStore';
 import { deleteRemoteDataCollection } from '../dataCollect/dataCollectAdminApi';
+import { isMissionsDemo, listMissionBoards, missionPurgeCounts } from '../classMissions/missionApi';
 import {
   DEFAULT_PRIVACY_RETENTION_SETTINGS,
   normalizePrivacyRetentionSettings,
@@ -104,12 +105,31 @@ const listLocalRetainedWork = (ownerId: string): RetainedWorkItem[] => {
   return [...consent, ...collections].filter((item) => item.status === 'closed' && item.closedAt);
 };
 
+const listRetainedMissions = async (): Promise<RetainedWorkItem[]> => {
+  const boards = await listMissionBoards();
+  return boards.flatMap((board) => board.state.missions.filter((mission) => mission.status === 'closed' && mission.closedAt)
+    .map((mission) => ({
+      id: mission.id,
+      boardId: board.id,
+      kind: 'class-mission' as const,
+      title: mission.title,
+      status: 'closed' as const,
+      retentionMonths: 3,
+      closedAt: mission.closedAt!,
+      recordCount: missionPurgeCounts(board.state, mission.id).checkCount,
+      fileCount: 0,
+    })));
+};
+
 export const listRetainedWorkItems = async (ownerId: string): Promise<RetainedWorkItem[]> => {
-  if (isConsentFormsDemoMode || isDataCollectDemoMode) return listLocalRetainedWork(ownerId);
+  if (isConsentFormsDemoMode || isDataCollectDemoMode || isMissionsDemo) {
+    return [...listLocalRetainedWork(ownerId), ...(isMissionsDemo ? await listRetainedMissions() : [])];
+  }
   if (!supabase || !ownerId) return [];
-  const [consentResult, dataCollectResult] = await Promise.all([
+  const [consentResult, dataCollectResult, missions] = await Promise.all([
     supabase.from('consent_forms').select('id, title, status, retention_months, closed_at, response_count').eq('status', 'closed'),
     supabase.from('data_collections').select('id, title, status, retention_months, closed_at').eq('status', 'closed'),
+    listRetainedMissions(),
   ]);
   if (consentResult.error) throw new Error(`가정통신문 파기 일정을 불러오지 못했습니다: ${consentResult.error.message}`);
   if (dataCollectResult.error) throw new Error(`자료 수합 파기 일정을 불러오지 못했습니다: ${dataCollectResult.error.message}`);
@@ -133,10 +153,11 @@ export const listRetainedWorkItems = async (ownerId: string): Promise<RetainedWo
     recordCount: 0,
     fileCount: 0,
   }));
-  return [...consent, ...collections].filter((item) => item.closedAt);
+  return [...consent, ...collections, ...missions].filter((item) => item.closedAt);
 };
 
 export const purgeRetainedWorkItem = async (item: RetainedWorkItem) => {
+  if (item.kind === 'class-mission') throw new Error('학급 미션 화면에서 파기 대상과 수량을 확인해 주세요.');
   if (item.kind === 'consent-form') {
     if (isConsentFormsDemoMode) {
       deleteConsentLocalDraft(item.id);

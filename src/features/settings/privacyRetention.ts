@@ -1,3 +1,5 @@
+import { MISSION_RETENTION_DAYS } from '../../../supabase/functions/_shared/classMissions';
+
 export const DEFAULT_RETENTION_MONTHS = 3;
 
 export const RETENTION_MONTH_OPTIONS = [1, 3, 12] as const;
@@ -14,7 +16,8 @@ export const DEFAULT_PRIVACY_RETENTION_SETTINGS: PrivacyRetentionSettings = {
 
 export interface RetainedWorkItem {
   id: string;
-  kind: 'consent-form' | 'data-collect';
+  kind: 'consent-form' | 'data-collect' | 'class-mission';
+  boardId?: string;
   title: string;
   status: 'open' | 'closed';
   retentionMonths: number;
@@ -58,14 +61,20 @@ export const retentionDueAt = (closedAt: string, retentionMonths: number) => {
   return due;
 };
 
+export const retainedWorkDueAt = (item: RetainedWorkItem) => {
+  if (item.kind !== 'class-mission') return retentionDueAt(item.closedAt, item.retentionMonths);
+  const closedAt = Date.parse(item.closedAt);
+  return Number.isFinite(closedAt) ? new Date(closedAt + MISSION_RETENTION_DAYS * 24 * 60 * 60 * 1000) : null;
+};
+
 export const isPurgeDue = (item: RetainedWorkItem, now = new Date()) => {
   if (item.status !== 'closed' || !item.closedAt) return false;
-  const due = retentionDueAt(item.closedAt, item.retentionMonths);
+  const due = retainedWorkDueAt(item);
   return due ? due.getTime() <= now.getTime() : false;
 };
 
 export const sortRetainedWorkItems = (items: RetainedWorkItem[]) => items.toSorted((a, b) => {
-  const aDue = retentionDueAt(a.closedAt, a.retentionMonths)?.getTime() ?? Number.MAX_SAFE_INTEGER;
-  const bDue = retentionDueAt(b.closedAt, b.retentionMonths)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+  const aDue = retainedWorkDueAt(a)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+  const bDue = retainedWorkDueAt(b)?.getTime() ?? Number.MAX_SAFE_INTEGER;
   return aDue - bDue;
 });

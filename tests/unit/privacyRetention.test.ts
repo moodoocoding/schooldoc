@@ -3,6 +3,7 @@ import {
   DEFAULT_PRIVACY_RETENTION_SETTINGS,
   isPurgeDue,
   normalizePrivacyRetentionSettings,
+  retainedWorkDueAt,
   retentionDueAt,
   sortRetainedWorkItems,
   type RetainedWorkItem,
@@ -35,6 +36,13 @@ describe('개인정보 보관 및 파기 정책', () => {
     const now = new Date('2026-05-01T00:00:00.000Z');
     expect(isPurgeDue(item(), now)).toBe(true);
     expect(isPurgeDue(item({ status: 'open', closedAt: '' }), now)).toBe(false);
+  });
+
+  it('학급 미션은 달력상 3개월 대신 종료 후 정확히 90일에 파기 대상으로 올린다', () => {
+    const mission = item({ kind: 'class-mission', boardId: 'board', closedAt: '2026-01-01T00:00:00.000Z' });
+    expect(retainedWorkDueAt(mission)?.toISOString()).toBe('2026-04-01T00:00:00.000Z');
+    expect(isPurgeDue(mission, new Date('2026-03-31T23:59:59.999Z'))).toBe(false);
+    expect(isPurgeDue(mission, new Date('2026-04-01T00:00:00.000Z'))).toBe(true);
   });
 
   it('가까운 파기 예정일 순서로 정렬한다', () => {

@@ -15,3 +15,11 @@ verify_jwt = false
 
 [functions.classroom-roles-public]
 verify_jwt = false
+
+# Both endpoints validate credentials in the handler. The public route also
+# checks a board token plus a student code before returning any class data.
+[functions.class-missions-admin]
+verify_jwt = false
+
+[functions.class-missions-public]
+verify_jwt = false
