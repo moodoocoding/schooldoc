@@ -38,25 +38,25 @@ export type RolePageProps = {
   busy: boolean;
 };
 const tiles = [
-  ["assign", "학생 역할 배정", "명단 확인 후 학생별 역할을 정해요", Users],
+  ["assign", "학생 역할 배정", "명단 확인 · 역할 배정", Users],
   [
     "settings",
     "운영 설정",
-    "실천 요일 · 제외일 · 학생 화면 공개 설정",
+    "요일 · 공개 설정",
     Settings2,
   ],
-  ["roles", "역할 목록", "우리 반에 필요한 역할과 정원을 관리해요", ListChecks],
+  ["roles", "역할 목록", "역할 · 정원 관리", ListChecks],
   [
     "board",
     "오늘의 실천판",
-    "오늘의 기록 확인 · 학생 화면 열기와 공유",
+    "오늘 기록 · 학생 화면",
     ClipboardCheck,
   ],
-  ["records", "실천 기록", "선택한 달의 학생별 기록과 날짜별 상세", History],
+  ["records", "실천 기록", "월별 · 학생별 기록", History],
   [
     "rotate",
     "역할 교체",
-    "이전 배정을 참고해 다음 기간을 준비해요",
+    "다음 기간 준비",
     CalendarClock,
   ],
 ] as const;
@@ -150,16 +150,9 @@ function RolesHome({ board }: { board: RoleBoard }) {
               className={`${rolePanel} group transition hover:border-[#0F6CBD] hover:shadow-sm focus-visible:outline-2 focus-visible:outline-[#0F6CBD]`}
               key={path}
             >
-              <div className="flex justify-between">
-                <Icon className="h-7 w-7 text-[#0F6CBD]" aria-hidden="true" />
-                <span className="text-xs text-[#64748B]">
-                  {path === "board" || path === "records"
-                    ? "학급 실천"
-                    : "운영 관리"}
-                </span>
-              </div>
-              <h3 className="mt-5 text-lg font-bold">{title}</h3>
-              <p className="mt-2 min-h-10 text-sm leading-6 text-[#526174]">
+              <Icon className="h-7 w-7 text-[#0F6CBD]" aria-hidden="true" />
+              <h3 className="mt-4 text-lg font-bold">{title}</h3>
+              <p className="mt-1 text-sm leading-6 text-[#526174]">
                 {desc}
               </p>
               <ArrowRight
@@ -241,7 +234,7 @@ export function ClassroomRolesWorkspace() {
   const props = board ? { board, busy, save } : null;
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <header className="space-y-3">
+      <header className={current ? "space-y-1" : "space-y-3"}>
         {current && (
           <Link
             className="inline-flex min-h-11 items-center gap-2 text-sm text-[#526174]"
@@ -251,14 +244,16 @@ export function ClassroomRolesWorkspace() {
             1인 1역 홈
           </Link>
         )}
-        <p className="text-sm font-semibold text-[#0F6CBD]">
-          스스로, 함께 가꾸는 우리 반
-        </p>
+        {!current && (
+          <p className="text-sm font-semibold text-[#0F6CBD]">
+            스스로, 함께 가꾸는 우리 반
+          </p>
+        )}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-extrabold sm:text-3xl">
             {current?.[1] ?? "1인 1역"}
           </h1>
-          {board && (
+          {board && !current && (
             <span className="text-sm text-[#526174]">
               {board.state.settings.title}
             </span>

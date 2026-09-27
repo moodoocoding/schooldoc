@@ -169,17 +169,18 @@ try {
     await page.getByRole('button', { name: '학생 명단 저장', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('학생 명단을 저장했습니다');
     await page.goto(`${root}/assign`);
-    await expect(page.getByText('설정에 저장된 학생 명단을 자동으로 불러왔습니다.')).toBeVisible();
+    await expect(page.getByText('설정 명단을 불러왔습니다.')).toBeVisible();
     await expect(page.getByRole('table', { name: '배정할 학생 명단' }).getByRole('row')).toHaveCount(3);
     await page.getByRole('button', { name: '다음: 역할 설정' }).click();
     await page.getByRole('button', { name: `${other.state.roles[0].name} 학생 선택`, exact: true }).click();
+    await page.getByRole('button', { name: '정원 변경' }).click();
     await page.getByLabel(`${other.state.roles[0].name} 정원`, { exact: true }).fill('2');
     await page.getByRole('checkbox', { name: '1번 가상새봄 선택', exact: true }).check();
     await page.getByRole('checkbox', { name: '2번 가상푸름 선택', exact: true }).check();
-    await expect(page.getByRole('region', { name: '담당 학생 선택' })).toContainText('선택 2명 · 남은 0자리');
-    await expect(page.getByRole('status')).toContainText('미배정 학생 0명');
-    await page.getByRole('checkbox', { name: '배정 내용 확인', exact: true }).check();
-    await page.getByRole('button', { name: '배정 확정하기' }).click();
+    await expect(page.getByRole('region', { name: '담당 학생 선택' })).toContainText('2/2명');
+    await expect(page.getByRole('status')).toContainText('모두 배정됨');
+    await page.getByRole('button', { name: '배정 확인', exact: true }).click();
+    await page.getByRole('dialog', { name: '배정 확인' }).getByRole('button', { name: '확정하기' }).click();
     await expect(page).toHaveURL(`${root}/board`);
     const savedAssignment = await call('admin', { action: 'load' }, b.jwt);
     assert.deepEqual(Object.values(savedAssignment.state.periods[0].assignments),
