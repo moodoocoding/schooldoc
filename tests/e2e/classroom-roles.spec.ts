@@ -677,6 +677,126 @@ test("자동 명단 → 2단계 배정 → 공용 제출·재제출 → 월간 �
     fullPage: true,
   });
 });
+
+test("실천판에서 20칸 게시판 안내문을 열고 역할 수에 따라 빈칸을 남긴다", async ({ page }) => {
+  await seed(page, true);
+  await page.goto(`${root}/board`);
+  await page.getByRole("link", { name: "게시판 안내문 인쇄" }).click();
+  await expect(page).toHaveURL(`${root}/print`);
+  const poster = page.getByRole("region", { name: "1인 1역 게시판 안내문 미리보기" });
+  await expect(poster.locator(".role-poster-slot")).toHaveCount(20);
+  await expect(poster.locator(".role-poster-slot").first()).toContainText("1번 가상하늘");
+  await expect(poster.getByLabel("학생 실천판 QR 코드")).toBeVisible();
+  await expect(page.getByRole("button", { name: "안내문 인쇄 · PDF 저장" })).toBeEnabled();
+  await page.evaluate(() => {
+    window.print = () => { document.body.dataset.printInvoked = "true"; };
+  });
+  await page.getByRole("button", { name: "안내문 인쇄 · PDF 저장" }).click();
+  await expect(page.locator("body")).toHaveAttribute("data-print-invoked", "true");
+
+  await page.evaluate((key) => {
+    const board = JSON.parse(localStorage.getItem(key)!);
+    board.state.periods[0].roles = board.state.periods[0].roles.slice(0, 16);
+    localStorage.setItem(key, JSON.stringify(board));
+  }, demoKey);
+  await page.reload();
+  await expect(poster.locator(".role-poster-slot")).toHaveCount(20);
+  await expect(poster.locator(".role-poster-slot").nth(15)).toContainText("게시판 도우미");
+  await expect(poster.locator(".role-poster-slot").nth(16)).toHaveAttribute("aria-label", "17번 빈 역할 칸");
+  await page.screenshot({ path: test.info().outputPath("role-poster-16-desktop.png"), fullPage: true });
+});
+
+test("배정이 없는 안내문은 빈 상태와 배정 이동 경로를 보여준다", async ({ page }) => {
+  await seed(page);
+  await page.goto(`${root}/print`);
+  await expect(page.getByText(/확정된 역할 배정이 없습니다/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "학생 역할 배정으로 이동" })).toHaveAttribute("href", `${root}/assign`);
+  await expect(page.getByRole("button", { name: "안내문 인쇄 · PDF 저장" })).toBeDisabled();
+  await page.screenshot({ path: test.info().outputPath("role-poster-empty.png"), fullPage: true });
+});
+
+test("20개 역할과 23명 배정의 안내문은 한 장에 들어가고 인쇄 때 앱 껍데기를 숨긴다", async ({ page }) => {
+  const roster = Array.from({ length: 23 }, (_, i) => `${i + 1} 가상학생${i + 1}`).join("\n");
+  await seed(page, true, roster);
+  await page.evaluate((key) => {
+    const board = JSON.parse(localStorage.getItem(key)!);
+    const period = board.state.periods[0];
+    period.roles.push(
+      { ...period.roles[0], id: crypto.randomUUID(), name: "교실 앞뒤 정리와 긴 이름의 가상 역할" },
+      { ...period.roles[1], id: crypto.randomUUID(), name: "학습 준비와 물품 관리 담당" },
+    );
+    period.assignments[period.students[21].id] = period.roles[18].id;
+    period.assignments[period.students[22].id] = period.roles[19].id;
+    localStorage.setItem(key, JSON.stringify(board));
+  }, demoKey);
+  await page.goto(`${root}/print`);
+  const poster = page.locator(".role-poster-print-page");
+  await expect(poster).toHaveCount(1);
+  await expect(poster.locator(".role-poster-slot")).toHaveCount(20);
+  await expect(poster).toContainText("23번 가상학생23");
+  const layout = await poster.evaluate((element) => ({
+    pageBottom: element.getBoundingClientRect().bottom,
+    qrBottom: element.querySelector("footer")!.getBoundingClientRect().bottom,
+    lastSlotBottom: element.querySelector(".role-poster-slot:last-child")!.getBoundingClientRect().bottom,
+    footerTop: element.querySelector("footer")!.getBoundingClientRect().top,
+    overflowingSlots: [...element.querySelectorAll(".role-poster-slot")].filter((slot) => slot.scrollHeight > slot.clientHeight + 1).length,
+  }));
+  expect(layout.qrBottom).toBeLessThanOrEqual(layout.pageBottom);
+  expect(layout.lastSlotBottom).toBeLessThanOrEqual(layout.footerTop);
+  expect(layout.overflowingSlots).toBe(0);
+  const audit = await new AxeBuilder({ page }).include(".role-poster-print-root").analyze();
+  expect(audit.violations).toEqual([]);
+  await page.screenshot({ path: test.info().outputPath("role-poster-20-desktop.png"), fullPage: true });
+
+  await page.emulateMedia({ media: "print" });
+  expect(await page.locator(".role-poster-print-root").evaluate((element) => getComputedStyle(element).visibility)).toBe("visible");
+  expect(await page.locator("aside").evaluate((element) => getComputedStyle(element).visibility)).toBe("hidden");
+  await page.screenshot({ path: test.info().outputPath("role-poster-20-print.png"), fullPage: true });
+  await page.pdf({ path: test.info().outputPath("role-poster-20.pdf"), preferCSSPageSize: true, printBackground: true });
+
+  await page.emulateMedia({ media: "screen" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("button", { name: "안내문 인쇄 · PDF 저장" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath("role-poster-20-mobile.png"), fullPage: true });
+});
+
+test("안내문은 배정 기간을 전환하고 20개가 넘는 역할은 다음 장으로 이어진다", async ({ page }) => {
+  await seed(page, true);
+  const futureId = await page.evaluate((key) => {
+    const board = JSON.parse(localStorage.getItem(key)!);
+    const future = structuredClone(board.state.periods[0]);
+    future.id = crypto.randomUUID();
+    future.start = "2099-01-01";
+    future.end = "2099-01-31";
+    future.roles = future.roles.slice(0, 17);
+    future.roles[0].name = "다음 배정의 첫 역할";
+    board.state.periods.push(future);
+    localStorage.setItem(key, JSON.stringify(board));
+    return future.id as string;
+  }, demoKey);
+  await page.goto(`${root}/print`);
+  const poster = page.locator(".role-poster-print-root");
+  await expect(poster.locator(".role-poster-slot")).toHaveCount(20);
+  await page.getByLabel("배정 기간").selectOption(futureId);
+  await expect(poster).toContainText("다음 배정의 첫 역할");
+  await expect(poster.locator(".role-poster-slot").nth(17)).toHaveAttribute("aria-label", "18번 빈 역할 칸");
+  await expect(page.getByText(/선택한 배정은 해당 기간이 시작된 뒤/)).toBeVisible();
+
+  await page.evaluate((key) => {
+    const board = JSON.parse(localStorage.getItem(key)!);
+    const future = board.state.periods[1];
+    while (future.roles.length < 21) {
+      future.roles.push({ ...future.roles[0], id: crypto.randomUUID(), name: `추가 역할 ${future.roles.length + 1}` });
+    }
+    localStorage.setItem(key, JSON.stringify(board));
+  }, demoKey);
+  await page.reload();
+  await page.getByLabel("배정 기간").selectOption(futureId);
+  await expect(poster.locator(".role-poster-print-page")).toHaveCount(2);
+  await expect(poster.locator(".role-poster-slot")).toHaveCount(40);
+  await expect(poster.locator(".role-poster-print-page").last()).toContainText("추가 역할 21");
+});
 test("실천판은 주간 O/X와 월간 횟수를 합쳐 보여주고 역할설정은 2단계로 연다", async ({ page }) => {
   const board = await seed(page, true);
   const today = roleToday();
