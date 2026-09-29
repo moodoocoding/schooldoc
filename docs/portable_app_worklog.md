@@ -31,9 +31,10 @@
 
 ## 3. 산출물 및 사용 방법
 
+* **깃허브 공식 릴리즈 다운로드 링크:**
+  * [https://github.com/moodoocoding/schooldoc/releases/tag/v1.0.0-portable](https://github.com/moodoocoding/schooldoc/releases/tag/v1.0.0-portable)
 * **생성된 포터블 실행 파일:**
-  * 경로: `release/스쿨독_포터블_1.0.0.exe`
-  * 파일 크기: 약 118.7 MB (단일 파일)
+  * 파일명: `스쿨독_포터블_1.0.0.exe` (약 118.7 MB)
   * 특징: 별도 인스톨러 없이 더블 클릭 즉시 실행 (학교 PC 권한 제약 없음)
 * **재빌드 명령어:**
   ```bash
