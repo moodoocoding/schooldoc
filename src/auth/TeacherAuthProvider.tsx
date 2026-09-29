@@ -12,7 +12,11 @@ declare global {
   interface Window {
     electronAPI?: {
       isElectron?: boolean;
-      startGoogleOAuth?: (authUrl: string) => Promise<{ code: string }>;
+      startGoogleOAuth?: (authUrl: string) => Promise<{
+        accessToken?: string;
+        refreshToken?: string;
+        code?: string;
+      }>;
     };
   }
 }
@@ -70,10 +74,18 @@ export function TeacherAuthProvider({ children }: { children: ReactNode }) {
             return;
           }
 
-          // 기본 브라우저를 띄우고 로컬 루프백 서버에서 OAuth code를 전달받음
-          const { code } = await window.electronAPI.startGoogleOAuth(data.url);
-          if (code) {
-            const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          // 기본 브라우저를 띄우고 로컬 루프백 서버에서 토큰 또는 code를 전달받음
+          const authResult = await window.electronAPI.startGoogleOAuth(data.url);
+          if (authResult.accessToken && authResult.refreshToken) {
+            const { error: sessionError } = await supabase.auth.setSession({
+              access_token: authResult.accessToken,
+              refresh_token: authResult.refreshToken,
+            });
+            if (sessionError) {
+              setError(`세션 인증을 완료하지 못했습니다: ${sessionError.message}`);
+            }
+          } else if (authResult.code) {
+            const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(authResult.code);
             if (exchangeError) {
               setError(`세션 인증을 완료하지 못했습니다: ${exchangeError.message}`);
             }
