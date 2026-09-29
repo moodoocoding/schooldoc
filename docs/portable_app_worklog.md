@@ -26,6 +26,7 @@
 | **04** | package.json 빌드 스크립트 등록 | ✅ 완료 | `"electron:build:portable": "npm run build && electron-builder --win portable"` |
 | **05** | 프로덕션 포터블 빌드 검증 | ✅ 완료 | `release/스쿨독_포터블_1.0.0.exe` (118MB) 생성 성공 |
 | **06** | 깃허브 원격 브랜치 푸시 | ✅ 완료 | `origin/feature/portable-app` 동기화 |
+| **07** | 구글 OAuth 로컬 루프백 탑재 | ✅ 완료 | SchoolBoard 검증 패턴 이식: `preload.cjs`, 로컬 루프백 서버, 브라우저 구글 로그인 및 Supabase 세션 교환 완비 |
 
 ---
 

@@ -8,6 +8,15 @@ import {
   type TeacherAuthValue,
 } from './teacherAuth';
 
+declare global {
+  interface Window {
+    electronAPI?: {
+      isElectron?: boolean;
+      startGoogleOAuth?: (authUrl: string) => Promise<{ code: string }>;
+    };
+  }
+}
+
 export function TeacherAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(Boolean(supabase));
@@ -43,6 +52,40 @@ export function TeacherAuthProvider({ children }: { children: ReactNode }) {
         setError('로그인 서버 연결 정보가 없습니다.');
         return;
       }
+
+      // 일렉트론 포터블 데스크톱 앱 환경 처리
+      if (window.electronAPI?.startGoogleOAuth) {
+        try {
+          const { data, error: oauthUrlError } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+              redirectTo: '__REDIRECT_URI__',
+              skipBrowserRedirect: true,
+              queryParams: { prompt: 'select_account' },
+            },
+          });
+
+          if (oauthUrlError || !data?.url) {
+            setError('Google 로그인 주소를 생성하지 못했습니다.');
+            return;
+          }
+
+          // 기본 브라우저를 띄우고 로컬 루프백 서버에서 OAuth code를 전달받음
+          const { code } = await window.electronAPI.startGoogleOAuth(data.url);
+          if (code) {
+            const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+            if (exchangeError) {
+              setError(`세션 인증을 완료하지 못했습니다: ${exchangeError.message}`);
+            }
+          }
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          setError(msg.includes('취소') ? 'Google 로그인을 취소했습니다.' : 'Google 로그인에 실패했습니다.');
+        }
+        return;
+      }
+
+      // 일반 웹 브라우저 환경 처리
       const { error: loginError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
