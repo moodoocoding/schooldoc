@@ -1,8 +1,11 @@
 {
-  "name": "260725_individual_data",
+  "name": "schooldoc",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "main": "electron/main.cjs",
+  "author": "스쿨독 연구팀",
+  "description": "스쿨독 (SchoolDoc) - 교사용 올인원 행정 스마트 비서",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -15,7 +18,33 @@
     "test:integration:registry-owner": "vitest run --config vitest.registry-owner.config.ts",
     "test:integration:consent": "vitest run --config vitest.consent-integration.config.ts",
     "test:e2e": "playwright test",
-    "test:all": "npm run test && npm run test:e2e"
+    "test:all": "npm run test && npm run test:e2e",
+    "electron:start": "electron .",
+    "electron:build:portable": "npm run build && electron-builder --win portable"
+  },
+  "build": {
+    "appId": "kr.schooldoc.desktop",
+    "productName": "SchoolDoc_Portable",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "스쿨독_포터블_${version}.exe"
+    }
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.8",
@@ -41,6 +70,9 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
     "autoprefixer": "^10.5.4",
+    "cross-env": "^10.1.0",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
     "oxlint": "^1.71.0",
     "postcss": "^8.5.23",
     "tailwindcss": "^3.4.17",
