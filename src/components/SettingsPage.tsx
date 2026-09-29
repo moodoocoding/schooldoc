@@ -22,28 +22,49 @@ export const SettingsPage: React.FC = () => {
   const isRetentionDemo = isConsentFormsDemoMode || isDataCollectDemoMode || isMissionsDemo;
   const [activeTab, setActiveTab] = useState<'profile' | 'signature' | 'security' | 'display' | 'roster'>('profile');
   const [school, setSchool] = useState<SelectedSchool | null>(null);
+  const [directSchoolName, setDirectSchoolName] = useState<string>('');
+  const [isManualSchool, setIsManualSchool] = useState<boolean>(false);
   const [teacherName, setTeacherName] = useState<string>('');
   const [gradeClass, setGradeClass] = useState<string>('');
   const [profileSaved, setProfileSaved] = useState<boolean>(false);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [saveFeedback, setSaveFeedback] = useState<string>('');
   const accountLabel = displayName || '교사 계정';
 
   useEffect(() => {
-    const profile = loadTeacherProfile(user?.id ?? '', displayName ?? '');
+    const profile = loadTeacherProfile(user?.id ?? '', displayName ?? '', user);
     setSchool(profile.school);
+    if (profile.school) {
+      setDirectSchoolName(profile.school.name);
+    }
     setTeacherName(profile.teacherName);
     setGradeClass(profile.gradeClass);
     setProfileSaved(false);
-  }, [displayName, user?.id]);
+  }, [displayName, user, user?.id]);
 
-  const handleSaveSettings = (e: React.FormEvent) => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.id) return;
-    saveTeacherProfile(user.id, {
-      school,
-      teacherName: teacherName.trim(),
-      gradeClass: gradeClass.trim(),
-    });
-    setProfileSaved(true);
+    setSaving(true);
+    setSaveFeedback('');
+    try {
+      const finalSchool: SelectedSchool | null = isManualSchool
+        ? (directSchoolName.trim() ? { name: directSchoolName.trim(), officeCode: 'MANUAL', schoolCode: 'MANUAL' } : null)
+        : school;
+
+      await saveTeacherProfile(user.id, {
+        school: finalSchool,
+        teacherName: teacherName.trim(),
+        gradeClass: gradeClass.trim(),
+      });
+      setProfileSaved(true);
+      setSaveFeedback('프로필이 성공적으로 저장되었습니다. (웹 및 모든 기기에 실시간 동기화됨)');
+      setTimeout(() => setSaveFeedback(''), 5000);
+    } catch (err: unknown) {
+      setSaveFeedback('저장에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -167,17 +188,46 @@ export const SettingsPage: React.FC = () => {
           <form onSubmit={handleSaveSettings} className="p-6 sm:p-8 space-y-6">
             <div className="space-y-4 max-w-lg">
               <div>
-                <label className="text-xs font-bold text-[#0F172A] block mb-1.5 flex items-center gap-1.5">
-                  <Building2 className="w-4 h-4 text-[#0F6CBD]" />
-                  <span>소속 학교</span>
-                </label>
-                <SchoolPicker
-                  value={school}
-                  onChange={(nextSchool) => { setSchool(nextSchool); setProfileSaved(false); }}
-                  disabled={!isLoggedIn}
-                  helpText="NEIS 학교 정보에서 찾습니다. 학교 이름과 교육청·학교 코드를 함께 저장합니다."
-                />
-                {school ? (
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-[#0F172A] flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4 text-[#0F6CBD]" />
+                    <span>소속 학교</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsManualSchool(!isManualSchool)}
+                    className="text-[11px] font-bold text-[#0F6CBD] hover:underline"
+                  >
+                    {isManualSchool ? '← NEIS 학교 검색으로 선택' : '직접 학교명 입력하기'}
+                  </button>
+                </div>
+
+                {isManualSchool ? (
+                  <input
+                    type="text"
+                    value={directSchoolName}
+                    onChange={(e) => {
+                      setDirectSchoolName(e.target.value);
+                      setProfileSaved(false);
+                    }}
+                    disabled={!isLoggedIn}
+                    placeholder="소속 학교명을 입력하세요 (예: 한국초등학교)"
+                    className="w-full border border-[#DCE3EA] rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0F6CBD] disabled:bg-[#F6F8FB] disabled:text-[#64748B]"
+                  />
+                ) : (
+                  <SchoolPicker
+                    value={school}
+                    onChange={(nextSchool) => {
+                      setSchool(nextSchool);
+                      if (nextSchool) setDirectSchoolName(nextSchool.name);
+                      setProfileSaved(false);
+                    }}
+                    disabled={!isLoggedIn}
+                    helpText="NEIS 학교 정보에서 찾습니다. 학교 이름과 교육청·학교 코드를 함께 저장합니다."
+                  />
+                )}
+
+                {!isManualSchool && school ? (
                   <p className="mt-1.5 text-xs text-[#64748B]">
                     NEIS 교육청 코드 {school.officeCode} · 학교 코드 {school.schoolCode}
                   </p>
@@ -215,16 +265,23 @@ export const SettingsPage: React.FC = () => {
               </div>
             </div>
 
+            {saveFeedback ? (
+              <div role="status" className="max-w-lg p-3 rounded-lg bg-[#E6F4EA] border border-[#16803C]/30 text-xs font-bold text-[#16803C] flex items-center gap-2 animate-fade-in">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-[#16803C]" />
+                <span>{saveFeedback}</span>
+              </div>
+            ) : null}
+
             {isLoggedIn && (
               <div className="flex items-center gap-3 pt-4 border-t border-[#F6F8FB]">
                 <button
                   type="submit"
-                  disabled={!teacherName.trim()}
-                  className="bg-[#0F6CBD] hover:bg-[#0F5B9E] text-white font-bold text-xs px-6 py-2.5 rounded-lg shadow-xs transition disabled:cursor-not-allowed disabled:bg-[#AAB7C4]"
+                  disabled={saving || !teacherName.trim()}
+                  className="bg-[#0F6CBD] hover:bg-[#0F5B9E] text-white font-bold text-xs px-6 py-2.5 rounded-lg shadow-xs transition disabled:cursor-not-allowed disabled:bg-[#AAB7C4] flex items-center gap-2"
                 >
-                  프로필 저장하기
+                  {saving ? '저장 중...' : '프로필 저장하기'}
                 </button>
-                {profileSaved && (
+                {profileSaved && !saveFeedback && (
                   <span role="status" className="text-xs font-bold text-[#16803C] flex items-center gap-1">
                     <CheckCircle2 className="w-4 h-4" />
                     <span>저장되었습니다.</span>
