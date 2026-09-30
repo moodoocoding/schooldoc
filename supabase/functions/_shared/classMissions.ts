@@ -134,7 +134,7 @@ export function validateMissionInput(value: unknown, roster: MissionStudent[]): 
   return { title, description, startDate: input.startDate, dueDate: input.dueDate,
     requiresConfirmation: input.requiresConfirmation, targetStudentIds: targets, status: input.status };
 }
-export function missionCanReport(mission: Mission, today = missionToday()): boolean {
+export function missionCanReport(mission: Pick<Mission, 'status' | 'startDate' | 'dueDate'>, today = missionToday()): boolean {
   return mission.status === 'open' && mission.startDate <= today && today <= mission.dueDate;
 }
 export function checkFor(state: MissionState, missionId: string, studentId: string): MissionCheck | undefined {
@@ -201,4 +201,25 @@ export function safeHashEqual(a: string, b: string): boolean {
   let result = 0;
   for (let index = 0; index < a.length; index += 1) result |= a.charCodeAt(index) ^ b.charCodeAt(index);
   return result === 0;
+}
+
+// Names remain a supported entry method, but never select an arbitrary namesake.
+export async function resolveMissionStudent(state: StoredMissionState, boardId: string, name: string, code: string) {
+  const normalized = normalizeMissionCode(code);
+  if (/^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{12}$/.test(normalized)) {
+    const hash = await hashMissionCode(boardId, normalized);
+    const student = state.roster.find((entry) => safeHashEqual(entry.codeHash, hash));
+    if (student) return student;
+  }
+  const matches = name.trim() ? state.roster.filter((entry) => entry.name.trim() === name.trim()) : [];
+  if (matches.length > 1) throw new Error('같은 이름의 학생이 여러 명입니다. 선생님께 받은 개인 코드로 접속해 주세요.');
+  return matches[0];
+}
+
+export function missionDateLabel(mission: Pick<Mission, 'status' | 'startDate' | 'dueDate'>, today = missionToday()) {
+  if (mission.status === 'draft') return '초안';
+  if (mission.status === 'closed') return '종료';
+  if (today < mission.startDate) return '시작 전';
+  if (today > mission.dueDate) return '마감 지남';
+  return '진행 중';
 }

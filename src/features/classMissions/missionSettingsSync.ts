@@ -110,12 +110,13 @@ async function applyMissionSettings(userId: string, displayName: string): Promis
 const inFlight = new Map<string, Promise<MissionSettingsSyncResult>>();
 export function syncMissionSettings(userId: string, displayName: string): Promise<MissionSettingsSyncResult> {
   const key = `schooldoc:class-missions-settings:${userId}`;
-  if (navigator.locks?.request) {
-    return navigator.locks.request(key, () => applyMissionSettings(userId, displayName));
-  }
   const pending = inFlight.get(key);
   if (pending) return pending;
-  const work = applyMissionSettings(userId, displayName);
+  // Coalesce same-page refreshes before acquiring the cross-tab lock so a
+  // one-time issued code batch reaches the current refresh as well.
+  const work = navigator.locks?.request
+    ? navigator.locks.request(key, () => applyMissionSettings(userId, displayName))
+    : applyMissionSettings(userId, displayName);
   inFlight.set(key, work);
   const clear = () => { if (inFlight.get(key) === work) inFlight.delete(key); };
   void work.then(clear, clear);

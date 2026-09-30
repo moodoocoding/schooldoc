@@ -6,7 +6,7 @@ import { listDataCollections, subscribeDataCollections } from '../dataCollect/da
 import { isRegistryDemoMode } from '../registry/registryConfig';
 import { listRegistries, subscribeRegistries } from '../registry/registryService';
 import { isSpecialRoomsDemoMode } from '../specialRooms/specialRoomsConfig';
-import { isMissionsDemo, listMissionBoards, missionCounts, missionToday } from '../classMissions/missionApi';
+import { isMissionsDemo, listMissionBoards, missionCounts, missionDateLabel, missionToday } from '../classMissions/missionApi';
 import { listBoards, subscribeSpecialRooms } from '../specialRooms/specialRoomsService';
 import { isStudentResultsDemoMode, studentResultsOwnerId } from '../studentResults/studentResultsConfig';
 import { listStudentResultEvents, subscribeStudentResults } from '../studentResults/studentResultsService';
@@ -194,7 +194,7 @@ const classMissionsProvider: ActiveWorkProvider = {
           toolId: 'class-missions',
           toolName: '학급 미션',
           title: `${board.state.className} · ${mission.title}`,
-          statusLabel: overdue ? '마감 지남' : '진행 중',
+          statusLabel: missionDateLabel(mission),
           progressLabel: `${completed}/${denominator}명 완료 표시${counts.pending ? ` · 확인 대기 ${counts.pending}명` : ''}`,
           updatedAt: mission.updatedAt,
           listPath: '/tools/class-missions',

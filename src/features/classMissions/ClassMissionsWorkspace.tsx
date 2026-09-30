@@ -8,7 +8,7 @@ import { downloadMissionExcel } from './missionExportExcel';
 import { MISSIONS_DEMO_PROFILE_ID, syncMissionSettings } from './missionSettingsSync';
 import {
   checkFor, createMissionBoard, isMissionsDemo, listMissionBoards, missionCounts, missionPurgeCounts, missionPublicUrl, missionRetention,
-  missionToday, mutateMissionBoard, parseMissionRoster, type CheckStatus, type IssuedCode,
+  missionToday, missionDateLabel, mutateMissionBoard, parseMissionRoster, type CheckStatus, type IssuedCode,
   type Mission, type MissionBoard, type MissionInput, type MissionMutation,
 } from './missionApi';
 
@@ -31,28 +31,30 @@ const inputFromMission = (mission: Mission): MissionInput => ({ title: mission.t
   startDate: mission.startDate, dueDate: mission.dueDate, requiresConfirmation: mission.requiresConfirmation,
   targetStudentIds: mission.targets.map((student) => student.id), status: mission.status });
 
-function MissionEditor({ board, existing, template, busy, onCancel, onSave }: {
-  board: MissionBoard; existing?: Mission; template?: Mission; busy: boolean; onCancel: () => void;
-  onSave: (input: MissionInput) => Promise<void>;
+function editorInput(board: MissionBoard, existing?: Mission, template?: Mission): MissionInput {
+  if (existing) {
+    const from = inputFromMission(existing);
+    return existing.status === 'draft'
+      ? { ...from, targetStudentIds: from.targetStudentIds.filter((id) => board.state.roster.some((student) => student.id === id)) }
+      : from;
+  }
+  if (!template) return emptyInput(board);
+  const from = inputFromMission(template);
+  return { ...from, title: `${from.title} 복사`, status: 'draft',
+    startDate: from.dueDate < today() ? today() : from.startDate,
+    dueDate: from.dueDate < today() ? weekLater() : from.dueDate,
+    targetStudentIds: from.targetStudentIds.filter((id) => board.state.roster.some((student) => student.id === id)) };
+}
+
+function MissionEditor({ board, existing, input, onChange, busy, onCancel, onSave }: {
+  board: MissionBoard; existing?: Mission; input: MissionInput; onChange: (input: MissionInput) => void;
+  busy: boolean; onCancel: () => void; onSave: (input: MissionInput) => Promise<void>;
 }) {
-  const [input, setInput] = useState<MissionInput>(() => {
-    if (existing) {
-      const from = inputFromMission(existing);
-      return existing.status === 'draft'
-        ? { ...from, targetStudentIds: from.targetStudentIds.filter((id) => board.state.roster.some((student) => student.id === id)) }
-        : from;
-    }
-    if (!template) return emptyInput(board);
-    const from = inputFromMission(template);
-    return { ...from, title: `${from.title} 복사`, status: 'draft',
-      startDate: from.dueDate < today() ? today() : from.startDate,
-      dueDate: from.dueDate < today() ? weekLater() : from.dueDate,
-      targetStudentIds: from.targetStudentIds.filter((id) => board.state.roster.some((student) => student.id === id)) };
-  });
   const [preview, setPreview] = useState<MissionInput | null>(null);
   const [error, setError] = useState('');
+  useEffect(() => { setPreview(null); setError(''); }, [board.version]);
   const locked = Boolean(existing && existing.status !== 'draft');
-  const update = (patch: Partial<MissionInput>) => { setInput((current) => ({ ...current, ...patch })); setPreview(null); setError(''); };
+  const update = (patch: Partial<MissionInput>) => { onChange({ ...input, ...patch }); setPreview(null); setError(''); };
   const beginSave = (status: 'draft' | 'open') => {
     const next = { ...input, status: locked ? existing!.status : status };
     try {
@@ -92,6 +94,8 @@ function MissionEditor({ board, existing, template, busy, onCancel, onSave }: {
 
 export function ClassMissionsWorkspace() {
   const { user, displayName, loading: authLoading, configured, signIn } = useTeacherAuth();
+  const [boardsOwner, setBoardsOwner] = useState<string | null>(null);
+  const refreshGeneration = useRef(0);
   const [boards, setBoards] = useState<MissionBoard[]>([]);
   const [selectedBoardId, setSelectedBoardId] = useState(() => new URLSearchParams(window.location.search).get('board') ?? '');
   const [selectedMissionId, setSelectedMissionId] = useState(() => new URLSearchParams(window.location.search).get('mission') ?? '');
@@ -105,19 +109,24 @@ export function ClassMissionsWorkspace() {
   const [issuedCodeBatch, setIssuedCodeBatch] = useState<{ boardId: string; codes: IssuedCode[] } | null>(null);
   const [editing, setEditing] = useState<'new' | string | null>(null);
   const [cloneSource, setCloneSource] = useState<Mission | null>(null);
+  const [draftInput, setDraftInput] = useState<MissionInput | null>(null);
   const [statusFilter, setStatusFilter] = useState<CheckStatus | 'all'>('all');
   const [maskNames, setMaskNames] = useState(false);
   const [importPending, setImportPending] = useState(false);
   const [purgeText, setPurgeText] = useState('');
   const [purgeConfirmed, setPurgeConfirmed] = useState(false);
   const rosterDetailsRef = useRef<HTMLDetailsElement>(null);
+  const shareDetailsRef = useRef<HTMLDetailsElement>(null);
+  const rosterDirty = useRef(false);
   const qrRef = useRef<HTMLDivElement>(null);
-  const board = boards.find((entry) => entry.id === selectedBoardId) ?? boards[0];
+  const visibleBoards = boardsOwner === (user?.id ?? MISSIONS_DEMO_PROFILE_ID) ? boards : [];
+  const board = visibleBoards.find((entry) => entry.id === selectedBoardId) ?? visibleBoards[0];
   const issuedCodes = issuedCodeBatch && issuedCodeBatch.boardId === board?.id ? issuedCodeBatch.codes : [];
   const mission = board?.state.missions.find((entry) => entry.id === selectedMissionId) ?? board?.state.missions.at(-1);
   const rosterSignature = board?.state.roster.map((student) => `${student.number} ${student.name}`).join('\n') ?? '';
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (manual = false) => {
+    const request = ++refreshGeneration.current;
     setLoading(true); setError(''); setNotice('');
     try {
       let next: MissionBoard[];
@@ -125,6 +134,7 @@ export function ClassMissionsWorkspace() {
       let issuedBoardId = '';
       try {
         const synced = await syncMissionSettings(user?.id ?? MISSIONS_DEMO_PROFILE_ID, displayName);
+        if (request !== refreshGeneration.current) return;
         next = synced.boards;
         preferredBoardId = synced.selectedBoardId;
         if (synced.issuedCodes.length) {
@@ -134,25 +144,29 @@ export function ClassMissionsWorkspace() {
         if (synced.notice) setNotice(synced.notice);
         if (synced.warning) setError(synced.warning);
       } catch (cause) {
+        if (request !== refreshGeneration.current) return;
         setError(cause instanceof Error ? cause.message : '설정 정보를 학급 미션에 반영하지 못했습니다.');
         next = await listMissionBoards();
       }
-      setBoards(next);
+      if (request !== refreshGeneration.current) return;
+      setBoards(next); setBoardsOwner(user?.id ?? MISSIONS_DEMO_PROFILE_ID);
+      if (manual) setNotice((current) => current || '최신 현황을 불러왔습니다. 작성 중인 내용은 유지됩니다. 확인한 뒤 다시 저장해 주세요.');
       setSelectedBoardId((current) => {
         if (issuedBoardId && next.some((entry) => entry.id === issuedBoardId)) return issuedBoardId;
         if (preferredBoardId && next.some((entry) => entry.id === preferredBoardId) && !current) return preferredBoardId;
         return next.some((entry) => entry.id === current) ? current : preferredBoardId || next[0]?.id || '';
       });
-    } catch (cause) { setError(cause instanceof Error ? cause.message : '학급을 불러오지 못했습니다.'); }
-    finally { setLoading(false); }
+    } catch (cause) { if (request === refreshGeneration.current) setError(cause instanceof Error ? cause.message : '학급을 불러오지 못했습니다.'); }
+    finally { if (request === refreshGeneration.current) setLoading(false); }
   }, [displayName, user?.id]);
-  useEffect(() => { if (user || isMissionsDemo) void refresh(); else if (!authLoading) setLoading(false); }, [user, authLoading, refresh]);
-  useEffect(() => { setIssuedCodeBatch(null); }, [user?.id]);
-  useEffect(() => { setRosterText(rosterSignature); }, [board?.id, rosterSignature]);
-  useEffect(() => { setEditing(null); setCloneSource(null); setStatusFilter('all'); }, [board?.id]);
+  useEffect(() => { if (user || isMissionsDemo) void refresh(); else if (!authLoading) setLoading(false); return () => { refreshGeneration.current += 1; }; }, [user, authLoading, refresh]);
+  useEffect(() => { setIssuedCodeBatch(null); setEditing(null); setDraftInput(null); }, [user?.id]);
+  useEffect(() => { rosterDirty.current = false; }, [board?.id]);
+  useEffect(() => { if (!rosterDirty.current) setRosterText(rosterSignature); }, [board?.id, rosterSignature]);
+  useEffect(() => { setEditing(null); setCloneSource(null); setDraftInput(null); setStatusFilter('all'); }, [board?.id]);
   useEffect(() => { setPurgeText(''); setPurgeConfirmed(false); }, [board?.id, board?.version, mission?.id]);
   const mutate = async (mutation: MissionMutation) => {
-    if (!board || busy) return;
+    if (!board || busy || loading) return;
     setBusy(true); setError(''); setNotice('');
     try {
       const result = await mutateMissionBoard(board, mutation);
@@ -162,15 +176,21 @@ export function ClassMissionsWorkspace() {
     } catch (cause) { const message = cause instanceof Error ? cause.message : '저장하지 못했습니다.'; setError(message); throw cause; }
     finally { setBusy(false); }
   };
+  const runMutation = (mutation: MissionMutation) => { void mutate(mutation).catch(() => { /* error is shown by mutate */ }); };
+  const openEditor = (existing?: Mission, template?: Mission) => {
+    if (!board) return;
+    setDraftInput(editorInput(board, existing, template));
+    setCloneSource(template ?? null); setEditing(existing?.id ?? 'new');
+  };
   const createBoard = async () => {
-    if (busy) return;
+    if (busy || loading) return;
     setBusy(true); setError('');
     try { const created = await createMissionBoard(className); setBoards((current) => [...current, created]); setSelectedBoardId(created.id); setClassName(''); }
     catch (cause) { setError(cause instanceof Error ? cause.message : '학급을 만들지 못했습니다.'); }
     finally { setBusy(false); }
   };
   const saveRoster = async () => {
-    try { parseMissionRoster(rosterText, board?.state.roster ?? []); await mutate({ action: 'saveRoster', rosterText }); rosterDetailsRef.current?.removeAttribute('open'); setNotice('학생 명단을 저장했습니다.'); }
+    try { parseMissionRoster(rosterText, board?.state.roster ?? []); const saved = await mutate({ action: 'saveRoster', rosterText }); if (!saved) return; rosterDirty.current = false; rosterDetailsRef.current?.removeAttribute('open'); setNotice('학생 명단을 저장했습니다.'); }
     catch (cause) { if (!error) setError(cause instanceof Error ? cause.message : '명단을 저장하지 못했습니다.'); }
   };
   const saveMission = async (input: MissionInput) => {
@@ -181,7 +201,6 @@ export function ClassMissionsWorkspace() {
     try { await navigator.clipboard.writeText(value); setNotice(message); }
     catch { setError('복사하지 못했습니다. 텍스트를 선택해 직접 복사해 주세요.'); }
   };
-  const dateState = mission && mission.status === 'open' && mission.dueDate < today() ? '마감 지남' : null;
   const counts = board && mission ? missionCounts(board.state, mission) : null;
   const list = board && mission ? mission.targets.filter((student) => statusFilter === 'all' || (checkFor(board.state, mission.id, student.id)?.status ?? 'unmarked') === statusFilter) : [];
   const retention = mission ? missionRetention(mission) : null;
@@ -203,42 +222,33 @@ export function ClassMissionsWorkspace() {
 
   if (!user && !isMissionsDemo) return <div className="mx-auto max-w-xl py-20 text-center"><ShieldCheck className="mx-auto h-10 w-10 text-[#94A3B8]" /><h1 className="mt-4 text-xl font-bold">학급 미션은 교사 로그인 후 사용할 수 있습니다</h1><button type="button" className={`${primary} mt-5`} disabled={!configured || authLoading} onClick={() => void signIn('/tools/class-missions')}>{configured ? 'Google 로그인' : '로그인 설정 필요'}</button></div>;
   return <div className="mx-auto w-full max-w-[1400px] space-y-5 pb-16">
-    <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[#DCE3EA] pb-5"><div><p className="text-xs font-bold text-[#0F6CBD]">우리 반의 작은 완료를 한눈에</p><h1 className="mt-1 text-3xl font-extrabold">학급 미션</h1><p className="mt-2 text-sm text-[#526174]">학생의 완료 표시와 교사 확인을 구분해 관리합니다.</p></div><button type="button" className={secondary} onClick={() => void refresh()} disabled={loading || busy}><RefreshCw className="h-4 w-4" />새로고침</button></header>
+    <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[#DCE3EA] pb-5"><div><p className="text-xs font-bold text-[#0F6CBD]">우리 반의 작은 완료를 한눈에</p><h1 className="mt-1 text-3xl font-extrabold">학급 미션</h1><p className="mt-2 text-sm text-[#526174]">학생의 완료 표시와 교사 확인을 구분해 관리합니다.</p></div><button type="button" className={secondary} onClick={() => void refresh(true)} disabled={loading || busy}><RefreshCw className="h-4 w-4" />새로고침</button></header>
     {error ? <p role="alert" className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] p-4 text-sm font-semibold text-[#B42318]">{error}</p> : null}
     {notice ? <p role="status" className="rounded-xl border border-[#BBE7C7] bg-[#E6F4EA] p-4 text-sm font-semibold text-[#126B32]">{notice}</p> : null}
-    {loading ? <p role="status" className={panel}>학급을 불러오는 중…</p> : <>
-      <section className={panel} aria-label="학급 선택"><div className="flex flex-wrap items-end gap-3"><label className="min-w-48 flex-1 text-sm font-bold">학급 선택<select className={`${inputStyle} mt-1.5`} value={board?.id ?? ''} onChange={(event) => { setSelectedBoardId(event.target.value); setSelectedMissionId(''); }}><option value="" disabled>학급을 선택하세요</option>{boards.map((entry) => <option key={entry.id} value={entry.id}>{entry.state.className}</option>)}</select></label><label className="min-w-44 flex-1 text-sm font-bold">새 학급 이름<input className={`${inputStyle} mt-1.5`} maxLength={60} value={className} onChange={(event) => setClassName(event.target.value)} placeholder="예: 5학년 2반" /></label><button type="button" className={primary} disabled={busy || !className.trim()} onClick={() => void createBoard()}><Plus className="h-4 w-4" />학급 만들기</button></div></section>
+    {loading && board ? <p role="status" className="text-sm text-[#526174]">최신 현황을 불러오는 중… 작성 중인 내용은 유지됩니다.</p> : null}
+    {loading && !board ? <p role="status" className={panel}>학급을 불러오는 중…</p> : <>
+      <section className={panel} aria-label="학급 선택"><div className="flex flex-wrap items-end gap-3"><label className="min-w-48 flex-1 text-sm font-bold">학급 선택<select className={`${inputStyle} mt-1.5`} value={board?.id ?? ''} disabled={busy || loading} onChange={(event) => { setSelectedBoardId(event.target.value); setSelectedMissionId(''); }}><option value="" disabled>학급을 선택하세요</option>{visibleBoards.map((entry) => <option key={entry.id} value={entry.id}>{entry.state.className}</option>)}</select></label>{board ? <button type="button" className={secondary} onClick={() => { if (shareDetailsRef.current) { shareDetailsRef.current.open = true; shareDetailsRef.current.scrollIntoView({ block: 'start', behavior: 'smooth' }); shareDetailsRef.current.querySelector('summary')?.focus({ preventScroll: true }); } }}>QR·학생 링크</button> : null}</div></section>
+      {!board ? <section className={panel} aria-label="학급 만들기"><div className="flex flex-wrap items-end gap-3"><label className="min-w-44 flex-1 text-sm font-bold">새 학급 이름<input className={`${inputStyle} mt-1.5`} maxLength={60} value={className} onChange={(event) => setClassName(event.target.value)} placeholder="예: 5학년 2반" /></label><button type="button" className={primary} disabled={busy || !className.trim()} onClick={() => void createBoard()}><Plus className="h-4 w-4" />학급 만들기</button></div></section> : null}
       {!board ? <section className={`${panel} py-16 text-center`}><Users className="mx-auto h-10 w-10 text-[#94A3B8]" /><h2 className="mt-4 text-xl font-bold">학급부터 만들어 주세요</h2><p className="mt-2 text-sm text-[#526174]">학급을 만든 뒤 명단을 등록하고 첫 미션을 발행할 수 있습니다.</p></section> : <>
-        <details ref={rosterDetailsRef} className={panel}><summary className="cursor-pointer text-lg font-extrabold"><h2 className="inline text-lg font-extrabold">학급 명단 및 개인 코드 · {board.state.roster.length}명</h2></summary>
-          <p className="mt-3 text-sm text-[#526174]">환경 설정의 새 학생은 이 화면을 열 때 자동 등록됩니다. 학생은 QR 화면에서 등록된 이름으로 접속할 수 있고, 개인 코드 방식도 사용할 수 있습니다. 직접 수정할 때는 번호와 이름을 한 줄씩 입력하세요.</p>
-          <div className="mt-4"><ClassRosterImporter disabled={busy} onApply={setRosterText} onPendingChange={setImportPending} /></div>
-          <label className="mt-4 block text-sm font-bold">편집 명단<textarea className={`${inputStyle} mt-1.5 font-mono`} rows={Math.min(12, Math.max(5, rosterText.split('\n').length + 1))} value={rosterText} onChange={(event) => setRosterText(event.target.value)} placeholder={'1 김하늘\n2 이바다'} /></label>
-          <div className="mt-3 flex flex-wrap items-center gap-3"><button type="button" className={primary} disabled={busy || importPending} onClick={() => void saveRoster()}>학생 명단 저장</button><span className="text-xs text-[#64748B]">진행 중 미션의 대상 학생은 삭제할 수 없습니다.</span></div>
-          {board.state.roster.length ? <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{board.state.roster.map((student) => <div key={student.id} className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"><span className="break-words">{student.number}번 {student.name}</span><button type="button" className="shrink-0 text-xs font-bold text-[#0F6CBD] underline" disabled={busy} onClick={() => { if (window.confirm(`${student.number}번 ${student.name}의 개인 코드를 다시 발급할까요? 이전 코드는 즉시 무효화됩니다.`)) void mutate({ action: 'reissueCode', studentId: student.id }); }}>코드 재발급</button></div>)}</div> : null}
-        </details>
-        {issuedCodes.length ? <section className="rounded-2xl border-2 border-[#E5A735] bg-[#FFF8E6] p-5" aria-label="이번에 발급한 개인 코드"><h2 className="font-extrabold">이번에 발급한 개인 코드 · {issuedCodes.length}명</h2><p className="mt-1 text-sm text-[#73510E]">학생은 이름으로 접속할 수 있습니다. 이 코드는 이름 대신 접속할 때 사용할 수 있으며, 화면을 떠나면 다시 볼 수 없습니다.</p><div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{issuedCodes.map((entry) => <div key={entry.id} className="flex items-center justify-between gap-2 rounded-lg bg-white p-3 text-sm"><span>{entry.number}번 {entry.name} <strong className="ml-1 font-mono tracking-wider">{entry.code}</strong></span><button type="button" className="min-h-11 shrink-0 text-xs font-bold text-[#0F6CBD]" onClick={() => void copyText(entry.code, `${entry.number}번 코드를 복사했습니다.`)}>복사</button></div>)}</div><button type="button" className={`${secondary} mt-3`} onClick={() => setIssuedCodeBatch(null)}>코드 목록 닫기</button></section> : null}
-        <section className={panel} aria-label="학생 참여 링크"><div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="text-lg font-extrabold">학생 참여 링크</h2><p className="mt-1 text-sm text-[#526174]">공통 링크와 QR에는 개인 코드가 들어 있지 않습니다. 학생은 접속 후 등록된 이름을 입력합니다. 같은 학급의 새 미션에도 이 QR을 계속 사용합니다.</p><p className="mt-2 break-all text-sm text-[#0F6CBD]">{missionPublicUrl(board.publicToken)}</p></div><label className="flex min-h-11 items-center gap-2 text-sm font-bold"><input type="checkbox" className="h-5 w-5 accent-[#0F6CBD]" checked={board.publicEnabled} disabled={busy} onChange={(event) => void mutate({ action: 'setPublic', enabled: event.target.checked })} />공개 링크 사용</label></div>
-          <div className="mt-4 flex flex-wrap gap-2"><button type="button" className={secondary} onClick={() => void copyText(missionPublicUrl(board.publicToken), '학생 링크를 복사했습니다.')}><ClipboardCopy className="h-4 w-4" />링크 복사</button><button type="button" className={secondary} onClick={() => void saveQrImage(qrRef.current, qrImageFileName(board.state.className, '학급미션_QR', '학급미션')).catch((cause) => setError(cause instanceof Error ? cause.message : 'QR을 저장하지 못했습니다.'))}><Download className="h-4 w-4" />QR PNG 저장</button><button type="button" className={secondary} disabled={busy} onClick={() => { if (window.confirm('학생 링크를 다시 발급할까요? 이전 QR과 링크는 사용할 수 없습니다.')) void mutate({ action: 'rotateToken' }); }}>링크 재발급</button></div><div ref={qrRef} className="mt-4 inline-block rounded-xl border border-[#E2E8F0] bg-white p-3"><QRCodeSVG value={missionPublicUrl(board.publicToken)} size={144} includeMargin title={`${board.state.className} 학급 미션 참여 QR 코드`} /></div>
-        </section>
         <div className="space-y-5">
-          <section className={panel} aria-label="미션 목록"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-extrabold">미션 · {board.state.missions.length}건</h2><button type="button" className={primary} disabled={!board.state.roster.length} onClick={() => { setCloneSource(null); setEditing('new'); }}><Plus className="h-4 w-4" />새 미션</button></div>
-            {board.state.missions.length ? <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{[...board.state.missions].reverse().map((item) => { const itemCounts = missionCounts(board.state, item); return <button key={item.id} type="button" aria-current={item.id === mission?.id} onClick={() => { setSelectedMissionId(item.id); setEditing(null); setStatusFilter('all'); }} className={`min-h-24 w-full rounded-xl border p-4 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F6CBD] ${item.id === mission?.id ? 'border-[#0F6CBD] bg-[#EFF6FC]' : 'border-[#E2E8F0] hover:border-[#93C5FD]'}`}><span className="flex flex-wrap items-center justify-between gap-2"><strong className="break-words text-sm">{item.title}</strong><span className="text-xs font-bold text-[#526174]">{item.status === 'draft' ? '초안' : item.status === 'closed' ? '종료' : item.dueDate < today() ? '마감 지남' : '진행 중'}</span></span><span className="mt-2 block text-xs text-[#526174]">{item.dueDate} 마감 · 완료 표시 {itemCounts.reported + itemCounts.pending + itemCounts.confirmed}/{item.targets.length - itemCounts.exempt}명{itemCounts.pending ? ` · 확인 대기 ${itemCounts.pending}명` : ''}</span></button>; })}</div> : <p className="mt-8 text-center text-sm text-[#526174]">아직 미션이 없습니다. 첫 미션을 만들어 주세요.</p>}
+          <section className={panel} aria-label="미션 목록"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-extrabold">미션 · {board.state.missions.length}건</h2><button type="button" className={primary} disabled={busy || loading || !board.state.roster.length} onClick={() => openEditor()}><Plus className="h-4 w-4" />새 미션</button></div>
+            {board.state.missions.length ? <div className={`mt-4 grid gap-2 ${board.state.missions.length > 1 ? 'sm:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>{[...board.state.missions].reverse().map((item) => { const itemCounts = missionCounts(board.state, item); return <button key={item.id} type="button" aria-current={item.id === mission?.id} disabled={busy || loading} onClick={() => { setSelectedMissionId(item.id); setEditing(null); setStatusFilter('all'); }} className={`min-h-20 w-full rounded-xl border p-4 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F6CBD] ${item.id === mission?.id ? 'border-[#0F6CBD] bg-[#EFF6FC]' : 'border-[#E2E8F0] hover:border-[#93C5FD]'}`}><span className="flex flex-wrap items-center justify-between gap-2"><strong className="break-words text-sm">{item.title}</strong><span className="text-xs font-bold text-[#526174]">{missionDateLabel(item)}</span></span><span className="mt-2 block text-xs text-[#526174]">{item.dueDate} 마감 · 완료 표시 {itemCounts.reported + itemCounts.pending + itemCounts.confirmed}/{item.targets.length - itemCounts.exempt}명{itemCounts.pending ? ` · 확인 대기 ${itemCounts.pending}명` : ''}</span></button>; })}</div> : <p className="mt-8 text-center text-sm text-[#526174]">아직 미션이 없습니다. 첫 미션을 만들어 주세요.</p>}
           </section>
-          <div className="min-w-0 space-y-5">{editing ? <MissionEditor key={`${board.id}-${editing}-${cloneSource?.id ?? ''}`} board={board} existing={editing === 'new' ? undefined : board.state.missions.find((entry) => entry.id === editing)} template={cloneSource ?? undefined} busy={busy} onCancel={() => { setEditing(null); setCloneSource(null); }} onSave={saveMission} /> : mission ? <section className={panel} aria-label="미션 현황">
-            <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-bold text-[#0F6CBD]">{mission.status === 'draft' ? '초안' : mission.status === 'closed' ? '종료' : dateState ?? '진행 중'}</p><h2 className="mt-1 break-words text-xl font-extrabold">{mission.title}</h2><p className="mt-1 text-sm text-[#526174]">{mission.startDate} ~ {mission.dueDate} · 대상 {mission.targets.length}명 · {mission.requiresConfirmation ? '교사 확인 필요' : '완료 표시만 받기'}</p>{mission.description ? <p className="mt-3 whitespace-pre-wrap text-sm">{mission.description}</p> : null}</div><div className="flex flex-wrap gap-2"><button type="button" className={secondary} onClick={() => setEditing(mission.id)}>수정</button>{mission.status === 'draft' ? <button type="button" className={primary} disabled={busy} onClick={() => setEditing(mission.id)}>발행 준비</button> : <button type="button" className={secondary} disabled={busy} onClick={() => { const next = mission.status === 'open' ? 'closed' : 'open'; if (window.confirm(next === 'closed' ? '이 미션을 종료할까요? 학생의 새 완료 표시는 중단됩니다.' : '이 미션을 다시 열까요?')) void mutate({ action: 'setMissionStatus', missionId: mission.id, status: next }); }}>{mission.status === 'open' ? '종료' : '다시 열기'}</button>}</div></div>
+          <div className="min-w-0 space-y-5">{editing ? <MissionEditor key={`${board.id}-${editing}-${cloneSource?.id ?? ''}`} board={board} existing={editing === 'new' ? undefined : board.state.missions.find((entry) => entry.id === editing)} input={draftInput!} onChange={setDraftInput} busy={busy || loading} onCancel={() => { setEditing(null); setCloneSource(null); }} onSave={saveMission} /> : mission ? <section className={panel} aria-label="미션 현황">
+            <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-bold text-[#0F6CBD]">{missionDateLabel(mission)}</p><h2 className="mt-1 break-words text-xl font-extrabold">{mission.title}</h2><p className="mt-1 text-sm text-[#526174]">{mission.startDate} ~ {mission.dueDate} · 대상 {mission.targets.length}명 · {mission.requiresConfirmation ? '교사 확인 필요' : '완료 표시만 받기'}</p>{mission.description ? <p className="mt-3 whitespace-pre-wrap text-sm">{mission.description}</p> : null}</div><div className="flex flex-wrap gap-2"><button type="button" className={secondary} disabled={busy || loading} onClick={() => openEditor(mission)}>수정</button>{mission.status === 'draft' ? <button type="button" className={primary} disabled={busy || loading} onClick={() => openEditor(mission)}>발행 준비</button> : <button type="button" className={secondary} disabled={busy || loading} onClick={() => { const next = mission.status === 'open' ? 'closed' : 'open'; if (window.confirm(next === 'closed' ? '이 미션을 종료할까요? 학생의 새 완료 표시는 중단됩니다.' : '이 미션을 다시 열까요?')) runMutation({ action: 'setMissionStatus', missionId: mission.id, status: next }); }}>{mission.status === 'open' ? '종료' : '다시 열기'}</button>}</div></div>
             <div className="mt-5 flex flex-wrap gap-2">
-              <button type="button" className={secondary} onClick={() => { setCloneSource(mission); setEditing('new'); }}><Copy className="h-4 w-4" />복제해서 만들기</button>
+              <button type="button" className={secondary} disabled={busy || loading} onClick={() => openEditor(undefined, mission)}><Copy className="h-4 w-4" />복제해서 만들기</button>
               <button type="button" className={secondary} disabled={exporting} onClick={() => { setExporting(true); void downloadMissionExcel(board, mission).catch((cause) => setError(cause instanceof Error ? cause.message : 'Excel을 만들지 못했습니다.')).finally(() => setExporting(false)); }}><FileSpreadsheet className="h-4 w-4" />{exporting ? 'Excel 준비 중…' : 'Excel 내려받기'}</button>
-              {counts?.pending ? <button type="button" className={primary} disabled={busy} onClick={() => {
+              {counts?.pending ? <button type="button" className={primary} disabled={busy || loading} onClick={() => {
                 const pending = board.state.checks.filter((check) => check.missionId === mission.id && check.status === 'pending').map((check) => check.studentId);
                 const names = mission.targets.filter((student) => pending.includes(student.id)).map((student) => maskNames ? `${student.number}번` : `${student.number}번 ${student.name}`).join(', ');
-                if (window.confirm(`${mission.title}의 확인 대기 ${pending.length}명을 모두 교사 확인으로 바꿀까요?\n${names}`)) void mutate({ action: 'confirmPending', missionId: mission.id, expectedStudentIds: pending });
+                if (window.confirm(`${mission.title}의 확인 대기 ${pending.length}명을 모두 교사 확인으로 바꿀까요?\n${names}`)) runMutation({ action: 'confirmPending', missionId: mission.id, expectedStudentIds: pending });
               }}><Check className="h-4 w-4" />확인 대기 {counts.pending}명 일괄 확인</button> : null}
             </div>
             {counts ? <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">{(['unmarked', 'reported', 'pending', 'confirmed'] as const).map((status) => <button key={status} type="button" aria-pressed={statusFilter === status} onClick={() => setStatusFilter(statusFilter === status ? 'all' : status)} className={`min-h-20 rounded-xl p-3 text-left ${statusTone[status]} ${statusFilter === status ? 'outline outline-2 outline-offset-2 outline-[#0F6CBD]' : ''}`}><span className="block text-xs font-bold">{statusLabel[status]}</span><strong className="mt-1 block text-2xl">{counts[status]}</strong></button>)}</div> : null}
             {counts?.exempt ? <p className="mt-3 text-xs text-[#526174]">해당 없음 {counts.exempt}명은 완료율 분모에서 제외합니다.</p> : null}
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3"><h3 className="font-extrabold">학생별 현황 · {list.length}명</h3><div className="flex flex-wrap items-center gap-3"><label className="flex min-h-11 items-center gap-2 text-xs font-bold"><input type="checkbox" className="h-4 w-4 accent-[#0F6CBD]" checked={maskNames} onChange={(event) => setMaskNames(event.target.checked)} />이름 가림</label><button type="button" className="min-h-11 text-xs font-bold text-[#0F6CBD] underline" onClick={() => setStatusFilter('all')}>전체 보기</button></div></div>
-            <div className="mt-3 grid gap-2 lg:grid-cols-2">{list.map((student) => { const check = checkFor(board.state, mission.id, student.id); const status = check?.status ?? 'unmarked'; return <div key={student.id} className="flex min-h-16 flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"><span className="w-8 font-semibold text-[#64748B]">{student.number}</span><span className="min-w-24 flex-1 break-words font-bold">{maskNames ? `${student.name.slice(0, 1)}○` : student.name}</span><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusTone[status]}`}>{statusLabel[status]}</span>{status === 'pending' ? <button type="button" className={primary} disabled={busy} onClick={() => void mutate({ action: 'setCheck', missionId: mission.id, studentId: student.id, status: 'confirmed' })}><Check className="h-4 w-4" />확인</button> : null}<label className="text-xs text-[#526174]">정정<select aria-label={`${student.number}번 ${student.name} 상태 정정`} className="ml-1 min-h-11 rounded-lg border border-[#CBD5E1] bg-white px-2 text-xs" value={status} disabled={busy} onChange={(event) => void mutate({ action: 'setCheck', missionId: mission.id, studentId: student.id, status: event.target.value as CheckStatus })}>{Object.entries(statusLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div>; })}</div>
+            <div className="mt-3 grid gap-2 lg:grid-cols-2">{list.map((student) => { const check = checkFor(board.state, mission.id, student.id); const status = check?.status ?? 'unmarked'; return <div key={student.id} className="flex min-h-16 flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"><span className="w-8 font-semibold text-[#64748B]">{student.number}</span><span className="min-w-24 flex-1 break-words font-bold">{maskNames ? `${student.name.slice(0, 1)}○` : student.name}</span><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusTone[status]}`}>{statusLabel[status]}</span>{status === 'pending' ? <button type="button" className={primary} disabled={busy || loading} onClick={() => runMutation({ action: 'setCheck', missionId: mission.id, studentId: student.id, status: 'confirmed' })}><Check className="h-4 w-4" />확인</button> : null}<label className="text-xs text-[#526174]">정정<select aria-label={`${student.number}번 ${student.name} 상태 정정`} className="ml-1 min-h-11 rounded-lg border border-[#CBD5E1] bg-white px-2 text-xs" value={status} disabled={busy || loading} onChange={(event) => runMutation({ action: 'setCheck', missionId: mission.id, studentId: student.id, status: event.target.value as CheckStatus })}>{Object.entries(statusLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div>; })}</div>
             {mission.status === 'closed' ? <div className="mt-7 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4" aria-label="미션 보관 및 파기">
               <h3 className="text-sm font-extrabold">보관 및 파기</h3>
               <p className="mt-1 text-sm text-[#526174]">종료 후 90일이 지나면 교사가 확인하고 영구 파기할 수 있습니다. 진행 중 미션은 파기할 수 없습니다.</p>
@@ -255,6 +265,18 @@ export function ClassMissionsWorkspace() {
             </div> : null}
           </section> : <section className={`${panel} py-20 text-center`}><h2 className="text-lg font-bold">미션을 선택하거나 새로 만들어 주세요</h2></section>}</div>
         </div>
+        <details ref={rosterDetailsRef} className={panel}><summary className="cursor-pointer text-lg font-extrabold"><h2 className="inline text-lg font-extrabold">학급 명단 및 개인 코드 · {board.state.roster.length}명</h2></summary>
+          <p className="mt-3 text-sm text-[#526174]">환경 설정의 새 학생은 이 화면을 열 때 자동 등록됩니다. 학생은 QR 화면에서 등록된 이름으로 접속할 수 있고, 개인 코드 방식도 사용할 수 있습니다. 직접 수정할 때는 번호와 이름을 한 줄씩 입력하세요.</p>
+          <div className="mt-4"><ClassRosterImporter disabled={busy || loading} onApply={(text) => { rosterDirty.current = true; setRosterText(text); }} onPendingChange={setImportPending} /></div>
+          <label className="mt-4 block text-sm font-bold">편집 명단<textarea className={`${inputStyle} mt-1.5 font-mono`} rows={Math.min(12, Math.max(5, rosterText.split('\n').length + 1))} value={rosterText} onChange={(event) => { rosterDirty.current = true; setRosterText(event.target.value); }} placeholder={'1 김하늘\n2 이바다'} /></label>
+          <div className="mt-3 flex flex-wrap items-center gap-3"><button type="button" className={primary} disabled={busy || importPending} onClick={() => void saveRoster()}>학생 명단 저장</button><span className="text-xs text-[#64748B]">진행 중 미션의 대상 학생은 삭제할 수 없습니다.</span></div>
+          {board.state.roster.length ? <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{board.state.roster.map((student) => <div key={student.id} className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"><span className="break-words">{student.number}번 {student.name}</span><button type="button" className="shrink-0 text-xs font-bold text-[#0F6CBD] underline" disabled={busy || loading} onClick={() => { if (window.confirm(`${student.number}번 ${student.name}의 개인 코드를 다시 발급할까요? 이전 코드는 즉시 무효화됩니다.`)) runMutation({ action: 'reissueCode', studentId: student.id }); }}>코드 재발급</button></div>)}</div> : null}
+        </details>
+        {issuedCodes.length ? <section className="rounded-2xl border-2 border-[#E5A735] bg-[#FFF8E6] p-5" aria-label="이번에 발급한 개인 코드"><h2 className="font-extrabold">이번에 발급한 개인 코드 · {issuedCodes.length}명</h2><p className="mt-1 text-sm text-[#73510E]">동명이인은 개인 코드로 접속해 주세요. 이 코드는 이름 대신 접속할 때 사용할 수 있으며, 화면을 떠나면 다시 볼 수 없습니다.</p><div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{issuedCodes.map((entry) => <div key={entry.id} className="flex items-center justify-between gap-2 rounded-lg bg-white p-3 text-sm"><span>{entry.number}번 {entry.name} <strong className="ml-1 font-mono tracking-wider">{entry.code}</strong></span><button type="button" className="min-h-11 shrink-0 text-xs font-bold text-[#0F6CBD]" onClick={() => void copyText(entry.code, `${entry.number}번 코드를 복사했습니다.`)}>복사</button></div>)}</div><button type="button" className={`${secondary} mt-3`} onClick={() => setIssuedCodeBatch(null)}>코드 목록 닫기</button></section> : null}
+        <details ref={shareDetailsRef} className={panel}><summary className="min-h-11 cursor-pointer text-lg font-extrabold">학생 참여 링크 · QR 및 공유 설정</summary><section className="mt-3" aria-label="학생 참여 링크"><div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="text-lg font-extrabold">학생 참여 링크</h2><p className="mt-1 text-sm text-[#526174]">공통 링크와 QR에는 개인 코드가 들어 있지 않습니다. 학생은 접속 후 등록된 이름 또는 개인 코드를 입력합니다. 동명이인은 개인 코드로 구분합니다. 같은 학급의 새 미션에도 이 QR을 계속 사용합니다.</p><p className="mt-2 break-all text-sm text-[#0F6CBD]">{missionPublicUrl(board.publicToken)}</p></div><label className="flex min-h-11 items-center gap-2 text-sm font-bold"><input type="checkbox" className="h-5 w-5 accent-[#0F6CBD]" checked={board.publicEnabled} disabled={busy || loading} onChange={(event) => runMutation({ action: 'setPublic', enabled: event.target.checked })} />공개 링크 사용</label></div>
+          <div className="mt-4 flex flex-wrap gap-2"><button type="button" className={secondary} onClick={() => void copyText(missionPublicUrl(board.publicToken), '학생 링크를 복사했습니다.')}><ClipboardCopy className="h-4 w-4" />링크 복사</button><button type="button" className={secondary} onClick={() => void saveQrImage(qrRef.current, qrImageFileName(board.state.className, '학급미션_QR', '학급미션')).catch((cause) => setError(cause instanceof Error ? cause.message : 'QR을 저장하지 못했습니다.'))}><Download className="h-4 w-4" />QR PNG 저장</button><button type="button" className={secondary} disabled={busy || loading} onClick={() => { if (window.confirm('학생 링크를 다시 발급할까요? 이전 QR과 링크는 사용할 수 없습니다.')) runMutation({ action: 'rotateToken' }); }}>링크 재발급</button></div><div ref={qrRef} className="mt-4 inline-block rounded-xl border border-[#E2E8F0] bg-white p-3"><QRCodeSVG value={missionPublicUrl(board.publicToken)} size={144} includeMargin title={`${board.state.className} 학급 미션 참여 QR 코드`} /></div>
+        </section></details>
+        <details className={panel}><summary className="min-h-11 cursor-pointer text-sm font-bold">학급 추가</summary><div className="mt-3 flex flex-wrap items-end gap-3"><label className="min-w-44 flex-1 text-sm font-bold">새 학급 이름<input className={`${inputStyle} mt-1.5`} maxLength={60} value={className} onChange={(event) => setClassName(event.target.value)} placeholder="예: 5학년 2반" /></label><button type="button" className={primary} disabled={busy || !className.trim()} onClick={() => void createBoard()}><Plus className="h-4 w-4" />학급 만들기</button></div></details>
       </>}
     </>}
   </div>;

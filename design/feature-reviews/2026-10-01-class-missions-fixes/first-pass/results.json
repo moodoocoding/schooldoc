@@ -1,0 +1,92 @@
+{
+  "localDemoOnly": true,
+  "results": [
+    {
+      "name": "current-ui-workflow",
+      "completed": true,
+      "workflowPassed": true,
+      "downloads": [
+        "가상 5학년 2반_학급미션_QR.png",
+        "가상 5학년 2반_가상 독서 기록_미션현황.xlsx"
+      ],
+      "focusAfterLogin": "H1",
+      "qrPixels": [
+        1024,
+        1024
+      ],
+      "excelStatusesVerified": true
+    },
+    {
+      "name": "duplicate-name-rejected-code-selects-student",
+      "completed": true,
+      "passed": true,
+      "ambiguousNameWrites": 0,
+      "personalCodeSelectsSecond": true
+    },
+    {
+      "name": "teacher-stale-version-and-draft-loss",
+      "completed": true,
+      "passed": true,
+      "conflictHandled": true,
+      "unhandled": [],
+      "draftPreserved": true,
+      "retrySaved": true
+    },
+    {
+      "name": "logout-during-delayed-mark-restores-view",
+      "completed": true,
+      "passed": true,
+      "delay": "Test delays code hashing 1500ms to model an in-flight async response after logout."
+    },
+    {
+      "name": "density-responsive-accessibility",
+      "completed": true,
+      "passed": true,
+      "statusPanelTop": 523,
+      "viewportHeight": 900,
+      "measurements": [
+        {
+          "name": "teacher-24-mobile",
+          "scrollWidth": 390,
+          "innerWidth": 390
+        },
+        {
+          "name": "teacher-24-zoom-200",
+          "scrollWidth": 1366,
+          "innerWidth": 1366
+        }
+      ],
+      "teacherAxe": [],
+      "studentAxe": [],
+      "studentCount": 24
+    },
+    {
+      "name": "closed-missions-before-actionable-mission",
+      "completed": true,
+      "passed": true,
+      "order": [
+        "가상 독서 기록",
+        "종료된 가상 미션 1",
+        "종료된 가상 미션 2",
+        "종료된 가상 미션 3",
+        "종료된 가상 미션 4",
+        "종료된 가상 미션 5"
+      ],
+      "actionableTop": 663,
+      "historyAccessible": true
+    },
+    {
+      "name": "future-start-teacher-label",
+      "completed": true,
+      "passed": true,
+      "teacherState": "시작 전",
+      "studentState": "시작 전"
+    },
+    {
+      "name": "purge-guard-counts-and-final-link",
+      "completed": true,
+      "passed": true,
+      "environment": "local demo; database transaction not exercised"
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import {
   changeMissionStatus, generateMissionCode, hashMissionCode, missionCanReport, missionCounts, missionPurgeCounts,
-  missionRetention, normalizeMissionCode, parseMissionRoster, publicMissionView, purgeMissionState,
+  missionRetention, missionDateLabel, resolveMissionStudent, normalizeMissionCode, parseMissionRoster, publicMissionView, purgeMissionState,
   setMissionCheck, validateMissionInput,
   type Mission, type StoredMissionState,
 } from '../../supabase/functions/_shared/classMissions';
@@ -94,4 +94,23 @@ describe('학급 미션 규칙', () => {
     expect(partlyPurged.roster).toHaveLength(2);
     expect(partlyPurged.checks).toHaveLength(0);
   });
+});
+
+test('동명 이름은 거부하고 개인 코드로 해당 학생만 선택한다', async () => {
+  const state = fixture();
+  state.roster[1].name = state.roster[0].name;
+  state.roster[1].codeHash = await hashMissionCode('board', 'MNPQRSTUVWXZ');
+  await expect(resolveMissionStudent(state, 'board', '가상하늘', '')).rejects.toThrow('개인 코드');
+  expect((await resolveMissionStudent(state, 'board', '', 'MNPQ-RSTU-VWXZ'))?.id).toBe(state.roster[1].id);
+  expect(await resolveMissionStudent(state, 'board', '없는학생', '')).toBeUndefined();
+});
+
+test('교사·학생·진행 업무에서 기간 상태를 같은 기준으로 표시한다', () => {
+  const mission = fixture().missions[0];
+  expect(missionDateLabel(mission, '2026-08-31')).toBe('시작 전');
+  expect(missionDateLabel(mission, '2026-09-01')).toBe('진행 중');
+  expect(missionDateLabel(mission, '2026-09-30')).toBe('진행 중');
+  expect(missionDateLabel(mission, '2026-10-01')).toBe('마감 지남');
+  expect(missionDateLabel({ ...mission, status: 'closed' }, '2026-08-31')).toBe('종료');
+  expect(missionDateLabel({ ...mission, status: 'draft' }, '2026-09-10')).toBe('초안');
 });

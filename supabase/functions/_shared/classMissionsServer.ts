@@ -2,7 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.110.8';
 import { createPayloadCrypto } from './payloadCrypto.ts';
 import {
   changeMissionStatus, generateMissionCode, hashMissionCode, missionPurgeCounts, missionToday, normalizeMissionCode,
-  parseMissionRoster, publicMissionView, purgeMissionState, safeHashEqual, setMissionCheck,
+  parseMissionRoster, publicMissionView, purgeMissionState, resolveMissionStudent, setMissionCheck,
   validateClassName, validateMissionInput,
   type CheckStatus, type IssuedCode, type Mission, type MissionBoard,
   type StoredMissionState,
@@ -286,21 +286,34 @@ async function handlePublic(db: Client, body: Record<string, unknown>, remoteIp:
   const normalized = typeof body.code === 'string' ? normalizeMissionCode(body.code) : '';
   const hasValidCode = /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{12}$/.test(normalized);
   if (!trimmedName && !hasValidCode) publicError();
-  await rateLimit(db, `public:${remoteIp}`, 40);
-  await rateLimit(db, `token:${token}`, 400);
+  // A school NAT can carry several classes. Each class supports 60 students
+  // viewing, marking, cancelling and refreshing (240 requests/minute).
+  await rateLimit(db, `public:${remoteIp}`, 1200);
+  await rateLimit(db, `token:${token}`, 600);
+  await rateLimit(db, `class-ip:${token}:${remoteIp}`, 360);
   if (body.action !== 'view' && body.action !== 'mark') fail('지원하지 않는 요청입니다.');
+  let limitedStudentId = '';
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const { data, error } = await db.from('class_mission_boards').select('*').eq('public_token', token).maybeSingle();
     if (error) fail('학급을 불러오지 못했습니다.', 503);
     const row = data as BoardRow | null;
     if (!row || !row.public_enabled) publicError();
     const state = await decrypt(row);
-    let student = trimmedName ? state.roster.find((entry) => entry.name.trim() === trimmedName) : undefined;
-    if (!student && hasValidCode) {
-      const hash = await hashMissionCode(row.id, normalized);
-      student = state.roster.find((entry) => safeHashEqual(entry.codeHash, hash));
+    let student;
+    try { student = await resolveMissionStudent(state, row.id, trimmedName, normalized); }
+    catch (cause) {
+      await rateLimit(db, `failed:${token}:${remoteIp}`, 40);
+      throw cause;
     }
-    if (!student) publicError();
+    if (!student) {
+      await rateLimit(db, `failed:${token}:${remoteIp}`, 40);
+      publicError();
+    }
+    // Charge the resolved identity once per request, including optimistic retries.
+    if (limitedStudentId !== student.id) {
+      await rateLimit(db, `student:${row.id}:${student.id}`, 12);
+      limitedStudentId = student.id;
+    }
     if (body.action === 'view') return json(publicMissionView(state, student.id));
     const status = body.status;
     if (status !== 'reported' && status !== 'unmarked') fail('완료 상태를 확인해 주세요.');

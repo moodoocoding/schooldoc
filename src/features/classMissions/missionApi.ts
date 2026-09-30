@@ -1,7 +1,7 @@
 import { supabase } from '../../utils/supabaseClient';
 import {
-  changeMissionStatus, generateMissionCode, hashMissionCode, missionPurgeCounts, missionToday, normalizeMissionCode,
-  parseMissionRoster, publicMissionView, purgeMissionState, safeHashEqual, setMissionCheck,
+  changeMissionStatus, generateMissionCode, hashMissionCode, missionPurgeCounts, missionToday, resolveMissionStudent,
+  parseMissionRoster, publicMissionView, purgeMissionState, setMissionCheck,
   validateClassName, validateMissionInput,
   type IssuedCode, type Mission, type MissionBoard, type MissionInput,
   type PublicMissionView, type StoredMissionState,
@@ -177,11 +177,7 @@ export async function viewPublicMission(token: string, nameOrCode: string): Prom
   if (!isMissionsDemo) return invoke('class-missions-public', { action: 'view', token, studentName: trimmed, code: trimmed });
   const board = readDemo().find((entry) => entry.publicToken === token && entry.publicEnabled);
   if (!board) throw new Error('이름 또는 링크를 확인해 주세요.');
-  let student = board.state.roster.find((entry) => entry.name.trim() === trimmed);
-  if (!student && /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{12}$/i.test(normalizeMissionCode(trimmed))) {
-    const hash = await hashMissionCode(board.id, normalizeMissionCode(trimmed));
-    student = board.state.roster.find((entry) => safeHashEqual(entry.codeHash, hash));
-  }
+  const student = await resolveMissionStudent(board.state, board.id, trimmed, trimmed);
   if (!student) throw new Error('이름 또는 링크를 확인해 주세요.');
   return publicMissionView(board.state, student.id);
 }
@@ -191,11 +187,7 @@ export async function markPublicMission(token: string, nameOrCode: string, missi
   const boards = readDemo();
   const board = boards.find((entry) => entry.publicToken === token && entry.publicEnabled);
   if (!board) throw new Error('이름 또는 링크를 확인해 주세요.');
-  let student = board.state.roster.find((entry) => entry.name.trim() === trimmed);
-  if (!student && /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{12}$/i.test(normalizeMissionCode(trimmed))) {
-    const hash = await hashMissionCode(board.id, normalizeMissionCode(trimmed));
-    student = board.state.roster.find((entry) => safeHashEqual(entry.codeHash, hash));
-  }
+  const student = await resolveMissionStudent(board.state, board.id, trimmed, trimmed);
   if (!student) throw new Error('이름 또는 링크를 확인해 주세요.');
   const mission = board.state.missions.find((entry) => entry.id === missionId);
   if (!mission) throw new Error('미션을 찾지 못했습니다.');
