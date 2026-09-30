@@ -100,8 +100,8 @@ export function ClassRosterSettings() {
       <div>
         <h2 className="text-lg font-bold">학급 학생 명단</h2>
         <p className="mt-2 text-sm text-[#64748B]">
-          1인 1역 배정에 자동 적용됩니다. 학급 미션을 열면 새 학생도 등록하고
-          개인 코드를 발급합니다. 기존 배정·미션 기록과 발급한 코드는 유지됩니다.
+          1인 1역 배정에 자동 적용됩니다. 학급 미션을 열면 새 학생도 등록하며,
+          학생은 등록된 이름으로 접속할 수 있습니다. 기존 배정·미션 기록은 유지됩니다.
         </p>
       </div>
       <RoleError message={error} />

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CheckCircle2, Circle, Clock3, LogOut, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useParams } from 'react-router-dom';
-import { markPublicMission, missionToday, normalizeMissionCode, viewPublicMission, type PublicMission, type PublicMissionView } from './missionApi';
+import { markPublicMission, missionToday, viewPublicMission, type PublicMission, type PublicMissionView } from './missionApi';
 
 const button = 'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#0F6CBD] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#0B5B9F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F6CBD] disabled:cursor-not-allowed disabled:opacity-50';
 const softButton = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#CBD5E1] bg-white px-4 py-2 text-sm font-bold text-[#334155] hover:border-[#0F6CBD] hover:text-[#0F6CBD] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F6CBD] disabled:cursor-not-allowed disabled:opacity-50';
@@ -28,8 +28,8 @@ function MissionCard({ mission, busy, onMark }: { mission: PublicMission; busy: 
 
 export function PublicClassMissionsPage() {
   const { token = '' } = useParams();
-  const [typedCode, setTypedCode] = useState('');
-  const [code, setCode] = useState('');
+  const [studentNameInput, setStudentNameInput] = useState('');
+  const [studentName, setStudentName] = useState('');
   const [view, setView] = useState<PublicMissionView | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -37,24 +37,26 @@ export function PublicClassMissionsPage() {
   const enter = async (event: React.FormEvent) => {
     event.preventDefault();
     if (busy) return;
+    const trimmed = studentNameInput.trim();
+    if (!trimmed) return;
     setBusy(true); setError(''); setMessage('');
-    try { const normalized = normalizeMissionCode(typedCode); const loaded = await viewPublicMission(token, normalized);
-      setCode(normalized); setView(loaded); setTypedCode(''); }
+    try { const loaded = await viewPublicMission(token, trimmed);
+      setStudentName(trimmed); setView(loaded); setStudentNameInput(''); }
     catch (cause) { setError(cause instanceof Error ? cause.message : '접속하지 못했습니다.'); }
     finally { setBusy(false); }
   };
-  const leave = () => { setCode(''); setTypedCode(''); setView(null); setError(''); setMessage(''); };
+  const leave = () => { setStudentName(''); setStudentNameInput(''); setView(null); setError(''); setMessage(''); };
   const refresh = async () => {
-    if (busy || !code) return;
+    if (busy || !studentName) return;
     setBusy(true); setError('');
-    try { setView(await viewPublicMission(token, code)); }
+    try { setView(await viewPublicMission(token, studentName)); }
     catch (cause) { setError(cause instanceof Error ? cause.message : '새로고침하지 못했습니다.'); }
     finally { setBusy(false); }
   };
   const mark = async (missionId: string, status: 'reported' | 'unmarked') => {
-    if (busy || !code) return;
+    if (busy || !studentName) return;
     setBusy(true); setError(''); setMessage('');
-    try { const updated = await markPublicMission(token, code, missionId, status); setView(updated); setMessage(status === 'unmarked' ? '완료 표시를 취소했습니다.' : '완료 표시를 저장했습니다.'); }
+    try { const updated = await markPublicMission(token, studentName, missionId, status); setView(updated); setMessage(status === 'unmarked' ? '완료 표시를 취소했습니다.' : '완료 표시를 저장했습니다.'); }
     catch (cause) { setError(cause instanceof Error ? cause.message : '저장하지 못했습니다. 다시 시도해 주세요.'); }
     finally { setBusy(false); }
   };
@@ -63,10 +65,10 @@ export function PublicClassMissionsPage() {
   const sorted = [...relevant].sort((a, b) => Number(a.check !== 'unmarked') - Number(b.check !== 'unmarked') || a.dueDate.localeCompare(b.dueDate));
   const completed = relevant.filter((mission) => mission.check === 'reported' || mission.check === 'pending' || mission.check === 'confirmed').length;
   return <main className="min-h-screen bg-[#F4F8FC] px-4 py-7 text-[#0F172A] sm:py-12"><div className="mx-auto max-w-xl space-y-5">
-    <header className="text-center"><span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0F6CBD] text-white"><CheckCircle2 className="h-7 w-7" aria-hidden="true" /></span><p className="mt-3 text-xs font-extrabold tracking-wide text-[#0F6CBD]">SCHOOLDOC · 학급 미션</p><h1 className="mt-1 text-2xl font-extrabold">{view ? `${view.studentName}의 미션` : '내 미션 확인하기'}</h1><p className="mt-2 text-sm text-[#526174]">{view ? view.className : '선생님에게 받은 개인 코드를 입력해 주세요.'}</p></header>
+    <header className="text-center"><span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0F6CBD] text-white"><CheckCircle2 className="h-7 w-7" aria-hidden="true" /></span><p className="mt-3 text-xs font-extrabold tracking-wide text-[#0F6CBD]">SCHOOLDOC · 학급 미션</p><h1 className="mt-1 text-2xl font-extrabold">{view ? `${view.studentName}의 미션` : '내 미션 확인하기'}</h1><p className="mt-2 text-sm text-[#526174]">{view ? view.className : '등록된 학생 이름을 입력해 주세요.'}</p></header>
     {error ? <p role="alert" className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] p-4 text-sm font-semibold text-[#B42318]">{error}</p> : null}
     {message ? <p role="status" className="rounded-xl border border-[#BBE7C7] bg-[#E6F4EA] p-4 text-sm font-semibold text-[#126B32]">{message}</p> : null}
-    {!view ? <form onSubmit={(event) => void enter(event)} className="rounded-2xl border border-[#DCE3EA] bg-white p-5 shadow-sm sm:p-7"><label className="block text-sm font-bold" htmlFor="mission-personal-code">개인 접속 코드</label><input id="mission-personal-code" className="mt-2 min-h-12 w-full rounded-xl border border-[#CBD5E1] px-4 font-mono text-lg uppercase tracking-widest focus:border-[#0F6CBD] focus:outline-none focus:ring-2 focus:ring-[#BFDBFE]" autoComplete="off" spellCheck={false} maxLength={17} value={typedCode} onChange={(event) => setTypedCode(event.target.value)} placeholder="12자리 코드" /><p className="mt-2 text-xs leading-5 text-[#64748B]">코드는 선생님이 학생마다 따로 알려 줍니다. 공통 QR만으로는 미션이 열리지 않습니다.</p><button type="submit" className={`${button} mt-5 w-full`} disabled={busy || !typedCode.trim()}>{busy ? '확인하는 중…' : '내 미션 보기'}</button></form> : <>
+    {!view ? <form onSubmit={(event) => void enter(event)} className="rounded-2xl border border-[#DCE3EA] bg-white p-5 shadow-sm sm:p-7"><label className="block text-sm font-bold" htmlFor="mission-student-name">학생 이름</label><input id="mission-student-name" className="mt-2 min-h-12 w-full rounded-xl border border-[#CBD5E1] px-4 text-lg focus:border-[#0F6CBD] focus:outline-none focus:ring-2 focus:ring-[#BFDBFE]" autoComplete="off" spellCheck={false} maxLength={30} value={studentNameInput} onChange={(event) => setStudentNameInput(event.target.value)} placeholder="이름을 입력하세요 (예: 홍길동)" /><p className="mt-2 text-xs leading-5 text-[#64748B]">선생님이 학급에 등록한 본인 이름을 입력해 주세요.</p><button type="submit" className={`${button} mt-5 w-full`} disabled={busy || !studentNameInput.trim()}>{busy ? '확인하는 중…' : '내 미션 보기'}</button></form> : <>
       <section className="rounded-2xl border border-[#CFE1F2] bg-[#EFF6FC] p-5" aria-label="내 완료 현황"><p className="text-sm font-bold text-[#0B5B9F]">내 완료 표시</p><strong className="mt-1 block text-3xl">{completed}<span className="text-base font-semibold text-[#526174]"> / {relevant.length}건</span></strong><p className="mt-2 text-xs leading-5 text-[#526174]">완료 표시는 내가 했다고 알린 기록입니다. ‘교사 확인’은 선생님이 확인한 상태입니다.</p></section>
       <div className="flex flex-wrap justify-between gap-2"><div><h2 className="self-center text-base font-extrabold">내 미션</h2><p className="mt-1 text-xs text-[#64748B]">새 미션이 추가되면 새로고침으로 확인할 수 있어요.</p></div><div className="flex gap-2"><button type="button" className={softButton} disabled={busy} onClick={() => void refresh()}><RefreshCw className="h-4 w-4" aria-hidden="true" />새로고침</button><button type="button" className={softButton} onClick={leave}><LogOut className="h-4 w-4" aria-hidden="true" />나가기</button></div></div>
       {sorted.length ? <div className="space-y-3">{sorted.map((mission) => <MissionCard key={mission.id} mission={mission} busy={busy} onMark={(missionId, status) => void mark(missionId, status)} />)}</div> : <div className="rounded-2xl border border-[#DCE3EA] bg-white px-5 py-12 text-center"><ShieldCheck className="mx-auto h-10 w-10 text-[#94A3B8]" aria-hidden="true" /><p className="mt-3 font-bold">아직 볼 수 있는 미션이 없습니다.</p><p className="mt-1 text-sm text-[#526174]">선생님이 미션을 발행하면 여기에 표시됩니다.</p></div>}

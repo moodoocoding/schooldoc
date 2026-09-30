@@ -117,6 +117,7 @@ export function RolePracticeBoardPage({ board }: RolePageProps) {
             <button type="button" onClick={() => setParams({ view: "all" })} aria-current={view === "all" ? "page" : undefined} className={`min-h-11 rounded-lg px-4 text-sm font-bold ${view === "all" ? "bg-[#182B40] text-white" : "border border-[#CAD4DD] text-[#253B4D]"}`}>전체보기</button>
             <button type="button" onClick={() => setParams({ view: "students" })} aria-current={view === "students" ? "page" : undefined} className={`min-h-11 rounded-lg px-4 text-sm font-bold ${view === "students" ? "bg-[#182B40] text-white" : "border border-[#CAD4DD] text-[#253B4D]"}`}>학생화면</button>
             <Link to="/tools/classroom-roles/assign?step=roles" className="inline-flex min-h-11 items-center rounded-lg border border-[#CAD4DD] px-4 text-sm font-bold text-[#253B4D]">역할설정</Link>
+            <Link to="/tools/classroom-roles/print" className="inline-flex min-h-11 items-center rounded-lg border border-[#CAD4DD] px-4 text-sm font-bold text-[#253B4D]">게시판 안내문 인쇄</Link>
           </nav>
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
             <label htmlFor="role-public-url" className="shrink-0 text-sm font-semibold text-[#526174]">학생화면 URL</label>

@@ -100,7 +100,7 @@ async function applyMissionSettings(userId: string, displayName: string): Promis
     boards = boards.map((board) => board.id === target.id ? saved.board : board);
     return {
       ...base, boards, issuedCodes: saved.issuedCodes,
-      notice: `설정 명단의 새 학생 ${update.addedCount}명을 ${target.state.className}에 등록했습니다. 발급된 개인 코드를 전달해 주세요. 기존 미션 대상은 바뀌지 않습니다.`,
+      notice: `설정 명단의 새 학생 ${update.addedCount}명을 ${target.state.className}에 등록했습니다. 학생은 QR 화면에서 등록된 이름으로 접속할 수 있고 개인 코드도 사용할 수 있습니다. 기존 미션 대상은 바뀌지 않습니다.`,
     };
   } catch (error) {
     return { ...base, warning: error instanceof Error ? error.message : '설정 명단을 반영하지 못했습니다. 다시 시도해 주세요.' };

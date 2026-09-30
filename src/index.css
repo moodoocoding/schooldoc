@@ -535,7 +535,9 @@ html[data-schooldoc-font-size="large"] .schooldoc-admin-shell {
   .registry-print-root,
   .registry-print-root *,
   .student-result-qr-print-root,
-  .student-result-qr-print-root * {
+  .student-result-qr-print-root *,
+  .role-poster-print-root,
+  .role-poster-print-root * {
     visibility: visible;
   }
 
@@ -548,6 +550,24 @@ html[data-schooldoc-font-size="large"] .schooldoc-admin-shell {
     position: absolute;
     inset: 0;
     width: 794px;
+  }
+
+  .role-poster-print-root {
+    position: absolute;
+    inset: 0;
+    width: 210mm;
+  }
+
+  .role-poster-print-page {
+    break-after: page;
+    page-break-after: always;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .role-poster-print-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
   }
 
   .registry-print-page,

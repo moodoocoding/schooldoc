@@ -172,23 +172,31 @@ export async function mutateMissionBoard(board: MissionBoard, mutation: MissionM
   writeDemo(boards.map((entry) => entry.id === board.id ? next : entry));
   return { board: project(next), issuedCodes };
 }
-export async function viewPublicMission(token: string, code: string): Promise<PublicMissionView> {
-  if (!isMissionsDemo) return invoke('class-missions-public', { action: 'view', token, code });
+export async function viewPublicMission(token: string, nameOrCode: string): Promise<PublicMissionView> {
+  const trimmed = nameOrCode.trim();
+  if (!isMissionsDemo) return invoke('class-missions-public', { action: 'view', token, studentName: trimmed, code: trimmed });
   const board = readDemo().find((entry) => entry.publicToken === token && entry.publicEnabled);
-  if (!board) throw new Error('코드 또는 링크를 확인해 주세요.');
-  const hash = await hashMissionCode(board.id, code);
-  const student = board.state.roster.find((entry) => safeHashEqual(entry.codeHash, hash));
-  if (!student) throw new Error('코드 또는 링크를 확인해 주세요.');
+  if (!board) throw new Error('이름 또는 링크를 확인해 주세요.');
+  let student = board.state.roster.find((entry) => entry.name.trim() === trimmed);
+  if (!student && /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{12}$/i.test(normalizeMissionCode(trimmed))) {
+    const hash = await hashMissionCode(board.id, normalizeMissionCode(trimmed));
+    student = board.state.roster.find((entry) => safeHashEqual(entry.codeHash, hash));
+  }
+  if (!student) throw new Error('이름 또는 링크를 확인해 주세요.');
   return publicMissionView(board.state, student.id);
 }
-export async function markPublicMission(token: string, code: string, missionId: string, status: 'reported' | 'unmarked'): Promise<PublicMissionView> {
-  if (!isMissionsDemo) return invoke('class-missions-public', { action: 'mark', token, code, missionId, status });
+export async function markPublicMission(token: string, nameOrCode: string, missionId: string, status: 'reported' | 'unmarked'): Promise<PublicMissionView> {
+  const trimmed = nameOrCode.trim();
+  if (!isMissionsDemo) return invoke('class-missions-public', { action: 'mark', token, studentName: trimmed, code: trimmed, missionId, status });
   const boards = readDemo();
   const board = boards.find((entry) => entry.publicToken === token && entry.publicEnabled);
-  if (!board) throw new Error('코드 또는 링크를 확인해 주세요.');
-  const hash = await hashMissionCode(board.id, normalizeMissionCode(code));
-  const student = board.state.roster.find((entry) => safeHashEqual(entry.codeHash, hash));
-  if (!student) throw new Error('코드 또는 링크를 확인해 주세요.');
+  if (!board) throw new Error('이름 또는 링크를 확인해 주세요.');
+  let student = board.state.roster.find((entry) => entry.name.trim() === trimmed);
+  if (!student && /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{12}$/i.test(normalizeMissionCode(trimmed))) {
+    const hash = await hashMissionCode(board.id, normalizeMissionCode(trimmed));
+    student = board.state.roster.find((entry) => safeHashEqual(entry.codeHash, hash));
+  }
+  if (!student) throw new Error('이름 또는 링크를 확인해 주세요.');
   const mission = board.state.missions.find((entry) => entry.id === missionId);
   if (!mission) throw new Error('미션을 찾지 못했습니다.');
   const nextStatus = status === 'unmarked' ? 'unmarked' : mission.requiresConfirmation ? 'pending' : 'reported';
