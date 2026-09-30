@@ -1,0 +1,63 @@
+{
+  "project": "jhystopaacyfvjxhnpyd",
+  "origin": "https://schooldoc-nine.vercel.app",
+  "createdAt": "2026-09-30T23:02:20.980Z",
+  "run": "ece245cb-0fae-41ab-a7b1-ef7d78ce9e5d",
+  "results": [
+    {
+      "label": "real auth/JWT; anonymous 401; cross-owner API read/write isolation",
+      "passed": true
+    },
+    {
+      "label": "real encrypted roster/code storage and mission publication",
+      "passed": true
+    },
+    {
+      "label": "anon/owner/foreign teacher denied direct SELECT/INSERT/UPDATE/DELETE and service-only RPC",
+      "passed": true
+    },
+    {
+      "label": "duplicate name rejected; code priority/unique name accepted; public response minimized",
+      "passed": true
+    },
+    {
+      "label": "correct duplicate identity; mark/cancel; concurrent SQL writes and stale-version rejection",
+      "passed": true
+    },
+    {
+      "label": "confirmation list checked; confirmed mark protected; count/retention purge safeguards",
+      "passed": true
+    },
+    {
+      "label": "share stop/resume; rotated old link rejected",
+      "passed": true
+    },
+    {
+      "label": "8 actual PostgreSQL contracts: RLS/ACL, owner/version, rollback, replace, audit, replay, link revocation",
+      "passed": true
+    },
+    {
+      "label": "deployed real teacher session; anonymous mobile duplicate-name/code/name entry",
+      "passed": true
+    },
+    {
+      "label": "real UI→Edge→SQL submission; stale save/input preservation/manual retry; teacher confirmation",
+      "passed": true
+    },
+    {
+      "label": "real account switch removes previous teacher board/state",
+      "passed": true
+    }
+  ],
+  "cleanup": {
+    "createdUsers": 2,
+    "removedUsers": 2,
+    "fixtureBoards": 2,
+    "verified": true
+  },
+  "limitations": [
+    "Google interactive OAuth not automated",
+    "No physical school NAT/load or device testing",
+    "SQL changes rolled back; no actual retention purge of user data"
+  ]
+}
