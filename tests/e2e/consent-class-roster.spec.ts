@@ -27,7 +27,7 @@ test('설정에서 저장한 우리반 명단을 번호순으로 추가하고 �
   await page.getByRole('button', { name: '학급 학생 명단', exact: true }).click();
   await page.getByLabel('학생 명단 (한 줄에 번호와 이름)').fill('10 가상하늘\n2 가상바다\n1 가상하늘');
   await page.getByRole('button', { name: '학생 명단 저장', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('학생 명단을 저장했습니다.');
+  await expect(page.getByRole('status').filter({ hasText: '학생 명단을 저장했습니다.' })).toBeVisible();
   const savedBoard = await page.evaluate((key) => localStorage.getItem(key), demoKey);
 
   await openRecipients(page);
@@ -70,6 +70,7 @@ test('빈 명단과 불러오기 실패를 안내하고 기존 입력을 유지�
   await importButton.click();
   await expect(page.getByRole('status')).toContainText('설정 > 학급 학생 명단');
   await expect(page.getByRole('button', { name: '다음: 공유 설정' })).toBeDisabled();
+  await page.screenshot({ path: test.info().outputPath('consent-class-roster-empty.png'), fullPage: true });
   await page.getByLabel('이름 (필수)').fill('기존수신자');
   await page.getByRole('button', { name: '추가', exact: true }).click();
   await page.getByLabel('이름 (필수)').fill('입력중이름');
@@ -109,6 +110,22 @@ test('모바일에서 우리반 버튼과 명단이 가로 넘침 없이 표시�
   await expect(page.getByRole('button', { name: 'PDF 불러오기' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: test.info().outputPath('consent-class-roster-mobile.png'), fullPage: true });
+  for (const count of [23, 60]) {
+    const roster = parseRoleRoster(Array.from({ length: count }, (_, index) =>
+      `${index + 1} ${index === 0 ? '가상하늘' : index === 1 ? '가상바다' : index === 14 ? '가상학생긴이름확인용이름' : `가상학생${index + 1}`}`).join('\n'));
+    await page.evaluate(({ key, roster }) => {
+      const board = JSON.parse(localStorage.getItem(key)!);
+      board.state.roster = roster;
+      localStorage.setItem(key, JSON.stringify(board));
+    }, { key: demoKey, roster });
+    await importButton.click();
+    await expect(recipients(page).locator('li')).toHaveCount(count);
+    await page.setViewportSize({ width: count === 23 ? 1366 : 390, height: 844 });
+    await page.screenshot({ path: test.info().outputPath(`consent-class-roster-${count}.png`), fullPage: true });
+  }
+  await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath('consent-class-roster-60-large-text.png'), fullPage: true });
   await page.getByRole('button', { name: '다음: 공유 설정' }).click();
-  await expect(page.getByText('명단 2명', { exact: true })).toBeVisible();
+  await expect(page.getByText('명단 60명', { exact: true })).toBeVisible();
 });

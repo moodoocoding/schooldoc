@@ -218,7 +218,7 @@ test('결손 원본은 불완전한 PDF를 내려받지 않고 같은 파일을 
   expect(downloads).toEqual([]);
   await page.getByRole('button', { name: '학급 문구점 지출 수정', exact: true }).click();
   await page.getByLabel('기존 영수증 원본 다시 연결').setInputFiles({ name: imageSource.name, mimeType: imageSource.mimeType, buffer: Buffer.from(imageSource.base64, 'base64') });
-  await expect(page.getByRole('status')).toContainText('원본을 다시 연결했습니다.');
+  await expect(page.getByRole('status').filter({ hasText: '원본을 다시 연결했습니다.' })).toBeVisible();
   const path = await downloadFile(page, testInfo, '영수증 첨부 PDF', 'pdf');
   expect((await renderDownloadedPdf(page, testInfo, path))).toHaveLength(2);
   expect(downloads).toHaveLength(1);
