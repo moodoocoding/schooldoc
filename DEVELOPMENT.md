@@ -15,12 +15,23 @@ A4/PDF 출력을 함께 지원하는 것을 목표로 합니다.
 - 자료 수합: 명단 있음·없음 방식, 이름 붙여넣기·Excel 명단 분석, 새 파일 제출 또는 배포 파일의
   `이상 없음` 확인·수정본 회신, 재제출과 제출 현황 관리
 - 특별실 예약: 특별실별 공개 예약, 주간 예약 현황과 교사용 관리 화면
+- 학급 미션: 학급별 명단과 개인 코드, 기한이 있는 미션, 학생 완료 표시·취소, 교사 확인·정정, Excel 현황
 - 진행 업무: 종료하지 않은 수합·서명·안내·예약을 도구별 전체 폭 압축 목록으로 모아 보고
   각 도구 목록과 개별 관리 화면으로 이동
 - 교사용 Google 로그인과 사용자별 데이터 격리 기반
 - 환경 설정: NEIS 소속 학교 검색·계정별 프로필 저장, 20개 색상 테마와 화면 글자 크기 조절
 
 추가 업무 도구는 순차적으로 구현합니다.
+
+## 학급 미션 개발 경로
+
+- 교사 화면 `/tools/class-missions`, 학생 화면 `/s/missions/:token`을 사용한다. 학생의 개인 코드는 URL과 브라우저 저장소에 넣지 않는다.
+- `CLASS_MISSIONS_ENCRYPTION_KEY`는 서버에만 등록하는 64자리 16진수 AES-GCM 키다. 새 마이그레이션 `202609270100_class_missions.sql`, `202609270101_class_mission_purge.sql`, `202609280100_class_mission_purge_row_replacement.sql`을 순서대로 적용한 뒤 `class-missions-admin`, `class-missions-public` 함수를 각각 배포해야 실제 저장이 동작한다.
+- `VITE_CLASS_MISSIONS_DEMO_MODE=true`는 개발 환경의 가상 명단을 localStorage에 저장하는 시험용 설정이다. 운영 데이터나 원격 권한 검증을 대신하지 않는다.
+- 학생의 ‘완료 표시’는 자기보고이며 ‘교사 확인’과 별도로 Excel에 기록한다. 공개 응답은 학급 토큰과 개인 코드를 서버에서 확인한 뒤 본인의 미션만 반환한다.
+- 종료 시각부터 90일이 지나면 환경 설정의 파기 예정 목록과 미션 화면에서 확인할 수 있다. 교사가 대상 학생·응답·변경 이력 건수를 확인하고 문구 입력과 동의 후 미션을 영구 파기할 수 있다. 마지막 미션이면 학급 명단·개인 코드를 비우고 학생 링크도 중지한다. 진행 중 미션은 파기 대상이 아니며 자동 파기는 하지 않는다. 기존 수합 업무의 계정별 보관 개월 설정은 학급 미션의 고정 90일 규칙에 적용되지 않고, 기존 업무에도 소급하지 않는다.
+- 학급 미션에는 Storage 파일이 없다. 파기는 기존 암호화 보드 행 삭제, 해당 미션·응답·이력이 빠진 보드 행 재생성, 비식별 감사 기록을 한 DB 트랜잭션에서 처리한다. 삭제된 행은 PostgreSQL의 VACUUM과 백업 보관 정책에 따라 물리적 제거 시점이 다르다. 실패 시 개인정보 없는 재시도 기록을 남긴다. 실패 후에는 새로고침으로 결과를 확인하고 재시도한다.
+- 서버의 인증·소유자·기간·수량·동시성·공개 조회 계약은 `deno test --allow-env --node-modules-dir=manual tests/server/classMissions.test.ts`로 격리 검증한다. 모의 HTTP 응답을 사용하므로 실제 RLS·PostgreSQL 트랜잭션 검증은 배포 후 별도로 수행한다.
 
 ## 영수증 AI 분석 연결 규칙
 
@@ -79,6 +90,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY=...
 | `STUDENT_RESULTS_ENCRYPTION_KEY` | 학생 결과 안내 개인정보 |
 | `REGISTRY_ENCRYPTION_KEY` | 등록부 참석자의 항목 값(소속·직위 등) |
 | `DATA_COLLECT_ENCRYPTION_KEY` | 자료 수합 대상 이름·파일명·전달 사항 |
+| `CLASS_MISSIONS_ENCRYPTION_KEY` | 학급 미션 명단·개인 코드 해시·대상·상태 이력 |
 
 ```bash
 npx supabase secrets set CONSENT_FORMS_ENCRYPTION_KEY=<64자리 16진수>

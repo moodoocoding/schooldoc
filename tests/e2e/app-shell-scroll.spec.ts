@@ -25,6 +25,7 @@ const SHELL_ROUTES = [
   ['1인 1역 기록', '/tools/classroom-roles/records'],
   ['1인 1역 교체', '/tools/classroom-roles/rotate'],
   ['1인 1역 설정', '/tools/classroom-roles/settings'],
+  ['학급 미션', '/tools/class-missions'],
 ] as const;
 
 const measureBottom = async (page: Page) => page.evaluate(() => {

@@ -1,0 +1,416 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sd-accent: #0f6cbd;
+  --sd-accent-hover: #0b5b9f;
+  --sd-accent-soft: #eff6fc;
+  --sd-canvas: #f6f8fb;
+  --sd-surface: #ffffff;
+  --sd-surface-hover: #f8fbfe;
+  --sd-text: #0f172a;
+  --sd-text-muted: #526174;
+  --sd-text-subtle: #64748b;
+  --sd-border: #dce3ea;
+  --sd-border-strong: #c8d0da;
+  --sd-divider: #eef1f4;
+  --sd-disabled: #aab7c4;
+  --sd-font-scale: 1;
+  --sd-text-xs: calc(0.75rem * var(--sd-font-scale));
+  --sd-leading-xs: calc(1rem * var(--sd-font-scale));
+  --sd-text-sm: calc(0.875rem * var(--sd-font-scale));
+  --sd-leading-sm: calc(1.25rem * var(--sd-font-scale));
+  --sd-text-base: calc(1rem * var(--sd-font-scale));
+  --sd-leading-base: calc(1.5rem * var(--sd-font-scale));
+  --sd-text-lg: calc(1.125rem * var(--sd-font-scale));
+  --sd-leading-lg: calc(1.75rem * var(--sd-font-scale));
+  --sd-text-xl: calc(1.25rem * var(--sd-font-scale));
+  --sd-leading-xl: calc(1.75rem * var(--sd-font-scale));
+  --sd-text-2xl: calc(1.5rem * var(--sd-font-scale));
+  --sd-leading-2xl: calc(2rem * var(--sd-font-scale));
+  --sd-text-3xl: calc(1.875rem * var(--sd-font-scale));
+  --sd-leading-3xl: calc(2.25rem * var(--sd-font-scale));
+  --sd-text-4xl: calc(2.25rem * var(--sd-font-scale));
+  --sd-leading-4xl: calc(2.5rem * var(--sd-font-scale));
+  --sd-text-5xl: calc(3rem * var(--sd-font-scale));
+  --sd-leading-5xl: 1;
+}
+
+@layer base {
+  html {
+    overflow-x: clip;
+  }
+
+  * {
+    font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif !important;
+  }
+
+  body {
+    @apply bg-white text-slate-900 antialiased;
+    font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif !important;
+  }
+
+  :where(button, a, input, textarea, select, [tabindex]):focus-visible {
+    outline: 3px solid #0f6cbd;
+    outline-offset: 2px;
+  }
+}
+
+/*
+ * 특별실 예약표는 시간표가 아니라 주간 플래너처럼 읽혀야 한다. 공개 화면에서는 따뜻한
+ * 무채색 바탕에 포레스트·테라코타를 쓰고, 색은 선택·오늘·예약처럼 의미가 있는 곳에만
+ * 둔다. 관리자 앱 안에서는 개인 화면 테마를 그대로 따라간다.
+ */
+.special-room-planner {
+  --sr-canvas: #f4f3ef;
+  --sr-surface: #fffefc;
+  --sr-surface-muted: #f0efea;
+  --sr-surface-hover: #edf1ed;
+  --sr-text: #24312c;
+  --sr-text-muted: #67736e;
+  --sr-text-subtle: #7b8580;
+  --sr-border: #dedcd4;
+  --sr-border-strong: #c9c7be;
+  --sr-grid: #e8e5de;
+  --sr-accent: #315f50;
+  --sr-accent-strong: #274b40;
+  --sr-accent-soft: #e7efe9;
+  --sr-today: #c7654c;
+  --sr-today-soft: #fff1eb;
+  --sr-today-wash: #fffaf7;
+  --sr-event: #dcebe3;
+  --sr-event-text: #254e40;
+  --sr-closed: #eeece7;
+}
+
+.special-room-planner :where(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline-color: var(--sr-accent);
+}
+
+/*
+ * 교사용 앱에만 적용하는 화면 테마다. 공개 링크와 인쇄물은 만든 사람의 개인 설정에
+ * 영향을 받으면 안 되므로 App.tsx의 schooldoc-admin-shell 안에서만 기존 색 토큰을
+ * 치환한다. 레이아웃과 성공·경고·오류 같은 의미 색은 그대로 둔다.
+ */
+.schooldoc-admin-shell {
+  --sd-font-scale: 1;
+  --sd-text-xs: calc(0.75rem * var(--sd-font-scale));
+  --sd-leading-xs: calc(1rem * var(--sd-font-scale));
+  --sd-text-sm: calc(0.875rem * var(--sd-font-scale));
+  --sd-leading-sm: calc(1.25rem * var(--sd-font-scale));
+  --sd-text-base: calc(1rem * var(--sd-font-scale));
+  --sd-leading-base: calc(1.5rem * var(--sd-font-scale));
+  --sd-text-lg: calc(1.125rem * var(--sd-font-scale));
+  --sd-leading-lg: calc(1.75rem * var(--sd-font-scale));
+  --sd-text-xl: calc(1.25rem * var(--sd-font-scale));
+  --sd-leading-xl: calc(1.75rem * var(--sd-font-scale));
+  --sd-text-2xl: calc(1.5rem * var(--sd-font-scale));
+  --sd-leading-2xl: calc(2rem * var(--sd-font-scale));
+  --sd-text-3xl: calc(1.875rem * var(--sd-font-scale));
+  --sd-leading-3xl: calc(2.25rem * var(--sd-font-scale));
+  --sd-text-4xl: calc(2.25rem * var(--sd-font-scale));
+  --sd-leading-4xl: calc(2.5rem * var(--sd-font-scale));
+  --sd-text-5xl: calc(3rem * var(--sd-font-scale));
+  --sd-leading-5xl: 1;
+  background-color: var(--sd-canvas) !important;
+  color: var(--sd-text);
+}
+
+.schooldoc-admin-shell .special-room-planner {
+  --sr-canvas: var(--sd-canvas);
+  --sr-surface: var(--sd-surface);
+  --sr-surface-muted: var(--sd-canvas);
+  --sr-surface-hover: var(--sd-surface-hover);
+  --sr-text: var(--sd-text);
+  --sr-text-muted: var(--sd-text-muted);
+  --sr-text-subtle: var(--sd-text-subtle);
+  --sr-border: var(--sd-border);
+  --sr-border-strong: var(--sd-border-strong);
+  --sr-grid: var(--sd-divider);
+  --sr-accent: var(--sd-accent);
+  --sr-accent-strong: var(--sd-accent-hover);
+  --sr-accent-soft: var(--sd-accent-soft);
+  --sr-today: var(--sd-accent);
+  --sr-today-soft: var(--sd-accent-soft);
+  --sr-today-wash: var(--sd-surface-hover);
+  --sr-event: var(--sd-accent-soft);
+  --sr-event-text: var(--sd-accent);
+  --sr-closed: var(--sd-divider);
+}
+
+html[data-schooldoc-font-size="large"] .schooldoc-admin-shell {
+  --sd-font-scale: 1.125;
+}
+
+.schooldoc-admin-shell :where(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline-color: var(--sd-accent);
+}
+
+.schooldoc-admin-shell .bg-white,
+.schooldoc-admin-shell .bg-\[\#FFFFFF\],
+.schooldoc-admin-shell .bg-\[\#fcfcfb\] { background-color: var(--sd-surface) !important; }
+.schooldoc-admin-shell .bg-\[\#F6F8FB\],
+.schooldoc-admin-shell .bg-\[\#F8FAFC\],
+.schooldoc-admin-shell .bg-\[\#F9FAFB\],
+.schooldoc-admin-shell .bg-\[\#F1F5F9\],
+.schooldoc-admin-shell .bg-\[\#F3F5F7\],
+.schooldoc-admin-shell .bg-\[\#F1F3F6\],
+.schooldoc-admin-shell .bg-slate-50 { background-color: var(--sd-canvas) !important; }
+.schooldoc-admin-shell .bg-\[\#EFF6FC\],
+.schooldoc-admin-shell .bg-\[\#ebf3fc\],
+.schooldoc-admin-shell .bg-slate-100 { background-color: var(--sd-accent-soft) !important; }
+.schooldoc-admin-shell .bg-\[\#F8FBFE\],
+.schooldoc-admin-shell .bg-\[\#F7FBFE\],
+.schooldoc-admin-shell .bg-\[\#F5FAFE\] { background-color: var(--sd-surface-hover) !important; }
+.schooldoc-admin-shell .bg-\[\#EEF1F4\],
+.schooldoc-admin-shell .bg-\[\#E9EDF2\],
+.schooldoc-admin-shell .bg-\[\#E8ECF1\],
+.schooldoc-admin-shell .bg-\[\#DCE3EA\],
+.schooldoc-admin-shell .bg-\[\#CBD5E1\] { background-color: var(--sd-divider) !important; }
+.schooldoc-admin-shell .bg-\[\#0F6CBD\],
+.schooldoc-admin-shell .bg-\[\#0f6cbd\] { background-color: var(--sd-accent) !important; }
+.schooldoc-admin-shell .hover\:bg-\[\#0F6CBD\]:hover,
+.schooldoc-admin-shell .hover\:bg-\[\#0F5B9E\]:hover,
+.schooldoc-admin-shell .hover\:bg-\[\#0B5B9F\]:hover { background-color: var(--sd-accent-hover) !important; }
+.schooldoc-admin-shell .hover\:bg-\[\#F6F8FB\]:hover,
+.schooldoc-admin-shell .hover\:bg-\[\#F8FBFE\]:hover,
+.schooldoc-admin-shell .hover\:bg-slate-50:hover { background-color: var(--sd-surface-hover) !important; }
+.schooldoc-admin-shell .disabled\:bg-\[\#AAB7C4\]:disabled,
+.schooldoc-admin-shell .disabled\:bg-\[\#94A3B8\]:disabled { background-color: var(--sd-disabled) !important; }
+
+.schooldoc-admin-shell .text-\[\#0F172A\],
+.schooldoc-admin-shell .text-\[\#111827\],
+.schooldoc-admin-shell .text-slate-900 { color: var(--sd-text) !important; }
+.schooldoc-admin-shell .text-\[\#334155\],
+.schooldoc-admin-shell .text-\[\#526174\],
+.schooldoc-admin-shell .text-\[\#475569\],
+.schooldoc-admin-shell .text-\[\#41566E\],
+.schooldoc-admin-shell .text-slate-800,
+.schooldoc-admin-shell .text-slate-700,
+.schooldoc-admin-shell .text-slate-600 { color: var(--sd-text-muted) !important; }
+.schooldoc-admin-shell .text-\[\#64748B\],
+.schooldoc-admin-shell .text-\[\#94A3B8\],
+.schooldoc-admin-shell .text-slate-500 { color: var(--sd-text-subtle) !important; }
+.schooldoc-admin-shell .text-\[\#0F6CBD\],
+.schooldoc-admin-shell .text-\[\#0f6cbd\] { color: var(--sd-accent) !important; }
+.schooldoc-admin-shell .hover\:text-\[\#0F172A\]:hover { color: var(--sd-text) !important; }
+.schooldoc-admin-shell .hover\:text-\[\#0F6CBD\]:hover { color: var(--sd-accent) !important; }
+.schooldoc-admin-shell .placeholder\:text-\[\#94A3B8\]::placeholder { color: var(--sd-text-subtle) !important; }
+
+.schooldoc-admin-shell .border-\[\#DCE3EA\],
+.schooldoc-admin-shell .border-\[\#e1dfdd\],
+.schooldoc-admin-shell .border-\[\#E2E8F0\],
+.schooldoc-admin-shell .border-\[\#CBD5E1\],
+.schooldoc-admin-shell .border-slate-200 { border-color: var(--sd-border) !important; }
+.schooldoc-admin-shell .border-\[\#C8D0DA\],
+.schooldoc-admin-shell .border-\[\#8795A5\],
+.schooldoc-admin-shell .border-\[\#94A3B8\],
+.schooldoc-admin-shell .border-slate-300 { border-color: var(--sd-border-strong) !important; }
+.schooldoc-admin-shell .border-\[\#EEF1F4\] { border-color: var(--sd-divider) !important; }
+.schooldoc-admin-shell .border-\[\#0F6CBD\],
+.schooldoc-admin-shell .border-\[\#0f6cbd\],
+.schooldoc-admin-shell .hover\:border-\[\#0F6CBD\]:hover { border-color: var(--sd-accent) !important; }
+.schooldoc-admin-shell .divide-\[\#EEF1F4\] > :not([hidden]) ~ :not([hidden]) { border-color: var(--sd-divider) !important; }
+.schooldoc-admin-shell .ring-\[\#0F6CBD\],
+.schooldoc-admin-shell .focus\:ring-\[\#0F6CBD\]:focus,
+.schooldoc-admin-shell .focus-visible\:ring-\[\#0F6CBD\]:focus-visible { --tw-ring-color: var(--sd-accent) !important; }
+.schooldoc-admin-shell .accent-\[\#0F6CBD\] { accent-color: var(--sd-accent) !important; }
+.schooldoc-admin-shell .theme-choice:focus-within {
+  outline: 3px solid var(--sd-accent);
+  outline-offset: 2px;
+}
+
+/* The approved desktop role-assignment layout is scoped to that route. */
+.schooldoc-admin-shell.role-assignment-shell {
+  --ra-canvas: #fbfaf8;
+  --ra-surface: #fff;
+  --ra-text: #252824;
+  --ra-border: #e4e5e0;
+  --ra-accent: #b9472f;
+}
+
+.schooldoc-admin-shell.role-assignment-shell:not([data-role-default-theme]) {
+  --ra-canvas: var(--sd-canvas);
+  --ra-surface: var(--sd-surface);
+  --ra-text: var(--sd-text);
+  --ra-border: var(--sd-border);
+  --ra-accent: var(--sd-accent);
+}
+
+@media (min-width: 1024px) {
+  .schooldoc-admin-shell.role-assignment-shell {
+    background-color: var(--ra-canvas) !important;
+  }
+
+  .role-assignment-shell > aside {
+    display: none;
+  }
+
+  .role-assignment-shell .role-assignment-main {
+    padding: 0;
+  }
+
+  .role-assignment-shell [data-role-desktop-picker] {
+    background-color: var(--ra-surface);
+    color: var(--ra-text);
+  }
+
+  .role-assignment-shell [data-role-desktop-picker] details summary {
+    color: var(--ra-accent);
+  }
+
+  .role-assignment-shell [data-role-desktop-picker] :is(button, input, select, summary):focus-visible {
+    outline-color: var(--ra-accent);
+  }
+
+  .role-assignment-shell:not([data-role-default-theme]) [data-role-desktop-picker] button[aria-pressed="true"] {
+    background-color: var(--sd-accent-soft);
+  }
+
+  .role-assignment-shell:not([data-role-default-theme]) [data-role-desktop-picker] button[aria-pressed="true"] > span:first-child {
+    background-color: var(--sd-accent);
+  }
+
+  .role-assignment-shell:not([data-role-default-theme]) :is([data-role-topbar], [data-role-desktop-picker]) :is(h2, h3, p, a, button, span, summary, label, input, select) {
+    color: var(--sd-text);
+  }
+
+  .role-assignment-shell:not([data-role-default-theme]) [data-role-desktop-picker] details summary {
+    color: var(--sd-accent);
+  }
+
+  .role-assignment-shell:not([data-role-default-theme]) [data-role-desktop-picker] :is(section, div, button, label, input, select),
+  .role-assignment-shell:not([data-role-default-theme]) [data-role-topbar] {
+    border-color: var(--sd-border);
+  }
+
+  .role-assignment-shell:not([data-role-default-theme]) [data-role-desktop-picker] :is(input, select, span.rounded-full, div.rounded-full) {
+    background-color: var(--sd-surface-hover);
+  }
+
+  .role-assignment-shell:not([data-role-default-theme]) [data-role-desktop-picker] input::placeholder {
+    color: var(--sd-text-muted);
+  }
+
+  .role-assignment-shell:not([data-role-default-theme]) [data-role-desktop-picker] button:hover:not(:disabled):not([aria-pressed="true"]) {
+    background-color: var(--sd-surface-hover);
+  }
+
+  .role-assignment-shell:not([data-role-default-theme]) [data-role-review-button] {
+    background-color: var(--sd-accent);
+    color: #fff;
+  }
+
+  .role-assignment-shell:not([data-role-default-theme]) [data-role-review-button][aria-disabled="true"] {
+    background-color: var(--sd-disabled);
+    color: var(--sd-text);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/*
+ * 인쇄 미리보기의 축소.
+ *
+ * transform: scale()은 그려지는 크기만 줄이고 차지하는 자리는 그대로 둔다. 그래서 미리보기
+ * 아래에 원본 높이의 남은 만큼(72%면 314px) 빈 공간이 생겼다. 배율을 변수 하나로 두고
+ * 감싸는 상자의 크기까지 같은 값으로 줄여 자리와 그림을 맞춘다.
+ */
+.registry-print-frame {
+  --preview-scale: 0.72;
+  width: calc(794px * var(--preview-scale));
+  height: calc(1123px * var(--preview-scale));
+}
+
+@media (min-width: 640px) {
+  .registry-print-frame { --preview-scale: 0.8; }
+}
+
+@media (min-width: 1280px) {
+  .registry-print-frame { --preview-scale: 0.86; }
+}
+
+.registry-print-preview {
+  transform: scale(var(--preview-scale));
+  transform-origin: top left;
+}
+
+/* PDF로 만들 때는 원본 크기로 되돌린다. 자리도 함께 돌려놓아야 잘리지 않는다. */
+.registry-print-frame.is-exporting {
+  --preview-scale: 1;
+  width: auto;
+  height: auto;
+}
+
+.registry-print-page,
+.registry-print-page *,
+.student-result-qr-print-page,
+.student-result-qr-print-page * {
+  letter-spacing: 0 !important;
+  font-kerning: none;
+  font-variant-ligatures: none;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .registry-print-root,
+  .registry-print-root *,
+  .student-result-qr-print-root,
+  .student-result-qr-print-root * {
+    visibility: visible;
+  }
+
+  .registry-print-root {
+    position: absolute;
+    inset: 0;
+  }
+
+  .student-result-qr-print-root {
+    position: absolute;
+    inset: 0;
+    width: 794px;
+  }
+
+  .registry-print-page,
+  .student-result-qr-print-page {
+    box-shadow: none !important;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .student-result-qr-print-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+}

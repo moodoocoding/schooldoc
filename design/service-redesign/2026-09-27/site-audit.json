@@ -1,0 +1,2748 @@
+{
+  "date": "2026-09-27",
+  "method": "125개 고유 사이트 도메인을 개별 검색. 공식 도메인에 게시된 검색 결과로 1차 선별. 로그인 후 전체 제품 사용성 검증을 뜻하지 않음. 일반 학교 배포 PDF와 개별 초대 링크는 조사 링크 목록에서 제외함.",
+  "sites": [
+    {
+      "id": 1,
+      "name": "Linear",
+      "domain": "linear.app",
+      "category": "업무 관리",
+      "query": "site:linear.app Linear product interface features",
+      "sources": [
+        {
+          "title": "Features – Linear",
+          "url": "https://linear.app/features"
+        },
+        {
+          "title": "UI refresh – Changelog",
+          "url": "https://linear.app/changelog/2026-03-12-ui-refresh"
+        },
+        {
+          "title": "A calmer interface for a product in motion",
+          "url": "https://linear.app/now/behind-the-latest-design-refresh"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 2,
+      "name": "Notion",
+      "domain": "notion.com",
+      "category": "업무 관리",
+      "query": "site:notion.com Notion product features",
+      "sources": [
+        {
+          "title": "Notion features—Capture, find, automate | Notion",
+          "url": "https://www.notion.com/product/features"
+        },
+        {
+          "title": "Notion features – Capture, find, automate | Notion",
+          "url": "https://www.notion.com/en-gb/product/features"
+        },
+        {
+          "title": "Notion for Engineering | Notion",
+          "url": "https://www.notion.com/product/notion-for-product"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 3,
+      "name": "Asana",
+      "domain": "asana.com",
+      "category": "업무 관리",
+      "query": "site:asana.com Asana product features",
+      "sources": [
+        {
+          "title": "Asana Work Management - Features, Uses & Product • Asana",
+          "url": "https://asana.com/product"
+        },
+        {
+          "title": "Asana's Work Tracking & Project Management Features • Asana",
+          "url": "https://asana.com/features"
+        },
+        {
+          "title": "All Asana features: explore the full platform | Help Center",
+          "url": "https://help.asana.com/s/article/all-asana-features"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 4,
+      "name": "ClickUp",
+      "domain": "clickup.com",
+      "category": "업무 관리",
+      "query": "site:clickup.com ClickUp product features",
+      "sources": [
+        {
+          "title": "ClickUp™ Product Features",
+          "url": "https://clickup.com/features"
+        },
+        {
+          "title": "Product Management Software by ClickUp™",
+          "url": "https://clickup.com/teams/product"
+        },
+        {
+          "title": "ClickUp FAQs | Pricing, Features, AI, Security & More",
+          "url": "https://clickup.com/faqs"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 5,
+      "name": "monday.com",
+      "domain": "monday.com",
+      "category": "업무 관리",
+      "query": "site:monday.com monday.com product features",
+      "sources": [
+        {
+          "title": "Introduction to monday.com – Support",
+          "url": "https://support.monday.com/hc/en-us/articles/115005310945-Introduction-to-monday-com"
+        },
+        {
+          "title": "monday team management features - monday.com | Product",
+          "url": "https://monday.com/new-product"
+        },
+        {
+          "title": "Plan projects from start to finish. | monday.com",
+          "url": "https://monday.com/projects/features"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 6,
+      "name": "Trello",
+      "domain": "trello.com",
+      "category": "업무 관리",
+      "query": "site:trello.com Trello product features",
+      "sources": [
+        {
+          "title": "Which Trello Plan Is Best for You? Our Pricing Guide Can Help",
+          "url": "https://trello.com/pricing"
+        },
+        {
+          "title": "Make Teamwork Less Work with Trello Standard",
+          "url": "https://trello.com/standard"
+        },
+        {
+          "title": "What is Trello: Learn Features, Uses & More",
+          "url": "https://trello.com/tour"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 7,
+      "name": "Basecamp",
+      "domain": "basecamp.com",
+      "category": "업무 관리",
+      "query": "site:basecamp.com Basecamp product features",
+      "sources": [
+        {
+          "title": "Basecamp — Features, benefits, benefits, and benefits",
+          "url": "https://basecamp.com/features"
+        },
+        {
+          "title": "Basecamp — Get Basecamp for iOS, Android, Mac, Windows, on the web, and on the command line",
+          "url": "https://basecamp.com/apps"
+        },
+        {
+          "title": "Basecamp — Pricing",
+          "url": "https://basecamp.com/pricing?pp=iaqb"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 8,
+      "name": "Todoist",
+      "domain": "todoist.com",
+      "category": "업무 관리",
+      "query": "site:todoist.com Todoist product features",
+      "sources": [
+        {
+          "title": "Simplify Task Management with Todoist",
+          "url": "https://www.todoist.com/task-management"
+        },
+        {
+          "title": "Pricing | Todoist",
+          "url": "https://www.todoist.com/pricing/"
+        },
+        {
+          "title": "Capture tasks from text and images – February 5",
+          "url": "https://www.todoist.com/help/todoist/product-updates/capture-tasks-from-text-and-images-february-5-0W88IbvvW"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 9,
+      "name": "TickTick",
+      "domain": "ticktick.com",
+      "category": "업무 관리",
+      "query": "site:ticktick.com TickTick product features",
+      "sources": [
+        {
+          "title": "Features - TickTick",
+          "url": "https://ticktick.com/features"
+        },
+        {
+          "title": "TickTick: A To-Do List and Calendar to keep you organized",
+          "url": "https://www.ticktick.com/"
+        },
+        {
+          "title": "TickTick: A To-Do List and Calendar to keep you organized",
+          "url": "https://ticktick.com/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 10,
+      "name": "Teamwork",
+      "domain": "teamwork.com",
+      "category": "업무 관리",
+      "query": "site:teamwork.com Teamwork product features",
+      "sources": [
+        {
+          "title": "Every Feature Built for Client Work | Teamwork.com",
+          "url": "https://www.teamwork.com/product/"
+        },
+        {
+          "title": "Team Collaboration Software | Teamwork.com",
+          "url": "https://www.teamwork.com/product/teams/"
+        },
+        {
+          "title": "One Platform to Run Client Work | Teamwork.com",
+          "url": "https://www.teamwork.com/products/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 11,
+      "name": "Wrike",
+      "domain": "wrike.com",
+      "category": "업무 관리",
+      "query": "site:wrike.com Wrike product features",
+      "sources": [
+        {
+          "title": "Project Management Software Features by Wrike",
+          "url": "https://www.wrike.com/features/"
+        },
+        {
+          "title": "AI-powered enterprise work management software | Wrike",
+          "url": "https://www.wrike.com/"
+        },
+        {
+          "title": "AI-powered enterprise work management software | Wrike",
+          "url": "https://www.wrike.com/vbj/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 12,
+      "name": "Smartsheet",
+      "domain": "smartsheet.com",
+      "category": "업무 관리",
+      "query": "site:smartsheet.com Smartsheet product features",
+      "sources": [
+        {
+          "title": "Features | Smartsheet",
+          "url": "https://www.smartsheet.com/platform/features"
+        },
+        {
+          "title": "Product | Smartsheet",
+          "url": "https://www.smartsheet.com/platform"
+        },
+        {
+          "title": "Work Management Platform | Smartsheet",
+          "url": "https://www.smartsheet.com/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 13,
+      "name": "Hive",
+      "domain": "hive.com",
+      "category": "업무 관리",
+      "query": "site:hive.com Hive product features",
+      "sources": [
+        {
+          "title": "Top Project Management Features | Hive for Teams",
+          "url": "https://hive.com/features"
+        },
+        {
+          "title": "Why Hive | Project Management Software Teams Actually Use",
+          "url": "https://hive.com/why-hive"
+        },
+        {
+          "title": "Proofing & Approvals | Hive Features",
+          "url": "https://hive.com/features/proofing"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 14,
+      "name": "nTask",
+      "domain": "ntaskmanager.com",
+      "category": "업무 관리",
+      "query": "site:ntaskmanager.com nTask product features",
+      "sources": [
+        {
+          "title": "Product Features - nTask",
+          "url": "https://www.ntaskmanager.com/product/"
+        },
+        {
+          "title": "Task Management Software - nTask",
+          "url": "https://www.ntaskmanager.com/product/task-management-software/"
+        },
+        {
+          "title": "nTask - All-in-One Project Management Software - nTask",
+          "url": "https://www.ntaskmanager.com/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 15,
+      "name": "MeisterTask",
+      "domain": "meistertask.com",
+      "category": "업무 관리",
+      "query": "site:meistertask.com MeisterTask product features",
+      "sources": [
+        {
+          "title": "Your centralized platform for projects and tasks | MeisterTask",
+          "url": "https://www.meistertask.com/pages/features/projects-tasks"
+        },
+        {
+          "title": "Your centralized platform for projects and tasks | MeisterTask",
+          "url": "https://meistertask.com/pages/features/projects-tasks"
+        },
+        {
+          "title": "Product Tour | MeisterTask Work Management Software",
+          "url": "https://www.meistertask.com/pages/product-tour"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 16,
+      "name": "Zenkit",
+      "domain": "zenkit.com",
+      "category": "업무 관리",
+      "query": "site:zenkit.com Zenkit product features",
+      "sources": [
+        {
+          "title": "Features | Zenkit",
+          "url": "https://zenkit.com/en/features/"
+        },
+        {
+          "title": "Zenkit | Zenkit",
+          "url": "https://zenkit.com/en/"
+        },
+        {
+          "title": "Features | Hypernotes",
+          "url": "https://zenkit.com/en/hypernotes/features/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 17,
+      "name": "Coda",
+      "domain": "coda.io",
+      "category": "업무 관리",
+      "query": "site:coda.io Coda product features",
+      "sources": [
+        {
+          "title": "Coda AI features – Coda",
+          "url": "https://help.coda.io/hc/en-us/articles/39555802361613-Coda-AI-features"
+        },
+        {
+          "title": "What's new, explore new Coda features and product updates - Coda",
+          "url": "https://coda.io/product/whats-new"
+        },
+        {
+          "title": "What is Coda? The all-in-one platform for teams. - Coda",
+          "url": "https://coda.io/product"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 18,
+      "name": "Quip",
+      "domain": "quip.com",
+      "category": "업무 관리",
+      "query": "site:quip.com Quip product features",
+      "sources": [
+        {
+          "title": "Quip - Overview",
+          "url": "https://quip.com/about/product"
+        },
+        {
+          "title": "Pricing",
+          "url": "https://quip.com/about/pricing"
+        },
+        {
+          "title": "Quip - Introducing Quip",
+          "url": "https://quip.com/blog/introducing-quip"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 19,
+      "name": "Craft",
+      "domain": "craft.do",
+      "category": "업무 관리",
+      "query": "site:craft.do Craft product features",
+      "sources": [
+        {
+          "title": "Product fact sheet | Free Template | Craft",
+          "url": "https://www.craft.do/templates/product-fact-sheet"
+        },
+        {
+          "title": "Getting Started Guide",
+          "url": "https://www.craft.do/getting-started"
+        },
+        {
+          "title": "Product spec | Free Template | Craft",
+          "url": "https://www.craft.do/templates/product-spec"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 20,
+      "name": "Any.do",
+      "domain": "any.do",
+      "category": "업무 관리",
+      "query": "site:any.do Any.do product features",
+      "sources": [
+        {
+          "title": "Organize your life in seconds",
+          "url": "https://www.any.do/personal"
+        },
+        {
+          "title": "A simple to do list for you and your team",
+          "url": "https://www.any.do/"
+        },
+        {
+          "title": "Getting Started with Any.do | Any.do Help Center",
+          "url": "https://support.any.do/en/articles/8609629-getting-started-with-any-do"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 21,
+      "name": "Airtable",
+      "domain": "airtable.com",
+      "category": "데이터·관리 도구",
+      "query": "site:airtable.com Airtable product features",
+      "sources": [
+        {
+          "title": "Best Product Management Software for Product Roadmaps & Workflows | Airtable",
+          "url": "https://www.airtable.com/solutions/product"
+        },
+        {
+          "title": "Introduction to Airtable basics",
+          "url": "https://support.airtable.com/articles/1747995963-introduction-to-airtable-basics"
+        },
+        {
+          "title": "Product | Airtable",
+          "url": "https://www.airtable.com/articles/product"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 22,
+      "name": "SmartSuite",
+      "domain": "smartsuite.com",
+      "category": "데이터·관리 도구",
+      "query": "site:smartsuite.com SmartSuite product features",
+      "sources": [
+        {
+          "title": "Hundreds of Customer Inspired Features | SmartSuite",
+          "url": "https://www.smartsuite.com/features"
+        },
+        {
+          "title": "Products",
+          "url": "https://www.smartsuite.com/solutions/products"
+        },
+        {
+          "title": "SmartSuite Plans, Features and Pricing | SmartSuite Help Center",
+          "url": "https://help.smartsuite.com/en/articles/4789240-smartsuite-plans-features-and-pricing"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 23,
+      "name": "Fibery",
+      "domain": "fibery.io",
+      "category": "데이터·관리 도구",
+      "query": "site:fibery.io Fibery product features",
+      "sources": [
+        {
+          "title": "Product Matrix Template — Fibery",
+          "url": "https://fibery.io/product-matrix-template"
+        },
+        {
+          "title": "Pricing — Fibery",
+          "url": "https://fibery.io/pricing?eco_features=TEMPLATE_MANAGEMENT"
+        },
+        {
+          "title": "Feature Roadmap Template — Fibery",
+          "url": "https://fibery.io/feature-roadmap-template"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 24,
+      "name": "Budibase",
+      "domain": "budibase.com",
+      "category": "데이터·관리 도구",
+      "query": "site:budibase.com Budibase product features",
+      "sources": [
+        {
+          "title": "Build internal tools in minutes | Budibase",
+          "url": "https://budibase.com/product/apps"
+        },
+        {
+          "title": "Operational Resources | Budibase",
+          "url": "https://budibase.com/product/resources/"
+        },
+        {
+          "title": "Pricing Plans | Budibase",
+          "url": "https://budibase.com/pricing/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 25,
+      "name": "Appsmith",
+      "domain": "appsmith.com",
+      "category": "데이터·관리 도구",
+      "query": "site:appsmith.com Appsmith product features",
+      "sources": [
+        {
+          "title": "Appsmith | Open-Source Low-Code Application Platform",
+          "url": "https://www.appsmith.com/"
+        },
+        {
+          "title": "Introduction | Appsmith",
+          "url": "https://docs.appsmith.com/"
+        },
+        {
+          "title": "Drag, Drop & Build Faster With Widgets - Appsmith",
+          "url": "https://www.appsmith.com/widgets"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 26,
+      "name": "Retool",
+      "domain": "retool.com",
+      "category": "데이터·관리 도구",
+      "query": "site:retool.com Retool product features",
+      "sources": [
+        {
+          "title": "Retool Docs",
+          "url": "https://docs.retool.com/"
+        },
+        {
+          "title": "Product | Retool Blog",
+          "url": "https://retool.com/blog/category/product"
+        },
+        {
+          "title": "Build polished applications, fast | Retool",
+          "url": "https://retool.com/build-enterprise-apps/apps"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 27,
+      "name": "Baserow",
+      "domain": "baserow.io",
+      "category": "데이터·관리 도구",
+      "query": "site:baserow.io Baserow product features",
+      "sources": [
+        {
+          "title": "Baserow AI Features | No-Code AI for Databases, Documents & Automation",
+          "url": "https://baserow.io/product/baserow-ai"
+        },
+        {
+          "title": "Open source no-code platform for databases and applications",
+          "url": "https://baserow.io/product/overview"
+        },
+        {
+          "title": "Working with data in Baserow databases",
+          "url": "https://baserow.io/user-docs/intro-to-databases"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 28,
+      "name": "NocoDB",
+      "domain": "nocodb.com",
+      "category": "데이터·관리 도구",
+      "query": "site:nocodb.com NocoDB product features",
+      "sources": [
+        {
+          "title": "Welcome",
+          "url": "https://nocodb.com/docs/product"
+        },
+        {
+          "title": "Docs",
+          "url": "https://nocodb.com/docs/product/docs"
+        },
+        {
+          "title": "Getting Started",
+          "url": "https://nocodb.com/docs/product/getting-started"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 29,
+      "name": "Stacker",
+      "domain": "stackerhq.com",
+      "category": "데이터·관리 도구",
+      "query": "site:stackerhq.com Stacker product features",
+      "sources": [
+        {
+          "title": "Key Features | Stacker",
+          "url": "https://docs.stackerhq.com/stacker-classic/getting-started-quick-guide/key-features"
+        },
+        {
+          "title": "What is Stacker? | Stacker",
+          "url": "https://docs.stackerhq.com/stacker-classic/getting-started-quick-guide/what-is-stacker"
+        },
+        {
+          "title": "Stacker V 5(Astra) - Frequently Asked Questions | Stacker",
+          "url": "https://docs.stackerhq.com/stacker-classic/stacker-v-astra-frequently-asked-questions"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 30,
+      "name": "Softr",
+      "domain": "softr.io",
+      "category": "데이터·관리 도구",
+      "query": "site:softr.io Softr product features",
+      "sources": [
+        {
+          "title": "Build Custom Product Tools Without Code | Softr",
+          "url": "https://www.softr.io/solutions/product"
+        },
+        {
+          "title": "Build Custom AI Business Apps, Portals & Internal Tools with No Code | Softr",
+          "url": "https://www.softr.io/"
+        },
+        {
+          "title": "AI Workflow Builder | Softr",
+          "url": "https://www.softr.io/workflows"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 31,
+      "name": "Glide",
+      "domain": "glideapps.com",
+      "category": "데이터·관리 도구",
+      "query": "site:glideapps.com Glide product features",
+      "sources": [
+        {
+          "title": "Build and Deploy Custom, AI-Powered Business Apps | Glide",
+          "url": "https://www.glideapps.com/classic/ai"
+        },
+        {
+          "title": "The GlideOS platform | Glide",
+          "url": "https://www.glideapps.com/product"
+        },
+        {
+          "title": "No Code Platform for Modern Work Software | Glide",
+          "url": "https://www.glideapps.com/classic/platform"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 32,
+      "name": "Appian",
+      "domain": "appian.com",
+      "category": "데이터·관리 도구",
+      "query": "site:appian.com Appian product features",
+      "sources": [
+        {
+          "title": "Appian Platform for AI Process Automation",
+          "url": "https://appian.com/products/platform/overview"
+        },
+        {
+          "title": "Appian Product Announcements",
+          "url": "https://appian.com/products/platform/whats-new"
+        },
+        {
+          "title": "Pricing",
+          "url": "https://appian.com/products/pricing"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 33,
+      "name": "Kissflow",
+      "domain": "kissflow.com",
+      "category": "데이터·관리 도구",
+      "query": "site:kissflow.com Kissflow product features",
+      "sources": [
+        {
+          "title": "Kissflow | Build Custom Enterprise Apps Fast with AI & Low-Code",
+          "url": "https://kissflow.com/"
+        },
+        {
+          "title": "Powerful Features for Enterprise Business | Kissflow Low-Code Platform",
+          "url": "https://kissflow.com/platform/all-features/"
+        },
+        {
+          "title": "Kissflow Adds AI to Its No-Code and Low-Code Development Platform",
+          "url": "https://kissflow.com/news-and-media/kissflow-infuses-ai-into-no-code-low-code-development-platform"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 34,
+      "name": "Nintex",
+      "domain": "nintex.com",
+      "category": "데이터·관리 도구",
+      "query": "site:nintex.com Nintex product features",
+      "sources": [
+        {
+          "title": "Nintex K2 product feature comparison",
+          "url": "https://help.nintex.com/en-US/platform/K2Support/ProductFeatureComparison.htm"
+        },
+        {
+          "title": "Platform features",
+          "url": "https://help.nintex.com/en-us/Office365/Upgrade/PlatformCapability.htm"
+        },
+        {
+          "title": "Process Management & Workflow Automation Software | Nintex",
+          "url": "https://www.nintex.com/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 35,
+      "name": "Pipefy",
+      "domain": "pipefy.com",
+      "category": "데이터·관리 도구",
+      "query": "site:pipefy.com Pipefy product features",
+      "sources": [
+        {
+          "title": "Product Overview | Pipefy",
+          "url": "https://www.pipefy.com/product-overview/"
+        },
+        {
+          "title": "Produtos | Pipefy",
+          "url": "https://www.pipefy.com/products"
+        },
+        {
+          "title": "Meet Pipefy: a platform of process automation | Pipefy Help Center",
+          "url": "https://help.pipefy.com/en/articles/8341762-meet-pipefy-a-platform-of-process-automation"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 36,
+      "name": "Typeform",
+      "domain": "typeform.com",
+      "category": "폼·문서·서명",
+      "query": "site:typeform.com Typeform forms documents features",
+      "sources": [
+        {
+          "title": "Online Form Builder : Create Free Forms | Typeform",
+          "url": "https://www.typeform.com/forms?content_language=English&facet3=pdf"
+        },
+        {
+          "title": "Get the most out of Typeform with AI – Help Center",
+          "url": "https://help.typeform.com/hc/en-us/articles/14955071444244-Get-the-most-out-of-Typeform-with-AI"
+        },
+        {
+          "title": "Documents integration - Connect your Lead generation App with Typeform",
+          "url": "https://www.typeform.com/connect-category/documents"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 37,
+      "name": "Tally",
+      "domain": "tally.so",
+      "category": "폼·문서·서명",
+      "query": "site:tally.so Tally forms documents features",
+      "sources": [
+        {
+          "title": "Every Feature, Explained | Free Form Builder | Tally",
+          "url": "https://tally.so/help/features"
+        },
+        {
+          "title": "Explore all Tally features for free online forms and surveys",
+          "url": "https://tally.so/features"
+        },
+        {
+          "title": "Creating Your First Tally Form | Step-by-Step Guide",
+          "url": "https://tally.so/help/create-a-form"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 38,
+      "name": "Fillout",
+      "domain": "fillout.com",
+      "category": "폼·문서·서명",
+      "query": "site:fillout.com Fillout forms documents features",
+      "sources": [
+        {
+          "title": "Fillout | Forms that do it all",
+          "url": "https://www.fillout.com/"
+        },
+        {
+          "title": "Fillout | Help Center",
+          "url": "https://www.fillout.com/help/getting-started"
+        },
+        {
+          "title": "Fillout | Help Center",
+          "url": "https://www.fillout.com/docs/help/form-page"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 39,
+      "name": "Jotform",
+      "domain": "jotform.com",
+      "category": "폼·문서·서명",
+      "query": "site:jotform.com Jotform forms documents features",
+      "sources": [
+        {
+          "title": "PDF Editor to Fill In Forms | Jotform",
+          "url": "https://www.jotform.com/features/pdf-editor-to-fill-in-forms/"
+        },
+        {
+          "title": "Create Forms | Jotform AI Features",
+          "url": "https://www.jotform.com/ai/features/create-forms/"
+        },
+        {
+          "title": "Create Fillable PDF Forms in Seconds",
+          "url": "https://www.jotform.com/products/pdf-editor/features/create-fillable-form/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 40,
+      "name": "Formstack",
+      "domain": "formstack.com",
+      "category": "폼·문서·서명",
+      "query": "site:formstack.com Formstack forms documents features",
+      "sources": [
+        {
+          "title": "Formstack Documents Features | Templates & Data Routing",
+          "url": "https://www.formstack.com/documents/features"
+        },
+        {
+          "title": "AI Document Generation Software & Automation | Formstack",
+          "url": "https://forms.formstack.com/products/documents"
+        },
+        {
+          "title": "Auto-Generated Forms | Formstack Documents",
+          "url": "https://www.formstack.com/features/auto-generated-forms"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 41,
+      "name": "Formsite",
+      "domain": "formsite.com",
+      "category": "폼·문서·서명",
+      "query": "site:formsite.com Formsite forms documents features",
+      "sources": [
+        {
+          "title": "Website Form Custom Features & Capabilities | Formsite",
+          "url": "https://www.formsite.com/features/"
+        },
+        {
+          "title": "Form & Survey Results as PDF documents | Formsite Features",
+          "url": "https://www.formsite.com/features/pdf-reports/"
+        },
+        {
+          "title": "Embedded Online Forms | Formsite Features",
+          "url": "https://www.formsite.com/features/embed-anywhere/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 42,
+      "name": "Paperform",
+      "domain": "paperform.co",
+      "category": "폼·문서·서명",
+      "query": "site:paperform.co Paperform forms documents features",
+      "sources": [
+        {
+          "title": "Features | Paperform Help Center | Paperform",
+          "url": "https://paperform.co/help/collections/features/"
+        },
+        {
+          "title": "How do I create a form? | Paperform Help Center | Paperform",
+          "url": "https://paperform.co/help/articles/how-do-i-create-a-form/"
+        },
+        {
+          "title": "Making Forms | Paperform Help Center | Paperform",
+          "url": "https://paperform.co/help/collections/form-creation/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 43,
+      "name": "Cognito Forms",
+      "domain": "cognitoforms.com",
+      "category": "폼·문서·서명",
+      "query": "site:cognitoforms.com Cognito Forms forms documents features",
+      "sources": [
+        {
+          "title": "Document Generation Templates - Cognito Forms",
+          "url": "https://www.cognitoforms.com/templates/document-generation"
+        },
+        {
+          "title": "How to Build Forms with the Drag-and-Drop Form Builder",
+          "url": "https://www.cognitoforms.com/support/1/building-forms"
+        },
+        {
+          "title": "Templates by Feature - Cognito Forms",
+          "url": "https://www.cognitoforms.com/templates/feature"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 44,
+      "name": "Wufoo",
+      "domain": "wufoo.com",
+      "category": "폼·문서·서명",
+      "query": "site:wufoo.com Wufoo forms documents features",
+      "sources": [
+        {
+          "title": "Online Form Creation and Reporting Features | Wufoo",
+          "url": "https://www.wufoo.com/features/"
+        },
+        {
+          "title": "Online Form Builder with Cloud Storage Database | Wufoo",
+          "url": "https://www.wufoo.com/"
+        },
+        {
+          "title": "Web Forms | Wufoo",
+          "url": "https://www.wufoo.com/web-forms/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 45,
+      "name": "involve.me",
+      "domain": "involve.me",
+      "category": "폼·문서·서명",
+      "query": "site:involve.me involve.me forms documents features",
+      "sources": [
+        {
+          "title": "involve.me Form Builder Grounding Page | involve.me",
+          "url": "https://www.involve.me/grounding-pages/form-builder-tool"
+        },
+        {
+          "title": "involve.me Features Grounding Page | involve.me",
+          "url": "https://www.involve.me/grounding-pages/features-set"
+        },
+        {
+          "title": "Features | involve.me",
+          "url": "https://www.involve.me/features"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 46,
+      "name": "Docusign",
+      "domain": "docusign.com",
+      "category": "폼·문서·서명",
+      "query": "site:docusign.com Docusign forms documents features",
+      "sources": [
+        {
+          "title": "Create Mobile-Friendly, Fillable Web Forms | Docusign",
+          "url": "https://www.docusign.com/products/web-forms"
+        },
+        {
+          "title": "eSignature Detailed Features | Docusign",
+          "url": "https://www.docusign.com/en-gb/features-and-benefits"
+        },
+        {
+          "title": "Create Web-Based, Mobile-Friendly Fillable Forms | Docusign",
+          "url": "https://www.docusign.com/en-gb/products/web-forms"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 47,
+      "name": "PandaDoc",
+      "domain": "pandadoc.com",
+      "category": "폼·문서·서명",
+      "query": "site:pandadoc.com PandaDoc forms documents features",
+      "sources": [
+        {
+          "title": "Creating documents, templates, content library items, and forms | Help Center",
+          "url": "https://support.pandadoc.com/en/collections/10117354-creating-documents-templates-content-library-items-and-forms"
+        },
+        {
+          "title": "Form Builder with e-Signature & Payment Capture - PandaDoc",
+          "url": "https://www.pandadoc.com/form-builder-software/"
+        },
+        {
+          "title": "Create Forms | Help Center",
+          "url": "https://support.pandadoc.com/en/articles/9714641-create-forms"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 48,
+      "name": "SignWell",
+      "domain": "signwell.com",
+      "category": "폼·문서·서명",
+      "query": "site:signwell.com SignWell forms documents features",
+      "sources": [
+        {
+          "title": "Sign Documents Online for Free - SignWell",
+          "url": "https://www.signwell.com/sign-documents-online/"
+        },
+        {
+          "title": "Preparing and Uploading Documents - SignWell",
+          "url": "https://help.signwell.com/article/286-preparing-and-uploading-documents"
+        },
+        {
+          "title": "Electronic Signature Software - SignWell",
+          "url": "https://www.signwell.com/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 49,
+      "name": "Dropbox Sign",
+      "domain": "sign.dropbox.com",
+      "category": "폼·문서·서명",
+      "query": "site:sign.dropbox.com Dropbox Sign forms documents features",
+      "sources": [
+        {
+          "title": "eSignature Features & Benefits",
+          "url": "https://sign.dropbox.com/features"
+        },
+        {
+          "title": "Document Management Software | Dropbox Sign - Dropbox Sign",
+          "url": "https://sign.dropbox.com/features/document-management"
+        },
+        {
+          "title": "Signing made simpler: What’s new with Dropbox Sign - Dropbox Sign",
+          "url": "https://sign.dropbox.com/en-GB/blog/whats-new-with-dropbox-sign"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 50,
+      "name": "Smallpdf",
+      "domain": "smallpdf.com",
+      "category": "폼·문서·서명",
+      "query": "site:smallpdf.com Smallpdf forms documents features",
+      "sources": [
+        {
+          "title": "Annotate PDF Online | Highlight, Add Text, & Mark Up PDFs",
+          "url": "https://smallpdf.com/pdf-annotator"
+        },
+        {
+          "title": "Free templates to meet all your business and personal needs",
+          "url": "https://smallpdf.com/templates"
+        },
+        {
+          "title": "PDF Form Filler | Fill Out PDF Forms Online for Free",
+          "url": "https://smallpdf.com/pdf-form-filler"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 51,
+      "name": "ClassDojo",
+      "domain": "classdojo.com",
+      "category": "교육",
+      "query": "site:classdojo.com ClassDojo teacher classroom features",
+      "sources": [
+        {
+          "title": "One app to bring your whole classroom together | ClassDojo",
+          "url": "https://www.classdojo.com/teachers/"
+        },
+        {
+          "title": "ClassDojo Toolkit | ClassDojo",
+          "url": "https://www.classdojo.com/toolkit/"
+        },
+        {
+          "title": "What is Toolkit? – ClassDojo Help Center",
+          "url": "https://help.classdojo.com/hc/en-us/articles/115003740283-What-is-Toolkit"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 52,
+      "name": "Seesaw",
+      "domain": "seesaw.com",
+      "category": "교육",
+      "query": "site:seesaw.com Seesaw teacher classroom features",
+      "sources": [
+        {
+          "title": "Seesaw for Teachers - Seesaw | Elementary Learning Experience Platform",
+          "url": "https://seesaw.com/teachers/"
+        },
+        {
+          "title": "Multimodal Learning | Interactive Learning Tools | Seesaw",
+          "url": "https://seesaw.com/features/multimodal-tools/"
+        },
+        {
+          "title": "AI for Teachers | AI Teacher Tools in the Classroom | Seesaw",
+          "url": "https://seesaw.com/features/ai-enhanced-instruction/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 53,
+      "name": "Google for Education",
+      "domain": "edu.google.com",
+      "category": "교육",
+      "query": "site:edu.google.com Google for Education teacher classroom features",
+      "sources": [
+        {
+          "title": "Classroom Management Tools & Resources - Google for Education",
+          "url": "https://edu.google.com/workspace-for-education/products/classroom/"
+        },
+        {
+          "title": "Classroom Management Tools & Resources - Google for Education",
+          "url": "https://edu.google.com/intl/en/workspace-for-education/classroom/"
+        },
+        {
+          "title": "Google Classroom features - Google for Education",
+          "url": "https://edu.google.com/workspace-for-education/products/classroom/editions/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 54,
+      "name": "Edsby",
+      "domain": "edsby.com",
+      "category": "교육",
+      "query": "site:edsby.com Edsby teacher classroom features",
+      "sources": [
+        {
+          "title": "Edsby Features: K-12 Education Platform Overview | edsby",
+          "url": "https://www.edsby.com/features/"
+        },
+        {
+          "title": "Teacher Quickstart | Edsby",
+          "url": "https://www.edsby.com/help/a-guide-for-teachers/"
+        },
+        {
+          "title": "Edsby Classes: Features and Tools for Enhanced Learning",
+          "url": "https://www.edsby.com/help/classes-3/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 55,
+      "name": "Toddle",
+      "domain": "toddleapp.com",
+      "category": "교육",
+      "query": "site:toddleapp.com Toddle teacher classroom features",
+      "sources": [
+        {
+          "title": "Toddle | Curriculum planning for public schools & districts",
+          "url": "https://www.toddleapp.com/us-publicschools/"
+        },
+        {
+          "title": "What’s New at Toddle | Latest AI Features & Product Updates for Educators",
+          "url": "https://www.toddleapp.com/whats-new/"
+        },
+        {
+          "title": "LMS (Learning Management System) for K12 Schools | Toddle",
+          "url": "https://www.toddleapp.com/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 56,
+      "name": "ManageBac",
+      "domain": "managebac.com",
+      "category": "교육",
+      "query": "site:managebac.com ManageBac teacher classroom features",
+      "sources": [
+        {
+          "title": "Getting Started with ManageBac+ as a Teacher or Advisor – ManageBac+ Help Centre",
+          "url": "https://help.managebac.com/hc/en-us/articles/360045390112-Getting-Started-with-ManageBac-as-a-Teacher-or-Advisor"
+        },
+        {
+          "title": "Configuring and populating Class Streams in Classes – ManageBac+ Help Centre",
+          "url": "https://help.managebac.com/hc/en-us/articles/47844889260697-Configuring-and-populating-Class-Streams-in-Classes"
+        },
+        {
+          "title": "Using ManageBac+ for Remote Learning QuickStart Guide – ManageBac+ Help Centre",
+          "url": "https://help.managebac.com/hc/en-us/articles/360046492811-Using-ManageBac-for-Remote-Learning-QuickStart-Guide"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 57,
+      "name": "PowerSchool",
+      "domain": "powerschool.com",
+      "category": "교육",
+      "query": "site:powerschool.com PowerSchool teacher classroom features",
+      "sources": [
+        {
+          "title": "Why PowerSchool",
+          "url": "https://pages.powerschool.com/rs/387-SBG-541/images/Classroom-Buying-Guide-Ebook-072325.pdf?version=0"
+        },
+        {
+          "title": "K-12 Student Information System | PowerSchool",
+          "url": "https://www1.powerschool.com/solutions/student-information-system/powerschool-sis/"
+        },
+        {
+          "title": "Curriculum & Instruction | PowerSchool",
+          "url": "https://www1.powerschool.com/solutions/personalized-learning/curriculum-and-instruction/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 58,
+      "name": "Canvas",
+      "domain": "instructure.com",
+      "category": "교육",
+      "query": "site:instructure.com Canvas teacher classroom features",
+      "sources": [
+        {
+          "title": "Canvas by Instructure: World Leading LMS for Teaching & Learning",
+          "url": "https://www.instructure.com/canvas"
+        },
+        {
+          "title": "Canvas Teacher Mobile Features - Instructure Community",
+          "url": "https://community.instructure.com/en/kb/articles/388744-canvas-teacher-mobile-features"
+        },
+        {
+          "title": "Canvas Plus for K–12 with AI Tools to Reduce Teacher Burnout | Instructure",
+          "url": "https://www.instructure.com/canvas-tiers/canvas-plus-k12"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 59,
+      "name": "SchoolStatus",
+      "domain": "schoolstatus.com",
+      "category": "교육",
+      "query": "site:schoolstatus.com SchoolStatus teacher classroom features",
+      "sources": [
+        {
+          "title": "Solutions for K-12 Educators | SchoolStatus",
+          "url": "https://www.schoolstatus.com/who-its-for/educators-staff"
+        },
+        {
+          "title": "What's New in SchoolStatus for Back to School 2026 | SchoolStatus",
+          "url": "https://www.schoolstatus.com/blog/2026-back-to-school-releases"
+        },
+        {
+          "title": "Educator Feedback and Growth Software | SchoolStatus",
+          "url": "https://www.schoolstatus.com/products/inspire"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 60,
+      "name": "ParentSquare",
+      "domain": "parentsquare.com",
+      "category": "교육",
+      "query": "site:parentsquare.com ParentSquare teacher classroom features",
+      "sources": [
+        {
+          "title": "Classroom Communication Platform for Schools | ParentSquare",
+          "url": "https://www.parentsquare.com/platform/classroom-communications/"
+        },
+        {
+          "title": "School Communication Platform for Teachers & Staff | ParentSquare",
+          "url": "https://www.parentsquare.com/solutions/teachers-and-staff/"
+        },
+        {
+          "title": "ParentSquare Intro",
+          "url": "https://smartsites.parentsquare.com/62176_2"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 61,
+      "name": "Classtime",
+      "domain": "classtime.com",
+      "category": "교육",
+      "query": "site:classtime.com Classtime teacher classroom features",
+      "sources": [
+        {
+          "title": "Media Kit - Classtime",
+          "url": "https://www.classtime.com/press/media-kit/"
+        },
+        {
+          "title": "Customize your assessment with Session Settings - Classtime - Help Center",
+          "url": "https://help.classtime.com/en/articles/37841-customize-your-assessment-with-session-settings"
+        },
+        {
+          "title": "Why Classtime is the right solution for you - Classtime - Help Center",
+          "url": "https://help.classtime.com/en/articles/37672-why-classtime-is-the-right-solution-for-you"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 62,
+      "name": "Classkick",
+      "domain": "classkick.com",
+      "category": "교육",
+      "query": "site:classkick.com Classkick teacher classroom features",
+      "sources": [
+        {
+          "title": "Teachers",
+          "url": "https://classkick.com/teachers"
+        },
+        {
+          "title": "See Student Thinking in Real Time, in Any Classroom | Classkick",
+          "url": "https://classkick.com/blog/any-classroom"
+        },
+        {
+          "title": "Home | Classkick",
+          "url": "https://classkick.com/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 63,
+      "name": "Nearpod",
+      "domain": "nearpod.com",
+      "category": "교육",
+      "query": "site:nearpod.com Nearpod teacher classroom features",
+      "sources": [
+        {
+          "title": "Frequently asked questions | Nearpod",
+          "url": "https://nearpod.com/frequently-asked-questions"
+        },
+        {
+          "title": "Learning Management System (LMS) Integration | Nearpod",
+          "url": "https://cdn.nearpod.com/lms-integrations"
+        },
+        {
+          "title": "Pricing Plans and Comparison | Nearpod",
+          "url": "https://nearpod.com/pricing"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 64,
+      "name": "SchoolAI",
+      "domain": "schoolai.com",
+      "category": "교육",
+      "query": "site:schoolai.com SchoolAI teacher classroom features",
+      "sources": [
+        {
+          "title": "Smart classrooms, stronger districts: New features for the 2026-2027 school year | SchoolAI",
+          "url": "https://schoolai.com/blog/new-features-2026-2027"
+        },
+        {
+          "title": "Give Every Student a Personalized Learning Experience | SchoolAI",
+          "url": "https://schoolai.com/products/spaces"
+        },
+        {
+          "title": "The Student Portal: An Overview | School AI Help Center",
+          "url": "https://help.schoolai.com/en/articles/15138776-the-student-portal-an-overview"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 65,
+      "name": "MagicSchool",
+      "domain": "magicschool.ai",
+      "category": "교육",
+      "query": "site:magicschool.ai MagicSchool teacher classroom features",
+      "sources": [
+        {
+          "title": "AI Tools for Teachers | MagicSchool",
+          "url": "https://www.magicschool.ai/magic-tools"
+        },
+        {
+          "title": "AI Platform for School Districts | MagicSchool",
+          "url": "https://www.magicschool.ai/"
+        },
+        {
+          "title": "What’s New in MagicSchool – August 2026 Updates | MagicSchool",
+          "url": "https://www.magicschool.ai/blog-posts/whats-new-august-2026"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 66,
+      "name": "Brisk Teaching",
+      "domain": "briskteaching.com",
+      "category": "교육",
+      "query": "site:briskteaching.com Brisk Teaching teacher classroom features",
+      "sources": [
+        {
+          "title": "What is Brisk Teaching? – Brisk Teaching",
+          "url": "https://help.briskteaching.com/hc/en-us/articles/38789659161364-What-is-Brisk-Teaching"
+        },
+        {
+          "title": "AI Tools to Support Students | Brisk Teaching",
+          "url": "https://www.briskteaching.com/solutions/students"
+        },
+        {
+          "title": "Brisk Educator Pro | Brisk Teaching",
+          "url": "https://www.briskteaching.com/educator-pro"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 67,
+      "name": "Kami",
+      "domain": "kamiapp.com",
+      "category": "교육",
+      "query": "site:kamiapp.com Kami teacher classroom features",
+      "sources": [
+        {
+          "title": "Kami App features Guide for Teachers and Schools",
+          "url": "https://www.kamiapp.com/products/kami-app/features/"
+        },
+        {
+          "title": "Class View",
+          "url": "https://help.kamiapp.com/kami-help-center/class-view"
+        },
+        {
+          "title": "Assessment Mode",
+          "url": "https://help.kamiapp.com/kami-help-center/assessment-mode"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 68,
+      "name": "Book Creator",
+      "domain": "bookcreator.com",
+      "category": "교육",
+      "query": "site:bookcreator.com Book Creator teacher classroom features",
+      "sources": [
+        {
+          "title": "Teacher Librarians - Book Creator app",
+          "url": "https://bookcreator.com/teachers/teacher-librarians/"
+        },
+        {
+          "title": "Book Creator for Teachers - Teaching made easy - Book Creator app",
+          "url": "https://bookcreator.com/teachers/"
+        },
+        {
+          "title": "What's new in Book Creator - Book Creator app",
+          "url": "https://bookcreator.com/features/whats-new-in-book-creator/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 69,
+      "name": "Padlet",
+      "domain": "padlet.com",
+      "category": "교육",
+      "query": "site:padlet.com Padlet teacher classroom features",
+      "sources": [
+        {
+          "title": "Pricing - Padlet",
+          "url": "https://padlet.com/site/subscriptions"
+        },
+        {
+          "title": "Hannah Couch (hcouch1) profile | Padlet",
+          "url": "https://padlet.com/hcouch1"
+        },
+        {
+          "title": "Padlet לחינוך",
+          "url": "https://he.padlet.com/site/education"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 70,
+      "name": "Wayground",
+      "domain": "wayground.com",
+      "category": "교육",
+      "query": "site:wayground.com Wayground teacher classroom features",
+      "sources": [
+        {
+          "title": "Live Session Modes on Wayground :",
+          "url": "https://help.wayground.com/support/solutions/articles/158000404918-live-session-modes-on-wayground"
+        },
+        {
+          "title": "Wayground Accessibility and Inclusion Statement (Including VPAT) :",
+          "url": "https://help.wayground.com/support/solutions/articles/158000404015-wayground-accessibility-and-inclusion-statement-including-vpat-"
+        },
+        {
+          "title": "Wayground Starter (Basic) Plan :",
+          "url": "https://help.wayground.com/support/solutions/articles/158000404038-wayground-starter-basic-plan"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 71,
+      "name": "토스",
+      "domain": "toss.im",
+      "category": "국내 서비스",
+      "query": "site:toss.im 토스 서비스 기능 화면",
+      "sources": [
+        {
+          "title": "토스 기업 문화 – 토스 팀의 핵심 가치 - 금융이 알고 싶을 때, 토스피드",
+          "url": "https://toss.im/tossfeed/article/toss-core-values"
+        },
+        {
+          "title": "Server Developer (Platform)",
+          "url": "https://toss.im/career/job-detail?company=%ED%86%A0%EC%8A%A4%EC%A6%9D%EA%B6%8C&job_id=4071141003&sub_position_id=4168349003"
+        },
+        {
+          "title": "Server Developer (Server Platform Team)",
+          "url": "https://toss.im/career/job-detail?company=%ED%86%A0%EC%8A%A4&job_id=4071141003&sub_position_id=4071145003"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 72,
+      "name": "당근",
+      "domain": "daangn.com",
+      "category": "국내 서비스",
+      "query": "site:daangn.com 당근 서비스 기능 화면",
+      "sources": [
+        {
+          "title": "당근 서비스",
+          "url": "https://about.daangn.com/service/"
+        },
+        {
+          "title": "당근 서비스",
+          "url": "https://team.daangn.com/service/"
+        },
+        {
+          "title": "당근마켓, 첫 화면에 ‘전체 서비스’ 기능 신설 | 당근 보도자료",
+          "url": "https://about.daangn.com/company/pr/archive/%EB%8B%B9%EA%B7%BC%EB%A7%88%EC%BC%93-%EC%B2%AB-%ED%99%94%EB%A9%B4%EC%97%90-%EC%A0%84%EC%B2%B4-%EC%84%9C%EB%B9%84%EC%8A%A4-%EA%B8%B0%EB%8A%A5-%EC%8B%A0%EC%84%A4/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 73,
+      "name": "flex",
+      "domain": "flex.team",
+      "category": "국내 서비스",
+      "query": "site:flex.team flex 서비스 기능 화면",
+      "sources": [
+        {
+          "title": "홈 | flex 헬프센터",
+          "url": "https://guide.flex.team/ko/"
+        },
+        {
+          "title": "flex 서비스 이용약관 (2026.09.21. 시행) | flex 서비스 이용약관",
+          "url": "https://termsofservice.flex.team/ko/articles/16915461-flex-%EC%84%9C%EB%B9%84%EC%8A%A4-%EC%9D%B4%EC%9A%A9%EC%95%BD%EA%B4%80-2026-09-21-%EC%8B%9C%ED%96%89"
+        },
+        {
+          "title": "2026년 flex 업데이트 소식 | flex 업데이트 소식",
+          "url": "https://updatenotes.flex.team/ko/collections/17736323-2026%EB%85%84-flex-%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8-%EC%86%8C%EC%8B%9D"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 74,
+      "name": "Shiftee",
+      "domain": "shiftee.io",
+      "category": "국내 서비스",
+      "query": "site:shiftee.io Shiftee 서비스 기능 화면",
+      "sources": [
+        {
+          "title": "통합 인력관리 솔루션 | 시프티",
+          "url": "https://shiftee.io/ko"
+        },
+        {
+          "title": "이용사업자 이용약관 | 시프티",
+          "url": "https://shiftee.io/ko/policy/customer-terms-of-service"
+        },
+        {
+          "title": "이용요금 | 시프티",
+          "url": "https://shiftee.io/ko/pricing"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 75,
+      "name": "Greeting",
+      "domain": "greetinghr.com",
+      "category": "국내 서비스",
+      "query": "site:greetinghr.com Greeting 서비스 기능 화면",
+      "sources": [
+        {
+          "title": "그리팅 서비스 소개",
+          "url": "https://guide.greetinghr.com/ko/articles/introduce-e95e1131"
+        },
+        {
+          "title": "24. 08. 19. 신규 업데이트",
+          "url": "https://update.greetinghr.com/ko/articles/24-08-19-%EC%8B%A0%EA%B7%9C-%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8-a9af42f2"
+        },
+        {
+          "title": "서비스기획PM",
+          "url": "https://kidsnote.career.greetinghr.com/ko/o/149564"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 76,
+      "name": "원티드",
+      "domain": "wanted.co.kr",
+      "category": "국내 서비스",
+      "query": "site:wanted.co.kr 원티드 서비스 기능 화면",
+      "sources": [
+        {
+          "title": "면접 제안 서비스는 무엇인가요? – 원티드 고객센터",
+          "url": "https://help.wanted.co.kr/hc/ko/articles/360035972771-%EB%A9%B4%EC%A0%91-%EC%A0%9C%EC%95%88-%EC%84%9C%EB%B9%84%EC%8A%A4%EB%8A%94-%EB%AC%B4%EC%97%87%EC%9D%B8%EA%B0%80%EC%9A%94"
+        },
+        {
+          "title": "개인회원 이용약관 (2026.08.06 본) – 원티드 고객센터",
+          "url": "https://help.wanted.co.kr/hc/ko/articles/60842177334041-%EA%B0%9C%EC%9D%B8%ED%9A%8C%EC%9B%90-%EC%9D%B4%EC%9A%A9%EC%95%BD%EA%B4%80-2026-08-06-%EB%B3%B8"
+        },
+        {
+          "title": "[퓨잇] UX서비스 기획자 채용 공고 | 원티드",
+          "url": "https://www.wanted.co.kr/wd/344326"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 77,
+      "name": "Dooray!",
+      "domain": "dooray.com",
+      "category": "국내 서비스",
+      "query": "site:dooray.com Dooray! 서비스 기능 화면",
+      "sources": [
+        {
+          "title": "화상회의 : 올인원 협업툴 Dooray!",
+          "url": "https://dooray.com/main/service/meeting/"
+        },
+        {
+          "title": "요금안내 : 올인원 협업툴 Dooray!",
+          "url": "https://dooray.com/main/pricing/"
+        },
+        {
+          "title": "Markdown Help",
+          "url": "https://dooray.com/htmls/guides/markdown_ko_KR.html"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 78,
+      "name": "플로우",
+      "domain": "flow.team",
+      "category": "국내 서비스",
+      "query": "site:flow.team 플로우 서비스 기능 화면",
+      "sources": [
+        {
+          "title": "플로우 업무 2.0 맛보기! (New)",
+          "url": "https://support.flow.team/ko/flow/task-custom"
+        },
+        {
+          "title": "화면 캡처 방지 설정",
+          "url": "https://support.flow.team/ko/flow/23178896294297"
+        },
+        {
+          "title": "MS Teams 화상회의 연동하기",
+          "url": "https://support.flow.team/ko/flow/9778870094873"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 79,
+      "name": "잔디",
+      "domain": "jandi.com",
+      "category": "국내 서비스",
+      "query": "site:jandi.com 잔디 서비스 기능 화면",
+      "sources": [
+        {
+          "title": "잔디 화면 구성",
+          "url": "https://support.jandi.com/ko/articles/start-jandi-page-ab85b112"
+        },
+        {
+          "title": "[잔디 업데이트] 잔디 홈 화면 - 업무용 협업툴 JANDI 블로그",
+          "url": "https://blog.jandi.com/ko/2025/08/22/jandi-new-home-screen/"
+        },
+        {
+          "title": "잔디 홈",
+          "url": "https://support.jandi.com/ko/articles/jandi-home-d8d57795"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 80,
+      "name": "채널톡",
+      "domain": "channel.io",
+      "category": "국내 서비스",
+      "query": "site:channel.io 채널톡 서비스 기능 화면",
+      "sources": [
+        {
+          "title": "2026.06.30 대규모 업데이트",
+          "url": "https://docs.channel.io/updates/ko/articles/20260630-%EB%8C%80%EA%B7%9C%EB%AA%A8-%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8-459c53d0"
+        },
+        {
+          "title": "채널톡 시작하기",
+          "url": "https://docs.channel.io/help/ko/articles/fed198ac"
+        },
+        {
+          "title": "채널톡, 화상 서비스 ‘미트’ 출시…채팅 상담 시 클릭 한번으로 영상 통화 가능",
+          "url": "https://channel.io/kr/blog/articles/launching-meet-press-f28d2ef8"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 81,
+      "name": "클래스팅",
+      "domain": "classting.com",
+      "category": "국내 서비스",
+      "query": "site:classting.com 클래스팅 서비스 기능 화면",
+      "sources": [
+        {
+          "title": "클래스팅 이용 가이드",
+          "url": "https://resources.classting.com/"
+        },
+        {
+          "title": "2026년 9월 클래스팅 AI 업데이트 소식 – 클래스팅 고객센터",
+          "url": "https://support.classting.com/hc/ko/articles/61783774852633-2026%EB%85%84-9%EC%9B%94-%ED%81%B4%EB%9E%98%EC%8A%A4%ED%8C%85-AI-%EC%97%85%EB%8D%B0%EC%9D%B4%ED%8A%B8-%EC%86%8C%EC%8B%9D"
+        },
+        {
+          "title": "클래스팅",
+          "url": "https://resources.classting.com/8c906f75-8267-4bc5-a406-cadfa99ed9e5"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 82,
+      "name": "하이클래스",
+      "domain": "hiclass.net",
+      "category": "국내 서비스",
+      "query": "site:hiclass.net 하이클래스 서비스 기능 화면",
+      "sources": [
+        {
+          "title": "HiClass",
+          "url": "https://el.hiclass.net/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 83,
+      "name": "키즈노트",
+      "domain": "kidsnote.com",
+      "category": "국내 서비스",
+      "query": "site:kidsnote.com 키즈노트 서비스 기능 화면",
+      "sources": [
+        {
+          "title": "키즈노트 - 영유아 교육 기관 NO.1 커뮤니케이션 플랫폼",
+          "url": "https://www.kidsnote.com/"
+        },
+        {
+          "title": "키노링크 - 키즈노트",
+          "url": "https://campaign.kidsnote.com/kinolink/"
+        },
+        {
+          "title": "키즈노트 공식 블로그",
+          "url": "https://blog.kidsnote.com/m"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 84,
+      "name": "클래스카드",
+      "domain": "classcard.net",
+      "category": "국내 서비스",
+      "query": "site:classcard.net 클래스카드 서비스 기능 화면",
+      "sources": [
+        {
+          "title": "클래스카드 | 영어쌤 1/3이 선택한 스마트 단어장!",
+          "url": "https://www.classcard.net/Home/service"
+        },
+        {
+          "title": "클래스카드 학생 초대 가이드",
+          "url": "https://classcard.net/%ED%81%B4%EB%9E%98%EC%8A%A4%EC%B9%B4%EB%93%9C_%ED%95%99%EC%83%9D_%EC%B4%88%EB%8C%80_%EA%B0%80%EC%9D%B4%EB%93%9C.pdf"
+        },
+        {
+          "title": "클래스카드 | 영어쌤 1/3이 선택한 스마트 단어장!",
+          "url": "https://www.classcard.net/Home/story?id=all&idx=32"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 85,
+      "name": "워크메이트",
+      "domain": "foreducator.com",
+      "category": "국내 서비스",
+      "query": "site:foreducator.com 워크메이트 서비스 기능 화면",
+      "sources": [
+        {
+          "title": "Foreducator | 생기부·학급관리·시간표·교사 커뮤니티",
+          "url": "https://www.foreducator.com/"
+        },
+        {
+          "title": "워크메이트 - AI 교육 도우미",
+          "url": "https://foreducator.com/chat/?page=1"
+        },
+        {
+          "title": "한글 단축 URL '숏.한국' 대규모 업데이트! 이제 본인 코드를 2개까지 만들 수 있어요 (업무용/개인용 분리 꿀팁) - Foreducator 소통공간",
+          "url": "https://www.foreducator.com/community/board/6371"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 86,
+      "name": "Calendly",
+      "domain": "calendly.com",
+      "category": "예약·일정",
+      "query": "site:calendly.com Calendly scheduling features",
+      "sources": [
+        {
+          "title": "How to book meetings in real time | Calendly Help",
+          "url": "https://calendly.com/help/how-to-book-meetings-in-real-time"
+        },
+        {
+          "title": "How to set your availability | Calendly Help",
+          "url": "https://calendly.com/help/how-to-set-your-availability"
+        },
+        {
+          "title": "Availability overview | Calendly Help",
+          "url": "https://calendly.com/help/availability-overview"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 87,
+      "name": "Cal.com",
+      "domain": "cal.com",
+      "category": "예약·일정",
+      "query": "site:cal.com Cal.com scheduling features",
+      "sources": [
+        {
+          "title": "Cal.com | Scheduling Software for Online Bookings",
+          "url": "https://cal.com/"
+        },
+        {
+          "title": "Cal.com Companion for iOS, Android and Chrome",
+          "url": "https://cal.com/app"
+        },
+        {
+          "title": "FAQ | Cal.com",
+          "url": "https://cal.com/scheduling/frequently-asked-questions"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 88,
+      "name": "SavvyCal",
+      "domain": "savvycal.com",
+      "category": "예약·일정",
+      "query": "site:savvycal.com SavvyCal scheduling features",
+      "sources": [
+        {
+          "title": "Features · SavvyCal",
+          "url": "https://savvycal.com/features"
+        },
+        {
+          "title": "Scheduling Software Your Recipients Will Love · SavvyCal",
+          "url": "https://savvycal.com/elements/"
+        },
+        {
+          "title": "Scheduling Tool For Creators · SavvyCal",
+          "url": "https://savvycal.com/spi"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 89,
+      "name": "TidyCal",
+      "domain": "tidycal.com",
+      "category": "예약·일정",
+      "query": "site:tidycal.com TidyCal scheduling features",
+      "sources": [
+        {
+          "title": "Availability Schedules in TidyCal - TidyCal FAQ",
+          "url": "https://help.tidycal.com/article/720-global-availability-in-tidycal"
+        },
+        {
+          "title": "TidyCal vs Calendly - TidyCal FAQ",
+          "url": "https://help.tidycal.com/article/714-tidycal-vs-calendly"
+        },
+        {
+          "title": "Simplify Team Scheduling with Teams Feature - TidyCal FAQ",
+          "url": "https://help.tidycal.com/article/732-teams"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 90,
+      "name": "YouCanBookMe",
+      "domain": "youcanbook.me",
+      "category": "예약·일정",
+      "query": "site:youcanbook.me YouCanBookMe scheduling features",
+      "sources": [
+        {
+          "title": "Powerful Online Scheduling Software | YouCanBookMe",
+          "url": "https://youcanbook.me/features"
+        },
+        {
+          "title": "Calendar and Booking Availability | Easily Manage Your Schedule",
+          "url": "https://youcanbook.me/feature/availability"
+        },
+        {
+          "title": "Setting Availability – YouCanBookMe Help Center",
+          "url": "https://support.youcanbook.me/hc/en-us/sections/18391747465239-Setting-Availability"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 91,
+      "name": "Doodle",
+      "domain": "doodle.com",
+      "category": "예약·일정",
+      "query": "site:doodle.com Doodle scheduling features",
+      "sources": [
+        {
+          "title": "Create Your Agenda and Organize Appointments | Doodle",
+          "url": "https://doodle.com/en/agenda/"
+        },
+        {
+          "title": "Explore Features of the World's Favorite Scheduler | Doodle",
+          "url": "https://doodle.com/en/features/"
+        },
+        {
+          "title": "Doodle's new scheduling experience | Doodle",
+          "url": "https://doodle.com/en/resources/blog/the-new-doodle-scheduling-made-easy/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 92,
+      "name": "SimplyBook.me",
+      "domain": "simplybook.me",
+      "category": "예약·일정",
+      "query": "site:simplybook.me SimplyBook.me scheduling features",
+      "sources": [
+        {
+          "title": "FAQ - The Appointment Booking Scheduler, SimplyBook.me",
+          "url": "https://simplybook.me/en/faq/index/"
+        },
+        {
+          "title": "Help Center - Frequently Asked Questions about the Popular Appointment Booking System Scheduler SimplyBook.me",
+          "url": "https://help.simplybook.me/"
+        },
+        {
+          "title": "Custom Features - What are SimplyBook.me Custom Features",
+          "url": "https://help.simplybook.me/wiki/Custom_Features/en"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 93,
+      "name": "Setmore",
+      "domain": "setmore.com",
+      "category": "예약·일정",
+      "query": "site:setmore.com Setmore scheduling features",
+      "sources": [
+        {
+          "title": "Calendar Settings | Support - Setmore: Free Online Appointment Scheduling Software",
+          "url": "https://support.setmore.com/en/collections/11660154-calendar-settings"
+        },
+        {
+          "title": "Calendar | Support - Setmore: Free Online Appointment Scheduling Software",
+          "url": "https://support.setmore.com/en/collections/87053-calendar"
+        },
+        {
+          "title": "Get Your Free Online Appointment Calendar | Setmore",
+          "url": "https://www.setmore.com/features/appointments"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 94,
+      "name": "Appointlet",
+      "domain": "appointlet.com",
+      "category": "예약·일정",
+      "query": "site:appointlet.com Appointlet scheduling features",
+      "sources": [
+        {
+          "title": "Appointlet: Online Appointment Scheduling Software",
+          "url": "https://www.appointlet.com/"
+        },
+        {
+          "title": "Appointlet | Online Scheduling Software FAQs",
+          "url": "https://www.appointlet.com/faqs"
+        },
+        {
+          "title": "Office 365 Calendar - Appointlet",
+          "url": "https://www.appointlet.com/office-365-calendar-scheduling"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 95,
+      "name": "Acuity Scheduling",
+      "domain": "acuityscheduling.com",
+      "category": "예약·일정",
+      "query": "site:acuityscheduling.com Acuity Scheduling scheduling features",
+      "sources": [
+        {
+          "title": "Acuity Scheduling Features - Acuity Scheduling",
+          "url": "https://www.acuityscheduling.com/features"
+        },
+        {
+          "title": "Acuity Scheduling Features - Acuity Scheduling",
+          "url": "https://www.acuityscheduling.com/features?dropdown-ref=products&nav-ref=navbar"
+        },
+        {
+          "title": "Acuity Scheduling Features - Acuity Scheduling",
+          "url": "https://acuityscheduling.com/features"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 96,
+      "name": "Stripe",
+      "domain": "stripe.com",
+      "category": "재무·고객 업무",
+      "query": "site:stripe.com Stripe dashboard product features",
+      "sources": [
+        {
+          "title": "Stripe Products and Features | Stripe",
+          "url": "https://stripe.com/products"
+        },
+        {
+          "title": "How to create products and prices : Stripe: Help & Support",
+          "url": "https://support.stripe.com/questions/how-to-create-products-and-prices?locale=en-GB"
+        },
+        {
+          "title": "Stripe Payments | Features and Process",
+          "url": "https://stripe.com/payments/features"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 97,
+      "name": "Ramp",
+      "domain": "ramp.com",
+      "category": "재무·고객 업무",
+      "query": "site:ramp.com Ramp dashboard product features",
+      "sources": [
+        {
+          "title": "Ramp Products and Platform Features | Cards, Expenses, AP & More",
+          "url": "https://ramp.com/products"
+        },
+        {
+          "title": "Ramp Help Center",
+          "url": "https://support.ramp.com/integration-monitoring-dashboard"
+        },
+        {
+          "title": "Real Time Reporting - Real Time Reports For Fast Decisions | Ramp",
+          "url": "https://ramp.com/reporting"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 98,
+      "name": "Mercury",
+      "domain": "mercury.com",
+      "category": "재무·고객 업무",
+      "query": "site:mercury.com Mercury dashboard product features",
+      "sources": [
+        {
+          "title": "March 2026 product updates | Mercury",
+          "url": "https://mercury.com/blog/march-2026-product-updates"
+        },
+        {
+          "title": "Understanding your Mercury balances – Mercury",
+          "url": "https://support.mercury.com/hc/en-us/articles/28767842120852-Understanding-your-Mercury-balances"
+        },
+        {
+          "title": "SaaS Banking | Simplified financial workflows for SaaS companies",
+          "url": "https://mercury.com/saas"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 99,
+      "name": "Brex",
+      "domain": "brex.com",
+      "category": "재무·고객 업무",
+      "query": "site:brex.com Brex dashboard product features",
+      "sources": [
+        {
+          "title": "Brex dashboard and app",
+          "url": "https://www.brex.com/support/brex-dashboard-and-app"
+        },
+        {
+          "title": "How the Home page works",
+          "url": "https://www.brex.com/support/home-page"
+        },
+        {
+          "title": "Financial reporting software for startups and enterprises",
+          "url": "https://www.brex.com/platform/reporting"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 100,
+      "name": "Spendesk",
+      "domain": "spendesk.com",
+      "category": "재무·고객 업무",
+      "query": "site:spendesk.com Spendesk dashboard product features",
+      "sources": [
+        {
+          "title": "Understand the Controller view's dashboard | Spendesk Help Center",
+          "url": "https://helpcenter.spendesk.com/en/articles/3999723-understand-the-controller-view-s-dashboard"
+        },
+        {
+          "title": "Data available on our Control dashboard | Spendesk Help Center",
+          "url": "https://helpcenter.spendesk.com/en/articles/4523055-data-available-on-our-control-dashboard"
+        },
+        {
+          "title": "Procurement | Spendesk",
+          "url": "https://www.spendesk.com/product/procurement/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 101,
+      "name": "Expensify",
+      "domain": "expensify.com",
+      "category": "재무·고객 업무",
+      "query": "site:expensify.com Expensify dashboard product features",
+      "sources": [
+        {
+          "title": "All Expensify Product Features | Expensify",
+          "url": "https://use.expensify.com/all-products"
+        },
+        {
+          "title": "Expensify Help",
+          "url": "https://help.expensify.com/articles/new-expensify/getting-started/Free-Features-in-Expensify"
+        },
+        {
+          "title": "Expensify Update: New Home Page & Insights Analytics Now in New Expensify",
+          "url": "https://use.expensify.com/blog/expensify-home-and-insights-update"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 102,
+      "name": "Xero",
+      "domain": "xero.com",
+      "category": "재무·고객 업무",
+      "query": "site:xero.com Xero dashboard product features",
+      "sources": [
+        {
+          "title": "Your Xero homepage – Xero Central",
+          "url": "https://central.xero.com/0/article/Your-Xero-dashboard"
+        },
+        {
+          "title": "Xero product releases – Xero Central",
+          "url": "https://central.xero.com/s/article/Xero-product-releases-ROW"
+        },
+        {
+          "title": "Get ready for a reimagined Xero | Xero Blog",
+          "url": "https://blog.xero.com/product-updates/get-ready-reimagined-xero/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 103,
+      "name": "FreshBooks",
+      "domain": "freshbooks.com",
+      "category": "재무·고객 업무",
+      "query": "site:freshbooks.com FreshBooks dashboard product features",
+      "sources": [
+        {
+          "title": "How do I use my dashboard? – FreshBooks",
+          "url": "https://support.freshbooks.com/hc/en-us/articles/115015407988-How-do-I-use-my-dashboard"
+        },
+        {
+          "title": "New: Stay on Top of Your Numbers With Improved Dashboard Widgets | FreshBooks Blog - FreshBooks",
+          "url": "https://www.freshbooks.com/hub/feature-news/dashboard-widgets"
+        },
+        {
+          "title": "Changes and updates in 2026 – FreshBooks",
+          "url": "https://support.freshbooks.com/hc/en-us/articles/42491377615373-Changes-and-updates-in-2026"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 104,
+      "name": "QuickBooks",
+      "domain": "quickbooks.intuit.com",
+      "category": "재무·고객 업무",
+      "query": "site:quickbooks.intuit.com QuickBooks dashboard product features",
+      "sources": [
+        {
+          "title": "View your business dashboard details",
+          "url": "https://quickbooks.intuit.com/learn-support/en-us/help-article/product-setup/business-dashboard-details-quickbooks-online-app/L46DORrt9_US_en_US"
+        },
+        {
+          "title": "Create and manage dashboards",
+          "url": "https://quickbooks.intuit.com/learn-support/en-us/help-article/business-reports/create-dashboards-view-key-business-insights/L7C4Ftrzx_US_en_US"
+        },
+        {
+          "title": "Get started with QuickBooks Online",
+          "url": "https://quickbooks.intuit.com/learn-support/en-global/help-article/account-management/started-quickbooks-online/L9viDdPJB_ROW_en"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 105,
+      "name": "Wave",
+      "domain": "waveapps.com",
+      "category": "재무·고객 업무",
+      "query": "site:waveapps.com Wave dashboard product features",
+      "sources": [
+        {
+          "title": "Overview of your business Dashboard (new Dashboard experience) – Help Center",
+          "url": "https://support.waveapps.com/hc/en-us/articles/48497863638548-Overview-of-your-business-Dashboard-new-Dashboard-experience"
+        },
+        {
+          "title": "Create a product or service – Help Center",
+          "url": "https://support.waveapps.com/hc/en-us/articles/208621766-How-to-add-a-product"
+        },
+        {
+          "title": "Overview of your Wave account – Help Center",
+          "url": "https://support.waveapps.com/hc/en-us/articles/32453204338324-Overview-of-your-Wave-account"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 106,
+      "name": "Intercom",
+      "domain": "intercom.com",
+      "category": "재무·고객 업무",
+      "query": "site:intercom.com Intercom dashboard product features",
+      "sources": [
+        {
+          "title": "Real-time Dashboard | Intercom Help",
+          "url": "https://www.intercom.com/help/en/articles/5784131-real-time-dashboard"
+        },
+        {
+          "title": "Monitoring your team’s workload and capacity | Intercom Help",
+          "url": "https://www.intercom.com/help/en/articles/6560699-monitoring-your-team-s-workload-and-capacity"
+        },
+        {
+          "title": "Phone real-time queue dashboard | Intercom Help",
+          "url": "https://www.intercom.com/help/en/articles/16528347-phone-real-time-queue-dashboard"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 107,
+      "name": "Front",
+      "domain": "front.com",
+      "category": "재무·고객 업무",
+      "query": "site:front.com Front dashboard product features",
+      "sources": [
+        {
+          "title": "Product Tour | Front",
+          "url": "https://front.com/product-tour"
+        },
+        {
+          "title": "Front Product Overview | Front",
+          "url": "https://front.com/resources/product-overview"
+        },
+        {
+          "title": "Front | Watch a Front Product Demo",
+          "url": "https://front.com/watch-demo"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 108,
+      "name": "Zendesk",
+      "domain": "zendesk.com",
+      "category": "재무·고객 업무",
+      "query": "site:zendesk.com Zendesk dashboard product features",
+      "sources": [
+        {
+          "title": "Overview of the Zendesk Knowledge dashboard – Zendesk help",
+          "url": "https://support.zendesk.com/hc/en-us/articles/4408823886874-Overview-of-the-Zendesk-Knowledge-dashboard"
+        },
+        {
+          "title": "Understanding Explore dashboards – Zendesk help",
+          "url": "https://support.zendesk.com/hc/en-us/articles/4408846844826-Understanding-Explore-dashboards"
+        },
+        {
+          "title": "Overview of the Zendesk Messaging dashboard – Zendesk help",
+          "url": "https://support.zendesk.com/hc/en-us/articles/4724611131418-Overview-of-the-Zendesk-Messaging-dashboard"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 109,
+      "name": "Help Scout",
+      "domain": "helpscout.com",
+      "category": "재무·고객 업무",
+      "query": "site:helpscout.com Help Scout dashboard product features",
+      "sources": [
+        {
+          "title": "What is Self Service? - Help Scout Support",
+          "url": "https://docs.helpscout.com/article/1755-what-is-self-service"
+        },
+        {
+          "title": "AI Resolutions Pricing - Help Scout Support",
+          "url": "https://docs.helpscout.com/article/1746-ai-resolutions-pricing"
+        },
+        {
+          "title": "Onboarding Checklist - Help Scout Support",
+          "url": "https://docs.helpscout.com/article/1759-onboarding-checklist"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 110,
+      "name": "Crisp",
+      "domain": "crisp.chat",
+      "category": "재무·고객 업무",
+      "query": "site:crisp.chat Crisp dashboard product features",
+      "sources": [
+        {
+          "title": "Getting started with the Crisp Analytics | Crisp Knowledge Base",
+          "url": "https://help.crisp.chat/en/article/getting-started-with-the-crisp-analytics-fwul5i/"
+        },
+        {
+          "title": "How to build custom dashboards in Crisp Analytics | Crisp Knowledge Base",
+          "url": "https://help.crisp.chat/en/article/how-to-build-custom-dashboards-in-crisp-analytics-77heh0/"
+        },
+        {
+          "title": "Spring 2026 - Product Update - Crisp",
+          "url": "https://crisp.chat/en/blog/march-2026-product-update/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 111,
+      "name": "Figma",
+      "domain": "figma.com",
+      "category": "디자인·지식",
+      "query": "site:figma.com Figma product features workspace",
+      "sources": [
+        {
+          "title": "Figma: The collaborative canvas for design, code, and AI",
+          "url": "https://www.figma.com/"
+        },
+        {
+          "title": "Create a workspace – Figma Learn - Help Center",
+          "url": "https://help.figma.com/hc/en-us/articles/4409612431383-Create-a-workspace"
+        },
+        {
+          "title": "Plans & Pricing | Figma",
+          "url": "https://www.figma.com/pricing/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 112,
+      "name": "Framer",
+      "domain": "framer.com",
+      "category": "디자인·지식",
+      "query": "site:framer.com Framer product features workspace",
+      "sources": [
+        {
+          "title": "Framer Help: What is a workspace?",
+          "url": "https://www.framer.com/help/articles/what-is-a-workspace-and-why-is-it-useful/"
+        },
+        {
+          "title": "Framer Help: Organizations, Workspaces, and Folders",
+          "url": "https://www.framer.com/help/articles/organizations-workspaces-and-folders/"
+        },
+        {
+          "title": "Framer Help: Creating a new workspace",
+          "url": "https://www.framer.com/help/articles/creating-a-new-workspace/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 113,
+      "name": "Webflow",
+      "domain": "webflow.com",
+      "category": "디자인·지식",
+      "query": "site:webflow.com Webflow product features workspace",
+      "sources": [
+        {
+          "title": "Plans & pricing | Webflow",
+          "url": "https://webflow.com/pricing"
+        },
+        {
+          "title": "Create a new Workspace – Webflow Help Center",
+          "url": "https://help.webflow.com/hc/en-us/articles/33961233191571-Create-a-new-Workspace"
+        },
+        {
+          "title": "Understanding feature availability in Webflow – Webflow Help Center",
+          "url": "https://help.webflow.com/hc/en-us/articles/46729546856211-Understanding-feature-availability-in-Webflow"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 114,
+      "name": "Canva",
+      "domain": "canva.com",
+      "category": "디자인·지식",
+      "query": "site:canva.com Canva product features workspace",
+      "sources": [
+        {
+          "title": "Boost productivity and collaboration | Canva Premium features",
+          "url": "https://www.canva.com/business/features/productivity/"
+        },
+        {
+          "title": "Introducing the Visual Suite | Canva",
+          "url": "https://www.canva.com/visual-suite/"
+        },
+        {
+          "title": "Explore Canva Features to Unlock Your Creativity",
+          "url": "https://www.canva.com/features/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 115,
+      "name": "Miro",
+      "domain": "miro.com",
+      "category": "디자인·지식",
+      "query": "site:miro.com Miro product features workspace",
+      "sources": [
+        {
+          "title": "The Best Miro Features To Get Started With",
+          "url": "https://miro.com/features/"
+        },
+        {
+          "title": "Miro | First Idea to Final Innovation — It All Lives Here",
+          "url": "https://miro.com/product-overview/"
+        },
+        {
+          "title": "AI Innovation Workspace for Enterprise Teams | Miro",
+          "url": "https://miro.com/products/platform-overview/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 116,
+      "name": "Mural",
+      "domain": "mural.co",
+      "category": "디자인·지식",
+      "query": "site:mural.co Mural product features workspace",
+      "sources": [
+        {
+          "title": "Features | Mural",
+          "url": "https://www.mural.co/features"
+        },
+        {
+          "title": "The Visual Work Platform Designed to Improve Teamwork | Mural",
+          "url": "https://www.mural.co/product"
+        },
+        {
+          "title": "Product Release Notes | Mural",
+          "url": "https://www.mural.co/blog/product-release-notes-2025"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 117,
+      "name": "Whimsical",
+      "domain": "whimsical.com",
+      "category": "디자인·지식",
+      "query": "site:whimsical.com Whimsical product features workspace",
+      "sources": [
+        {
+          "title": "Whimsical — The whiteboard for product builders",
+          "url": "https://whimsical.com/"
+        },
+        {
+          "title": "More detailed workspace information - Whimsical Releases",
+          "url": "https://whimsical.com/product-updates/workspace-information"
+        },
+        {
+          "title": "How to upgrade your workspace | Learn Whimsical",
+          "url": "https://whimsical.com/learn/workspaces/upgrade"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 118,
+      "name": "Excalidraw",
+      "domain": "excalidraw.com",
+      "category": "디자인·지식",
+      "query": "site:excalidraw.com Excalidraw product features workspace",
+      "sources": [
+        {
+          "title": "Excalidraw+ for teams | Collaborative workspace made simple",
+          "url": "https://plus.excalidraw.com/excalidraw-for-teams"
+        },
+        {
+          "title": "Excalidraw+ Pricing | Online collaborative workspace",
+          "url": "https://plus.excalidraw.com/pricing"
+        },
+        {
+          "title": "Excalidraw | Online whiteboard collaboration made easy",
+          "url": "https://plus.excalidraw.com/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 119,
+      "name": "Pitch",
+      "domain": "pitch.com",
+      "category": "디자인·지식",
+      "query": "site:pitch.com Pitch product features workspace",
+      "sources": [
+        {
+          "title": "Getting started with Pitch | Pitch | Help Center",
+          "url": "https://help.pitch.com/en/articles/8038180-getting-started-with-pitch"
+        },
+        {
+          "title": "Product | Pitch",
+          "url": "https://www.pitch.com/product"
+        },
+        {
+          "title": "Learn about our paid plans | Pitch | Help Center",
+          "url": "https://help.pitch.com/en/articles/9364636-learn-about-our-paid-plans"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 120,
+      "name": "Gamma",
+      "domain": "gamma.app",
+      "category": "디자인·지식",
+      "query": "site:gamma.app Gamma product features workspace",
+      "sources": [
+        {
+          "title": "How do collaboration and sharing settings work in Gamma? | Gamma Help Center",
+          "url": "https://help.gamma.app/en/articles/11047226-how-do-collaboration-and-sharing-settings-work-in-gamma"
+        },
+        {
+          "title": "How can I add users to my workspace? | Gamma Help Center",
+          "url": "https://help.gamma.app/en/articles/11047939-how-can-i-add-users-to-my-workspace"
+        },
+        {
+          "title": "Gamma | Best AI Presentation Maker & Website Builder",
+          "url": "https://gamma.app/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 121,
+      "name": "Slab",
+      "domain": "slab.com",
+      "category": "디자인·지식",
+      "query": "site:slab.com Slab product features workspace",
+      "sources": [
+        {
+          "title": "Features - Slab",
+          "url": "https://slab.com/features/"
+        },
+        {
+          "title": "The best internal documentation for teams - Slab",
+          "url": "https://slab.com/software/documentation/"
+        },
+        {
+          "title": "Slab - Knowledge Base & Wiki Software",
+          "url": "https://slab.com/?hsPreviewerApp=blog_post&is_listing=false"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 122,
+      "name": "Slite",
+      "domain": "slite.com",
+      "category": "디자인·지식",
+      "query": "site:slite.com Slite product features workspace",
+      "sources": [
+        {
+          "title": "Workspace Settings | Slite Help Center",
+          "url": "https://slite.com/help/udZ9hefNXMiDcv/Workspace-Settings"
+        },
+        {
+          "title": "Set up your workspace | Slite Help Center",
+          "url": "https://slite.com/help/NK7ZbLFGTql3qB/Set-up-your-workspace"
+        },
+        {
+          "title": "Slite Help Center",
+          "url": "https://slite.com/help"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 123,
+      "name": "Superhuman",
+      "domain": "superhuman.com",
+      "category": "디자인·지식",
+      "query": "site:superhuman.com Superhuman product features workspace",
+      "sources": [
+        {
+          "title": "Create and manage your Superhuman Docs workspace – Superhuman Help Center",
+          "url": "https://help.superhuman.com/hc/en-us/articles/46210170813197-Create-and-manage-your-Superhuman-Docs-workspace"
+        },
+        {
+          "title": "Introducing the Superhuman suite – Superhuman Help Center",
+          "url": "https://help.superhuman.com/hc/en-us/articles/46242099320845-Introducing-the-Superhuman-suite"
+        },
+        {
+          "title": "Superhuman Launches Superhuman Docs, a Collaboration Surface for Teams to Write, Track, and Build With AI",
+          "url": "https://blog.superhuman.com/superhuman-launches-superhuman-docs/"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 124,
+      "name": "Readwise",
+      "domain": "readwise.io",
+      "category": "디자인·지식",
+      "query": "site:readwise.io Readwise product features workspace",
+      "sources": [
+        {
+          "title": "What is Readwise Reader? - Readwise Docs",
+          "url": "https://docs.readwise.io/reader/docs"
+        },
+        {
+          "title": "What is Readwise? - Readwise Docs",
+          "url": "https://docs.readwise.io/readwise"
+        },
+        {
+          "title": "Readwise Reader | The first read-it-later app built for power readers.",
+          "url": "https://readwise.io/read"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    },
+    {
+      "id": 125,
+      "name": "Raindrop",
+      "domain": "raindrop.io",
+      "category": "디자인·지식",
+      "query": "site:raindrop.io Raindrop product features workspace",
+      "sources": [
+        {
+          "title": "Raindrop.io — All-in-one bookmark manager",
+          "url": "https://raindrop.io/"
+        },
+        {
+          "title": "Subscribe to Pro — Raindrop.io",
+          "url": "https://raindrop.io/pro"
+        },
+        {
+          "title": "Notion - Raindrop.io Help",
+          "url": "https://help.raindrop.io/integrations/notion"
+        }
+      ],
+      "status": "공식 도메인 검색 결과 확인"
+    }
+  ]
+}

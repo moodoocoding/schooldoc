@@ -1,0 +1,245 @@
+import { expect, test } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+
+const root = '/tools/class-missions';
+const demoKey = 'schooldoc_class_missions_demo_v1';
+async function createClass(page: import('@playwright/test').Page, name = '가상 5학년 2반') {
+  await page.goto(root);
+  await page.getByRole('textbox', { name: '새 학급 이름' }).fill(name);
+  await page.getByRole('button', { name: '학급 만들기' }).click();
+  await expect(page.getByText('학급부터 만들어 주세요')).toHaveCount(0);
+}
+async function saveRoster(page: import('@playwright/test').Page, text: string) {
+  await page.getByText(/학급 명단과 개인 접속 코드/).click();
+  await page.getByRole('textbox', { name: '편집 명단' }).fill(text);
+  await page.getByRole('button', { name: '학생 명단 저장' }).click();
+  await expect(page.getByRole('region', { name: /이번에 발급한 개인 코드/ })).toBeVisible();
+}
+async function publishMission(page: import('@playwright/test').Page, name: string, confirmation = true) {
+  await page.getByRole('button', { name: '새 미션' }).click();
+  const editor = page.getByRole('region', { name: '새 미션 만들기' });
+  await editor.getByRole('textbox', { name: '미션 제목' }).fill(name);
+  await editor.getByRole('textbox', { name: '학생에게 보일 안내' }).fill('활동을 마친 뒤 완료를 표시해 주세요.');
+  if (confirmation) await editor.getByRole('checkbox', { name: /교사 확인 필요/ }).check();
+  await editor.getByRole('button', { name: '발행 전 확인' }).click();
+  await expect(editor.getByRole('group', { name: '발행 전 확인' })).toContainText(name);
+  await editor.getByRole('button', { name: '이 내용으로 발행' }).click();
+  await expect(page.getByRole('region', { name: '미션 현황' })).toContainText(name);
+}
+
+test('교사 발행 → 학생 표시·취소·재표시 → 교사 확인, 개인 정보 격리', async ({ page, context }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto(root);
+  await page.screenshot({ path: test.info().outputPath('teacher-empty-desktop.png'), fullPage: true });
+  await createClass(page);
+  await saveRoster(page, '1 가상하늘\n2 가상바다');
+  const codes = await page.getByRole('region', { name: /이번에 발급한 개인 코드/ }).locator('strong.font-mono').allTextContents();
+  expect(codes).toHaveLength(2);
+  await publishMission(page, '독서 기록하기');
+  await page.getByRole('button', { name: '진행 중', exact: true }).click();
+  await expect(page.getByText('독서 기록하기')).toBeVisible();
+  await page.goto(root);
+  const token = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '[]')[0].publicToken as string, demoKey);
+  const student = await context.newPage();
+  student.on('pageerror', (error) => errors.push(error.message));
+  await student.setViewportSize({ width: 390, height: 844 });
+  await student.goto(`/s/missions/${token}`);
+  await student.getByRole('textbox', { name: '개인 접속 코드' }).fill(codes[0]);
+  await student.getByRole('textbox', { name: '개인 접속 코드' }).press('Enter');
+  await expect(student.getByRole('heading', { name: '가상하늘의 미션' })).toBeVisible();
+  await expect(student.getByText('가상바다')).toHaveCount(0);
+  await student.getByRole('button', { name: '완료했어요' }).click();
+  await expect(student.getByText('확인 기다리는 중')).toBeVisible();
+  await student.getByRole('button', { name: '완료 표시 취소' }).click();
+  await expect(student.getByRole('button', { name: '완료했어요' })).toBeVisible();
+  await student.getByRole('button', { name: '완료했어요' }).click();
+  await page.reload();
+  await expect(page.getByRole('region', { name: '미션 현황' })).toContainText('확인 대기');
+  await page.getByRole('button', { name: '확인', exact: true }).click();
+  await student.getByRole('button', { name: '새로고침' }).click();
+  await expect(student.getByText('교사 확인').first()).toBeVisible();
+  await expect(student.getByRole('button', { name: '완료 표시 취소' })).toHaveCount(0);
+  await student.screenshot({ path: test.info().outputPath('student-mobile.png'), fullPage: true });
+  await student.getByRole('button', { name: '나가기' }).click();
+  await expect(student.getByRole('textbox', { name: '개인 접속 코드' })).toHaveValue('');
+  await student.getByRole('textbox', { name: '개인 접속 코드' }).fill('AAAAAAAAAAAA');
+  await student.getByRole('button', { name: '내 미션 보기' }).click();
+  await expect(student.getByRole('alert')).toContainText('코드 또는 링크');
+  await student.getByRole('textbox', { name: '개인 접속 코드' }).fill(codes[1]);
+  await student.getByRole('button', { name: '내 미션 보기' }).click();
+  await expect(student.getByRole('heading', { name: '가상바다의 미션' })).toBeVisible();
+  await expect(student.getByRole('button', { name: '완료했어요' })).toBeVisible();
+  await student.getByRole('button', { name: '나가기' }).click();
+  await page.getByRole('checkbox', { name: '공개 링크 사용' }).uncheck();
+  await student.getByRole('textbox', { name: '개인 접속 코드' }).fill(codes[1]);
+  await student.getByRole('button', { name: '내 미션 보기' }).click();
+  await expect(student.getByRole('alert')).toContainText('코드 또는 링크');
+  expect(errors).toEqual([]);
+});
+
+test('24명과 60명 화면에서 상태·열 균형과 QR 저장을 확인한다', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await createClass(page, '가상 6학년 1반');
+  await saveRoster(page, Array.from({ length: 24 }, (_, index) => `${index + 1} 가상학생${index + 1}${index === 23 ? '긴이름확인' : ''}`).join('\n'));
+  await page.getByRole('button', { name: '코드 목록 닫기' }).click();
+  await publishMission(page, '우리 반 첫 미션', false);
+  await page.evaluate((key) => {
+    const boards = JSON.parse(localStorage.getItem(key) ?? '[]');
+    const board = boards[0];
+    const missionId = board.state.missions[0].id;
+    board.state.checks = board.state.roster.slice(0, 18).map((student: { id: string }, index: number) => ({
+      missionId, studentId: student.id, status: index < 15 ? 'reported' : 'pending', updatedAt: new Date().toISOString(),
+    }));
+    localStorage.setItem(key, JSON.stringify(boards));
+  }, demoKey);
+  await page.reload();
+  await expect(page.getByRole('region', { name: '미션 현황' })).toContainText('표시 전');
+  await page.screenshot({ path: test.info().outputPath('teacher-24-desktop.png'), fullPage: true });
+  const excel = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Excel 내려받기' }).click();
+  expect((await excel).suggestedFilename()).toContain('.xlsx');
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'QR PNG 저장' }).click();
+  expect((await download).suggestedFilename()).toContain('.png');
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByRole('button', { name: /확인 대기 3명 일괄 확인/ }).click();
+  await expect(page.getByRole('button', { name: '교사 확인 3' })).toBeVisible();
+  await page.getByText(/학급 명단과 개인 접속 코드/).click();
+  await page.getByRole('textbox', { name: '편집 명단' }).fill(Array.from({ length: 60 }, (_, index) => `${index + 1} 가상학생${index + 1}${index === 23 || index === 59 ? '긴이름확인' : ''}`).join('\n'));
+  await page.getByRole('button', { name: '학생 명단 저장' }).click();
+  await expect(page.getByRole('region', { name: /이번에 발급한 개인 코드/ })).toContainText('36명');
+  await page.getByRole('button', { name: '코드 목록 닫기' }).click();
+  await page.getByRole('button', { name: '새 미션' }).click();
+  await page.getByRole('region', { name: '새 미션 만들기' }).getByRole('textbox', { name: '미션 제목' }).fill('60명 확인 미션');
+  await page.getByRole('button', { name: '발행 전 확인' }).click();
+  await expect(page.getByRole('group', { name: '발행 전 확인' })).toContainText('60명');
+  await page.getByRole('button', { name: '이 내용으로 발행' }).click();
+  await page.screenshot({ path: test.info().outputPath('teacher-60-desktop.png'), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: test.info().outputPath('teacher-60-mobile.png'), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.evaluate(() => { document.documentElement.style.zoom = '2'; });
+  await page.screenshot({ path: test.info().outputPath('teacher-60-zoom-200.png'), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.evaluate(() => { document.documentElement.style.zoom = ''; });
+  await page.setViewportSize({ width: 683, height: 768 });
+  await page.screenshot({ path: test.info().outputPath('teacher-60-narrow-desktop.png'), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations).toEqual([]);
+  await page.getByRole('button', { name: '복제해서 만들기' }).click();
+  const clone = page.getByRole('region', { name: '새 미션 만들기' });
+  await expect(clone.getByRole('textbox', { name: '미션 제목' })).toHaveValue('60명 확인 미션 복사');
+  await expect(clone).toContainText('대상 학생 · 60명');
+});
+
+test('종료 미션은 90일 뒤 대상·건수 확인 후 파기하며 마지막 명단과 학생 링크도 비운다', async ({ page, context }) => {
+  await createClass(page);
+  await saveRoster(page, '1 가상하늘\n2 가상바다');
+  await publishMission(page, '보관 만료 미션', false);
+  await page.evaluate((key) => {
+    const boards = JSON.parse(localStorage.getItem(key) ?? '[]');
+    const board = boards[0];
+    const mission = board.state.missions[0];
+    const dateBefore = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    mission.createdAt = dateBefore(100);
+    mission.startDate = dateBefore(100).slice(0, 10);
+    mission.dueDate = dateBefore(92).slice(0, 10);
+    mission.status = 'closed';
+    mission.closedAt = dateBefore(89);
+    board.state.checks = [{ missionId: mission.id, studentId: board.state.roster[0].id,
+      status: 'reported', updatedAt: mission.closedAt }];
+    board.state.events = [{ id: crypto.randomUUID(), missionId: mission.id, studentId: board.state.roster[0].id,
+      from: 'unmarked', status: 'reported', actor: 'student', updatedAt: mission.closedAt }];
+    localStorage.setItem(key, JSON.stringify(boards));
+  }, demoKey);
+  await page.reload();
+  await expect(page.getByLabel('미션 보관 및 파기')).toContainText('파기 가능 시각');
+  await expect(page.getByRole('button', { name: '미션 영구 파기' })).toHaveCount(0);
+  await page.evaluate((key) => {
+    const boards = JSON.parse(localStorage.getItem(key) ?? '[]');
+    boards[0].state.missions[0].closedAt = new Date(Date.now() - 91 * 24 * 60 * 60 * 1000).toISOString();
+    localStorage.setItem(key, JSON.stringify(boards));
+  }, demoKey);
+  await page.reload();
+  const token = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '[]')[0].publicToken as string, demoKey);
+  const section = page.getByLabel('미션 보관 및 파기');
+  await expect(section).toContainText('대상 학생 2명 · 현재 응답 1건 · 변경 이력 1건');
+  await expect(section).toContainText('학급 명단과 개인 코드도 비우고');
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await page.screenshot({ path: test.info().outputPath('teacher-purge-review-desktop.png'), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: test.info().outputPath('teacher-purge-review-mobile.png'), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.evaluate(() => { document.documentElement.style.zoom = '2'; });
+  await page.screenshot({ path: test.info().outputPath('teacher-purge-review-zoom-200.png'), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.evaluate(() => { document.documentElement.style.zoom = ''; });
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations).toEqual([]);
+  const purge = section.getByRole('button', { name: '미션 영구 파기' });
+  await expect(purge).toBeDisabled();
+  await section.getByRole('checkbox', { name: /영구 파기에 동의합니다/ }).check();
+  await section.getByRole('textbox', { name: '확인 문구: 영구 파기' }).fill('영구 파기');
+  await expect(purge).toBeEnabled();
+  await page.getByRole('combobox', { name: '2번 가상바다 상태 정정' }).selectOption('exempt');
+  await expect(section).toContainText('현재 응답 2건 · 변경 이력 2건');
+  await expect(purge).toBeDisabled();
+  await expect(section.getByRole('checkbox', { name: /영구 파기에 동의합니다/ })).not.toBeChecked();
+  await section.getByRole('checkbox', { name: /영구 파기에 동의합니다/ }).check();
+  await section.getByRole('textbox', { name: '확인 문구: 영구 파기' }).fill('영구 파기');
+  await purge.click();
+  await expect(page.getByText('미션과 관련 응답·이력을 파기했습니다.')).toBeVisible();
+  await expect(page.getByText('아직 미션이 없습니다.')).toBeVisible();
+  await expect(page.getByRole('region', { name: /이번에 발급한 개인 코드/ })).toHaveCount(0);
+  const board = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '[]')[0], demoKey);
+  expect(board.state).toMatchObject({ roster: [], missions: [], checks: [], events: [] });
+  expect(board.publicEnabled).toBe(false);
+  expect(board.publicToken).not.toBe(token);
+  const student = await context.newPage();
+  await student.goto(`/s/missions/${token}`);
+  await student.getByRole('textbox', { name: '개인 접속 코드' }).fill('AAAAAAAAAAAA');
+  await student.getByRole('button', { name: '내 미션 보기' }).click();
+  await expect(student.getByRole('alert')).toContainText('코드 또는 링크');
+});
+
+test('환경 설정의 파기 예정 목록에서 만료된 학급 미션을 확인 화면으로 연다', async ({ page }) => {
+  await createClass(page);
+  await saveRoster(page, '1 가상하늘\n2 가상바다');
+  await publishMission(page, '보관 예정 미션', false);
+  await page.evaluate((key) => {
+    const boards = JSON.parse(localStorage.getItem(key) ?? '[]');
+    const mission = boards[0].state.missions[0];
+    const dateBefore = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    mission.createdAt = dateBefore(100);
+    mission.startDate = dateBefore(100).slice(0, 10);
+    mission.dueDate = dateBefore(92).slice(0, 10);
+    mission.status = 'closed';
+    mission.closedAt = dateBefore(91);
+    localStorage.setItem(key, JSON.stringify(boards));
+  }, demoKey);
+  await page.getByRole('button', { name: '설정', exact: true }).click();
+  await page.getByRole('button', { name: '알림 & 개인정보 보안' }).click();
+  const scheduled = page.getByRole('listitem').filter({ hasText: '보관 예정 미션' });
+  await expect(scheduled).toContainText('학급 미션');
+  await expect(scheduled).toContainText('파기 확인 필요');
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await page.screenshot({ path: test.info().outputPath('settings-mission-purge-desktop.png'), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: test.info().outputPath('settings-mission-purge-mobile.png'), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.evaluate(() => { document.documentElement.style.zoom = '2'; });
+  await page.screenshot({ path: test.info().outputPath('settings-mission-purge-zoom-200.png'), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.evaluate(() => { document.documentElement.style.zoom = ''; });
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations).toEqual([]);
+  await scheduled.getByRole('button', { name: '파기 대상 확인' }).click();
+  await expect(page).toHaveURL(/\/tools\/class-missions\?board=.*&mission=/);
+  await expect(page.getByRole('region', { name: '미션 현황' })).toContainText('보관 예정 미션');
+  await expect(page.getByLabel('미션 보관 및 파기')).toContainText('대상 학생 2명');
+});

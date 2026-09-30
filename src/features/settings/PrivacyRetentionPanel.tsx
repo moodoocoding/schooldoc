@@ -6,7 +6,7 @@ import {
   DEFAULT_PRIVACY_RETENTION_SETTINGS,
   RETENTION_MONTH_OPTIONS,
   isPurgeDue,
-  retentionDueAt,
+  retainedWorkDueAt,
   sortRetainedWorkItems,
   type PrivacyPurgeLog,
   type PrivacyRetentionSettings,
@@ -28,10 +28,12 @@ const dateLabel = (value: string | Date) => {
   return new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
 };
 
-const kindLabel = (kind: RetainedWorkItem['kind']) => kind === 'consent-form' ? '가정통신문 수합' : '자료 수합';
+const kindLabel = (kind: RetainedWorkItem['kind']) => kind === 'consent-form' ? '가정통신문 수합'
+  : kind === 'data-collect' ? '자료 수합' : '학급 미션';
 const managePath = (item: RetainedWorkItem) => item.kind === 'consent-form'
   ? `/tools/consent-forms/${item.id}`
-  : `/tools/data-collect/${item.id}`;
+  : item.kind === 'data-collect' ? `/tools/data-collect/${item.id}`
+    : `/tools/class-missions?board=${encodeURIComponent(item.boardId ?? '')}&mission=${encodeURIComponent(item.id)}`;
 
 export function PrivacyRetentionPanel({ userId, isLoggedIn }: { userId: string; isLoggedIn: boolean }) {
   const navigate = useNavigate();
@@ -122,7 +124,7 @@ export function PrivacyRetentionPanel({ userId, isLoggedIn }: { userId: string; 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h3 id="privacy-policy-heading" className="text-base font-bold text-[#0F172A]">개인정보 보관 및 파기 정책</h3>
+            <h2 id="privacy-policy-heading" className="text-base font-bold text-[#0F172A]">개인정보 보관 및 파기 정책</h2>
             <span className="rounded-md bg-[#E6F4EA] px-2 py-1 text-[11px] font-bold text-[#126B32]">교사 확인 후 파기</span>
           </div>
           <p className="mt-2 max-w-2xl text-xs leading-5 text-[#64748B]">
@@ -146,7 +148,7 @@ export function PrivacyRetentionPanel({ userId, isLoggedIn }: { userId: string; 
                 onChange={() => { setSettings({ ...settings, defaultRetentionMonths: months }); setSaved(false); }}
                 className="h-4 w-4 accent-[#0F6CBD]"
               />
-              <span><strong className="block text-sm text-[#0F172A]">종료 후 {monthLabel(months)}</strong><span className="mt-0.5 block text-[11px] text-[#64748B]">파기 예정 목록에 표시</span></span>
+              <span><strong className="block text-sm text-[#0F172A]">종료 후 {monthLabel(months)}</strong><span className="mt-0.5 block text-[11px] text-[#526174]">파기 예정 목록에 표시</span></span>
             </label>;
           })}
         </div>
@@ -165,8 +167,8 @@ export function PrivacyRetentionPanel({ userId, isLoggedIn }: { userId: string; 
     <section aria-labelledby="purge-schedule-heading" className="border-t border-[#DCE3EA] pt-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 id="purge-schedule-heading" className="flex items-center gap-2 text-base font-bold text-[#0F172A]"><Archive className="h-4 w-4 text-[#0F6CBD]" />파기 예정 자료</h3>
-          <p className="mt-1 text-xs text-[#64748B]">종료한 가정통신문 수합과 자료 수합을 한곳에서 확인합니다.</p>
+          <h2 id="purge-schedule-heading" className="flex items-center gap-2 text-base font-bold text-[#0F172A]"><Archive className="h-4 w-4 text-[#0F6CBD]" />파기 예정 자료</h2>
+          <p className="mt-1 text-xs text-[#64748B]">종료한 가정통신문 수합·자료 수합·학급 미션을 한곳에서 확인합니다. 학급 미션은 종료 후 90일이 기준입니다.</p>
         </div>
         <button type="button" disabled={!isLoggedIn || loading} onClick={() => void refresh()} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-[#C8D0DA] px-3 text-xs font-bold text-[#334155] disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />새로고침</button>
       </div>
@@ -182,7 +184,7 @@ export function PrivacyRetentionPanel({ userId, isLoggedIn }: { userId: string; 
               <ul className="divide-y divide-[#EEF1F4] rounded-lg border border-[#DCE3EA] bg-white px-4">
                 {scheduledItems.map((item) => {
                   const due = isPurgeDue(item);
-                  const dueAt = retentionDueAt(item.closedAt, item.retentionMonths);
+                  const dueAt = retainedWorkDueAt(item);
                   return <li key={`${item.kind}:${item.id}`} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2"><span className={`rounded-md px-2 py-1 text-[11px] font-bold ${due ? 'bg-[#FEF2F2] text-[#B42318]' : 'bg-[#EFF6FC] text-[#0F6CBD]'}`}>{due ? '파기 확인 필요' : '파기 예정'}</span><span className="text-[11px] font-semibold text-[#64748B]">{kindLabel(item.kind)}</span></div>
@@ -191,7 +193,9 @@ export function PrivacyRetentionPanel({ userId, isLoggedIn }: { userId: string; 
                     </div>
                     <div className="flex shrink-0 gap-2">
                       <button type="button" onClick={() => navigate(managePath(item))} className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-[#C8D0DA] px-3 text-xs font-bold text-[#334155]"><ExternalLink className="h-3.5 w-3.5" />업무 열기</button>
-                      {due ? <button type="button" onClick={() => setPendingPurge(item)} className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-[#B42318] px-3 text-xs font-bold text-[#B42318] hover:bg-[#FEF2F2]"><Trash2 className="h-3.5 w-3.5" />영구 파기</button> : null}
+                      {due ? item.kind === 'class-mission'
+                        ? <button type="button" onClick={() => navigate(managePath(item))} className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-[#B42318] px-3 text-xs font-bold text-[#B42318] hover:bg-[#FEF2F2]"><Trash2 className="h-3.5 w-3.5" />파기 대상 확인</button>
+                        : <button type="button" onClick={() => setPendingPurge(item)} className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-[#B42318] px-3 text-xs font-bold text-[#B42318] hover:bg-[#FEF2F2]"><Trash2 className="h-3.5 w-3.5" />영구 파기</button> : null}
                     </div>
                   </li>;
                 })}

@@ -29,7 +29,14 @@ export const useActiveWork = (userId: string) => {
   useEffect(() => {
     hasLoaded.current = false;
     void refresh();
-    const stopSubscriptions = activeWorkProviders.map((provider) => provider.subscribe?.(() => void refresh()));
+    const stopSubscriptions = activeWorkProviders.map((provider) => {
+      try {
+        return provider.subscribe?.(() => void refresh());
+      } catch {
+        // A disconnected tool must not prevent the other tools from rendering.
+        return undefined;
+      }
+    });
     const refreshWhenVisible = () => {
       if (document.visibilityState === 'visible') void refresh();
     };
