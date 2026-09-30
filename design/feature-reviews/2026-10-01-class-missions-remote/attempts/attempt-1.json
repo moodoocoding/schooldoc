@@ -1,0 +1,52 @@
+{
+  "project": "jhystopaacyfvjxhnpyd",
+  "origin": "https://schooldoc-nine.vercel.app",
+  "createdAt": "2026-09-30T22:54:42.470Z",
+  "run": "7c98c525-6a0a-42b7-8875-7854c896844d",
+  "results": [
+    {
+      "label": "real auth/JWT; anonymous 401; cross-owner API read/write isolation",
+      "passed": true
+    },
+    {
+      "label": "real encrypted roster/code storage and mission publication",
+      "passed": true
+    },
+    {
+      "label": "anon/owner/foreign teacher denied direct SELECT/INSERT/UPDATE/DELETE and service-only RPC",
+      "passed": true
+    },
+    {
+      "label": "duplicate name rejected; code priority/unique name accepted; public response minimized",
+      "passed": true
+    },
+    {
+      "label": "correct duplicate identity; mark/cancel; concurrent SQL writes and stale-version rejection",
+      "passed": true
+    },
+    {
+      "label": "confirmation list checked; confirmed mark protected; count/retention purge safeguards",
+      "passed": true
+    },
+    {
+      "label": "share stop/resume; rotated old link rejected",
+      "passed": true
+    },
+    {
+      "label": "deployed authenticated teacher and anonymous student browsers",
+      "passed": false,
+      "error": "TimeoutError"
+    }
+  ],
+  "cleanup": {
+    "createdUsers": 2,
+    "removedUsers": 2,
+    "fixtureBoards": 2,
+    "verified": true
+  },
+  "limitations": [
+    "Google interactive OAuth not automated",
+    "No physical school NAT/load or device testing",
+    "SQL changes rolled back; no actual retention purge of user data"
+  ]
+}
