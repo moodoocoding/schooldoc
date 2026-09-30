@@ -45,8 +45,8 @@ test('교사 발행 → 학생 표시·취소·재표시 → 교사 확인, 개�
   student.on('pageerror', (error) => errors.push(error.message));
   await student.setViewportSize({ width: 390, height: 844 });
   await student.goto(`/s/missions/${token}`);
-  await student.getByRole('textbox', { name: '개인 접속 코드' }).fill(codes[0]);
-  await student.getByRole('textbox', { name: '개인 접속 코드' }).press('Enter');
+  await student.getByRole('textbox', { name: '학생 이름' }).fill('가상하늘');
+  await student.getByRole('textbox', { name: '학생 이름' }).press('Enter');
   await expect(student.getByRole('heading', { name: '가상하늘의 미션' })).toBeVisible();
   await expect(student.getByText('가상바다')).toHaveCount(0);
   await student.getByRole('button', { name: '완료했어요' }).click();
@@ -62,19 +62,19 @@ test('교사 발행 → 학생 표시·취소·재표시 → 교사 확인, 개�
   await expect(student.getByRole('button', { name: '완료 표시 취소' })).toHaveCount(0);
   await student.screenshot({ path: test.info().outputPath('student-mobile.png'), fullPage: true });
   await student.getByRole('button', { name: '나가기' }).click();
-  await expect(student.getByRole('textbox', { name: '개인 접속 코드' })).toHaveValue('');
-  await student.getByRole('textbox', { name: '개인 접속 코드' }).fill('AAAAAAAAAAAA');
+  await expect(student.getByRole('textbox', { name: '학생 이름' })).toHaveValue('');
+  await student.getByRole('textbox', { name: '학생 이름' }).fill('없는학생');
   await student.getByRole('button', { name: '내 미션 보기' }).click();
-  await expect(student.getByRole('alert')).toContainText('코드 또는 링크');
-  await student.getByRole('textbox', { name: '개인 접속 코드' }).fill(codes[1]);
+  await expect(student.getByRole('alert')).toContainText('이름 또는 링크');
+  await student.getByRole('textbox', { name: '학생 이름' }).fill('가상바다');
   await student.getByRole('button', { name: '내 미션 보기' }).click();
   await expect(student.getByRole('heading', { name: '가상바다의 미션' })).toBeVisible();
   await expect(student.getByRole('button', { name: '완료했어요' })).toBeVisible();
   await student.getByRole('button', { name: '나가기' }).click();
   await page.getByRole('checkbox', { name: '공개 링크 사용' }).uncheck();
-  await student.getByRole('textbox', { name: '개인 접속 코드' }).fill(codes[1]);
+  await student.getByRole('textbox', { name: '학생 이름' }).fill('가상바다');
   await student.getByRole('button', { name: '내 미션 보기' }).click();
-  await expect(student.getByRole('alert')).toContainText('코드 또는 링크');
+  await expect(student.getByRole('alert')).toContainText('이름 또는 링크');
   expect(errors).toEqual([]);
 });
 
