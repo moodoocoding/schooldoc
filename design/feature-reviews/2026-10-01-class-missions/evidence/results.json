@@ -1,0 +1,105 @@
+{
+  "localDemoOnly": true,
+  "results": [
+    {
+      "name": "current-ui-workflow",
+      "completed": true,
+      "workflowPassed": true,
+      "downloads": [
+        "가상 5학년 2반_학급미션_QR.png",
+        "가상 5학년 2반_가상 독서 기록_미션현황.xlsx"
+      ],
+      "focusAfterLogin": "BODY",
+      "qrPixels": [
+        1024,
+        1024
+      ],
+      "excelStatusesVerified": true
+    },
+    {
+      "name": "duplicate-name-selects-first-student",
+      "completed": true,
+      "reproduced": true,
+      "secondStudentCheckCount": 0
+    },
+    {
+      "name": "teacher-stale-version-and-draft-loss",
+      "completed": true,
+      "conflictReproduced": true,
+      "unhandled": [
+        "다른 화면에서 변경되었습니다. 새로고침 후 다시 시도해 주세요."
+      ],
+      "draftLost": true
+    },
+    {
+      "name": "logout-during-delayed-mark-restores-view",
+      "completed": true,
+      "reproduced": true,
+      "delay": "Test delays code hashing 1500ms to model an in-flight async response after logout."
+    },
+    {
+      "name": "density-responsive-accessibility",
+      "completed": true,
+      "statusPanelTop": 1023,
+      "viewportHeight": 900,
+      "measurements": [
+        {
+          "name": "teacher-24-mobile",
+          "scrollWidth": 390,
+          "innerWidth": 390
+        },
+        {
+          "name": "teacher-24-zoom-200",
+          "scrollWidth": 1366,
+          "innerWidth": 1366
+        }
+      ],
+      "teacherAxe": [],
+      "studentAxe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "count": 2,
+          "nodes": [
+            {
+              "html": "<p class=\"mt-1 text-xs text-[#64748B]\">새 미션이 추가되면 새로고침으로 확인할 수 있어요.</p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.45 (foreground color: #64748b, background color: #f4f8fc, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "html": "<p class=\"text-center text-xs text-[#64748B]\">공용 기기라면 이용 후 ‘나가기’를 눌러 주세요.</p>",
+              "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.45 (foreground color: #64748b, background color: #f4f8fc, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ],
+      "studentCount": 24
+    },
+    {
+      "name": "closed-missions-before-actionable-mission",
+      "completed": true,
+      "reproduced": true,
+      "order": [
+        "종료된 가상 미션 1",
+        "종료된 가상 미션 2",
+        "종료된 가상 미션 3",
+        "종료된 가상 미션 4",
+        "종료된 가상 미션 5",
+        "가상 독서 기록"
+      ],
+      "actionableTop": 1666
+    },
+    {
+      "name": "future-start-teacher-label",
+      "completed": true,
+      "reproduced": true,
+      "teacherState": "진행 중",
+      "studentState": "시작 전"
+    },
+    {
+      "name": "purge-guard-counts-and-final-link",
+      "completed": true,
+      "passed": true,
+      "environment": "local demo; database transaction not exercised"
+    }
+  ]
+}
