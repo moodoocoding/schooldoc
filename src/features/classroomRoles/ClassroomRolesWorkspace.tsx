@@ -30,7 +30,9 @@ import {
 import { useRoleRecords } from "./useRoleRecords";
 import { RoleAssignmentPage } from "./RoleAssignmentPage";
 import { RoleCatalogPage, RoleSettingsPage } from "./RoleConfigurationPages";
-import { RolePracticePage, RoleHistoryPage } from "./RoleRecordPages";
+import { RoleHistoryPage } from "./RoleRecordPages";
+import { RolePracticeBoardPage } from "./RolePracticeBoardPage";
+import { RolePosterPrintPage } from "./RolePosterPrintPage";
 export const ROLES_ROOT = "/tools/classroom-roles";
 export type RolePageProps = {
   board: RoleBoard;
@@ -231,11 +233,13 @@ export function ClassroomRolesWorkspace() {
   const current = tiles.find(
     ([path]) => location.pathname === `${ROLES_ROOT}/${path}`,
   );
+  const isPosterRoute = location.pathname === `${ROLES_ROOT}/print`;
+  const isAssignment = location.pathname === `${ROLES_ROOT}/assign` || location.pathname === `${ROLES_ROOT}/rotate`;
   const props = board ? { board, busy, save } : null;
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <header className={current ? "space-y-1" : "space-y-3"}>
-        {current && (
+    <div className={`mx-auto space-y-6 ${isAssignment ? 'max-w-6xl lg:max-w-none lg:space-y-0' : 'max-w-6xl'}`}>
+      <header className={`${current ? "space-y-1" : "space-y-3"} ${isAssignment ? 'lg:hidden' : ''}`}>
+        {(current || isPosterRoute) && (
           <Link
             className="inline-flex min-h-11 items-center gap-2 text-sm text-[#526174]"
             to={ROLES_ROOT}
@@ -244,14 +248,14 @@ export function ClassroomRolesWorkspace() {
             1인 1역 홈
           </Link>
         )}
-        {!current && (
+        {!current && !isPosterRoute && (
           <p className="text-sm font-semibold text-[#0F6CBD]">
             스스로, 함께 가꾸는 우리 반
           </p>
         )}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-extrabold sm:text-3xl">
-            {current?.[1] ?? "1인 1역"}
+            {isPosterRoute ? "게시판 안내문 인쇄" : current?.[1] ?? "1인 1역"}
           </h1>
           {board && !current && (
             <span className="text-sm text-[#526174]">
@@ -298,7 +302,8 @@ export function ClassroomRolesWorkspace() {
           />
           <Route path="roles" element={<RoleCatalogPage {...props} />} />
           <Route path="settings" element={<RoleSettingsPage {...props} />} />
-          <Route path="board" element={<RolePracticePage {...props} />} />
+          <Route path="board" element={<RolePracticeBoardPage {...props} />} />
+          <Route path="print" element={<RolePosterPrintPage {...props} />} />
           <Route path="records" element={<RoleHistoryPage {...props} />} />
           <Route path="*" element={<RolesHome board={props.board} />} />
         </Routes>

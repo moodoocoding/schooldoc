@@ -221,6 +221,241 @@ html[data-schooldoc-font-size="large"] .schooldoc-admin-shell {
   outline-offset: 2px;
 }
 
+/* The approved desktop role-assignment layout is scoped to that route. */
+.schooldoc-admin-shell.role-assignment-shell {
+  --ra-canvas: #fbfaf8;
+  --ra-surface: #fff;
+  --ra-text: #252824;
+  --ra-border: #e4e5e0;
+  --ra-accent: #b9472f;
+  --ra-accent-soft: #fff1eb;
+  --ra-muted: #626a64;
+  --ra-panel: #f7f8f6;
+  --ra-hover: #faf5f1;
+}
+
+.schooldoc-admin-shell.role-assignment-shell:not([data-role-default-theme]) {
+  --ra-canvas: var(--sd-canvas);
+  --ra-surface: var(--sd-surface);
+  --ra-text: var(--sd-text);
+  --ra-border: var(--sd-border);
+  --ra-accent: var(--sd-accent);
+  --ra-accent-soft: var(--sd-accent-soft);
+  --ra-muted: var(--sd-text-muted);
+  --ra-panel: var(--sd-surface-hover);
+  --ra-hover: var(--sd-surface-hover);
+}
+
+@media (min-width: 1024px) {
+  .schooldoc-admin-shell.role-assignment-shell {
+    background-color: var(--ra-canvas) !important;
+  }
+
+  .role-assignment-shell > aside {
+    display: none;
+  }
+
+  .role-assignment-shell .role-assignment-main {
+    padding: 0;
+  }
+
+  .role-assignment-shell [data-role-desktop-picker] {
+    background-color: var(--ra-surface);
+    color: var(--ra-text);
+  }
+
+  .role-assignment-shell [data-role-desktop-picker] details summary {
+    color: var(--ra-accent);
+  }
+
+  .role-assignment-shell [data-role-desktop-picker] :is(button, input, select, summary):focus-visible {
+    outline-color: var(--ra-accent);
+  }
+
+  .role-assignment-shell:not([data-role-default-theme]) [data-role-desktop-picker] button[aria-pressed="true"] {
+    background-color: var(--sd-accent-soft);
+  }
+
+  .role-assignment-shell:not([data-role-default-theme]) [data-role-desktop-picker] button[aria-pressed="true"] > span:first-child {
+    background-color: var(--sd-accent);
+  }
+
+  .role-assignment-shell:not([data-role-default-theme]) :is([data-role-topbar], [data-role-desktop-picker]) :is(h2, h3, p, a, button, span, summary, label, input, select) {
+    color: var(--sd-text);
+  }
+
+  .role-assignment-shell:not([data-role-default-theme]) [data-role-desktop-picker] details summary {
+    color: var(--sd-accent);
+  }
+
+  .role-assignment-shell:not([data-role-default-theme]) [data-role-desktop-picker] :is(section, div, button, label, input, select),
+  .role-assignment-shell:not([data-role-default-theme]) [data-role-topbar] {
+    border-color: var(--sd-border);
+  }
+
+  .role-assignment-shell:not([data-role-default-theme]) [data-role-desktop-picker] :is(input, select, span.rounded-full, div.rounded-full) {
+    background-color: var(--sd-surface-hover);
+  }
+
+  .role-assignment-shell:not([data-role-default-theme]) [data-role-desktop-picker] input::placeholder {
+    color: var(--sd-text-muted);
+  }
+
+  .role-assignment-shell:not([data-role-default-theme]) [data-role-desktop-picker] button:hover:not(:disabled):not([aria-pressed="true"]) {
+    background-color: var(--sd-surface-hover);
+  }
+
+  .role-assignment-shell:not([data-role-default-theme]) [data-role-review-button] {
+    background-color: var(--sd-accent);
+    color: #fff;
+  }
+
+  .role-assignment-shell:not([data-role-default-theme]) [data-role-review-button][aria-disabled="true"] {
+    background-color: var(--sd-disabled);
+    color: var(--sd-text);
+  }
+
+  .role-assignment-shell [data-role-desktop-picker] > section:first-child {
+    background-color: var(--ra-panel);
+  }
+
+  .role-assignment-shell [data-role-desktop-picker] .role-assignment-role-card,
+  .role-assignment-shell [data-role-desktop-picker] .role-assignment-student-card {
+    border: 1px solid var(--ra-border);
+    background-color: var(--ra-surface);
+    color: var(--ra-text);
+  }
+
+  .role-assignment-shell [data-role-desktop-picker] .role-assignment-role-card:hover:not(:disabled),
+  .role-assignment-shell [data-role-desktop-picker] .role-assignment-student-card:hover:not(:disabled) {
+    border-color: var(--ra-accent);
+    background-color: var(--ra-hover);
+  }
+
+  .role-assignment-shell [data-role-desktop-picker] .role-assignment-role-card[aria-pressed="true"],
+  .role-assignment-shell [data-role-desktop-picker] .role-assignment-student-card[aria-pressed="true"] {
+    border-color: var(--ra-accent);
+    background-color: var(--ra-accent-soft);
+  }
+
+  .role-assignment-shell [data-role-desktop-picker] .role-assignment-role-card[aria-pressed="true"] {
+    box-shadow: inset 3px 0 var(--ra-accent);
+  }
+
+  .role-assignment-shell [data-role-desktop-picker] .role-assignment-role-card > span:last-child,
+  .role-assignment-shell [data-role-desktop-picker] .role-assignment-student-card[data-assignment-state="other"] {
+    color: var(--ra-muted);
+  }
+
+  .role-assignment-shell [data-role-desktop-picker] .role-assignment-student-card[data-assignment-state="other"] {
+    background-color: var(--ra-panel);
+  }
+
+  .role-assignment-shell [data-role-desktop-picker] .role-assignment-check {
+    border-color: var(--ra-muted);
+    color: #fff;
+  }
+
+  .role-assignment-shell [data-role-desktop-picker] .role-assignment-student-card[aria-pressed="true"] .role-assignment-check {
+    border-color: var(--ra-accent);
+    background-color: var(--ra-accent);
+  }
+
+  .role-assignment-shell [data-role-desktop-picker] :is(.role-assignment-role-card, .role-assignment-student-card):disabled {
+    cursor: not-allowed;
+    opacity: .55;
+  }
+}
+
+@media (max-width: 1023px) {
+  .role-assignment-shell [data-role-mobile-header],
+  .role-assignment-shell [data-role-mobile-picker],
+  .role-assignment-shell [data-role-mobile-actions] {
+    container-type: inline-size;
+  }
+
+  .role-assignment-shell [data-role-mobile-picker] [data-assignment-state] {
+    border-color: var(--sd-border);
+    background-color: var(--sd-surface);
+    color: var(--sd-text);
+  }
+
+  .role-assignment-shell [data-role-mobile-picker] [data-assignment-state="current"] {
+    border-color: var(--sd-accent);
+    background-color: var(--sd-accent-soft);
+  }
+
+  .role-assignment-shell [data-role-mobile-picker] [data-assignment-state="other"] {
+    background-color: var(--sd-surface-hover);
+  }
+
+  .role-assignment-shell [data-role-mobile-picker] [data-assignment-state] input {
+    accent-color: var(--sd-accent);
+  }
+
+  .role-assignment-shell [data-role-mobile-picker] [role="group"] button[aria-pressed="true"],
+  .role-assignment-shell [data-role-mobile-dialog] button[aria-pressed="true"] {
+    border-color: var(--sd-accent);
+    background-color: var(--sd-accent-soft);
+    color: var(--sd-accent);
+  }
+
+  @container (max-width: 300px) {
+    .role-assignment-shell [data-role-mobile-header] > div {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .role-assignment-shell [data-role-mobile-header] > div > :first-child {
+      grid-column: 1 / -1;
+    }
+
+    .role-assignment-shell [data-role-mobile-header] > div > span {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .role-assignment-shell [data-role-mobile-header] .role-assignment-next-role {
+      grid-column: 2;
+      grid-row: 2;
+      border-left: 0;
+    }
+
+    .role-assignment-mobile-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .role-assignment-shell [data-role-mobile-picker] [role="group"] button {
+      padding-inline: .25rem;
+      font-size: var(--sd-text-xs);
+      white-space: nowrap;
+    }
+  }
+
+  @container (max-width: 270px) {
+    .role-assignment-shell [data-role-mobile-actions] > div {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .role-assignment-shell [data-role-mobile-actions] > div > :first-child {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .role-assignment-shell [data-role-mobile-actions] > div > :nth-child(2) {
+      grid-column: 1 / -1;
+      grid-row: 1;
+    }
+
+    .role-assignment-shell [data-role-mobile-actions] > div > :last-child {
+      grid-column: 2;
+      grid-row: 2;
+      padding-inline: .25rem;
+      white-space: nowrap;
+    }
+  }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
@@ -300,7 +535,9 @@ html[data-schooldoc-font-size="large"] .schooldoc-admin-shell {
   .registry-print-root,
   .registry-print-root *,
   .student-result-qr-print-root,
-  .student-result-qr-print-root * {
+  .student-result-qr-print-root *,
+  .role-poster-print-root,
+  .role-poster-print-root * {
     visibility: visible;
   }
 
@@ -313,6 +550,24 @@ html[data-schooldoc-font-size="large"] .schooldoc-admin-shell {
     position: absolute;
     inset: 0;
     width: 794px;
+  }
+
+  .role-poster-print-root {
+    position: absolute;
+    inset: 0;
+    width: 210mm;
+  }
+
+  .role-poster-print-page {
+    break-after: page;
+    page-break-after: always;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .role-poster-print-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
   }
 
   .registry-print-page,

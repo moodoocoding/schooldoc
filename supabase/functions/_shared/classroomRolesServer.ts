@@ -4,6 +4,7 @@ import {
   defaultRoleState,
   publicRoleProjection,
   roleToday,
+  roleWeekDates,
   validRoleDate,
   validateRoleRecord,
   validateRoleStateChange,
@@ -183,11 +184,13 @@ export async function handleClassroomRoles(
         return json({ ok: true });
       }
       const selectedId = body.studentId ? id(body.studentId) : undefined;
+      const weekStart = roleWeekDates(today)[0];
       const records = await db
         .from("classroom_role_records")
         .select("period_id,student_id,record_date,status,source,updated_at")
         .eq("board_id", board.id)
-        .eq("record_date", today);
+        .gte("record_date", selectedId ? weekStart : today)
+        .lte("record_date", today);
       if (records.error) fail("오늘의 기록을 불러오지 못했습니다.", 503);
       return json(publicRoleProjection(state, records.data, today, selectedId));
     }

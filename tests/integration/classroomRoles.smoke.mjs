@@ -171,7 +171,7 @@ try {
     await page.goto(`${root}/assign`);
     await expect(page.getByText('설정 명단을 불러왔습니다.')).toBeVisible();
     await expect(page.getByRole('table', { name: '배정할 학생 명단' }).getByRole('row')).toHaveCount(3);
-    await page.getByRole('button', { name: '다음: 역할 설정' }).click();
+    await page.getByRole('button', { name: '다음: 역할 배정' }).click();
     const roleList = page.getByRole('region', { name: '역할 목록' });
     const studentPanel = page.getByRole('region', { name: '담당 학생 선택' });
     const roleGridColumns = await roleList.locator('div.grid').first()

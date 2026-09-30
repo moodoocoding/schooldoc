@@ -50,7 +50,7 @@ test('동의 후 업로드 → 분석 → 원본·수정 → 표·잔액 → 새
   await page.getByLabel('영수증 증빙 파일').setInputFiles(file());
   await expect(page.getByLabel('사용처', {exact:true})).toHaveValue(receipt.merchant);
   await expect(page.getByLabel('금액', {exact:true})).toHaveValue('32500');
-  await expect(page.getByLabel('사용 목적', {exact:true})).toHaveValue('');
+  await expect(page.getByLabel('사용 목적', {exact:true})).toHaveValue('교실 환경 구성 및 학급 게시판 정비용품 구입 (색연필·종이)');
   await expect(page.getByText('신뢰도', {exact:false})).toHaveCount(0);
   await expect(page.getByRole('button', {name:'영수증 파일 선택'})).toHaveCount(0);
   await expect(page.getByTitle('영수증 PDF 원본')).toHaveAttribute('src', /blob:.*#page=1/);

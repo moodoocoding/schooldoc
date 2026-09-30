@@ -56,6 +56,7 @@ export type PublicRoleBoard = {
   })[];
   maskDisplayNames: boolean;
   showStatus: boolean;
+  week: { date: string; eligible: boolean; status?: RoleStatus }[];
 };
 
 export const ROLE_STATUS_LABELS = {
@@ -73,6 +74,12 @@ export const validRoleDate = (value: unknown): value is string =>
   new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
 export const roleWeekday = (date: string) =>
   new Date(`${date}T00:00:00Z`).getUTCDay();
+export const roleWeekDates = (date: string) => {
+  const monday = Date.parse(`${date}T00:00:00Z`) - ((roleWeekday(date) + 6) % 7) * 86400000;
+  return Array.from({ length: 7 }, (_, index) =>
+    new Date(monday + index * 86400000).toISOString().slice(0, 10),
+  );
+};
 export const activeRolePeriod = (state: RoleState, date: string) =>
   state.periods.find((p) => p.start <= date && date <= p.end);
 export const roleForStudent = (period: RolePeriod, studentId: string) =>
@@ -265,15 +272,38 @@ export function validateRoleState(value: unknown): asserts value is RoleState {
       "기존 배정 기간과 겹칩니다. 시작일을 확인해 주세요.",
     );
 }
-export function validateRoleStateChange(previous: RoleState, next: RoleState) {
+export function validateRoleStateChange(
+  previous: RoleState,
+  next: RoleState,
+  today = roleToday(),
+) {
   validateRoleState(next);
-  for (const p of previous.periods)
+  let editedPeriods = 0;
+  for (const p of previous.periods) {
+    const updated = next.periods.find((n) => n.id === p.id);
     ensure(
-      next.periods.some(
-        (n) => n.id === p.id && JSON.stringify(n) === JSON.stringify(p),
-      ),
-      "이미 확정한 배정은 보존됩니다. 새 기간을 만들어 교체해 주세요.",
+      updated &&
+        JSON.stringify(updated.students) === JSON.stringify(p.students) &&
+        JSON.stringify(updated.roles) === JSON.stringify(p.roles) &&
+        JSON.stringify(updated.assignments) === JSON.stringify(p.assignments),
+      "이미 확정한 학생·역할 배정은 보존됩니다. 새 기간을 만들어 교체해 주세요.",
     );
+    if (updated.start === p.start && updated.end === p.end) continue;
+    editedPeriods += 1;
+    ensure(
+      p.end >= today &&
+        (p.start <= today
+          ? updated.start === p.start
+          : updated.start >= today) &&
+        updated.end >= today,
+      "이미 지난 운영 날짜는 변경할 수 없습니다.",
+    );
+  }
+  ensure(
+    editedPeriods <= 1 &&
+      (editedPeriods === 0 || next.periods.length === previous.periods.length),
+    "운영 기간은 한 번에 하나씩 수정해 주세요.",
+  );
   ensure(
     next.periods.length <= previous.periods.length + 1,
     "한 번에 한 기간씩 확정해 주세요.",
@@ -327,6 +357,7 @@ export function publicRoleProjection(
 ): PublicRoleBoard {
   const period = activeRolePeriod(state, today);
   const enabled = state.settings.publicEnabled;
+  const selected = enabled && period?.students.some((s) => s.id === selectedId);
   return {
     title: state.settings.title,
     today,
@@ -338,6 +369,17 @@ export function publicRoleProjection(
         : "",
     maskDisplayNames: state.settings.maskDisplayNames,
     showStatus: state.settings.showPublicStatus,
+    week: selected
+      ? roleWeekDates(today).map((date) => {
+          const dayPeriod = activeRolePeriod(state, date);
+          const eligible = Boolean(dayPeriod?.students.some((s) => s.id === selectedId) &&
+            isRoleDay(state, dayPeriod, selectedId!, date));
+          const record = dayPeriod && records.find((r) =>
+            r.period_id === dayPeriod.id && r.student_id === selectedId && r.record_date === date
+          );
+          return { date, eligible, ...(record ? { status: record.status } : {}) };
+        })
+      : [],
     students:
       !enabled || !period
         ? []

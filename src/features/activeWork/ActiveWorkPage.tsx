@@ -22,6 +22,7 @@ const ICONS: Record<ActiveWorkToolId, ComponentType<{ className?: string }>> = {
   'notice-collect': FileCheck2,
   'data-collect': Inbox,
   'special-room': CalendarClock,
+  'class-missions': ClipboardList,
 };
 
 const formatUpdatedAt = (value: string) => {
