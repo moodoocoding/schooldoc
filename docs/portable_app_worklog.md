@@ -28,6 +28,7 @@
 | **06** | 깃허브 원격 브랜치 푸시 | ✅ 완료 | `origin/feature/portable-app` 동기화 |
 | **07** | 구글 OAuth 로컬 루프백 탑재 | ✅ 완료 | SchoolBoard 검증 패턴 이식: `preload.cjs`, 로컬 루프백 서버, 브라우저 구글 로그인 및 Supabase 세션 교환 완비 |
 | **08** | 데스크톱 HashRouter 지원 | ✅ 완료 | `file://` 환경에서 메뉴/카드(학급 미션, 1인 1역 등) 클릭 시 세부 화면으로 즉시 전환되도록 라우터 분기 적용 |
+| **09** | 프로필 클라우드 동기화 & 직접 입력 | ✅ 완료 | `profileSettings.ts` Supabase User Metadata 연동으로 웹과 앱 간 실시간 프로필 동기화 및 NEIS/직접입력 토글 제공 |
 
 ---
 
