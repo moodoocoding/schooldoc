@@ -50,7 +50,7 @@ test('동의 후 업로드 → 분석 → 원본·수정 → 표·잔액 → 새
   await page.getByLabel('영수증 증빙 파일').setInputFiles(file());
   await expect(page.getByLabel('사용처', {exact:true})).toHaveValue(receipt.merchant);
   await expect(page.getByLabel('금액', {exact:true})).toHaveValue('32500');
-  await expect(page.getByLabel('사용 목적', {exact:true})).toHaveValue('교실 환경 구성 및 학급 게시판 정비용품 구입 (색연필·종이)');
+  await expect(page.getByLabel('사용 목적', {exact:true})).toHaveValue('');
   await expect(page.getByText('신뢰도', {exact:false})).toHaveCount(0);
   await expect(page.getByRole('button', {name:'영수증 파일 선택'})).toHaveCount(0);
   await expect(page.getByTitle('영수증 PDF 원본')).toHaveAttribute('src', /blob:.*#page=1/);
@@ -73,6 +73,46 @@ test('동의 후 업로드 → 분석 → 원본·수정 → 표·잔액 → 새
   await page.getByText('휴지통 1건', {exact:true}).click();
   await page.getByRole('button', {name:'복원', exact:true}).click();
   await expect(page.getByRole('table')).toContainText('학급 미술 재료');
+});
+for (const width of [1440,390]) test('배양토 구매 내용과 사용 목적을 분리하고 교사 선택만 반영 ' + width, async ({page}) => {
+  await page.setViewportSize({width,height:900});
+  await setup(page, [{...receipt, merchant:'테스트 온라인몰', description:'고급혼합 배양토'}]);
+  await page.getByRole('button', {name:'영수증 등록',exact:true}).click();
+  await page.getByRole('checkbox', {name:/OpenAI/}).check();
+  await page.getByLabel('영수증 증빙 파일').setInputFiles(file('배양토 시험 영수증.pdf'));
+  await expect(page.getByText('구매 내용: 고급혼합 배양토', {exact:true})).toBeVisible();
+  const purpose = page.getByLabel('사용 목적', {exact:true});
+  await expect(purpose).toHaveValue('');
+  await expect(purpose).toHaveAccessibleDescription(/실제 용도를 직접 입력/);
+  await page.getByRole('button', {name:'이 지출을 장부에 반영'}).click();
+  await expect(purpose).toBeFocused();
+  await expect(page.getByRole('table')).not.toContainText('테스트 온라인몰');
+  await expect(page.getByRole('region', {name:'예산 현황'})).toContainText('500,000원');
+  await page.screenshot({path:'test-results/receipt-purpose-empty-' + width + '.png',fullPage:true});
+  await page.getByRole('button', {name:'학급 특색 활동',exact:true}).click();
+  await expect(purpose).toHaveValue('학급 특색 교육활동 소모품 구입 (고급혼합 배양토)');
+  await purpose.fill('식물 관찰 활동용 배양토 구입');
+  await page.getByRole('button', {name:'나중에 확인',exact:true}).click();
+  await page.reload();
+  await page.getByRole('button', {name:'영수증 등록',exact:true}).click();
+  await page.getByRole('button', {name:'결과 확인·수정',exact:true}).click();
+  await expect(purpose).toHaveValue('식물 관찰 활동용 배양토 구입');
+  await page.getByRole('button', {name:'이 지출을 장부에 반영'}).click();
+  await expect(page.getByRole('table')).toContainText('식물 관찰 활동용 배양토 구입');
+  await expect(page.getByRole('table')).not.toContainText('다과');
+  await page.getByRole('button', {name:'테스트 온라인몰 지출 수정'}).click();
+  await expect(purpose).toHaveValue('식물 관찰 활동용 배양토 구입');
+  await page.screenshot({path:'test-results/receipt-purpose-confirmed-' + width + '.png',fullPage:true});
+});
+test('간식 품목이나 마트 상호도 실제 사용 목적을 자동으로 채우지 않는다', async ({page}) => {
+  await setup(page, [{...receipt, merchant:'테스트 마트', description:'과자·음료'}]);
+  await page.getByRole('button', {name:'영수증 등록',exact:true}).click();
+  await page.getByRole('checkbox', {name:/OpenAI/}).check();
+  await page.getByLabel('영수증 증빙 파일').setInputFiles(file());
+  await expect(page.getByText('구매 내용: 과자·음료', {exact:true})).toBeVisible();
+  await expect(page.getByLabel('사용 목적', {exact:true})).toHaveValue('');
+  await page.getByRole('button', {name:'학급 행사 간식',exact:true}).click();
+  await expect(page.getByLabel('사용 목적', {exact:true})).toHaveValue('학급 자치행사 다과 구입 (과자·음료)');
 });
 for (const width of [1440, 390]) test('영수증 모아 보기·사진/PDF 넘기기·닫기·초안 유지 ' + width, async ({page}) => {
   await page.setViewportSize({width, height:900});

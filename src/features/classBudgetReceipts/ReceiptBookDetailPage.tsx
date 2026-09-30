@@ -6,7 +6,7 @@ import { classBudgetReceiptsOwnerId } from './classBudgetReceiptsConfig';
 import { addReceiptEntry, discardReceiptFile, editReceiptEntry, restoreReceiptEntry, saveLocalReceiptFileAnalysis, trashReceiptEntry, uploadLocalReceiptFiles } from './receiptBookStore';
 import { activeReceiptEntries, calculateReceiptBookSummary, formatWon, isReceiptEntryRestorable, localDateValue, trashedReceiptEntries } from './receiptBookUtils';
 import { AI_FILE_LIMIT, analyzeReceiptWithAi, RECEIPT_ACCEPT } from './receiptAi';
-import { applyPurposePreset, BUDGET_PURPOSE_PRESETS, suggestReceiptPurpose } from './receiptCategorizer';
+import { applyPurposePreset, BUDGET_PURPOSE_PRESETS } from './receiptCategorizer';
 import { deleteReceiptOriginal, getReceiptOriginal, putReceiptOriginal } from './receiptOriginalStore';
 import { ReceiptOriginal, ReceiptThumbnail } from './ReceiptOriginal';
 import { ReceiptViewer } from './ReceiptViewer';
@@ -83,8 +83,8 @@ function ReceiptBookDetail({ ownerId, bookId }: { ownerId: string; bookId: strin
   };
   const review = (f: ReceiptFile, index = remaining(f)[0] ?? 0) => {
     const row = candidates(f)[index];
-    const suggestedPurpose = suggestReceiptPurpose(row?.description ?? '', row?.merchant ?? '');
-    openForm({ fileId: f.id, index, evidenceFileIds: [f.id] }, { spentAt: row?.spentAt ?? '', merchant: row?.merchant ?? '', amount: row?.amount ? String(row.amount) : '', purpose: suggestedPurpose });
+    // 구매 품목과 상호만으로 실제 교육활동 목적을 확정하지 않는다. 저장된 교사 초안은 openForm에서 복원한다.
+    openForm({ fileId: f.id, index, evidenceFileIds: [f.id] }, { spentAt: row?.spentAt ?? '', merchant: row?.merchant ?? '', amount: row?.amount ? String(row.amount) : '', purpose: '' });
   };
   const edit = (entry: ReceiptEntry) => openForm({ entryId: entry.id, evidenceFileIds: entry.evidenceFileIds }, { spentAt: entry.spentAt, merchant: entry.merchant, purpose: entry.purpose, amount: String(entry.amount) });
   const analyze = async (stored: ReceiptFile, file: File): Promise<ReceiptFile> => {
@@ -248,9 +248,10 @@ function ReceiptBookDetail({ ownerId, bookId }: { ownerId: string; bookId: strin
         {selection ? <form onSubmit={submit} className="min-w-0 space-y-4"><h3 className="font-bold">{selection.entryId ? '지출 내용 수정' : '분석 결과 확인·수정'}</h3>{selectedAnalysis ? <div className="rounded-lg bg-[#F1F6FC] p-3 text-sm"><p className="font-semibold">{selectedAnalysis.source === 'openai' ? 'OpenAI 분석 결과' : '이전 OCR 분석 결과'}</p>{selectedAnalysis.description ? <p className="mt-1">구매 내용: {selectedAnalysis.description}</p> : null}{selectedAnalysis.warnings.map((w, i) => <p key={i} className="mt-1 text-[#526174]">{w}</p>)}</div> : null}
           <label className="block text-sm font-semibold">사용 날짜<input required type="date" className={field} value={form.spentAt} onChange={e => change('spentAt', e.target.value)} /></label>
           <label className="block text-sm font-semibold">사용처<input required maxLength={120} className={field} value={form.merchant} onChange={e => change('merchant', e.target.value)} /></label>
-          <label className="block text-sm font-semibold">사용 목적<input required maxLength={300} className={field} value={form.purpose} onChange={e => change('purpose', e.target.value)} placeholder="예: 학급 자치행사 다과 구입 (과자, 음료)" /></label>
+          <label className="block text-sm font-semibold">사용 목적<input required maxLength={300} className={field} value={form.purpose} onChange={e => change('purpose', e.target.value)} placeholder="실제로 사용한 목적을 입력해 주세요" aria-describedby="receipt-purpose-help" /></label>
+          <p id="receipt-purpose-help" className="text-xs text-[#526174]">영수증만으로 사용 목적을 알 수 없습니다. 실제 용도를 직접 입력하거나 아래 문구를 선택한 뒤 확인해 주세요.</p>
           <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-            <span className="text-xs text-[#526174]">정산 적요 추천:</span>
+            <span className="text-xs text-[#526174]">사용 목적 문구 선택:</span>
             {BUDGET_PURPOSE_PRESETS.map((preset) => (
               <button
                 key={preset.key}
