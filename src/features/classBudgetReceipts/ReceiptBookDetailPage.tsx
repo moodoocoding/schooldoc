@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Download, Plus } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import { classBudgetReceiptsOwnerId } from './classBudgetReceiptsConfig';
@@ -36,6 +36,9 @@ function ReceiptBookDetail({ ownerId, bookId }: { ownerId: string; bookId: strin
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState('');
+  const [exporting, setExporting] = useState<'excel' | 'pdf' | null>(null);
+  const [exportProgress, setExportProgress] = useState('');
+  const exportController = useRef<AbortController | null>(null);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -50,7 +53,7 @@ function ReceiptBookDetail({ ownerId, bookId }: { ownerId: string; bookId: strin
   const requestController = useRef<AbortController | null>(null);
   useEffect(() => {
     active.current = true;
-    return () => { active.current = false; version.current += 1; requestController.current?.abort(); };
+    return () => { active.current = false; version.current += 1; requestController.current?.abort(); exportController.current?.abort(); };
   }, []);
   const fileInput = useRef<HTMLInputElement>(null);
   const replacementInput = useRef<HTMLInputElement>(null);
@@ -159,6 +162,34 @@ function ReceiptBookDetail({ ownerId, bookId }: { ownerId: string; bookId: strin
     try { discardReceiptFile(ownerId, bookId, f.id); await deleteReceiptOriginal(ownerId, bookId, f.id); if (viewFileId === f.id) closeWork(); }
     catch (e) { setError(e instanceof Error ? e.message : '삭제하지 못했습니다.'); }
   };
+  const exportLedger = async (format: 'excel' | 'pdf') => {
+    if (!book || !activeReceiptEntries(book).length || exportController.current) return;
+    const controller = new AbortController();
+    exportController.current = controller;
+    setExporting(format); setExportProgress('내려받을 파일을 만드는 중'); setError(''); setNotice('');
+    // Store updates replace the book object; this export keeps the click-time snapshot.
+    const snapshot = book;
+    try {
+      if (format === 'excel') {
+        const { downloadReceiptBookExcel } = await import('./receiptExportExcel');
+        await downloadReceiptBookExcel(snapshot, { signal: controller.signal });
+      } else {
+        const { downloadReceiptBookPdf } = await import('./receiptExportPdf');
+        await downloadReceiptBookPdf(snapshot, { signal: controller.signal, onProgress: message => {
+          if (active.current && !controller.signal.aborted) setExportProgress(message);
+        } });
+      }
+      if (active.current && !controller.signal.aborted) setNotice(`${format === 'excel' ? 'Excel 지출대장' : '영수증 첨부 PDF'} 다운로드를 시작했습니다.`);
+    } catch (e) {
+      if (active.current) {
+        if (controller.signal.aborted) setNotice('내려받기를 취소했습니다.');
+        else setError(e instanceof Error ? e.message : '파일을 만들지 못했습니다. 다시 시도해 주세요.');
+      }
+    } finally {
+      exportController.current = null;
+      if (active.current) { setExporting(null); setExportProgress(''); }
+    }
+  };
   if (!book || book.ownerId !== ownerId) return <p>장부를 찾을 수 없습니다. <button onClick={() => navigate('/tools/receipts')}>목록으로</button></p>;
   const entries = activeReceiptEntries(book).slice().reverse();
   const summary = calculateReceiptBookSummary(book);
@@ -180,7 +211,13 @@ function ReceiptBookDetail({ ownerId, bookId }: { ownerId: string; bookId: strin
     {notice ? <p role="status" className="text-sm text-[#126B32]">{notice}</p> : null}
     {error ? <p role="alert" className="rounded-lg bg-[#FEF2F2] p-3 text-sm text-[#B42318]">{error}</p> : null}
     <section aria-labelledby="ledger-heading" className="rounded-xl border border-[#DCE3EA] bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4"><h2 id="ledger-heading" className="text-lg font-bold">지출 내역 <span className="text-sm font-normal text-[#526174]">{entries.length}건</span></h2><button className={button} onClick={() => openForm({ evidenceFileIds: [] }, blank())}>직접 입력</button></div>
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4"><h2 id="ledger-heading" className="text-lg font-bold">지출 내역 <span className="text-sm font-normal text-[#526174]">{entries.length}건</span></h2><div className="flex flex-wrap gap-2">
+        <button type="button" disabled={!entries.length || busy || Boolean(exporting)} className={button} onClick={() => void exportLedger('excel')}><Download className="h-4 w-4" />Excel 지출대장</button>
+        <button type="button" disabled={!entries.length || busy || Boolean(exporting)} className={button} onClick={() => void exportLedger('pdf')}><Download className="h-4 w-4" />영수증 첨부 PDF</button>
+        <button className={button} onClick={() => openForm({ evidenceFileIds: [] }, blank())}>직접 입력</button>
+      </div></div>
+      <p className="px-5 pb-3 text-xs leading-5 text-[#526174]">장부에 반영한 지출만 내려받습니다. PDF에는 연결된 영수증의 모든 쪽을 첨부하며, 같은 원본은 한 번만 포함합니다.</p>
+      {exporting ? <div className="flex flex-wrap items-center gap-3 px-5 pb-4"><p role="status" className="text-sm text-[#0F6CBD]">{exportProgress}</p><button type="button" className={button} onClick={() => exportController.current?.abort()}>내려받기 취소</button></div> : null}
       <div tabIndex={0} role="region" aria-label="지출 내역 표 가로 스크롤" className="overflow-x-auto overflow-y-hidden"><table className="w-full min-w-[660px] text-left text-sm"><thead className="border-y border-[#DCE3EA] bg-[#F8FAFC]"><tr>{['번호', '날짜', '사용처', '사용 내용', '금액', '영수증'].map(h => <th key={h} scope="col" className={'px-4 py-3 font-semibold ' + (h === '금액' ? 'text-right' : '')}>{h}</th>)}</tr></thead><tbody>{entries.length ? entries.map((entry, i) => <tr key={entry.id} className="border-b border-[#EEF1F4] hover:bg-[#F8FAFC]"><td className="px-4 py-3">{i + 1}</td><td className="whitespace-nowrap px-4 py-3 tabular-nums">{entry.spentAt}</td><td className="max-w-52 break-words px-4"><button aria-label={entry.merchant + ' 지출 수정'} className="min-h-11 text-left font-semibold text-[#0F6CBD] underline-offset-4 hover:underline" onClick={() => edit(entry)}>{entry.merchant}</button></td><td className="max-w-64 break-words px-4 py-3">{entry.purpose}</td><td className="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums">{formatWon(entry.amount)}</td><td className="px-4 py-2">{entry.evidenceFileIds.length ? <button className={button} aria-label={entry.merchant + ' 영수증 미리보기'} onClick={() => previewEntry(entry)}>영수증 보기</button> : <span className="text-[#526174]">없음</span>}</td></tr>) : <tr><td colSpan={6} className="px-5 py-10 text-center text-[#526174]">등록한 지출이 없습니다. 영수증을 올리면 자동으로 분석합니다.</td></tr>}</tbody><tfoot><tr className="bg-[#F8FAFC]"><th colSpan={4} scope="row" className="px-4 py-4">합계</th><td className="whitespace-nowrap px-4 text-right font-bold tabular-nums">{formatWon(summary.usedAmount)}</td><td /></tr></tfoot></table></div>
     </section>
     {book.files.length ? <section aria-labelledby="receipt-gallery-heading" className="rounded-xl border border-[#DCE3EA] bg-white p-4 sm:p-5">
