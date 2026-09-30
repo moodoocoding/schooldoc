@@ -1,0 +1,24 @@
+{
+  "passed": true,
+  "method": "Chrome persistent profile page zoom, CSS zoom unchanged",
+  "measurements": [
+    {
+      "name": "teacher",
+      "innerWidth": 675,
+      "innerHeight": 402,
+      "outerWidth": 1366,
+      "devicePixelRatio": 2,
+      "cssZoom": "1",
+      "scrollWidth": 675
+    },
+    {
+      "name": "student",
+      "innerWidth": 675,
+      "innerHeight": 402,
+      "outerWidth": 1366,
+      "devicePixelRatio": 2,
+      "cssZoom": "1",
+      "scrollWidth": 675
+    }
+  ]
+}

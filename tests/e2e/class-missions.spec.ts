@@ -12,7 +12,7 @@ async function createClass(page: import('@playwright/test').Page, name = '가상
   await expect(page.getByText('학급부터 만들어 주세요')).toHaveCount(0);
 }
 async function saveRoster(page: import('@playwright/test').Page, text: string) {
-  await page.getByText(/학급 명단과 개인 접속 코드/).click();
+  await page.getByText(/학급 명단 및 개인 코드/).click();
   await page.getByRole('textbox', { name: '편집 명단' }).fill(text);
   await page.getByRole('button', { name: '학생 명단 저장' }).click();
   await expect(page.getByRole('region', { name: /이번에 발급한 개인 코드/ })).toBeVisible();
@@ -60,7 +60,7 @@ test('설정 학급·학생을 자동 등록하고 기존 QR에서 새 미션을
   const student = await context.newPage();
   await student.setViewportSize({ width: 390, height: 844 });
   await student.goto(`/s/missions/${before.publicToken}`);
-  await student.getByRole('textbox', { name: '개인 접속 코드' }).fill(codes[0]);
+  await student.getByRole('textbox', { name: '학생 이름' }).fill(codes[0]);
   await student.getByRole('button', { name: '내 미션 보기' }).click();
   await expect(student.getByText('첫 번째 미션')).toBeVisible();
   await publishMission(page, '두 번째 미션', false);
@@ -86,7 +86,7 @@ test('설정 학급·학생을 자동 등록하고 기존 QR에서 새 미션을
   expect(finalBoard.state.roster).toHaveLength(3);
   expect(finalBoard.state.missions[0].targets).toHaveLength(2);
   await student.getByRole('button', { name: '나가기' }).click();
-  await student.getByRole('textbox', { name: '개인 접속 코드' }).fill(codes[0]);
+  await student.getByRole('textbox', { name: '학생 이름' }).fill(codes[0]);
   await student.getByRole('button', { name: '내 미션 보기' }).click();
   await expect(student.getByRole('heading', { name: '가상하늘의 미션' })).toBeVisible();
 });
@@ -187,8 +187,9 @@ test('마지막 미션 파기 후 중지된 학급에는 설정 학생을 다시
   }, roleState);
   await page.reload();
   await expect(page.getByRole('alert')).toContainText('다시 등록하지 않습니다');
-  await expect(page.getByText(/학급 명단과 개인 접속 코드 · 0명/)).toBeVisible();
+  await expect(page.getByText(/학급 명단 및 개인 코드 · 0명/)).toBeVisible();
   await expect(page.getByRole('region', { name: /이번에 발급한 개인 코드/ })).toHaveCount(0);
+  await page.locator('summary').filter({ hasText: '학생 참여 링크' }).click();
   await page.getByRole('checkbox', { name: '공개 링크 사용' }).click();
   await expect(page.getByRole('checkbox', { name: '공개 링크 사용' })).toBeChecked();
   await page.getByRole('button', { name: '새로고침' }).click();
@@ -239,6 +240,7 @@ test('교사 발행 → 학생 표시·취소·재표시 → 교사 확인, 개�
   await expect(student.getByRole('heading', { name: '가상바다의 미션' })).toBeVisible();
   await expect(student.getByRole('button', { name: '완료했어요' })).toBeVisible();
   await student.getByRole('button', { name: '나가기' }).click();
+  await page.locator('summary').filter({ hasText: '학생 참여 링크' }).click();
   await page.getByRole('checkbox', { name: '공개 링크 사용' }).uncheck();
   await student.getByRole('textbox', { name: '학생 이름' }).fill('가상바다');
   await student.getByRole('button', { name: '내 미션 보기' }).click();
@@ -267,13 +269,14 @@ test('24명과 60명 화면에서 상태·열 균형과 QR 저장을 확인한�
   const excel = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Excel 내려받기' }).click();
   expect((await excel).suggestedFilename()).toContain('.xlsx');
+  await page.locator('summary').filter({ hasText: '학생 참여 링크' }).click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'QR PNG 저장' }).click();
   expect((await download).suggestedFilename()).toContain('.png');
   page.once('dialog', (dialog) => void dialog.accept());
   await page.getByRole('button', { name: /확인 대기 3명 일괄 확인/ }).click();
   await expect(page.getByRole('button', { name: '교사 확인 3' })).toBeVisible();
-  await page.getByText(/학급 명단과 개인 접속 코드/).click();
+  await page.getByText(/학급 명단 및 개인 코드/).click();
   await page.getByRole('textbox', { name: '편집 명단' }).fill(Array.from({ length: 60 }, (_, index) => `${index + 1} 가상학생${index + 1}${index === 23 || index === 59 ? '긴이름확인' : ''}`).join('\n'));
   await page.getByRole('button', { name: '학생 명단 저장' }).click();
   await expect(page.getByRole('region', { name: /이번에 발급한 개인 코드/ })).toContainText('36명');
@@ -369,9 +372,9 @@ test('종료 미션은 90일 뒤 대상·건수 확인 후 파기하며 마지�
   expect(board.publicToken).not.toBe(token);
   const student = await context.newPage();
   await student.goto(`/s/missions/${token}`);
-  await student.getByRole('textbox', { name: '개인 접속 코드' }).fill('AAAAAAAAAAAA');
+  await student.getByRole('textbox', { name: '학생 이름' }).fill('AAAAAAAAAAAA');
   await student.getByRole('button', { name: '내 미션 보기' }).click();
-  await expect(student.getByRole('alert')).toContainText('코드 또는 링크');
+  await expect(student.getByRole('alert')).toContainText('이름 또는 링크');
 });
 
 test('환경 설정의 파기 예정 목록에서 만료된 학급 미션을 확인 화면으로 연다', async ({ page }) => {
