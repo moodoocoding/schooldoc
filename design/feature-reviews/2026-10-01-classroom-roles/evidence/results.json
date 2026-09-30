@@ -1,0 +1,100 @@
+[
+  {
+    "name": "desktop-mobile-workflow-and-description",
+    "completed": true,
+    "descriptionRendered": 0,
+    "displayLinks": 0,
+    "teacherAxe": [
+      {
+        "id": "color-contrast",
+        "nodes": [
+          {
+            "target": [
+              "header > p"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #64748b, background color: #f6f8fb, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "target": [
+              ".space-y-5 > p"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #64748b, background color: #f6f8fb, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      }
+    ],
+    "publicAxe": [],
+    "qr": {
+      "width": 1024,
+      "height": 1024
+    },
+    "submission": "done row written and focus restored",
+    "pageErrors": []
+  },
+  {
+    "name": "historical-correction-route-only-edits-today",
+    "completed": true,
+    "dateInputs": 0,
+    "yesterday": "2026-09-30",
+    "today": "2026-10-01",
+    "records": [
+      {
+        "date": "2026-09-30",
+        "status": "not_done"
+      },
+      {
+        "date": "2026-10-01",
+        "status": "done"
+      }
+    ],
+    "pageErrors": []
+  },
+  {
+    "name": "unsaved-assignment-browser-back-loses-draft",
+    "completed": true,
+    "confirmations": 0,
+    "draftRetained": false,
+    "pageErrors": []
+  },
+  {
+    "name": "unsaved-catalog-navigation-loses-fields",
+    "completed": true,
+    "initial": "칠판 도우미",
+    "confirmations": 0,
+    "unsavedValue": "가상 수정 중 역할",
+    "persisted": "칠판 도우미",
+    "pageErrors": []
+  },
+  {
+    "name": "delayed-submit-message-appears-for-next-student",
+    "completed": true,
+    "injectedDelayMs": 1500,
+    "messageStudent": 2,
+    "actuallySavedStudent": 1,
+    "reproduced": true,
+    "pageErrors": []
+  },
+  {
+    "name": "print-normal-and-valid-large-capacity-overlap",
+    "completed": true,
+    "validStudents": 60,
+    "validCapacity": 60,
+    "geometry": {
+      "slotTop": 556.0625,
+      "slotBottom": 627.765625,
+      "slotHeight": 71.703125,
+      "contentTop": 409.171875,
+      "contentBottom": 773.671875,
+      "contentHeight": 364.5
+    },
+    "overlap": true,
+    "pageErrors": []
+  },
+  {
+    "name": "sixty-students-responsive-and-zoom",
+    "completed": true,
+    "teacherOverflow": false,
+    "studentOverflow": false,
+    "pageErrors": []
+  }
+]
