@@ -50,7 +50,8 @@ async function createFixture(closedDays: number) {
   const row = { id: boardId, owner_id: owner, public_token: token, public_enabled: true,
     version: 1, updated_at: closedAt, encrypted_payload: await seal.encryptPayload(state) };
   const calls: { path: string; method: string; body?: Record<string, unknown> }[] = [];
-  const flags = { commitConflict: false, commitError: false };
+  const flags = { commitConflict: false, commitError: false, hideCreatedBoardOnce: false };
+  const createdBoards = new Map<string, typeof row>();
   globalThis.fetch = async (input, init) => {
     const request = new Request(input, init);
     const url = new URL(request.url);
@@ -75,8 +76,25 @@ async function createFixture(closedDays: number) {
     }
     if (url.pathname.endsWith('/class_mission_purge_audit') && request.method === 'POST') return respond({}, 201);
     if (url.pathname.endsWith('/class_mission_boards')) {
+      if (request.method === 'HEAD') {
+        return new Response(null, { headers: { 'content-range': `0-0/${createdBoards.size + 1}` } });
+      }
+      if (request.method === 'POST') {
+        const requestedId = String(body?.id ?? crypto.randomUUID());
+        if (createdBoards.has(requestedId)) return respond({ code: '23505', message: 'duplicate key' }, 409);
+        const created = { id: requestedId, owner_id: String(body?.owner_id), public_token: crypto.randomUUID(),
+          public_enabled: true, version: 1, updated_at: new Date().toISOString(),
+          encrypted_payload: String(body?.encrypted_payload) };
+        createdBoards.set(requestedId, created);
+        return respond(created, 201);
+      }
+      const requestedId = url.searchParams.get('id')?.replace(/^eq\./, '');
+      if (requestedId && createdBoards.has(requestedId)) {
+        if (flags.hideCreatedBoardOnce) { flags.hideCreatedBoardOnce = false; return respond([]); }
+        return respond([createdBoards.get(requestedId)]);
+      }
       const allowed = url.searchParams.get('owner_id') === `eq.${owner}` || url.searchParams.get('public_token') === `eq.${token}`;
-      return respond(allowed ? [row] : []);
+      return respond(allowed && (!requestedId || requestedId === row.id) ? [row] : []);
     }
     throw new Error(`Unexpected fake endpoint ${url.pathname}`);
   };
@@ -88,8 +106,22 @@ async function createFixture(closedDays: number) {
   const purge = (patch: Record<string, unknown> = {}) => ({ action: 'purgeMission', boardId, version: 1,
     missionId: mission.id, expectedTargetCount: 2, expectedCheckCount: 1, expectedEventCount: 1,
     confirmText: '영구 파기', ...patch });
-  return { state, row, calls, flags, call, purge, seal };
+  return { state, row, calls, flags, createdBoards, call, purge, seal };
 }
+
+Deno.test('설정 학급 자동 생성은 재요청과 동시 생성 충돌에서 같은 학급을 반환한다', () => fixture(async ({ call, calls, flags, createdBoards }) => {
+  const request = { action: 'createBoard', className: '3학년 2반', fromSettings: true };
+  const first = await call(request);
+  assert(first.status === 200, `Unexpected status ${first.status}`);
+  const firstBoard = (await first.json()).board;
+  flags.hideCreatedBoardOnce = true;
+  const second = await call(request);
+  assert(second.status === 200, `Unexpected status ${second.status}`);
+  const secondBoard = (await second.json()).board;
+  assert(firstBoard.id === secondBoard.id && firstBoard.publicToken === secondBoard.publicToken);
+  assert(createdBoards.size === 1);
+  assert(calls.filter((entry) => entry.method === 'POST' && entry.path.includes('/class_mission_boards')).length === 2);
+}));
 
 Deno.test('교사 인증과 소유자 검사를 통과해야 파기 요청을 읽는다', () => fixture(async ({ call, calls, purge }) => {
   assert((await call(purge(), false, '')).status === 401);

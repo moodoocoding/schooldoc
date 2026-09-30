@@ -60,9 +60,11 @@ export async function listMissionBoards(): Promise<MissionBoard[]> {
   const result = await invoke<{ boards: MissionBoard[] }>('class-missions-admin', { action: 'list' });
   return result.boards;
 }
-export async function createMissionBoard(className: string): Promise<MissionBoard> {
+export async function createMissionBoard(className: string, options: { fromSettings?: boolean } = {}): Promise<MissionBoard> {
   if (!isMissionsDemo) {
-    const result = await invoke<{ board: MissionBoard }>('class-missions-admin', { action: 'createBoard', className });
+    const result = await invoke<{ board: MissionBoard }>('class-missions-admin', {
+      action: 'createBoard', className, fromSettings: options.fromSettings === true,
+    });
     return result.board;
   }
   const boards = readDemo();

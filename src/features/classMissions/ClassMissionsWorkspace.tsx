@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Check, ClipboardCopy, Copy, Download, FileSpreadsheet, Plus, RefreshCw, ShieldCheck, Trash2, Users } from 'lucide-react';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import { ClassRosterImporter } from '../classroomRoles/ClassRosterImporter';
 import { qrImageFileName, saveQrImage } from '../../utils/qrImage';
 import { downloadMissionExcel } from './missionExportExcel';
+import { MISSIONS_DEMO_PROFILE_ID, syncMissionSettings } from './missionSettingsSync';
 import {
   checkFor, createMissionBoard, isMissionsDemo, listMissionBoards, missionCounts, missionPurgeCounts, missionPublicUrl, missionRetention,
   missionToday, mutateMissionBoard, parseMissionRoster, type CheckStatus, type IssuedCode,
@@ -90,7 +91,7 @@ function MissionEditor({ board, existing, template, busy, onCancel, onSave }: {
 }
 
 export function ClassMissionsWorkspace() {
-  const { user, loading: authLoading, configured, signIn } = useTeacherAuth();
+  const { user, displayName, loading: authLoading, configured, signIn } = useTeacherAuth();
   const [boards, setBoards] = useState<MissionBoard[]>([]);
   const [selectedBoardId, setSelectedBoardId] = useState(() => new URLSearchParams(window.location.search).get('board') ?? '');
   const [selectedMissionId, setSelectedMissionId] = useState(() => new URLSearchParams(window.location.search).get('mission') ?? '');
@@ -101,7 +102,7 @@ export function ClassMissionsWorkspace() {
   const [notice, setNotice] = useState('');
   const [className, setClassName] = useState('');
   const [rosterText, setRosterText] = useState('');
-  const [issuedCodes, setIssuedCodes] = useState<IssuedCode[]>([]);
+  const [issuedCodeBatch, setIssuedCodeBatch] = useState<{ boardId: string; codes: IssuedCode[] } | null>(null);
   const [editing, setEditing] = useState<'new' | string | null>(null);
   const [cloneSource, setCloneSource] = useState<Mission | null>(null);
   const [statusFilter, setStatusFilter] = useState<CheckStatus | 'all'>('all');
@@ -112,21 +113,43 @@ export function ClassMissionsWorkspace() {
   const rosterDetailsRef = useRef<HTMLDetailsElement>(null);
   const qrRef = useRef<HTMLDivElement>(null);
   const board = boards.find((entry) => entry.id === selectedBoardId) ?? boards[0];
+  const issuedCodes = issuedCodeBatch && issuedCodeBatch.boardId === board?.id ? issuedCodeBatch.codes : [];
   const mission = board?.state.missions.find((entry) => entry.id === selectedMissionId) ?? board?.state.missions.at(-1);
   const rosterSignature = board?.state.roster.map((student) => `${student.number} ${student.name}`).join('\n') ?? '';
 
-  const refresh = async () => {
-    setLoading(true); setError('');
+  const refresh = useCallback(async () => {
+    setLoading(true); setError(''); setNotice('');
     try {
-      const next = await listMissionBoards();
+      let next: MissionBoard[];
+      let preferredBoardId = '';
+      let issuedBoardId = '';
+      try {
+        const synced = await syncMissionSettings(user?.id ?? MISSIONS_DEMO_PROFILE_ID, displayName);
+        next = synced.boards;
+        preferredBoardId = synced.selectedBoardId;
+        if (synced.issuedCodes.length) {
+          issuedBoardId = preferredBoardId;
+          setIssuedCodeBatch({ boardId: issuedBoardId, codes: synced.issuedCodes });
+        }
+        if (synced.notice) setNotice(synced.notice);
+        if (synced.warning) setError(synced.warning);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : '설정 정보를 학급 미션에 반영하지 못했습니다.');
+        next = await listMissionBoards();
+      }
       setBoards(next);
-      setSelectedBoardId((current) => next.some((entry) => entry.id === current) ? current : next[0]?.id ?? '');
+      setSelectedBoardId((current) => {
+        if (issuedBoardId && next.some((entry) => entry.id === issuedBoardId)) return issuedBoardId;
+        if (preferredBoardId && next.some((entry) => entry.id === preferredBoardId) && !current) return preferredBoardId;
+        return next.some((entry) => entry.id === current) ? current : preferredBoardId || next[0]?.id || '';
+      });
     } catch (cause) { setError(cause instanceof Error ? cause.message : '학급을 불러오지 못했습니다.'); }
     finally { setLoading(false); }
-  };
-  useEffect(() => { if (user || isMissionsDemo) void refresh(); else if (!authLoading) setLoading(false); }, [user, authLoading]);
+  }, [displayName, user?.id]);
+  useEffect(() => { if (user || isMissionsDemo) void refresh(); else if (!authLoading) setLoading(false); }, [user, authLoading, refresh]);
+  useEffect(() => { setIssuedCodeBatch(null); }, [user?.id]);
   useEffect(() => { setRosterText(rosterSignature); }, [board?.id, rosterSignature]);
-  useEffect(() => { setIssuedCodes([]); setEditing(null); setCloneSource(null); setStatusFilter('all'); }, [board?.id]);
+  useEffect(() => { setEditing(null); setCloneSource(null); setStatusFilter('all'); }, [board?.id]);
   useEffect(() => { setPurgeText(''); setPurgeConfirmed(false); }, [board?.id, board?.version, mission?.id]);
   const mutate = async (mutation: MissionMutation) => {
     if (!board || busy) return;
@@ -134,7 +157,7 @@ export function ClassMissionsWorkspace() {
     try {
       const result = await mutateMissionBoard(board, mutation);
       setBoards((current) => current.map((entry) => entry.id === board.id ? result.board : entry));
-      if (result.issuedCodes.length) setIssuedCodes(result.issuedCodes);
+      if (result.issuedCodes.length) setIssuedCodeBatch({ boardId: board.id, codes: result.issuedCodes });
       return result.board;
     } catch (cause) { const message = cause instanceof Error ? cause.message : '저장하지 못했습니다.'; setError(message); throw cause; }
     finally { setBusy(false); }
@@ -171,7 +194,7 @@ export function ClassMissionsWorkspace() {
         expectedEventCount: purgeCounts.eventCount, confirmText: '영구 파기' });
       if (saved) {
         setSelectedMissionId(saved.state.missions.at(-1)?.id ?? '');
-        if (!saved.state.missions.length) setIssuedCodes([]);
+        if (!saved.state.missions.length) setIssuedCodeBatch(null);
         setPurgeText(''); setPurgeConfirmed(false);
         setNotice('미션과 관련 응답·이력을 파기했습니다.');
       }
@@ -186,15 +209,15 @@ export function ClassMissionsWorkspace() {
     {loading ? <p role="status" className={panel}>학급을 불러오는 중…</p> : <>
       <section className={panel} aria-label="학급 선택"><div className="flex flex-wrap items-end gap-3"><label className="min-w-48 flex-1 text-sm font-bold">학급 선택<select className={`${inputStyle} mt-1.5`} value={board?.id ?? ''} onChange={(event) => { setSelectedBoardId(event.target.value); setSelectedMissionId(''); }}><option value="" disabled>학급을 선택하세요</option>{boards.map((entry) => <option key={entry.id} value={entry.id}>{entry.state.className}</option>)}</select></label><label className="min-w-44 flex-1 text-sm font-bold">새 학급 이름<input className={`${inputStyle} mt-1.5`} maxLength={60} value={className} onChange={(event) => setClassName(event.target.value)} placeholder="예: 5학년 2반" /></label><button type="button" className={primary} disabled={busy || !className.trim()} onClick={() => void createBoard()}><Plus className="h-4 w-4" />학급 만들기</button></div></section>
       {!board ? <section className={`${panel} py-16 text-center`}><Users className="mx-auto h-10 w-10 text-[#94A3B8]" /><h2 className="mt-4 text-xl font-bold">학급부터 만들어 주세요</h2><p className="mt-2 text-sm text-[#526174]">학급을 만든 뒤 명단을 등록하고 첫 미션을 발행할 수 있습니다.</p></section> : <>
-        <details ref={rosterDetailsRef} className={panel}><summary className="cursor-pointer text-lg font-extrabold"><h2 className="inline text-lg font-extrabold">학급 명단과 개인 접속 코드 · {board.state.roster.length}명</h2></summary>
-          <p className="mt-3 text-sm text-[#526174]">번호와 이름을 한 줄씩 입력하세요. 새 학생의 코드는 저장 직후 한 번만 보여 줍니다. 개인별로 전달해 주세요.</p>
+        <details ref={rosterDetailsRef} className={panel}><summary className="cursor-pointer text-lg font-extrabold"><h2 className="inline text-lg font-extrabold">학급 명단 및 개인 코드 · {board.state.roster.length}명</h2></summary>
+          <p className="mt-3 text-sm text-[#526174]">환경 설정의 새 학생은 이 화면을 열 때 자동 등록됩니다. 학생은 QR 화면에서 등록된 이름으로 접속할 수 있고, 개인 코드 방식도 사용할 수 있습니다. 직접 수정할 때는 번호와 이름을 한 줄씩 입력하세요.</p>
           <div className="mt-4"><ClassRosterImporter disabled={busy} onApply={setRosterText} onPendingChange={setImportPending} /></div>
           <label className="mt-4 block text-sm font-bold">편집 명단<textarea className={`${inputStyle} mt-1.5 font-mono`} rows={Math.min(12, Math.max(5, rosterText.split('\n').length + 1))} value={rosterText} onChange={(event) => setRosterText(event.target.value)} placeholder={'1 김하늘\n2 이바다'} /></label>
           <div className="mt-3 flex flex-wrap items-center gap-3"><button type="button" className={primary} disabled={busy || importPending} onClick={() => void saveRoster()}>학생 명단 저장</button><span className="text-xs text-[#64748B]">진행 중 미션의 대상 학생은 삭제할 수 없습니다.</span></div>
           {board.state.roster.length ? <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{board.state.roster.map((student) => <div key={student.id} className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm"><span className="break-words">{student.number}번 {student.name}</span><button type="button" className="shrink-0 text-xs font-bold text-[#0F6CBD] underline" disabled={busy} onClick={() => { if (window.confirm(`${student.number}번 ${student.name}의 개인 코드를 다시 발급할까요? 이전 코드는 즉시 무효화됩니다.`)) void mutate({ action: 'reissueCode', studentId: student.id }); }}>코드 재발급</button></div>)}</div> : null}
         </details>
-        {issuedCodes.length ? <section className="rounded-2xl border-2 border-[#E5A735] bg-[#FFF8E6] p-5" aria-label="이번에 발급한 개인 코드"><h2 className="font-extrabold">이번에 발급한 개인 코드 · {issuedCodes.length}명</h2><p className="mt-1 text-sm text-[#73510E]">이 목록은 화면을 떠나면 다시 볼 수 없습니다. 해당 학생에게 개별 전달하거나 필요할 때 재발급하세요.</p><div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{issuedCodes.map((entry) => <div key={entry.id} className="flex items-center justify-between gap-2 rounded-lg bg-white p-3 text-sm"><span>{entry.number}번 {entry.name} <strong className="ml-1 font-mono tracking-wider">{entry.code}</strong></span><button type="button" className="min-h-11 shrink-0 text-xs font-bold text-[#0F6CBD]" onClick={() => void copyText(entry.code, `${entry.number}번 코드를 복사했습니다.`)}>복사</button></div>)}</div><button type="button" className={`${secondary} mt-3`} onClick={() => setIssuedCodes([])}>코드 목록 닫기</button></section> : null}
-        <section className={panel} aria-label="학생 참여 링크"><div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="text-lg font-extrabold">학생 참여 링크</h2><p className="mt-1 text-sm text-[#526174]">공통 링크와 QR에는 개인 코드가 들어 있지 않습니다.</p><p className="mt-2 break-all text-sm text-[#0F6CBD]">{missionPublicUrl(board.publicToken)}</p></div><label className="flex min-h-11 items-center gap-2 text-sm font-bold"><input type="checkbox" className="h-5 w-5 accent-[#0F6CBD]" checked={board.publicEnabled} disabled={busy} onChange={(event) => void mutate({ action: 'setPublic', enabled: event.target.checked })} />공개 링크 사용</label></div>
+        {issuedCodes.length ? <section className="rounded-2xl border-2 border-[#E5A735] bg-[#FFF8E6] p-5" aria-label="이번에 발급한 개인 코드"><h2 className="font-extrabold">이번에 발급한 개인 코드 · {issuedCodes.length}명</h2><p className="mt-1 text-sm text-[#73510E]">학생은 이름으로 접속할 수 있습니다. 이 코드는 이름 대신 접속할 때 사용할 수 있으며, 화면을 떠나면 다시 볼 수 없습니다.</p><div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{issuedCodes.map((entry) => <div key={entry.id} className="flex items-center justify-between gap-2 rounded-lg bg-white p-3 text-sm"><span>{entry.number}번 {entry.name} <strong className="ml-1 font-mono tracking-wider">{entry.code}</strong></span><button type="button" className="min-h-11 shrink-0 text-xs font-bold text-[#0F6CBD]" onClick={() => void copyText(entry.code, `${entry.number}번 코드를 복사했습니다.`)}>복사</button></div>)}</div><button type="button" className={`${secondary} mt-3`} onClick={() => setIssuedCodeBatch(null)}>코드 목록 닫기</button></section> : null}
+        <section className={panel} aria-label="학생 참여 링크"><div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="text-lg font-extrabold">학생 참여 링크</h2><p className="mt-1 text-sm text-[#526174]">공통 링크와 QR에는 개인 코드가 들어 있지 않습니다. 학생은 접속 후 등록된 이름을 입력합니다. 같은 학급의 새 미션에도 이 QR을 계속 사용합니다.</p><p className="mt-2 break-all text-sm text-[#0F6CBD]">{missionPublicUrl(board.publicToken)}</p></div><label className="flex min-h-11 items-center gap-2 text-sm font-bold"><input type="checkbox" className="h-5 w-5 accent-[#0F6CBD]" checked={board.publicEnabled} disabled={busy} onChange={(event) => void mutate({ action: 'setPublic', enabled: event.target.checked })} />공개 링크 사용</label></div>
           <div className="mt-4 flex flex-wrap gap-2"><button type="button" className={secondary} onClick={() => void copyText(missionPublicUrl(board.publicToken), '학생 링크를 복사했습니다.')}><ClipboardCopy className="h-4 w-4" />링크 복사</button><button type="button" className={secondary} onClick={() => void saveQrImage(qrRef.current, qrImageFileName(board.state.className, '학급미션_QR', '학급미션')).catch((cause) => setError(cause instanceof Error ? cause.message : 'QR을 저장하지 못했습니다.'))}><Download className="h-4 w-4" />QR PNG 저장</button><button type="button" className={secondary} disabled={busy} onClick={() => { if (window.confirm('학생 링크를 다시 발급할까요? 이전 QR과 링크는 사용할 수 없습니다.')) void mutate({ action: 'rotateToken' }); }}>링크 재발급</button></div><div ref={qrRef} className="mt-4 inline-block rounded-xl border border-[#E2E8F0] bg-white p-3"><QRCodeSVG value={missionPublicUrl(board.publicToken)} size={144} includeMargin title={`${board.state.className} 학급 미션 참여 QR 코드`} /></div>
         </section>
         <div className="space-y-5">
