@@ -26,7 +26,7 @@ const nowIso = () => new Date().toISOString();
 type BoardRow = { id: string; owner_id: string; public_token: string; public_enabled: boolean;
   encrypted_payload: string; version: number; updated_at: string };
 type Client = ReturnType<typeof createClient<any>>;
-function publicError(): never { return fail('코드 또는 링크를 확인해 주세요.', 404); }
+function publicError(): never { return fail('이름 또는 링크를 확인해 주세요.', 404); }
 
 async function readBody(request: Request): Promise<Record<string, unknown>> {
   const reader = request.body?.getReader();
@@ -248,8 +248,12 @@ async function handleAdmin(db: Client, body: Record<string, unknown>, ownerId: s
 
 async function handlePublic(db: Client, body: Record<string, unknown>, remoteIp: string): Promise<Response> {
   const token = id(body.token);
+  const rawName = typeof body.studentName === 'string' ? body.studentName
+    : typeof body.name === 'string' ? body.name : '';
+  const trimmedName = rawName.trim();
   const normalized = typeof body.code === 'string' ? normalizeMissionCode(body.code) : '';
-  if (!/^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{12}$/.test(normalized)) publicError();
+  const hasValidCode = /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{12}$/.test(normalized);
+  if (!trimmedName && !hasValidCode) publicError();
   await rateLimit(db, `public:${remoteIp}`, 40);
   await rateLimit(db, `token:${token}`, 400);
   if (body.action !== 'view' && body.action !== 'mark') fail('지원하지 않는 요청입니다.');
@@ -259,8 +263,11 @@ async function handlePublic(db: Client, body: Record<string, unknown>, remoteIp:
     const row = data as BoardRow | null;
     if (!row || !row.public_enabled) publicError();
     const state = await decrypt(row);
-    const hash = await hashMissionCode(row.id, normalized);
-    const student = state.roster.find((entry) => safeHashEqual(entry.codeHash, hash));
+    let student = trimmedName ? state.roster.find((entry) => entry.name.trim() === trimmedName) : undefined;
+    if (!student && hasValidCode) {
+      const hash = await hashMissionCode(row.id, normalized);
+      student = state.roster.find((entry) => safeHashEqual(entry.codeHash, hash));
+    }
     if (!student) publicError();
     if (body.action === 'view') return json(publicMissionView(state, student.id));
     const status = body.status;

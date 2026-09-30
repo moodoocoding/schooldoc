@@ -132,11 +132,18 @@ Deno.test('DB 오류는 개인정보 없는 재시도 기록을 남긴다', () =
   assert(!JSON.stringify(retry?.body).includes('가상'));
 }));
 
-Deno.test('학생 코드는 자기 미션만 반환하고 잘못된 코드는 거부한다', () => fixture(async ({ call }) => {
+Deno.test('학생 이름 또는 코드는 자기 미션만 반환하고 잘못된 정보는 거부한다', () => fixture(async ({ call }) => {
+  const byNameResponse = await call({ action: 'view', token, studentName: '가상하늘' }, true, '');
+  assert(byNameResponse.status === 200);
+  const byNameView = await byNameResponse.json();
+  assert(byNameView.studentName === '가상하늘' && byNameView.missions.length === 1);
+  assert(!JSON.stringify(byNameView).includes('가상바다'));
+
   const response = await call({ action: 'view', token, code }, true, '');
   assert(response.status === 200);
   const view = await response.json();
   assert(view.studentName === '가상하늘' && view.missions.length === 1);
   assert(!JSON.stringify(view).includes('가상바다'));
+  assert((await call({ action: 'view', token, studentName: '없는학생' }, true, '')).status === 404);
   assert((await call({ action: 'view', token, code: 'AAAAAAAAAAAA' }, true, '')).status === 404);
 }));
