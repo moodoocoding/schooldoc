@@ -25,7 +25,7 @@ function fixture(start = "2026-09-01", end = "2026-09-30") {
 }
 
 describe("확정한 운영 기간 수정", () => {
-  test("진행 중인 배정은 종료일만 늘리거나 줄일 수 있다", () => {
+  test("진행 중인 배정의 시작일과 종료일을 지난 날짜로도 바꿀 수 있다", () => {
     const before = fixture();
     const after = structuredClone(before);
     after.periods[0].end = "2026-10-05";
@@ -33,36 +33,32 @@ describe("확정한 운영 기간 수정", () => {
     after.periods[0].end = today;
     expect(() => validateRoleStateChange(before, after, today)).not.toThrow();
     after.periods[0].end = "2026-09-26";
-    expect(() => validateRoleStateChange(before, after, today)).toThrow(
-      "지난 운영 날짜",
-    );
+    expect(() => validateRoleStateChange(before, after, today)).not.toThrow();
+    after.periods[0].start = "2026-08-20";
+    expect(() => validateRoleStateChange(before, after, today)).not.toThrow();
   });
 
-  test("시작한 배정의 시작일과 지난 기간은 바꾸지 않는다", () => {
+  test("지난 기간도 변경하거나 삭제할 수 있다", () => {
     const before = fixture();
     const after = structuredClone(before);
     after.periods[0].start = "2026-09-02";
-    expect(() => validateRoleStateChange(before, after, today)).toThrow(
-      "지난 운영 날짜",
-    );
+    expect(() => validateRoleStateChange(before, after, today)).not.toThrow();
     const past = fixture("2026-08-01", "2026-08-31");
     const changedPast = structuredClone(past);
     changedPast.periods[0].end = "2026-09-01";
-    expect(() => validateRoleStateChange(past, changedPast, today)).toThrow(
-      "지난 운영 날짜",
-    );
+    expect(() => validateRoleStateChange(past, changedPast, today)).not.toThrow();
+    changedPast.periods = [];
+    expect(() => validateRoleStateChange(past, changedPast, today)).not.toThrow();
   });
 
-  test("예정 배정은 두 날짜를 수정하되 과거로 옮기지 않는다", () => {
+  test("예정 배정도 과거로 옮길 수 있다", () => {
     const before = fixture("2026-10-01", "2026-10-31");
     const after = structuredClone(before);
     after.periods[0].start = "2026-10-05";
     after.periods[0].end = "2026-11-05";
     expect(() => validateRoleStateChange(before, after, today)).not.toThrow();
     after.periods[0].start = "2026-09-26";
-    expect(() => validateRoleStateChange(before, after, today)).toThrow(
-      "지난 운영 날짜",
-    );
+    expect(() => validateRoleStateChange(before, after, today)).not.toThrow();
   });
 
   test("날짜를 바꾸더라도 확정 학생·역할을 수정하거나 다른 기간과 겹칠 수 없다", () => {
@@ -90,5 +86,20 @@ describe("확정한 운영 기간 수정", () => {
     expect(() => validateRoleStateChange(before, after, today)).toThrow(
       "보존",
     );
+  });
+
+  test("진행 중인 기간은 이전 기록을 보존하면서 새 배정으로 나눌 수 있다", () => {
+    const before = fixture();
+    const after = structuredClone(before);
+    after.periods[0].end = "2026-09-27";
+    after.periods.push({
+      ...structuredClone(before.periods[0]),
+      id: crypto.randomUUID(),
+      start: "2026-09-28",
+      end: "2026-09-30",
+    });
+    expect(() => validateRoleStateChange(before, after, today)).not.toThrow();
+    after.periods[1].start = "2026-09-29";
+    expect(() => validateRoleStateChange(before, after, today)).toThrow("기존 기간을 나누어");
   });
 });

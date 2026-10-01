@@ -19,6 +19,7 @@ const SHELL_ROUTES = [
   ['자료 수합', '/tools/data-collect'],
   ['학급 운영비 영수증', '/tools/receipts/new'],
   ['1인 1역 홈', '/tools/classroom-roles'],
+  ['1인 1역 배정 관리', '/tools/classroom-roles/manage'],
   ['1인 1역 배정', '/tools/classroom-roles/assign'],
   ['1인 1역 역할 목록', '/tools/classroom-roles/roles'],
   ['1인 1역 실천판', '/tools/classroom-roles/board'],

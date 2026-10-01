@@ -3,9 +3,7 @@ import { Link, Route, Routes, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
-  CalendarClock,
   ClipboardCheck,
-  History,
   ListChecks,
   Settings2,
   Users,
@@ -40,28 +38,55 @@ export type RolePageProps = {
   busy: boolean;
 };
 const tiles = [
-  ["assign", "학생 역할 배정", "명단 확인 · 역할 배정", Users],
-  [
-    "settings",
-    "운영 설정",
-    "요일 · 공개 설정",
-    Settings2,
-  ],
-  ["roles", "역할 목록", "역할 · 정원 관리", ListChecks],
-  [
-    "board",
-    "오늘의 실천판",
-    "오늘 기록 · 학생 화면",
-    ClipboardCheck,
-  ],
-  ["records", "실천 기록", "월별 · 학생별 기록", History],
-  [
-    "rotate",
-    "역할 교체",
-    "다음 기간 준비",
-    CalendarClock,
-  ],
+  ["board", "실천 현황", "오늘 · 주간 · 지난 기록", ClipboardCheck],
+  ["manage", "배정 관리", "현재 배정 변경 · 다음 기간 준비", Users],
+  ["roles", "역할 관리", "역할 · 할 일 · 정원", ListChecks],
+  ["settings", "운영 설정", "요일 · 제외일 · 공개 화면", Settings2],
 ] as const;
+
+function RoleAssignmentManagement({ board }: { board: RoleBoard }) {
+  const today = roleToday();
+  const current = activeRolePeriod(board.state, today);
+  const periods = [...board.state.periods].sort((a, b) => b.start.localeCompare(a.start));
+  return (
+    <div className="space-y-5">
+      <section className={`${rolePanel} space-y-3`}>
+        <h2 className="text-lg font-bold">{current ? "현재 배정" : "배정 시작"}</h2>
+        <p className="text-sm leading-6 text-[#526174]">
+          {current
+            ? `${current.start} ~ ${current.end} · ${current.students.length}명 · 적용된 배정과 기록은 날짜별로 보존됩니다.`
+            : "학생 명단과 역할을 준비해 첫 배정을 확정하세요."}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {!periods.length && <Link className={roleButton} to={`${ROLES_ROOT}/assign`}>첫 배정 만들기</Link>}
+          {current && current.end > today && (
+            <Link className={roleButton} to={`${ROLES_ROOT}/assign?mode=current`}>현재 배정 변경</Link>
+          )}
+          {!!periods.length && (
+            <Link className={current ? roleSecondary : roleButton} to={`${ROLES_ROOT}/rotate`}>다음 기간 준비</Link>
+          )}
+        </div>
+        {current && current.end > today && <p className="text-xs text-[#526174]">현재 배정 변경은 적용일부터 새 배정을 만들며, 그 전 날짜와 기록은 그대로 둡니다.</p>}
+      </section>
+      {!!periods.length && (
+        <section className={`${rolePanel} space-y-3`}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-bold">운영 기간</h2>
+            <Link className="text-sm font-semibold text-[#0F6CBD]" to={`${ROLES_ROOT}/settings`}>기간 수정·삭제 →</Link>
+          </div>
+          <ul className="divide-y divide-[#E2E8F0] text-sm">
+            {periods.map((period) => (
+              <li key={period.id} className="flex flex-wrap justify-between gap-2 py-3">
+                <span className="font-semibold">{period.start} ~ {period.end}</span>
+                <span className="text-[#526174]">{period.students.length}명 · {period.end < today ? "지난 기간" : period.start > today ? "예정" : "진행 중"}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}
 
 function RolesHome({ board }: { board: RoleBoard }) {
   const today = roleToday();
@@ -100,7 +125,7 @@ function RolesHome({ board }: { board: RoleBoard }) {
             to={`${ROLES_ROOT}/board`}
             className="text-sm font-bold text-[#0F6CBD]"
           >
-            실천판 보기 →
+            실천 현황 보기 →
           </Link>
         </div>
         <RoleError message={error} />
@@ -114,7 +139,7 @@ function RolesHome({ board }: { board: RoleBoard }) {
           </p>
         ) : !period ? (
           <p className="mt-4 text-sm">
-            오늘 배정된 역할이 없습니다. 학생 역할 배정에서 시작해 주세요.
+            오늘 배정된 역할이 없습니다. 배정 관리에서 시작해 주세요.
           </p>
         ) : (
           <>
@@ -145,7 +170,7 @@ function RolesHome({ board }: { board: RoleBoard }) {
       </section>
       <section aria-label="1인 1역 기능">
         <h2 className="mb-4 text-lg font-bold">1인 1역 기능</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           {tiles.map(([path, title, desc, Icon]) => (
             <Link
               to={`${ROLES_ROOT}/${path}`}
@@ -255,7 +280,7 @@ export function ClassroomRolesWorkspace() {
         )}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-extrabold sm:text-3xl">
-            {isPosterRoute ? "게시판 안내문 인쇄" : current?.[1] ?? "1인 1역"}
+            {isPosterRoute ? "게시판 안내문 인쇄" : current?.[1] ?? (isAssignment ? "배정 관리" : location.pathname === `${ROLES_ROOT}/records` ? "실천 기록" : "1인 1역")}
           </h1>
           {board && !current && (
             <span className="text-sm text-[#526174]">
@@ -292,6 +317,7 @@ export function ClassroomRolesWorkspace() {
       ) : (
         <Routes>
           <Route index element={<RolesHome board={props.board} />} />
+          <Route path="manage" element={<RoleAssignmentManagement board={props.board} />} />
           <Route
             path="assign"
             element={<RoleAssignmentPage key="assign" {...props} />}

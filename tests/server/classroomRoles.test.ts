@@ -84,6 +84,7 @@ async function createFixture() {
     rateAllowed: true,
     conflict: false,
     manyRecords: false,
+    periodUpdateResult: "updated",
   };
   globalThis.fetch = async (input, init) => {
     const req = new Request(input, init);
@@ -111,6 +112,8 @@ async function createFixture() {
         : respond(flags.rateAllowed);
     if (url.pathname.endsWith("/rpc/write_classroom_role_record"))
       return respond(!flags.conflict);
+    if (url.pathname.endsWith("/rpc/update_classroom_role_period"))
+      return respond(flags.periodUpdateResult);
     if (url.pathname.endsWith("/classroom_role_boards")) {
       if (req.method === "PATCH")
         return respond(
@@ -292,8 +295,8 @@ Deno.test("configuration and record conflicts are surfaced as 409", () =>
     );
   }),
 );
-Deno.test("admin saves a safe period end edit but rejects a started period's start edit", () =>
-  fixture(async ({ call, state, calls }) => {
+Deno.test("admin saves past period dates and sends deletion through the guarded RPC", () =>
+  fixture(async ({ call, state, calls, flags }) => {
     const next = structuredClone(state);
     next.periods[0].end = new Date(
       Date.parse(`${state.periods[0].end}T00:00:00Z`) + 86400000,
@@ -301,15 +304,22 @@ Deno.test("admin saves a safe period end edit but rejects a started period's sta
       .toISOString()
       .slice(0, 10);
     assert((await call({ action: "save", version: 1, state: next })).status === 200);
-    assert(calls.some((entry) => entry.path.includes("classroom_role_boards") && entry.method === "PATCH"));
+    assert(calls.some((entry) => entry.path.endsWith("/rpc/update_classroom_role_period")));
     next.periods[0].start = new Date(
       Date.parse(`${state.periods[0].start}T00:00:00Z`) + 86400000,
     )
       .toISOString()
       .slice(0, 10);
+    assert((await call({ action: "save", version: 1, state: next })).status === 200);
+    next.periods = [];
+    flags.periodUpdateResult = "record_conflict";
     const rejected = await call({ action: "save", version: 1, state: next });
-    assert(rejected.status === 400);
-    assert((await rejected.json()).error.includes("지난 운영 날짜"));
+    assert(rejected.status === 409);
+    assert((await rejected.json()).error.includes("이미 기록된 날짜"));
+    flags.periodUpdateResult = "updated";
+    assert((await call({ action: "save", version: 1, state: next })).status === 200);
+    const rpc = calls.filter((entry) => entry.path.endsWith("/rpc/update_classroom_role_period"));
+    assert(rpc.at(-1)?.body?.p_start === null && rpc.at(-1)?.body?.p_end === null);
   }),
 );
 Deno.test("monthly history paginates beyond PostgREST 1000 row defaults", () =>

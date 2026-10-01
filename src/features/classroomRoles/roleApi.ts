@@ -1,5 +1,6 @@
 import { supabase } from "../../utils/supabaseClient";
 import {
+  changedRolePeriod,
   defaultRoleState,
   publicRoleProjection,
   roleToday,
@@ -73,6 +74,20 @@ export async function saveRoleBoard(
       "다른 화면에서 변경되었습니다. 새로고침 후 다시 시도해 주세요.",
     );
   validateRoleStateChange(current.state, state);
+  const changedPeriod = changedRolePeriod(current.state, state);
+  if (
+    changedPeriod &&
+    demoRecords().some(
+      (record) =>
+        record.period_id === changedPeriod.before.id &&
+        (!changedPeriod.after ||
+          record.record_date < changedPeriod.after.start ||
+          record.record_date > changedPeriod.after.end),
+    )
+  )
+    throw new Error(
+      "해당 기간에 이미 기록된 날짜가 있습니다. 기록이 포함되도록 기간을 조정하거나 삭제하지 마세요.",
+    );
   const next = {
     ...current,
     state: copy(state),
@@ -121,6 +136,16 @@ export async function writeRoleRecord(input: {
     input.status,
     source,
   );
+  if (
+    source === "student" &&
+    demoRecords().some((record) =>
+      record.period_id === input.periodId &&
+      record.student_id === input.studentId &&
+      record.record_date === input.date &&
+      record.source === "teacher"
+    )
+  )
+    throw new Error("선생님이 확인한 기록은 학생 화면에서 바꿀 수 없어요.");
   const records = demoRecords().filter(
     (r) =>
       !(

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
+  activeRolePeriod,
   parseRoleRoster,
   roleMonthRange,
   roleToday,
@@ -18,6 +19,7 @@ import {
   roleSecondary,
 } from "./RoleControls";
 import { RoleStudentPicker } from "./RoleStudentPicker";
+import { useUnsavedRoleChanges } from "./useUnsavedRoleChanges";
 
 const mobileRosterPreviewCount = 6;
 
@@ -29,19 +31,23 @@ export function RoleAssignmentPage({
 }: RolePageProps & { rotate?: boolean }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const changeCurrent = !rotate && searchParams.get("mode") === "current";
+  const today = roleToday();
+  const active = activeRolePeriod(board.state, today);
   const previous = [...board.state.periods].sort((a, b) =>
     b.end.localeCompare(a.end),
   )[0];
   const initialRoster = board.state.roster.length
     ? board.state.roster
-    : (previous?.students ?? []);
-  const today = roleToday();
+    : (changeCurrent ? active?.students : previous?.students) ?? [];
   const initialStart = previous
     ? new Date(Date.parse(`${previous.end}T00:00:00Z`) + 86400000)
         .toISOString()
         .slice(0, 10)
     : roleMonthRange(today.slice(0, 7)).start;
-  const suggestedStart = rotate && initialStart < today ? today : initialStart;
+  const suggestedStart = changeCurrent
+    ? new Date(Date.parse(`${today}T00:00:00Z`) + 86400000).toISOString().slice(0, 10)
+    : rotate && initialStart < today ? today : initialStart;
   const [step, setStep] = useState(() => rotate ? 1 : searchParams.get("step") === "roles" && initialRoster.length > 0 ? 2 : 1);
   const [text, setText] = useState(
     initialRoster.map((s) => `${s.number} ${s.name}`).join("\n"),
@@ -62,12 +68,24 @@ export function RoleAssignmentPage({
     )?.focus();
     rosterFocus.current = false;
   }, [editingRoster]);
-  const [roles, setRoles] = useState<ClassroomRole[]>(
-    structuredClone(board.state.roles),
+  const [roles, setRoles] = useState<ClassroomRole[]>(() => {
+    const catalog = structuredClone(board.state.roles);
+    if (!changeCurrent || !active) return catalog;
+    for (const role of active.roles)
+      if (!catalog.some((item) => item.id === role.id)) catalog.push(role);
+    return catalog;
+  });
+  const [assignments, setAssignments] = useState<Record<string, string>>(() =>
+    changeCurrent && active
+      ? Object.fromEntries(
+          initialRoster
+            .filter((student) => active.assignments[student.id])
+            .map((student) => [student.id, active.assignments[student.id]]),
+        )
+      : {},
   );
-  const [assignments, setAssignments] = useState<Record<string, string>>({});
   const [start, setStart] = useState(suggestedStart);
-  const [end, setEnd] = useState(roleMonthRange(suggestedStart.slice(0, 7)).end);
+  const [end, setEnd] = useState(changeCurrent && active ? active.end : roleMonthRange(suggestedStart.slice(0, 7)).end);
   const [error, setError] = useState("");
   const [periodError, setPeriodError] = useState("");
   const [periodEditing, setPeriodEditing] = useState(false);
@@ -95,14 +113,9 @@ export function RoleAssignmentPage({
     if (reviewOpen && dialog && !dialog.open) dialog.showModal();
     if (!reviewOpen && dialog?.open) dialog.close();
   }, [reviewOpen]);
-  useEffect(() => {
-    if (!draftChanged) return;
-    const warn = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [draftChanged]);
+  useUnsavedRoleChanges(
+    draftChanged || (editingRoster && text !== students.map((student) => `${student.number} ${student.name}`).join("\n")),
+  );
   const applyRoster = () => {
     try {
       const parsed = parseRoleRoster(text, [
@@ -131,6 +144,10 @@ export function RoleAssignmentPage({
   };
   const next = () => {
     if (editingRoster || !students.length) return;
+    if (changeCurrent && (!active || start <= today || start > active.end || end !== active.end)) {
+      setPeriodError("현재 배정의 남은 기간 안에서 새 배정 적용일을 선택해 주세요.");
+      return;
+    }
     if (rotate && (!start || !end || start < suggestedStart || start > end)) {
       setPeriodError("기존 배정과 겹치지 않는 시작일과 종료일을 선택해 주세요.");
       return;
@@ -139,16 +156,16 @@ export function RoleAssignmentPage({
     setStep(2);
     setError("");
   };
-  const guardLeave = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    const rosterChanged = editingRoster && text !== students.map((student) => `${student.number} ${student.name}`).join("\n");
-    if ((draftChanged || rosterChanged) && !window.confirm("저장하지 않은 배정은 사라집니다. 이동할까요?")) event.preventDefault();
-  };
   const draftState = () => ({
     ...board.state,
     roster: students,
     roles,
     periods: [
-      ...board.state.periods,
+      ...board.state.periods.map((period) =>
+        changeCurrent && period.id === active?.id
+          ? { ...period, end: new Date(Date.parse(`${start}T00:00:00Z`) - 86400000).toISOString().slice(0, 10) }
+          : period,
+      ),
       {
         id: crypto.randomUUID(),
         start,
@@ -161,6 +178,10 @@ export function RoleAssignmentPage({
   });
   const openReview = () => {
     try {
+      if (changeCurrent && active &&
+        JSON.stringify({ students, roles, assignments }) ===
+          JSON.stringify({ students: active.students, roles: active.roles, assignments: active.assignments }))
+        throw new Error("변경한 명단·역할·배정이 없습니다. 바꿀 내용을 먼저 선택해 주세요.");
       validateRoleStateChange(board.state, draftState());
       setError("");
       setReviewOpen(true);
@@ -187,17 +208,18 @@ export function RoleAssignmentPage({
   };
   const periodFields = (
     <div className="grid gap-3 sm:grid-cols-2">
-      <RoleField label="시작일">
+      <RoleField label={changeCurrent ? "새 배정 적용일" : "시작일"}>
         <input
           type="date"
           className={roleInput}
           value={start}
-          min={rotate ? suggestedStart : undefined}
+          min={changeCurrent ? suggestedStart : rotate ? suggestedStart : undefined}
+          max={changeCurrent ? active?.end : undefined}
           disabled={busy}
           onChange={(event) => {
             const nextStart = event.target.value;
             setStart(nextStart);
-            if (nextStart && end < nextStart) {
+            if (!changeCurrent && nextStart && end < nextStart) {
               setEnd(roleMonthRange(nextStart.slice(0, 7)).end);
             }
             setDraftChanged(true);
@@ -206,13 +228,13 @@ export function RoleAssignmentPage({
           }}
         />
       </RoleField>
-      <RoleField label="종료일">
+      <RoleField label={changeCurrent ? "기존 종료일 유지" : "종료일"}>
         <input
           type="date"
           className={roleInput}
           value={end}
-          min={rotate ? start || suggestedStart : undefined}
-          disabled={busy}
+          min={rotate || changeCurrent ? start || suggestedStart : undefined}
+          disabled={busy || changeCurrent}
           onChange={(event) => {
             setEnd(event.target.value);
             setDraftChanged(true);
@@ -226,13 +248,13 @@ export function RoleAssignmentPage({
   return (
     <div className="space-y-3 lg:space-y-0" data-role-assignment-step={step}>
       <div data-role-topbar className="hidden lg:flex min-h-[84px] items-center justify-between gap-5 border-b border-[#E4E5E0] bg-white px-10">
-        <h1 className="sr-only">{rotate ? "역할 교체" : "학생 역할 배정"}</h1>
+        <h1 className="sr-only">{changeCurrent ? "현재 배정 변경" : rotate ? "역할 교체" : "학생 역할 배정"}</h1>
         <div className="flex min-w-0 items-center gap-9">
-          <Link to="/" onClick={guardLeave} className="inline-flex min-h-11 shrink-0 items-center gap-3 text-xl font-semibold tracking-tight text-[#252824]">
+          <Link to="/" className="inline-flex min-h-11 shrink-0 items-center gap-3 text-xl font-semibold tracking-tight text-[#252824]">
             <span aria-hidden="true" className="inline-block h-5 w-4 rounded-sm bg-[#B9472F]" />
             SchoolDoc
           </Link>
-          <Link to="/tools/classroom-roles" onClick={guardLeave} className="inline-flex min-h-11 items-center gap-3 text-base text-[#4F544F]">
+          <Link to="/tools/classroom-roles" className="inline-flex min-h-11 items-center gap-3 text-base text-[#4F544F]">
             <span aria-hidden="true">←</span> 1인 1역
           </Link>
         </div>
@@ -274,20 +296,27 @@ export function RoleAssignmentPage({
           </li>
         ))}
       </ol>
-      {rotate && step === 1 && (
+      {(rotate || changeCurrent) && step === 1 && (
         <section className={`${rolePanel} space-y-3 lg:mx-auto lg:mt-8 lg:max-w-4xl`} aria-label="교체 기간">
-          <h2 className="text-xl font-bold">교체 기간</h2>
+          <h2 className="text-xl font-bold">{changeCurrent ? "현재 배정 변경" : "교체 기간"}</h2>
           <p className="text-sm text-[#526174]">
-            {previous
+            {changeCurrent
+              ? active
+                ? `오늘까지의 배정과 기록은 유지합니다. ${suggestedStart}부터 ${active.end} 사이에 새 배정을 적용할 날짜를 정하세요. 기존 학생의 역할은 채워 두었습니다.`
+                : "오늘 적용 중인 배정이 없습니다. 첫 배정을 시작해 주세요."
+              : previous
               ? `현재 배정 ${previous.start} ~ ${previous.end} · 새 역할의 시작일과 종료일을 정하세요.`
               : "첫 배정의 시작일과 종료일을 정하세요."}
           </p>
+          {changeCurrent && (!active || active.end <= today) && (
+            <p role="alert" className="text-sm text-amber-800">남은 운영 기간이 없어 변경할 수 없습니다. 다음 기간을 준비해 주세요.</p>
+          )}
           {periodFields}
           <RoleError message={periodError} />
-          {previous && previous.end >= today && (
+          {!changeCurrent && previous && previous.end >= today && (
             <p className="text-sm text-[#526174]">
               운영 중에도 교체할 수 있습니다. 더 일찍 시작하려면 {" "}
-              <Link to="/tools/classroom-roles/settings" onClick={guardLeave} className="font-semibold text-[#0F6CBD] underline underline-offset-2">
+              <Link to="/tools/classroom-roles/settings" className="font-semibold text-[#0F6CBD] underline underline-offset-2">
                 운영 설정에서 기존 종료일을 오늘로 변경
               </Link>
               한 뒤 새 배정을 내일부터 시작해 주세요. 오늘까지의 배정과 기록은 유지됩니다.
@@ -296,7 +325,7 @@ export function RoleAssignmentPage({
         </section>
       )}
       {step === 1 ? (
-        <section className={`${rolePanel} space-y-4 lg:mx-auto ${rotate ? "lg:mt-4" : "lg:mt-8"} lg:max-w-4xl`}>
+        <section className={`${rolePanel} space-y-4 lg:mx-auto ${rotate || changeCurrent ? "lg:mt-4" : "lg:mt-8"} lg:max-w-4xl`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2
               ref={rosterHeadingRef}
@@ -403,7 +432,7 @@ export function RoleAssignmentPage({
           </p>
           <button
             className={`${roleButton} w-full sm:w-auto`}
-            disabled={editingRoster || !students.length}
+            disabled={editingRoster || !students.length || (changeCurrent && (!active || active.end <= today))}
             onClick={next}
           >
             다음: 역할 배정
@@ -411,9 +440,9 @@ export function RoleAssignmentPage({
         </section>
       ) : (
         <>
-          <section className={`px-1 lg:mx-auto lg:mt-5 lg:max-w-[1488px] lg:rounded-xl lg:border lg:border-[#DCE3EA] lg:bg-white lg:px-4 lg:py-2 ${rotate || periodEditing ? 'lg:block' : 'lg:hidden'}`} aria-label={rotate ? "교체 기간" : "배정 기간"}>
+          <section className={`px-1 lg:mx-auto lg:mt-5 lg:max-w-[1488px] lg:rounded-xl lg:border lg:border-[#DCE3EA] lg:bg-white lg:px-4 lg:py-2 ${rotate || changeCurrent || periodEditing ? 'lg:block' : 'lg:hidden'}`} aria-label={rotate || changeCurrent ? "교체 기간" : "배정 기간"}>
             <div className="flex flex-wrap items-center gap-3 text-sm">
-              <span className="font-semibold">{rotate ? "교체 기간" : "배정 기간"}</span>
+              <span className="font-semibold">{changeCurrent ? "변경 적용 기간" : rotate ? "교체 기간" : "배정 기간"}</span>
               <span className="sm:hidden">{periodLabel}</span>
               <span className="hidden sm:inline">{start} ~ {end}</span>
               {!rotate && <button
@@ -425,7 +454,7 @@ export function RoleAssignmentPage({
                 기간 변경
               </button>}
             </div>
-            {(rotate || periodEditing) && (
+            {(rotate || changeCurrent || periodEditing) && (
               <div className="border-t border-[#E2E8F0] py-3">
                 {periodFields}
               </div>
@@ -440,7 +469,7 @@ export function RoleAssignmentPage({
             students={students}
             roles={roles}
             assignments={assignments}
-            previous={rotate ? previous : undefined}
+            previous={changeCurrent ? active : rotate ? previous : undefined}
             disabled={busy}
             focusUnassignedSignal={focusUnassignedSignal}
             onChange={(nextAssignments) => {
@@ -520,7 +549,7 @@ export function RoleAssignmentPage({
                 </ul>
               </div>
               <footer className="shrink-0 border-t border-[#E2E8F0] bg-white px-5 py-4 sm:flex sm:items-center sm:justify-between sm:gap-4 sm:px-6">
-                <p className="text-sm text-[#9A3412]">확정 후 이 배정은 직접 수정할 수 없습니다.</p>
+                <p className="text-sm text-[#9A3412]">{changeCurrent ? "새 배정은 적용일부터 표시됩니다. 이전 기록은 유지됩니다." : "변경이 필요하면 새 적용일을 정해 배정을 이어 갈 수 있습니다."}</p>
                 <div className="mt-3 flex flex-wrap justify-end gap-2 sm:mt-0">
                   <button type="button" disabled={busy} className={roleSecondary} onClick={() => setReviewOpen(false)}>돌아가기</button>
                   <button type="button" disabled={busy} className={roleButton} onClick={() => void publish()}>
