@@ -1,0 +1,52 @@
+{
+  "checkedAt": "2026-10-01T18:51:33.106Z",
+  "origin": "https://schooldoc-nine.vercel.app",
+  "browser": "installed Google Chrome channel chrome",
+  "count": 6,
+  "assets": [
+    "/assets/index-BESWVFLx.js"
+  ],
+  "markers": [
+    "PDF 필드 편집",
+    "필드 추가 도구",
+    "consent-response-list",
+    "consent-recipient-list"
+  ],
+  "results": [
+    {
+      "viewport": "desktop",
+      "path": "/",
+      "status": 200
+    },
+    {
+      "viewport": "desktop",
+      "path": "/tools/consent-forms",
+      "loginGate": true
+    },
+    {
+      "viewport": "desktop",
+      "path": "/s/consent/<fictional token>",
+      "frontendStatus": 200,
+      "apiStatus": 404,
+      "pageErrors": []
+    },
+    {
+      "viewport": "mobile",
+      "path": "/",
+      "status": 200
+    },
+    {
+      "viewport": "mobile",
+      "path": "/tools/consent-forms",
+      "loginGate": true
+    },
+    {
+      "viewport": "mobile",
+      "path": "/s/consent/<fictional token>",
+      "frontendStatus": 200,
+      "apiStatus": 404,
+      "pageErrors": []
+    }
+  ],
+  "limits": "비로그인 탐색과 실제 404, 새 배포 JS의 UI 코드 포함 확인. 로그인 후 편집/생성/파일 제출/출력은 미검증."
+}
