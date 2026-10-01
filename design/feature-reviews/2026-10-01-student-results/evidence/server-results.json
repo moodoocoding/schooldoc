@@ -1,0 +1,49 @@
+{
+  "publicContract": {
+    "status": 200,
+    "secretsStripped": true,
+    "recipientOverrideIgnored": true
+  },
+  "accessChecks": {
+    "otherOwnerEvent": 404,
+    "expiredSession": 401
+  },
+  "commonSchoolIp": {
+    "requests": 24,
+    "success": 10,
+    "limited": 14,
+    "windowSeconds": 60
+  },
+  "personalSchoolIp": {
+    "requests": 24,
+    "success": 20,
+    "limited": 4,
+    "windowSeconds": 60
+  },
+  "partialDispute": {
+    "responseStatus": 500,
+    "savedMessage": "가상 이의",
+    "recipientStatus": "viewed"
+  },
+  "partialReply": {
+    "responseStatus": 500,
+    "savedReply": "가상 답변",
+    "recipientStatus": "disputed"
+  },
+  "regenerateSession": {
+    "reset": 200,
+    "oldLink": 401,
+    "oldIssuedSession": 200,
+    "migrationDefaultHours": 12
+  },
+  "parentVersion": {
+    "responseStatus": 200,
+    "status": "confirmed",
+    "returnedMaxScore": 200,
+    "recipientVersionUnchangedBeforeConfirmation": true
+  },
+  "disputeVersion": {
+    "returned": "2026-10-01T11:43:50.299Z",
+    "stored": "2026-10-01T11:43:50.314Z"
+  }
+}

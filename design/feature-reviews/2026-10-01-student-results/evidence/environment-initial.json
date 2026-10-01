@@ -1,0 +1,29 @@
+{
+  "browser": "154.0.8037.58",
+  "origin": "http://127.0.0.1:4177",
+  "scope": "Local demo and synthetic data only",
+  "observations": {
+    "pdfLoader": {
+      "version": "6.2.108",
+      "workerSrc": "http://127.0.0.1:4177/@fs/<shared-node_modules>/pdfjs-dist/legacy/build/pdf.worker.min.mjs",
+      "error": "Error: Setting up fake worker failed: \"Failed to fetch dynamically imported module: http://127.0.0.1:4177/@fs/<shared-node_modules>/pdfjs-dist/legacy/build/pdf.worker.min.mjs\".",
+      "stack": "Error: Setting up fake worker failed: \"Failed to fetch dynamically imported module: http://127.0.0.1:4177/@fs/<shared-node_modules>/pdfjs-dist/legacy/build/pdf.worker.min.mjs\".\n    at http://127.0.0.1:4177/node_modules/.vite/deps/pdfjs-dist_legacy_build_pdf__mjs.js?v=77dc1be6:17708:44",
+      "requests": [
+        {
+          "url": "/node_modules/.vite/deps/pdfjs-dist_legacy_build_pdf__mjs.js?v=77dc1be6",
+          "status": 200
+        },
+        {
+          "url": "/@fs/<shared-node_modules>/pdfjs-dist/legacy/build/pdf.worker.min.mjs",
+          "status": 403
+        },
+        {
+          "url": "/@fs/<shared-node_modules>/pdfjs-dist/legacy/build/pdf.worker.min.mjs",
+          "status": 403
+        }
+      ],
+      "uiError": "PDF를 읽지 못했습니다. 손상되거나 암호화된 파일인지 확인해 주세요."
+    }
+  },
+  "pageErrors": []
+}

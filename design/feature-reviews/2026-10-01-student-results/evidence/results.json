@@ -1,0 +1,157 @@
+{
+  "browser": "154.0.8037.58",
+  "origin": "http://127.0.0.1:4177",
+  "scope": "Local demo and synthetic data only",
+  "observations": {
+    "pdfLoader": {
+      "version": "6.2.108",
+      "workerSrc": "http://127.0.0.1:4177/@fs/<shared-node_modules>/pdfjs-dist/legacy/build/pdf.worker.min.mjs",
+      "pages": 1,
+      "requests": [
+        {
+          "url": "/@fs/<review-vite-cache>/deps/pdfjs-dist_legacy_build_pdf__mjs.js?v=de9ba7f8",
+          "status": 200
+        },
+        {
+          "url": "/@fs/<shared-node_modules>/pdfjs-dist/legacy/build/pdf.worker.min.mjs",
+          "status": 200
+        }
+      ],
+      "uiAnalysis": "PDF 1쪽 · 머리글 3행 · 결과 항목 1개 · 학생 1명"
+    },
+    "teacherEmpty": {
+      "width": {
+        "viewport": 1440,
+        "document": 1440
+      }
+    },
+    "representativeTeacher24": {
+      "desktopRows": 24,
+      "masked": true,
+      "keyboardTabs": true,
+      "mobileWidth": {
+        "viewport": 390,
+        "document": 390
+      }
+    },
+    "studentFlowAndCorrection": {
+      "studentAxe": [],
+      "disputeDraftProtected": true,
+      "replyReconfirm": true,
+      "scoreCorrectionReconfirm": true,
+      "normalLogoutClears": true
+    },
+    "lateResponseAfterLogout": {
+      "resultRestored": true,
+      "refreshButtonEnabled": true,
+      "url": "/s/results/7bd388b5d2ea46fa9cbc020c872caa5a"
+    },
+    "parentSettingsVersion": {
+      "sameRecipientVersion": true,
+      "alreadyConfirmedStatus": "confirmed",
+      "newMax": 200,
+      "oldViewAccepted": true,
+      "returnedNewMaxAsConfirmed": true
+    },
+    "spaDraftLoss": {
+      "backDestination": "/tools/student-results",
+      "warningDialogs": 0,
+      "titleOnReentry": ""
+    },
+    "qrOutput17": {
+      "cards": 17,
+      "pages": 3,
+      "imageSaveButtons": 0,
+      "filename": "가상 개인 QR 배부 17명_개인QR.pdf"
+    },
+    "qrLongIdentity": {
+      "nameLength": 100,
+      "keyLength": 100,
+      "layout": [
+        {
+          "cardHeight": 220.125,
+          "nameHeight": 123.203125,
+          "qrHeight": 116,
+          "qrBottomOutsideCard": true
+        },
+        {
+          "cardHeight": 220.125,
+          "nameHeight": 123.203125,
+          "qrHeight": 116,
+          "qrBottomOutsideCard": true
+        },
+        {
+          "cardHeight": 220.125,
+          "nameHeight": 123.203125,
+          "qrHeight": 116,
+          "qrBottomOutsideCard": true
+        },
+        {
+          "cardHeight": 220.125,
+          "nameHeight": 123.203125,
+          "qrHeight": 116,
+          "qrBottomOutsideCard": true
+        },
+        {
+          "cardHeight": 220.125,
+          "nameHeight": 123.203125,
+          "qrHeight": 116,
+          "qrBottomOutsideCard": true
+        },
+        {
+          "cardHeight": 220.125,
+          "nameHeight": 123.203125,
+          "qrHeight": 116,
+          "qrBottomOutsideCard": true
+        },
+        {
+          "cardHeight": 220.125,
+          "nameHeight": 123.203125,
+          "qrHeight": 116,
+          "qrBottomOutsideCard": true
+        },
+        {
+          "cardHeight": 220.125,
+          "nameHeight": 123.203125,
+          "qrHeight": 116,
+          "qrBottomOutsideCard": true
+        }
+      ]
+    },
+    "density60AndAxe": {
+      "students": 60,
+      "mobileWidth": {
+        "viewport": 390,
+        "document": 390
+      },
+      "cssZoom": 200,
+      "teacherAxe": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": [
+            {
+              "target": [
+                ".flex-wrap.gap-2.items-center > .text-\\[\\#64748B\\]"
+              ],
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.47 (foreground color: #64748b, background color: #f6f8fb, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ],
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds"
+        }
+      ]
+    },
+    "expiredSessionRecovery": {
+      "error": "학생 인증이 만료되었습니다. 다시 확인해 주세요.",
+      "privateResultRetained": true,
+      "loginFormVisible": false,
+      "logoutRecovers": true
+    },
+    "invalidAndClosedAccess": {
+      "wrongCodeMessage": "입력한 정보를 확인해 주세요. 이름 또는 확인번호가 일치하지 않습니다.",
+      "closedBlocked": true,
+      "missingPageShown": true
+    }
+  },
+  "pageErrors": []
+}
