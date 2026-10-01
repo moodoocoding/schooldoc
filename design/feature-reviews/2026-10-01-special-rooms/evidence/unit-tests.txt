@@ -1,0 +1,12 @@
+
+> 260725_individual_data@0.0.0 test
+> vitest run tests/unit/specialRoomWeek.test.ts tests/unit/specialRoomsSchoolDays.test.ts tests/unit/specialRoomsSchedule.test.ts tests/unit/specialRoomsRepeat.test.ts tests/unit/specialRoomsOptimistic.test.ts tests/unit/specialRoomsClosure.test.ts tests/unit/specialRoomsBoardInfo.test.ts
+
+
+ RUN  v4.1.11 C:/Users/panth/.codex/worktrees/review-special-rooms-20261001/260812_schooldoc
+
+
+ Test Files  7 passed (7)
+      Tests  98 passed (98)
+   Start at  20:57:29
+   Duration  501ms (transform 443ms, setup 0ms, import 1.31s, tests 63ms, environment 1ms)

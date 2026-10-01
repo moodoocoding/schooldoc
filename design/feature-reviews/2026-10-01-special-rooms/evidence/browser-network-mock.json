@@ -1,0 +1,519 @@
+{
+  "mode": "real Chrome with config false and Supabase module replaced at browser boundary only; all API responses fulfilled locally",
+  "observations": [
+    {
+      "name": "initial load failure recovery",
+      "main": "가상 주 조회 실패",
+      "buttons": 0
+    },
+    {
+      "name": "week failure silently retains previous dates",
+      "alerts": 0,
+      "oldCellShown": 0,
+      "range": "가상 과학실\n가상 음악실\n2026년 10월 5일 ~ 9일\n이번 주",
+      "tableText": "월요일부터 금요일까지 1교시부터 6교시까지의 특별실 예약 표\n교시\t\n월\n10/5\n\t\n화\n10/6\n\t\n수\n10/7\n\t\n목\n10/8\n\t\n금\n10/9\n\n1교시\t\n+\n예약\n\t\n+\n예약\n\t\n+\n예약\n\t\n+\n예약\n\t\n+\n예약\n\n2교시\t\n+\n예약\n\t\n+\n예약\n\t\n+\n예약\n\t\n+\n예약\n\t\n+\n예약\n\n3교시\t\n+\n예약\n\t\n+\n예약\n\t\n+\n예약\n\t\n+\n예약\n\t\n+\n예약\n\n4교시\t\n+\n예약\n\t\n+\n예약\n\t\n+\n예약\n\t\n+\n예약\n\t\n+\n예약\n\n5교시\t\n+\n예약\n\t\n+\n예약\n\t\n+\n예약\n\t\n+\n예약\n\t\n+\n예약\n\n6교시\t\n+\n예약\n\t\n+\n예약\n\t\n+\n예약\n\t\n+\n예약\n\t\n+\n예약"
+    },
+    {
+      "name": "out of order weeks lose latest visible booking",
+      "range": "가상 과학실\n가상 음악실\n2026년 10월 12일 ~ 16일\n이번 주",
+      "bookedCells": 0
+    },
+    {
+      "name": "remote close does not refresh metadata",
+      "closedNotice": 0,
+      "enabled": 30
+    },
+    {
+      "name": "remote closure does not refresh metadata",
+      "closureButtons": 0,
+      "firstCellDisabled": false
+    },
+    {
+      "name": "post save refresh rejected with success indicator",
+      "saved": 1,
+      "alerts": 0,
+      "pageErrors": [
+        "가상 주 조회 실패"
+      ]
+    },
+    {
+      "name": "external teacher shape update leaves form stale",
+      "gridRows": 4,
+      "formPeriods": "6",
+      "formSaturday": false,
+      "saturdayColumn": 1
+    },
+    {
+      "name": "teacher query error becomes missing board",
+      "text": "SD\n가\n\n예약표를 찾을 수 없습니다.\n\n목록으로",
+      "retry": 0
+    },
+    {
+      "name": "tab keyboard ArrowRight",
+      "selected": "가상 과학실",
+      "focus": "가상 과학실"
+    }
+  ],
+  "errors": [
+    "가상 주 조회 실패"
+  ],
+  "requests": [
+    {
+      "action": "metadata",
+      "token": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "action": "week",
+      "token": "11111111-1111-4111-8111-111111111111",
+      "password": "",
+      "from": "2026-09-28",
+      "to": "2026-10-03"
+    },
+    {
+      "action": "metadata",
+      "token": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "action": "week",
+      "token": "11111111-1111-4111-8111-111111111111",
+      "password": "",
+      "from": "2026-09-28",
+      "to": "2026-10-03"
+    },
+    {
+      "action": "metadata",
+      "token": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "action": "week",
+      "token": "11111111-1111-4111-8111-111111111111",
+      "password": "",
+      "from": "2026-09-28",
+      "to": "2026-10-03"
+    },
+    {
+      "action": "metadata",
+      "token": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "action": "week",
+      "token": "11111111-1111-4111-8111-111111111111",
+      "password": "",
+      "from": "2026-09-28",
+      "to": "2026-10-03"
+    },
+    {
+      "action": "metadata",
+      "token": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "action": "week",
+      "token": "11111111-1111-4111-8111-111111111111",
+      "password": "",
+      "from": "2026-10-05",
+      "to": "2026-10-10"
+    },
+    {
+      "action": "metadata",
+      "token": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "action": "week",
+      "token": "11111111-1111-4111-8111-111111111111",
+      "password": "",
+      "from": "2026-09-28",
+      "to": "2026-10-03"
+    },
+    {
+      "action": "metadata",
+      "token": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "action": "week",
+      "token": "11111111-1111-4111-8111-111111111111",
+      "password": "",
+      "from": "2026-09-28",
+      "to": "2026-10-03"
+    },
+    {
+      "action": "metadata",
+      "token": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "action": "week",
+      "token": "11111111-1111-4111-8111-111111111111",
+      "password": "",
+      "from": "2026-10-05",
+      "to": "2026-10-10"
+    },
+    {
+      "action": "metadata",
+      "token": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "action": "week",
+      "token": "11111111-1111-4111-8111-111111111111",
+      "password": "",
+      "from": "2026-10-12",
+      "to": "2026-10-17"
+    },
+    {
+      "action": "metadata",
+      "token": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "action": "week",
+      "token": "11111111-1111-4111-8111-111111111111",
+      "password": "",
+      "from": "2026-09-28",
+      "to": "2026-10-03"
+    },
+    {
+      "action": "metadata",
+      "token": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "action": "week",
+      "token": "11111111-1111-4111-8111-111111111111",
+      "password": "",
+      "from": "2026-09-28",
+      "to": "2026-10-03"
+    },
+    {
+      "action": "week",
+      "token": "11111111-1111-4111-8111-111111111111",
+      "password": "",
+      "from": "2026-09-28",
+      "to": "2026-10-02"
+    },
+    {
+      "action": "week",
+      "token": "11111111-1111-4111-8111-111111111111",
+      "password": "",
+      "from": "2026-09-28",
+      "to": "2026-10-02"
+    },
+    {
+      "action": "metadata",
+      "token": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "action": "week",
+      "token": "11111111-1111-4111-8111-111111111111",
+      "password": "",
+      "from": "2026-09-28",
+      "to": "2026-10-03"
+    },
+    {
+      "action": "metadata",
+      "token": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "action": "week",
+      "token": "11111111-1111-4111-8111-111111111111",
+      "password": "",
+      "from": "2026-09-28",
+      "to": "2026-10-03"
+    },
+    {
+      "action": "setBooking",
+      "token": "11111111-1111-4111-8111-111111111111",
+      "password": "",
+      "roomId": "33333333-3333-4333-8333-333333333333",
+      "date": "2026-10-01",
+      "period": 2,
+      "label": "모의 저장 성공"
+    },
+    {
+      "action": "week",
+      "token": "11111111-1111-4111-8111-111111111111",
+      "password": "",
+      "from": "2026-09-28",
+      "to": "2026-10-02"
+    },
+    {
+      "db": {
+        "table": "special_room_boards",
+        "op": "select",
+        "single": true,
+        "filters": [
+          [
+            "id",
+            "22222222-2222-4222-8222-222222222222",
+            "eq"
+          ]
+        ]
+      }
+    },
+    {
+      "db": {
+        "table": "special_room_boards",
+        "op": "select",
+        "single": true,
+        "filters": [
+          [
+            "id",
+            "22222222-2222-4222-8222-222222222222",
+            "eq"
+          ]
+        ]
+      }
+    },
+    {
+      "db": {
+        "table": "special_rooms",
+        "op": "select",
+        "single": false,
+        "filters": [
+          [
+            "board_id",
+            [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "in"
+          ]
+        ]
+      }
+    },
+    {
+      "db": {
+        "table": "special_room_bookings",
+        "op": "select",
+        "single": false,
+        "filters": [
+          [
+            "board_id",
+            [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "in"
+          ]
+        ]
+      }
+    },
+    {
+      "db": {
+        "table": "special_room_school_days",
+        "op": "select",
+        "single": false,
+        "filters": [
+          [
+            "board_id",
+            [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "in"
+          ]
+        ]
+      }
+    },
+    {
+      "db": {
+        "table": "special_room_closures",
+        "op": "select",
+        "single": false,
+        "filters": [
+          [
+            "board_id",
+            [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "in"
+          ]
+        ]
+      }
+    },
+    {
+      "db": {
+        "table": "special_rooms",
+        "op": "select",
+        "single": false,
+        "filters": [
+          [
+            "board_id",
+            [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "in"
+          ]
+        ]
+      }
+    },
+    {
+      "db": {
+        "table": "special_room_bookings",
+        "op": "select",
+        "single": false,
+        "filters": [
+          [
+            "board_id",
+            [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "in"
+          ]
+        ]
+      }
+    },
+    {
+      "db": {
+        "table": "special_room_school_days",
+        "op": "select",
+        "single": false,
+        "filters": [
+          [
+            "board_id",
+            [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "in"
+          ]
+        ]
+      }
+    },
+    {
+      "db": {
+        "table": "special_room_closures",
+        "op": "select",
+        "single": false,
+        "filters": [
+          [
+            "board_id",
+            [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "in"
+          ]
+        ]
+      }
+    },
+    {
+      "db": {
+        "table": "special_room_boards",
+        "op": "select",
+        "single": true,
+        "filters": [
+          [
+            "id",
+            "22222222-2222-4222-8222-222222222222",
+            "eq"
+          ]
+        ]
+      }
+    },
+    {
+      "db": {
+        "table": "special_rooms",
+        "op": "select",
+        "single": false,
+        "filters": [
+          [
+            "board_id",
+            [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "in"
+          ]
+        ]
+      }
+    },
+    {
+      "db": {
+        "table": "special_room_bookings",
+        "op": "select",
+        "single": false,
+        "filters": [
+          [
+            "board_id",
+            [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "in"
+          ]
+        ]
+      }
+    },
+    {
+      "db": {
+        "table": "special_room_school_days",
+        "op": "select",
+        "single": false,
+        "filters": [
+          [
+            "board_id",
+            [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "in"
+          ]
+        ]
+      }
+    },
+    {
+      "db": {
+        "table": "special_room_closures",
+        "op": "select",
+        "single": false,
+        "filters": [
+          [
+            "board_id",
+            [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "in"
+          ]
+        ]
+      }
+    },
+    {
+      "db": {
+        "table": "special_room_boards",
+        "op": "select",
+        "single": true,
+        "filters": [
+          [
+            "id",
+            "22222222-2222-4222-8222-222222222222",
+            "eq"
+          ]
+        ]
+      }
+    },
+    {
+      "db": {
+        "table": "special_room_boards",
+        "op": "select",
+        "single": true,
+        "filters": [
+          [
+            "id",
+            "22222222-2222-4222-8222-222222222222",
+            "eq"
+          ]
+        ]
+      }
+    },
+    {
+      "action": "metadata",
+      "token": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "action": "week",
+      "token": "11111111-1111-4111-8111-111111111111",
+      "password": "",
+      "from": "2026-09-28",
+      "to": "2026-10-03"
+    },
+    {
+      "action": "metadata",
+      "token": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "action": "week",
+      "token": "11111111-1111-4111-8111-111111111111",
+      "password": "",
+      "from": "2026-09-28",
+      "to": "2026-10-03"
+    }
+  ]
+}

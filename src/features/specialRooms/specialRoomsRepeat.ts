@@ -1,3 +1,4 @@
+import { repeatRangeError } from '../../../supabase/functions/_shared/specialRooms';
 import { addDays, formatDayLabel } from './specialRoomWeek';
 
 /**
@@ -27,24 +28,24 @@ export const REPEAT_PRESETS = [
 export const REPEAT_WEEKS_MAX = 52;
 
 /** 빠른 선택을 마지막 날짜로 바꾼다. `2주`는 이번 주를 포함해 두 번이다. */
-export const repeatUntilFromWeeks = (startDate: string, weeks: number) => (
-  addDays(startDate, (Math.max(weeks, 1) - 1) * 7)
-);
+export const repeatUntilFromWeeks = (startDate: string, weeks: number) =>
+  addDays(startDate, (Math.max(weeks, 1) - 1) * 7);
 
 /**
  * 시작일부터 마지막 날짜까지 매주 같은 요일을 펼친다.
  *
- * 마지막 날짜가 시작일보다 앞서면 시작일 하루만 낸다. 잘못 고른 날짜 때문에 아무것도
- * 안 잡히는 것보다, 누른 그 칸 하나라도 잡히는 편이 낫다.
+ * 잘못된 기간과 52주 초과를 명시적으로 거절한다.
  */
 export const repeatDates = (startDate: string, untilDate: string): string[] => {
+  const error = repeatRangeError(startDate, untilDate);
+  if (error) throw new Error(error);
   const dates: string[] = [];
   for (let index = 0; index < REPEAT_WEEKS_MAX; index += 1) {
     const date = addDays(startDate, index * 7);
     if (date > untilDate) break;
     dates.push(date);
   }
-  return dates.length > 0 ? dates : [startDate];
+  return dates;
 };
 
 export interface RepeatOutcome {
@@ -62,8 +63,13 @@ export interface RepeatOutcome {
  * 누르기 전에 숫자가 보여야 "이게 학기 내내 잡히는 거구나"를 안다. 16번인지 2번인지
  * 모르고 누르면 나중에 60칸을 손으로 지우게 된다.
  */
-export const repeatPreview = (dates: string[], weekdayLabel: string, period: number) => {
-  if (dates.length <= 1) return `${weekdayLabel} ${period}교시 한 번만 잡습니다.`;
+export const repeatPreview = (
+  dates: string[],
+  weekdayLabel: string,
+  period: number,
+) => {
+  if (dates.length <= 1)
+    return `${weekdayLabel} ${period}교시 한 번만 잡습니다.`;
   const last = dates[dates.length - 1];
   return `${formatDayLabel(last)}까지 매주 ${weekdayLabel} ${period}교시에 ${dates.length}번 잡습니다.`;
 };
@@ -75,7 +81,9 @@ export const repeatResultNotice = (outcome: RepeatOutcome) => {
     parts.push(`휴업일 ${outcome.skippedOffDay.length}번은 건너뛰었습니다`);
   }
   if (outcome.skippedTaken.length > 0) {
-    parts.push(`이미 예약이 있는 ${outcome.skippedTaken.length}번은 그대로 두었습니다`);
+    parts.push(
+      `이미 예약이 있는 ${outcome.skippedTaken.length}번은 그대로 두었습니다`,
+    );
   }
   return `${parts.join('. ')}.`;
 };
@@ -88,7 +96,8 @@ export const repeatResultNotice = (outcome: RepeatOutcome) => {
  * 예약표에는 학사일정 자체가 없다.
  */
 export const termEndFrom = (
-  schoolDays: { date: string; eventName: string }[], from: string,
+  schoolDays: { date: string; eventName: string }[],
+  from: string,
 ): string => {
   const vacation = schoolDays
     .filter((day) => day.date > from && day.eventName.includes('방학'))

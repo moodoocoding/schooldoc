@@ -1,0 +1,93 @@
+{
+  "requests": [
+    {
+      "action": "bootstrap",
+      "from": "2026-09-28",
+      "roomId": "",
+      "status": 200,
+      "bytes": 741
+    },
+    {
+      "action": "bootstrap",
+      "from": "2026-11-09",
+      "roomId": "",
+      "status": 200,
+      "bytes": 741
+    },
+    {
+      "action": "bootstrap",
+      "from": "2026-11-02",
+      "roomId": "",
+      "status": 200,
+      "bytes": 741
+    },
+    {
+      "action": "week",
+      "from": "2026-09-28",
+      "roomId": "",
+      "status": 200,
+      "bytes": 746
+    },
+    {
+      "action": "week",
+      "from": "2026-09-28",
+      "roomId": "",
+      "status": 200,
+      "bytes": 746
+    },
+    {
+      "action": "bootstrap",
+      "from": "2026-09-28",
+      "roomId": "",
+      "status": 200,
+      "bytes": 741
+    },
+    {
+      "action": "setBooking",
+      "roomId": "30000000-0000-4000-8000-000000000001",
+      "status": 200,
+      "bytes": 396
+    }
+  ],
+  "bookings": [
+    {
+      "id": "01dd1e97-71ad-4d79-ba88-a4f3ab4b8a5d",
+      "booking_date": "2026-10-01",
+      "period": 9,
+      "label": "실제 Chrome 창 SQL 저장",
+      "revision": 1
+    }
+  ],
+  "states": [
+    {
+      "room_id": "30000000-0000-4000-8000-000000000001",
+      "week_start": "2026-09-28T00:00:00Z",
+      "revision": 1
+    }
+  ],
+  "messages": [
+    {
+      "topic": "sr:20000000-0000-4000-8000-000000000001:1:week:30000000-0000-4000-8000-000000000001:2026-09-28",
+      "event": "cells",
+      "payload": {
+        "roomId": "30000000-0000-4000-8000-000000000001",
+        "eventId": "7ca1b5a3-b866-473c-a5fd-ca10627d24a0",
+        "upserts": [
+          {
+            "id": "01dd1e97-71ad-4d79-ba88-a4f3ab4b8a5d",
+            "date": "2026-10-01",
+            "label": "실제 Chrome 창 SQL 저장",
+            "period": 9,
+            "roomId": "30000000-0000-4000-8000-000000000001",
+            "revision": 1,
+            "updatedAt": "2026-10-02T00:12:33.419+09:00"
+          }
+        ],
+        "weekStart": "2026-09-28",
+        "deletedIds": [],
+        "operationId": "cf3dee68-8190-4e3d-ab56-ec0a08d4680c",
+        "scopeRevision": 1
+      }
+    }
+  ]
+}
