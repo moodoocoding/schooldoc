@@ -34,13 +34,20 @@ try {
  const [summary]= (await db.query("select pg_get_functiondef('public.get_active_work_summary()'::regprocedure) as definition")).rows;
  assert(summary.definition.includes('file.collection_id = collection.id and file.is_current'));
  assert(!summary.definition.includes('when collection.mode ='));
+ await db.exec(`insert into auth.users(id,raw_user_meta_data) values('10000000-0000-4000-8000-000000000099','{"student_id":"integration-fixture","name":"가상담임"}');
+ insert into consent_forms(id,owner_id,title,file_name,source_path,recipient_mode,publication_state,current_response_count,response_count) values
+ ('20000000-0000-4000-8000-000000000099','10000000-0000-4000-8000-000000000099','가상 현재 응답','fictional.pdf','fictional/current.pdf','open','ready',1,9),
+ ('20000000-0000-4000-8000-000000000098','10000000-0000-4000-8000-000000000099','가상 준비 중','fictional.pdf','fictional/preparing.pdf','open','preparing',0,0);
+ select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000099',false);`);
+ const consentSummary=(await db.query("select done_count::int as done_count from get_active_work_summary() where tool_id='notice-collect'")).rows;
+ assert.deepEqual(consentSummary,[{done_count:1}]);
  const [permissions]=(await db.query(`select
   has_function_privilege('anon','public.registry_commit_signature(uuid,uuid,text,uuid,uuid,timestamptz,text,text,text,text,text,integer,integer,text,boolean)','execute') as registry_submit,
   has_function_privilege('authenticated','public.finalize_data_collection_submission(uuid,uuid,uuid,text,text,text,text,text,text,text,jsonb,text,bigint,text,text)','execute') as direct_file_submit,
   has_function_privilege('authenticated','public.commit_consent_response(uuid,uuid,uuid,uuid,text,text,jsonb,integer,uuid)','execute') as direct_consent_submit
  `)).rows;
  assert.deepEqual(permissions,{registry_submit:false,direct_file_submit:false,direct_consent_submit:false});
- const result={engine:'PGlite PostgreSQL with real pgcrypto',applied,summaryCurrentOnly:true,permissions,limitations:['Auth/Storage/Realtime are schema adapters; not hosted Supabase verification','No multi-connection lock verification']};
+ const result={engine:'PGlite PostgreSQL with real pgcrypto',applied,summaryCurrentOnly:true,consentSummaryCurrentOnly:true,preparingConsentHidden:true,permissions,limitations:['Auth/Storage/Realtime are schema adapters; not hosted Supabase verification','No multi-connection lock verification']};
  await writeFile('design/feature-reviews/2026-10-02-integration/migrations.json',JSON.stringify(result,null,2));
  console.log('PASS all '+applied.length+' migrations together; current submissions and private RPC privileges retained');
 } finally {await db.close();}

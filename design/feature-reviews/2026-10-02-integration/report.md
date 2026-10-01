@@ -24,7 +24,7 @@ DEVELOPMENT.md와 src/index.css의 추가 부분 충돌은 양쪽 기능 규칙�
 | `PLAYWRIGHT_TEST_PORT=4281 npm run test:e2e -- tests/e2e/consent-forms.spec.ts tests/e2e/registry-sign.spec.ts tests/e2e/registry-accessibility.spec.ts tests/e2e/registry-optimization.spec.ts tests/e2e/data-collect.spec.ts tests/e2e/data-collect-fix.spec.ts tests/e2e/data-collect-list.spec.ts tests/e2e/special-rooms.spec.ts tests/e2e/special-rooms-week-grid.spec.ts tests/e2e/special-rooms-regressions.spec.ts tests/e2e/active-work.spec.ts tests/e2e/app-shell-scroll.spec.ts --workers=2` | 실제 설치 Google Chrome 데모/모의 API 86개 통과, 모의 API 클라이언트 환경 부재 3개 실패. 환경 보완 후 해당 3개 재검사 통과하여 89개 모두 최종 통과. [전체 로그](chrome-e2e.txt), [3개 재검사](chrome-api-recheck.txt) |
 | `npx deno check --node-modules-dir=none` + 배포 대상 9개 entrypoint | 모두 통과. 프런트 의존성을 바꾸지 않고 Deno cache 사용. [로그](edge-check.txt) |
 | `npx deno test --node-modules-dir=none --no-check --allow-read --allow-env --allow-sys tests/server/registryPublic.test.ts tests/server/specialRooms.test.ts tests/server/specialRoomsSql.test.ts` | 11개/SQL 10단계 통과. 모의 DB/Storage 계약과 PGlite SQL이며 실제 Supabase 검사와 구분. [로그](edge-test.txt) |
-| `REGISTRY_PG_RUNTIME=<isolated runtime> node design/feature-reviews/2026-10-02-integration/migrations.mjs` | 실제 PGlite+pgcrypto에서 32개 마이그레이션 전체 적용 통과. 현재 자료 수합 기준 집계와 비공개 제출 RPC 권한 확인. [결과](migrations.json) |
+| `REGISTRY_PG_RUNTIME=<isolated runtime> node design/feature-reviews/2026-10-02-integration/migrations.mjs` | 실제 PGlite+pgcrypto에서 33개 마이그레이션 전체 적용 통과. 현재 자료 수합 기준 집계와 비공개 제출 RPC 권한 확인. [결과](migrations.json) |
 | `npx supabase migration list --linked`, `npx supabase db push --dry-run --linked` | 원격 기존 28개 이력 일치, 추가 4개만 적용 예정. 이 단계에서는 미적용 |
 | 원격 `pg_policies`, Realtime 함수, `get_active_work_summary()` 조회 | Realtime 기존 정책 없음, 필요한 send/topic 함수 존재, 자료 수합 집계 치환의 기존 정의 일치. 업무 데이터는 조회하지 않음 |
 
@@ -40,3 +40,13 @@ DEVELOPMENT.md와 src/index.css의 추가 부분 충돌은 양쪽 기능 규칙�
 - 배포 대상 DB: 202610010200_registry_io_and_atomic_submission.sql, 202610010300_data_collect_submission_and_queries.sql, 202610010600_special_room_scoped_sync.sql, 202610011000_consent_integrity_io.sql.
 - Edge 대상: consent-forms-admin/public, registry-public/participants/pdf, data-collect-admin/public, special-rooms-admin/public. 기존 원격 verify_jwt 설정을 유지한다.
 - main은 Vercel 자동 운영 배포 브랜치다. 원격 DB→지정 Edge Functions→main 병합/프런트 순서로 진행한다. 운영 쓰기 시험·파기는 자동 실행하지 않는다. 배포 결과와 읽기·거부 경로 확인은 별도 release 기록에 실제 결과만 추가한다.
+
+## 통합 후 공통 집계 보완
+
+원격 기본 진행 업무 RPC와 가정통신문 fallback이 재제출 누적 response_count를 표시하고 preparing 수합을 포함하는 것을 발견했다. 현재 응답(current_response_count/currentResponseCount) 기준으로 맞추고 준비 중인 수합을 숨겼다. 이미 적용한 4개 SQL은 수정하지 않고 202610020100_consent_active_summary.sql을 추가했다. 전체 작업트리에서 번호 중복을 확인했다.
+
+- 실제 PGlite+pgcrypto: 33개 SQL 전체 적용과 가상 응답 이력 9건/현재 1건·준비 중 자료 fixture로 현재 1건만 집계되는 것을 확인했다.
+- 실제 Chrome: 진행 업무 5개(새 회귀 1개 포함) 통과. [로그](active-work-recheck.txt), [전체 화면](current-consent-active.png). 앞선 89개와 합쳐 고유 검사 90개 통과이며 기존 4개는 재실행이다.
+- 타입·lint·전체 단위 501개·빌드를 변경 후 다시 통과했다.
+- 웹 관점: 기존 정보 위계를 유지하면서 응답 수의 의미를 바로잡음. UX 관점: 재제출로 응답 인원이 부풀지 않고 아직 공유할 수 없는 수합이 진행 목록에 나타나지 않음. UI 관점: 기존 상태·접근 가능한 이름·배치를 유지함. 별도 화면 설계나 실제 전문가 평가를 실시하지 않았다. 기존 4개 기능의 모의 디자인 검토 기록은 유지한다.
+- 배포된 API/익명 RLS의 읽기·거부 경로 17개 통과. 실제 제출·파기·인증된 교사 자료는 자동 시험하지 않았다. [재현 도구](remote-api.mjs), [결과](remote-api.json).

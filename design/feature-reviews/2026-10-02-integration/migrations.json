@@ -32,9 +32,12 @@
     "202610010200_registry_io_and_atomic_submission.sql",
     "202610010300_data_collect_submission_and_queries.sql",
     "202610010600_special_room_scoped_sync.sql",
-    "202610011000_consent_integrity_io.sql"
+    "202610011000_consent_integrity_io.sql",
+    "202610020100_consent_active_summary.sql"
   ],
   "summaryCurrentOnly": true,
+  "consentSummaryCurrentOnly": true,
+  "preparingConsentHidden": true,
   "permissions": {
     "registry_submit": false,
     "direct_file_submit": false,

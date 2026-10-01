@@ -133,3 +133,20 @@ test.describe('진행 중인 업무', () => {
     expect(overflow.document).toBeLessThanOrEqual(overflow.viewport + 1);
   });
 });
+
+test('가정통신문 재제출은 현재 응답 수로 표시하고 준비 중인 수합은 숨긴다', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('schooldoc:consent-forms:drafts', JSON.stringify([
+      { id: 'consent-current', title: '가상 재제출 수합', recipientMode: 'named', recipientCount: 24, responseCount: 9, currentResponseCount: 1, publicationState: 'ready', status: 'open' },
+      { id: 'consent-preparing', title: '가상 준비 중 수합', recipientMode: 'open', responseCount: 0, currentResponseCount: 0, publicationState: 'preparing', status: 'open' },
+    ]));
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: '진행 중' }).click();
+  const row = page.getByRole('button', { name: /가상 재제출 수합 가정통신문 수합 관리 화면으로 이동/ });
+  await expect(row).toContainText('1/24명 응답');
+  await expect(row).not.toContainText('9/24명 응답');
+  await expect(page.getByText('가상 준비 중 수합')).toHaveCount(0);
+  await page.mouse.move(1100, 500);
+  await page.screenshot({ path: 'design/feature-reviews/2026-10-02-integration/current-consent-active.png', fullPage: true, animations: 'disabled' });
+});

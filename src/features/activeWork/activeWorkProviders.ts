@@ -96,9 +96,10 @@ const consentFormsProvider: ActiveWorkProvider = {
     if (!userId && !isConsentFormsDemoMode) return [];
     const forms = isConsentFormsDemoMode ? getConsentLocalDrafts() : await listRemoteConsentForms();
     return forms
-      .filter((form) => form.status === 'open')
+      .filter((form) => form.status === 'open' && (form.publicationState ?? 'ready') === 'ready')
       .map((form): ActiveWorkItem => {
         const overdue = hasPassed(form.deadline, now);
+        const responseCount = form.currentResponseCount ?? form.responseCount;
         return {
           id: form.id,
           toolId: 'notice-collect',
@@ -106,8 +107,8 @@ const consentFormsProvider: ActiveWorkProvider = {
           title: form.title,
           statusLabel: overdue ? '마감 지남' : '수합 중',
           progressLabel: form.recipientMode === 'named'
-            ? `${form.responseCount}/${form.recipientCount}명 응답`
-            : `응답 ${form.responseCount}건`,
+            ? `${responseCount}/${form.recipientCount}명 응답`
+            : `응답 ${responseCount}건`,
           updatedAt: form.createdAt,
           listPath: '/tools/consent-forms',
           detailPath: `/tools/consent-forms/${form.id}`,
