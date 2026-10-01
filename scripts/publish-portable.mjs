@@ -48,9 +48,16 @@ export async function publishPortable({ directory = 'release', smokePath = proce
         throw new Error(`Release asset mismatch: ${wanted.name}`);
     }
   };
-  let existing;
-  try { existing = api(`releases/tags/${tag}`); }
-  catch (error) { if (!error.stderr?.toString().includes('404')) throw error; }
+  const findRelease = () => {
+    try { return api(`releases/tags/${tag}`); }
+    catch (error) { if (!error.stderr?.toString().includes('404')) throw error; }
+    // GitHub의 tag 조회는 게시된 release만 반환한다. 초안은 목록에서 찾아 ID로 확인한다.
+    const pages = JSON.parse(gh(['api', '--paginate', '--slurp', `repos/${repo}/releases?per_page=100`]));
+    const matches = pages.flat().filter(release => release.tag_name === tag);
+    if (matches.length > 1) throw new Error('Duplicate release tag metadata');
+    return matches[0];
+  };
+  let existing = findRelease();
   // 이미 존재하는 태그는 release가 없어도 다른 SHA로 덮어쓰지 않는다.
   const tagExists = taggedCommit();
   if (existing) {
@@ -72,12 +79,18 @@ export async function publishPortable({ directory = 'release', smokePath = proce
   ].join('\n');
   const notesPath = path.resolve(directory, 'release-notes.md');
   await writeFile(notesPath, notes + '\n');
-  if (!existing) gh(['release', 'create', tag, '--repo', repo, '--draft', '--target', manifest.commit,
-    '--title', `스쿨독 포터블 v${manifest.version}${candidate ? ' 검증 후보' : ''} (${manifest.commit.slice(0, 12)})`, '--notes-file', notesPath]);
+  if (!existing) {
+    gh(['release', 'create', tag, '--repo', repo, '--draft', '--target', manifest.commit,
+      '--title', `스쿨독 포터블 v${manifest.version}${candidate ? ' 검증 후보' : ''} (${manifest.commit.slice(0, 12)})`, '--notes-file', notesPath]);
+    existing = findRelease();
+  }
+  if (!existing?.draft || existing.target_commitish !== manifest.commit || existing.tag_name !== tag
+    || !Number.isSafeInteger(existing.id) || existing.id < 1) throw new Error('Draft release metadata mismatch');
+  checkAssets(existing, true);
   for (const asset of expected) {
     if (!existing?.assets.some(saved => saved.name === asset.name)) gh(['release', 'upload', tag, asset.file, '--repo', repo]);
   }
-  checkAssets(api(`releases/tags/${tag}`), false);
+  checkAssets(api(`releases/${existing.id}`), false);
   if (!candidate && currentMain() !== manifest.commit) throw new Error('Main advanced during publication; draft retained without publishing');
   taggedCommit();
   gh(['release', 'edit', tag, '--repo', repo, '--draft=false', `--prerelease=${candidate}`, `--latest=${!candidate}`]);

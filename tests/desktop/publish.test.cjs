@@ -29,11 +29,16 @@ async function fixture(t, options = {}) {
   const gh = args => {
     calls.push(args);
     if (args[0] === 'api') {
-      if (args[1].endsWith('/branches/main')) return JSON.stringify({ commit: { sha: main } });
-      if (args[1].includes('/git/ref/tags/')) return tagExists ? JSON.stringify({ object: { type: 'commit', sha } }) : missing();
-      return release ? JSON.stringify(release) : missing();
+      const endpoint = args.find(arg => arg.startsWith('repos/'));
+      if (endpoint.endsWith('/branches/main')) return JSON.stringify({ commit: { sha: main } });
+      if (endpoint.includes('/git/ref/tags/')) return tagExists ? JSON.stringify({ object: { type: 'commit', sha } }) : missing();
+      if (endpoint.endsWith('/releases?per_page=100')) return JSON.stringify([release ? [release] : []]);
+      // 실제 GitHub 계약: 초안은 tag 조회에 나오지 않고 release ID 조회에는 나온다.
+      if (endpoint.includes('/releases/tags/')) return release && !release.draft ? JSON.stringify(release) : missing();
+      if (endpoint.endsWith('/releases/101')) return release ? JSON.stringify(release) : missing();
+      throw new Error(`Unexpected API endpoint: ${endpoint}`);
     }
-    if (args[1] === 'create') release = { draft: true, target_commitish: sha, assets: [], html_url: 'https://example.invalid/release' };
+    if (args[1] === 'create') release = { id: 101, tag_name: args[2], draft: true, target_commitish: sha, assets: [], html_url: 'https://example.invalid/release' };
     if (args[1] === 'upload') {
       const content = readFileSync(args[3]);
       release.assets.push({ name: path.basename(args[3]), size: content.length, digest: `sha256:${hash(content)}` });
@@ -80,4 +85,35 @@ test('changed checksum text is rejected before remote calls', async t => {
   const f = await fixture(t); await fs.writeFile(path.join(f.directory, 'SHA256SUMS.txt'), 'incorrect');
   await assert.rejects(f.publish(), /matching checksum/);
   assert.equal(f.calls.length, 0);
+});
+
+test('a partially uploaded draft is found by list and resumed without overwriting assets', async t => {
+  const f = await fixture(t);
+  await assert.rejects(f.publish({ candidate: true, gh: args => {
+    const result = f.gh(args);
+    if (args[0] === 'release' && args[1] === 'upload' && f.getRelease().assets.length === 2)
+      throw new Error('Interrupted upload');
+    return result;
+  } }), /Interrupted upload/);
+  assert.equal(f.getRelease().draft, true);
+  f.calls.length = 0;
+  await f.publish({ candidate: true });
+  assert.equal(f.getRelease().assets.length, 4);
+  assert.equal(f.calls.filter(call => call[1] === 'create').length, 0);
+  assert.equal(f.calls.filter(call => call[1] === 'upload').length, 2);
+  assert.ok(f.calls.some(call => call[0] === 'api' && call.includes('--paginate')));
+  assert.ok(f.calls.some(call => call[1] === 'edit' && call.includes('--latest=false')));
+});
+
+test('a mismatched asset in a draft prevents all publication mutations', async t => {
+  const f = await fixture(t);
+  await assert.rejects(f.publish({ gh: args => {
+    const result = f.gh(args);
+    if (args[0] === 'release' && args[1] === 'upload') throw new Error('Interrupted upload');
+    return result;
+  } }), /Interrupted upload/);
+  f.getRelease().assets[0].digest = 'sha256:wrong';
+  f.calls.length = 0;
+  await assert.rejects(f.publish(), /asset mismatch/);
+  assert.ok(f.calls.every(call => call[0] === 'api'));
 });
