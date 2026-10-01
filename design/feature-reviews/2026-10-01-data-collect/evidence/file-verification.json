@@ -1,0 +1,26 @@
+{
+  "virtualPdf": {
+    "bytes": 3200,
+    "sha256": "5af3904bff9a2d6e546cfb4bbe0b6ddcba6a282c162055dea5247df6da6ece55"
+  },
+  "downloads": [
+    {
+      "name": "10-template-download.pdf",
+      "bytes": 3200,
+      "sha256": "5af3904bff9a2d6e546cfb4bbe0b6ddcba6a282c162055dea5247df6da6ece55",
+      "matchesVirtualSource": true
+    },
+    {
+      "name": "15-current-file.pdf",
+      "bytes": 3200,
+      "sha256": "5af3904bff9a2d6e546cfb4bbe0b6ddcba6a282c162055dea5247df6da6ece55",
+      "matchesVirtualSource": true
+    }
+  ],
+  "qrPng": {
+    "bytes": 32889,
+    "width": 1024,
+    "height": 1024,
+    "pngSignature": "89504e470d0a1a0a"
+  }
+}

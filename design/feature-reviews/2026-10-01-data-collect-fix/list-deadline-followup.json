@@ -1,0 +1,11 @@
+{
+  "method": "Installed Chrome and real wall-clock deadline, no mocked clock or API response; original demo storage reads counted",
+  "observedAt": "2026-10-01T15:25:50.308Z",
+  "deadline": "2026-10-01T15:27:00.000Z",
+  "changedAt": "2026-10-01T15:27:00.582Z",
+  "before": 2,
+  "after": 2,
+  "desktopAxeViolations": 0,
+  "mobileAxeViolations": 0,
+  "pageErrors": []
+}

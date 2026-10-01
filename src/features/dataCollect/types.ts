@@ -60,3 +60,71 @@ export interface DataCollectionDraft {
   retentionMonths: number;
   targets: Array<Pick<DataCollectionTarget, 'label' | 'owner'>>;
 }
+
+export interface DataCollectionSummary {
+  id: string;
+  title: string;
+  mode: DataCollectionMode;
+  status: DataCollectionStatus;
+  dueAt: string;
+  createdAt: string;
+  hasTemplate: boolean;
+  total: number;
+  responded: number;
+  needsRepair: number;
+  confirmed: number;
+  corrected: number;
+  submitted: number;
+}
+export interface DataCollectionCurrentResponse {
+  id: string;
+  decision: DataCollectionSubmission['decision'];
+  revision: number;
+  uploadedAt: string;
+  hasNote: boolean;
+  hasFile: boolean;
+  byteSize: number;
+}
+export interface DataCollectionTargetStatus {
+  id: string;
+  rowNumber: number;
+  label: string;
+  owner: string;
+  submission: DataCollectionCurrentResponse | null;
+  needsRepair: boolean;
+  note?: string;
+  fileName?: string;
+}
+export interface DataCollectionOverview {
+  collection: DataCollectionSummary & {
+    publicToken: string;
+    description: string;
+    allowResubmit: boolean;
+    templateName: string;
+    closedAt: string;
+    retentionMonths: number;
+  };
+  targets: DataCollectionTargetStatus[];
+  nextAfter: number | null;
+}
+export interface DataCollectionHistoryItem {
+  id: string;
+  targetId: string;
+  decision: DataCollectionSubmission['decision'];
+  revision: number;
+  note: string;
+  uploadedAt: string;
+  hasFile: boolean;
+  fileName: string;
+  byteSize: number;
+}
+export interface DataCollectionListCursor {
+  before: string;
+  beforeId: string;
+}
+export interface DataCollectionExport {
+  title: string;
+  hasTemplate: boolean;
+  exportedAt: string;
+  rows: DataCollectionTargetStatus[];
+}
