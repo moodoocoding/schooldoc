@@ -177,7 +177,7 @@ try {
   });
   await check('service-only RPC grants and actual teacher RLS retain owner separation', async () => {
     const signatures=[
-      'authenticate_student_result_session(uuid,text,text)', 'open_student_result_personal_session(uuid,uuid)',
+      'consume_student_result_rate_limit(text,integer,integer)', 'authenticate_student_result_session(uuid,text,text)', 'open_student_result_personal_session(uuid,uuid)',
       'lock_student_result_session(uuid)', 'confirm_student_result(uuid,timestamptz)',
       'submit_student_result_dispute(uuid,text)', 'reply_student_result_dispute(uuid,uuid,uuid,text)',
       'regenerate_student_result_personal_token(uuid,uuid,uuid,uuid)',
@@ -202,6 +202,29 @@ try {
     await db.query("update public.student_result_events set status='open' where id=$1",[eventId]);
     await db.query("update public.student_result_public_sessions set expires_at=clock_timestamp()-interval '1 second' where token=$1",[active.sessionToken]);
     assert.equal(await dispute(active.sessionToken),'SESSION_EXPIRED');
+  });
+  await check('approved 60/120/600/1200 boundaries use the existing atomic rate limiter', async () => {
+    // Keep now() in one transaction so a wall-clock minute boundary cannot change this test.
+    await db.exec('begin');
+    try {
+      for (const limit of [60,120,600,1200]) {
+        const key='fictional-approved-limit-'+limit;
+        for (let i=0;i<limit;i++) assert.equal(await scalar(
+          'select public.consume_student_result_rate_limit($1,60,$2) as result',[key,limit]),true);
+        assert.equal(await scalar('select public.consume_student_result_rate_limit($1,60,$2) as result',[key,limit]),false);
+      }
+    } finally { await db.exec('rollback'); }
+  });
+  await check('rate-limit windows reset and independent buckets do not consume each other', async () => {
+    await db.exec('begin');
+    try {
+      const key='fictional-exhausted-bucket';
+      assert.equal(await scalar('select public.consume_student_result_rate_limit($1,60,1) as result',[key]),true);
+      assert.equal(await scalar('select public.consume_student_result_rate_limit($1,60,1) as result',[key]),false);
+      assert.equal(await scalar('select public.consume_student_result_rate_limit($1,60,1) as result',['fictional-other-bucket']),true);
+      await db.query("update public.student_result_rate_limits set window_started_at=window_started_at-interval '2 minutes' where request_key=$1",[key]);
+      assert.equal(await scalar('select public.consume_student_result_rate_limit($1,60,1) as result',[key]),true);
+    } finally { await db.exec('rollback'); }
   });
   console.log(`${checks} local SQL checks passed. PGlite uses one connection; multi-connection lock waits and remote deployment are not tested.`);
 } catch (error) { console.error(error.message); process.exitCode = 1; } finally { await db.close(); }

@@ -45,9 +45,10 @@ async function setup() {
     student_result_columns:columns, student_result_public_sessions:sessions, student_result_disputes:disputes };
   const counts = new Map<string,number>(), failures = new Map<string,number>();
   const calls: {path:string;method:string;body?:Row}[] = [];
-  const flags = { failRpc:'', revokeBeforeMutation:false, changeSettingsDuringRead:false, continuouslyChange:false, revokeSessionsDuringRead:false };
+  const flags = { failRpc:'', revokeBeforeMutation:false, changeSettingsDuringRead:false, continuouslyChange:false, revokeSessionsDuringRead:false, failRateAt:0 };
   const json = (data:unknown,status=200) => new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json'}});
   let version = 0;
+  let rateCalls = 0;
   const touch = (r:Row) => { r.updated_at = new Date(Date.UTC(2026,0,1,0,0,1,++version)).toISOString(); };
   const issue = (r:Row) => { const session = {token:crypto.randomUUID(),event_id:eventId,recipient_id:r.id,expires_at:new Date(Date.now()+3600000).toISOString()};
     sessions.push(session); return {code:'OK',recipientId:r.id,sessionToken:session.token}; };
@@ -67,6 +68,8 @@ async function setup() {
       const b=body!;
       if(flags.failRpc===name) return json({code:'fictional_rpc_failure',message:'Fictional transaction unavailable'},503);
       if(name==='consume_student_result_rate_limit') {
+        rateCalls++;
+        if(flags.failRateAt===rateCalls) return json({code:'fictional_rate_failure',message:'Fictional limit unavailable'},503);
         const n=(counts.get(String(b.p_request_key))??0)+1; counts.set(String(b.p_request_key),n);
         return json(n<=Number(b.p_max_requests));
       }
@@ -251,6 +254,73 @@ Deno.test('session revoked during result assembly prevents returning previously 
   f.flags.revokeSessionsDuringRead=true;const response=await f.authenticate(0);const data=await response.json();
   assert(response.status===401&&data.code==='SESSION_EXPIRED'&&!('result'in data));
 }));
+
+Deno.test('one school IP supports 120 metadata reads and 60 common plus 60 personal authentications',()=>fixture(async f=>{
+  const metadata=await Promise.all(Array.from({length:120},()=>f.call({action:'metadata',token:f.token})));
+  assert(metadata.every(r=>r.status===200),'Normal classroom metadata was limited');
+  const common=await Promise.all(Array.from({length:60},(_,i)=>f.authenticate(i)));
+  assert(common.every(r=>r.status===200),'Normal classroom common authentication was limited');
+  const personal=await Promise.all(Array.from({length:60},(_,i)=>f.authenticate(i,true)));
+  assert(personal.every(r=>r.status===200),'Normal classroom personal authentication was limited');
+  assert(f.sessions.length===120&&f.failures.size===0);
+  assert(f.calls.some(c=>c.body?.p_max_requests===1200)&&f.calls.some(c=>c.body?.p_max_requests===600));
+  for(const action of [
+    {action:'metadata',token:f.token},
+    {action:'authenticate',token:f.token,name:'가상학생0',verificationCode:'4800'},
+    {action:'personal',token:f.token,personalToken:f.recipients[0].personal_token},
+  ]){
+    const response=await f.call(action);
+    assert(response.status===429&&(await response.json()).code==='RATE_LIMITED','Action quota did not enforce its boundary');
+  }
+}));
+
+Deno.test('one IP still bounds one student to 10 wrong codes and admits another student',()=>fixture(async f=>{
+  const statuses=[];
+  for(let i=0;i<15;i++)statuses.push((await f.call({action:'authenticate',token:f.token,name:'가상학생0',verificationCode:'wrong'})).status);
+  assert(statuses.filter(s=>s===401).length===10&&statuses.filter(s=>s===429).length===5);
+  assert(f.sessions.length===0);
+  assert((await f.authenticate(1)).status===200,'Another student was blocked by the first student failure quota');
+}));
+
+Deno.test('the same token is capped at 600 requests across different IPs',()=>fixture(async f=>{
+  for(let i=0;i<600;i++){
+    const response=await f.call({action:'metadata',token:f.token},'192.0.2.'+(Math.floor(i/120)+1));
+    assert(response.status===200,'Token quota limited an eligible request '+i);
+  }
+  const before=f.calls.length;
+  const response=await f.call({action:'metadata',token:f.token},'192.0.2.6');
+  assert(response.status===429&&(await response.json()).code==='RATE_LIMITED');
+  const blockedCalls=f.calls.slice(before);
+  assert(blockedCalls.length===2&&blockedCalls.every(c=>c.path.endsWith('/consume_student_result_rate_limit')));
+}));
+
+Deno.test('one IP is capped at 1200 requests across different tokens and actions',()=>fixture(async f=>{
+  for(let i=0;i<1200;i++){
+    const response=await f.call({action:i%2===0?'metadata':'authenticate',token:crypto.randomUUID(),name:'가상학생0',verificationCode:'4800'});
+    assert(response.status===404,'Total IP quota limited an eligible request '+i);
+  }
+  const before=f.calls.length;
+  const response=await f.call({action:'metadata',token:f.token});
+  assert(response.status===429&&(await response.json()).code==='RATE_LIMITED');
+  const blockedCalls=f.calls.slice(before);
+  assert(blockedCalls.length===1&&blockedCalls[0].path.endsWith('/consume_student_result_rate_limit'));
+}));
+
+Deno.test('per-session action quotas remain 60 reads and 10 confirmations',()=>fixture(async f=>{
+  const auth=await(await f.authenticate(0)).json();
+  for(let i=0;i<60;i++)assert((await f.call({action:'session',sessionToken:auth.sessionToken})).status===200);
+  assert((await f.call({action:'session',sessionToken:auth.sessionToken})).status===429);
+  for(let i=0;i<10;i++)assert((await f.call({action:'confirm',sessionToken:auth.sessionToken,expectedUpdatedAt:f.recipients[0].updated_at})).status===200);
+  assert((await f.call({action:'confirm',sessionToken:auth.sessionToken,expectedUpdatedAt:f.recipients[0].updated_at})).status===429);
+}));
+
+for(const bucket of [1,2,3]){
+ Deno.test('rate bucket '+bucket+' failure stops before data access or session issuance',()=>fixture(async f=>{
+  f.flags.failRateAt=bucket;
+  assert((await f.authenticate(0)).status===500&&f.sessions.length===0);
+  assert(f.calls.length===bucket&&f.calls.every(c=>c.path.endsWith('/consume_student_result_rate_limit')));
+ }));
+}
 
 globalThis.addEventListener('unload',()=>{
   keys.forEach((key,i)=>previousEnv[i]===undefined?Deno.env.delete(key):Deno.env.set(key,previousEnv[i]!));

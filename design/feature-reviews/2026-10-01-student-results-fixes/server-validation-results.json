@@ -9,7 +9,7 @@
     ],
     "typecheck": "passed",
     "httpContractTests": {
-      "passed": 18,
+      "passed": 26,
       "failed": 0,
       "network": "mocked"
     }
@@ -17,7 +17,7 @@
   "sql": {
     "engine": "PGlite 0.5.8 with pgcrypto",
     "command": "node tests/server/studentResults.sql.mjs",
-    "passed": 15,
+    "passed": 17,
     "failed": 0,
     "migrations": [
       "202608130002_student_results.sql",
@@ -41,7 +41,9 @@
       "teacher reply rollback",
       "flag-only version unchanged",
       "function grants and actual RLS",
-      "closed or expired mutation rejected"
+      "closed or expired mutation rejected",
+      "approved atomic limiter boundaries 60/120/600/1200",
+      "fixed window reset and independent bucket separation"
     ],
     "limitations": [
       "single database connection; actual multi-connection lock waits are untested",
@@ -49,20 +51,29 @@
     ]
   },
   "sr2": {
-    "status": "partially implemented; school IP quota change blocked by automatic approval review",
-    "retainedLimits": {
-      "commonAuthenticationPerMinute": 10,
-      "personalAuthenticationPerMinute": 20,
-      "metadataPerMinute": 60
-    },
-    "proposalOnly": {
+    "status": "implemented in branch after explicit user approval; not deployed",
+    "approvedLimits": {
       "commonAuthenticationPerMinute": 60,
       "personalAuthenticationPerMinute": 60,
       "metadataPerMinute": 120,
       "allIpRequestsPerMinute": 1200,
       "allTokenRequestsPerMinute": 600
     },
-    "credentialFailuresPerEventNamePerMinute": 10
+    "credentialFailuresPerEventNamePerMinute": 10,
+    "httpChecks": [
+      "120 metadata plus 60 common and 60 personal logins from one IP",
+      "action limit boundaries",
+      "same student ten failed guesses; another student eligible",
+      "token 600 across changing IPs",
+      "IP 1200 across tokens and actions",
+      "existing session action quotas",
+      "each of three limiter failures stops data access"
+    ],
+    "limitations": [
+      "HTTP database and rate RPC responses are mocked",
+      "SQL uses PGlite single connection",
+      "actual school NAT traffic, remote latency and deployment untested"
+    ]
   },
   "remote": {
     "database": "not applied",

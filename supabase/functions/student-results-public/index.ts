@@ -28,9 +28,9 @@ const db = createClient(supabaseUrl, serviceRoleKey, {
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const actionLimits: Record<string, number> = {
-  metadata: 60,
-  authenticate: 10,
-  personal: 20,
+  metadata: 120,
+  authenticate: 60,
+  personal: 60,
   session: 60,
   confirm: 10,
   dispute: 10,
@@ -72,11 +72,19 @@ const consumeRateLimit = async (request: Request, action: string, scope: string)
     ?? request.headers.get('x-real-ip')
     ?? request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
     ?? 'unknown';
-  const requestKey = await hashText(`${ip}:${scope}:${action}`);
+  // The classroom action quotas and the IP/token totals use separate buckets.
+  // Failed and successful requests count toward totals; credential guesses retain
+  // their separate event/name-HMAC failure quota in the authentication transaction.
+  await consumeRateLimitBucket('student-results:ip:' + ip, 1200);
+  await consumeRateLimitBucket('student-results:token:' + scope, 600);
+  await consumeRateLimitBucket(ip + ':' + scope + ':' + action, actionLimits[action] ?? 10);
+};
+
+const consumeRateLimitBucket = async (scope: string, maxRequests: number) => {
   const { data, error } = await db.rpc('consume_student_result_rate_limit', {
-    p_request_key: requestKey,
+    p_request_key: await hashText(scope),
     p_window_seconds: 60,
-    p_max_requests: actionLimits[action] ?? 10,
+    p_max_requests: maxRequests,
   });
   if (error) throw error;
   if (data !== true) throw new HttpError(429, '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.', 'RATE_LIMITED');
