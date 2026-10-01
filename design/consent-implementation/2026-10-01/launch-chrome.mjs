@@ -1,0 +1,13 @@
+import {chromium} from 'playwright';
+import {writeFile} from 'node:fs/promises';
+const browser=await chromium.launch({channel:'chrome',headless:false,args:['--remote-debugging-port=9229']});
+const context=await browser.newContext({viewport:{width:1366,height:900},acceptDownloads:true});const page=await context.newPage();
+const errors=[];page.on('pageerror',e=>errors.push(e.message));
+await page.goto('http://127.0.0.1:4181/tools/consent-forms');await page.getByRole('button',{name:'Google로 로그인'}).waitFor();
+const title=await page.getByRole('heading',{name:'가정통신문 수합',exact:true}).innerText();
+await page.screenshot({path:'design/consent-implementation/2026-10-01/evidence/initial-chrome.png',fullPage:true});
+await page.getByRole('link',{name:'홈'}).first().click().catch(()=>page.goto('http://127.0.0.1:4181/'));
+await page.getByRole('heading').first().waitFor();
+await writeFile('design/consent-implementation/2026-10-01/evidence/initial-chrome.json',JSON.stringify({browser:browser.version(),title,bodyLength:(await page.locator('body').innerText()).length,errors},null,2));
+console.log('CHROME_READY',browser.version(),'title:',title,'errors:',errors.length);
+setInterval(()=>{},60000);

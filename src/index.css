@@ -532,6 +532,8 @@ html[data-schooldoc-font-size="large"] .schooldoc-admin-shell {
     visibility: hidden;
   }
 
+  .consent-qr-print-root,
+  .consent-qr-print-root *,
   .registry-print-root,
   .registry-print-root *,
   .student-result-qr-print-root,
@@ -546,6 +548,7 @@ html[data-schooldoc-font-size="large"] .schooldoc-admin-shell {
     inset: 0;
   }
 
+  .consent-qr-print-root,
   .student-result-qr-print-root {
     position: absolute;
     inset: 0;
@@ -571,14 +574,28 @@ html[data-schooldoc-font-size="large"] .schooldoc-admin-shell {
   }
 
   .registry-print-page,
+  .consent-qr-print-page,
   .student-result-qr-print-page {
     box-shadow: none !important;
     break-after: page;
     page-break-after: always;
   }
 
+  .consent-qr-print-page:last-child,
   .student-result-qr-print-page:last-child {
     break-after: auto;
     page-break-after: auto;
   }
+}
+
+/* 좁은 화면과 글자 확대에서도 관리 작업이 줄바꿈된다. */
+.consent-manage button { min-width: 44px; min-height: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.consent-manage button svg { flex-shrink: 0; }
+.consent-manage button:disabled { opacity: .5; cursor: not-allowed; }
+
+.consent-recipient-row, .consent-response-row {display: grid;grid-template-columns: auto minmax(0,1fr);align-items: start;gap: .5rem;}
+.consent-recipient-row > button, .consent-response-row > button {grid-column: 2;justify-self: start;}
+.consent-recipient-row > div {overflow-wrap: anywhere;}
+@media (min-width: 640px) {
+ .consent-recipient-row, .consent-response-row {display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;}
 }

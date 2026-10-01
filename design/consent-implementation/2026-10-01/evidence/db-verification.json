@@ -1,0 +1,42 @@
+{
+  "postgres": "PostgreSQL 18.4 on x86_64-windows, compiled by msvc-19.44.35226, 64-bit",
+  "migrationSha256": "c21a4567bc304064b006a6891e1b777b256d4d2bbcef513d80ed78c92681ce00",
+  "checks": [
+    {
+      "name": "동일 요청 8개 동시 제출은 응답 1개로 커밋",
+      "result": "pass"
+    },
+    {
+      "name": "다른 두 화면 재제출은 하나만 성공하고 오래된 화면은 409",
+      "result": "pass"
+    },
+    {
+      "name": "서명 메타데이터 실패 시 응답·명단 포인터·카운터 전체 롤백",
+      "result": "pass"
+    },
+    {
+      "name": "원본 수정·오래된 문서 제출·활성 수합 파기 차단",
+      "result": "pass"
+    },
+    {
+      "name": "최신 결과 1개와 제출 이력 2개를 별도 보존",
+      "result": "pass"
+    },
+    {
+      "name": "다른 교사 RLS 및 직접 수정/RPC 권한 우회 차단",
+      "result": "pass"
+    },
+    {
+      "name": "파기 수량 변경·파기 중 재개 차단, 행과 감사 기록 원자적 삭제",
+      "result": "pass"
+    },
+    {
+      "name": "명단 재저장은 개인 토큰과 변경 없는 암호문을 보존",
+      "result": "pass"
+    },
+    {
+      "name": "관리 첫 조회는 60명과 응답 헤더만, 응답 본문/서명 URL 제외",
+      "result": "pass"
+    }
+  ]
+}

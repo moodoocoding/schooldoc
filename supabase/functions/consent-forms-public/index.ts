@@ -1,7 +1,7 @@
-import { consentChoiceConfigError, consentResponseError, type QuestionField } from '../_shared/consentQuestions.ts';
+import { consentResponseError, type QuestionField } from '../_shared/consentQuestions.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8';
 import { consentCrypto, type ConsentRecipientIdentity } from '../_shared/consentCrypto.ts';
-import { isConsentFieldRectValid } from '../_shared/consentFieldGeometry.ts';
+import { ConsentHttpError as HttpError, dbResult, uuidPattern, validateConsentFields, responseDetails, recordCleanup } from '../_shared/consentServer.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,16 +11,16 @@ const corsHeaders = {
 const json = (status: number, body: Record<string, unknown>) => new Response(JSON.stringify(body), {
   status, headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' },
 });
-class HttpError extends Error { constructor(public status: number, message: string) { super(message); } }
+
 
 const url = Deno.env.get('SUPABASE_URL');
 const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_SECRET_KEY');
 if (!url || !key) throw new Error('Supabase service environment is not configured.');
 const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 
 interface FormRow {
-  id: string; title: string; description: string; source_path: string; fields: Array<Record<string, unknown>>;
+  id: string; owner_id: string; publication_state: string; document_revision: number; title: string; description: string; source_path: string; fields: Array<Record<string, unknown>>;
   deadline: string | null; password_digest: string | null; allow_resubmission: boolean; status: 'open' | 'closed';
   page_count: number;
   page_sizes: Array<{ width: number; height: number }> | null;
@@ -43,13 +43,14 @@ const rateLimit = async (request: Request, token: string, action: string) => {
   if (result.error) throw result.error;
   if (!result.data) throw new HttpError(429, '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.');
 };
-const getForm = async (token: string) => {
-  const result = await db.from('consent_forms').select('id,title,description,source_path,fields,page_count,page_sizes,deadline,password_digest,allow_resubmission,status').eq('public_token', token).maybeSingle();
-  if (result.error) throw result.error;
-  if (!result.data) throw new HttpError(404, '가정통신문을 찾을 수 없습니다.');
-  return result.data as FormRow;
+const getContext = async (token: string, value: unknown) => {
+  if (value !== undefined && value !== null && value !== '' && (typeof value !== 'string' || !uuidPattern.test(value)))
+    throw new HttpError(400, '개인 링크 형식이 올바르지 않습니다. 담당자에게 링크를 다시 요청해 주세요.');
+  return dbResult(await db.rpc('consent_public_context', { p_token: token, p_recipient_token: value || null })) as { form: FormRow; recipient: RecipientRow | null };
 };
 const ensureOpen = (form: FormRow) => {
+  if (form.publication_state === 'preparing') throw new HttpError(425, DOCUMENT_PREPARING);
+  if (form.publication_state === 'purging') throw new HttpError(410, '응답이 종료되었습니다.');
   if (form.status === 'closed' || (form.deadline && form.deadline < new Date().toISOString().slice(0, 10))) throw new HttpError(410, '응답이 종료되었습니다.');
 };
 const verifyPassword = async (form: FormRow, password: unknown) => {
@@ -64,18 +65,6 @@ interface RecipientRow {
   response_id: string | null; submitted_at: string | null;
 }
 
-/** 개인 링크로 들어온 경우에만 수신자를 찾는다. 공용 링크는 지금까지처럼 익명으로 받는다. */
-const getRecipient = async (form: FormRow, value: unknown) => {
-  if (typeof value !== 'string' || !uuidPattern.test(value)) return null;
-  const result = await db.from('consent_recipients')
-    .select('id, form_id, identity_ciphertext, display_hint, response_id, submitted_at')
-    .eq('token', value).maybeSingle();
-  if (result.error) throw result.error;
-  const recipient = result.data as RecipientRow | null;
-  if (!recipient || recipient.form_id !== form.id) throw new HttpError(404, '이 링크의 수신자를 찾을 수 없습니다.');
-  return recipient;
-};
-
 const recipientName = async (recipient: RecipientRow) => {
   if (!consentCrypto.isConfigured()) return recipient.display_hint;
   const identity = await consentCrypto.decryptPayload<ConsentRecipientIdentity>(recipient.identity_ciphertext);
@@ -83,26 +72,6 @@ const recipientName = async (recipient: RecipientRow) => {
 };
 
 const metadata = (form: FormRow) => ({ title: form.title, description: form.description, passwordRequired: Boolean(form.password_digest), status: form.status, deadline: form.deadline ?? '' });
-const validateFields = (form: FormRow) => {
-  if (!Array.isArray(form.fields) || form.fields.length > 200) throw new HttpError(422, '응답 필드 설정을 확인해 주세요.');
-  const ids = new Set<string>();
-  for (const field of form.fields) {
-    const id = typeof field.id === 'string' ? field.id : '';
-    const kind = typeof field.kind === 'string' ? field.kind : '';
-    const label = typeof field.label === 'string' ? field.label.trim() : '';
-    const pageIndex = typeof field.pageIndex === 'number' ? field.pageIndex : -1;
-    const values = [field.x, field.y, field.width, field.height];
-    if (!id || ids.has(id) || !['text', 'checkbox', 'date', 'signature'].includes(kind)) throw new HttpError(422, '응답 필드 설정을 확인해 주세요.');
-    if (!label || label.length > 80 || !Number.isInteger(pageIndex) || pageIndex < 0 || pageIndex >= form.page_count) throw new HttpError(422, '응답 필드 설정을 확인해 주세요.');
-    if (!values.every((value) => typeof value === 'number' && Number.isFinite(value))) throw new HttpError(422, '응답 필드 좌표를 확인해 주세요.');
-    const [x, y, width, height] = values as number[];
-    if (!isConsentFieldRectValid(kind, x, y, width, height)) throw new HttpError(422, '응답 필드 좌표를 확인해 주세요.');
-    ids.add(id);
-  }
-  const choiceError = consentChoiceConfigError(form.fields as unknown as QuestionField[]);
-  if (choiceError) throw new HttpError(422, choiceError);
-};
-
 const parseSignature = (value: string) => {
   if (value.length > 800_000) throw new HttpError(400, '서명 이미지가 너무 큽니다.');
   const match = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/.exec(value);
@@ -112,90 +81,103 @@ const parseSignature = (value: string) => {
   return { bytes, extension: match[1] === 'jpeg' ? 'jpg' : match[1], contentType: `image/${match[1]}` };
 };
 
-Deno.serve(async (request) => {
+export const consentPublicHandler = async (request: Request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (request.method !== 'POST') return json(405, { error: '허용되지 않은 요청입니다.' });
   try {
     const body = await request.json() as Record<string, unknown>;
     const action = typeof body.action === 'string' ? body.action : '';
     const token = typeof body.token === 'string' ? body.token : '';
-    if (!['metadata', 'document', 'submit'].includes(action) || !uuidPattern.test(token)) throw new HttpError(400, '요청 형식이 올바르지 않습니다.');
+    if (!['open', 'metadata', 'document', 'submit'].includes(action) || !uuidPattern.test(token)) throw new HttpError(400, '요청 형식이 올바르지 않습니다.');
     await rateLimit(request, token, action);
-    const form = await getForm(token);
-    const recipient = await getRecipient(form, body.recipientToken);
-    if (action === 'metadata') {
+    const { form, recipient } = await getContext(token, body.recipientToken);
+    if (action === 'metadata' || (action === 'open' && Boolean(form.password_digest))) {
       return json(200, { form: { ...metadata(form), recipientHint: recipient?.display_hint ?? '', recipientSubmitted: Boolean(recipient?.submitted_at) } });
     }
-    ensureOpen(form);
-    validateFields(form);
+    if (action !== 'submit') ensureOpen(form);
+    validateConsentFields(form.fields, form.page_count);
     await verifyPassword(form, body.password);
-    if (action === 'document') {
+    if (action === 'document' || action === 'open') {
       const signed = await db.storage.from('consent-documents').createSignedUrl(form.source_path, 60 * 60);
       // 원본이 아직 올라오지 않은 상태는 실패가 아니라 준비 중이다.
       // 425를 받은 화면은 오류 대신 준비 안내를 띄우고 스스로 다시 시도한다.
       if (signed.error && notFound(signed.error)) throw new HttpError(425, DOCUMENT_PREPARING);
       if (signed.error || !signed.data?.signedUrl) throw new HttpError(500, '원본 PDF를 불러오지 못했습니다.');
-      return json(200, { form: { ...metadata(form), fields: form.fields, sourceUrl: signed.data.signedUrl, allowResubmission: form.allow_resubmission, pageCount: form.page_count, pageSizes: form.page_sizes?.length ? form.page_sizes : Array.from({ length: form.page_count }, () => ({ width: 210, height: 297 })), recipientName: recipient ? await recipientName(recipient) : '', recipientSubmitted: Boolean(recipient?.submitted_at) } });
+      const previous = recipient?.response_id ? (await responseDetails(db, dbResult(await db.from('consent_responses').select('id,values_ciphertext,submitted_at,recipient_id').eq('id', recipient.response_id).eq('form_id',form.id)) ?? []))[0] : null;
+      return json(200, { form: { ...metadata(form), documentRevision: form.document_revision, previousValues: previous?.values ?? {}, previousResponseId: previous?.id ?? null, fields: form.fields, sourceUrl: signed.data.signedUrl, allowResubmission: form.allow_resubmission, pageCount: form.page_count, pageSizes: form.page_sizes?.length ? form.page_sizes : Array.from({ length: form.page_count }, () => ({ width: 210, height: 297 })), recipientName: recipient ? await recipientName(recipient) : '', recipientSubmitted: Boolean(recipient?.submitted_at) } });
     }
 
     if (!body.values || typeof body.values !== 'object' || Array.isArray(body.values)) throw new HttpError(400, '응답 형식이 올바르지 않습니다.');
     const submitted = body.values as Record<string, unknown>;
-    const responseError = consentResponseError(form.fields as unknown as QuestionField[], submitted);
-    if (responseError) throw new HttpError(400, responseError);
+    const reuse = Array.isArray(body.reuseSignatureFields) ? body.reuseSignatureFields : [];
+    if (reuse.some(id => typeof id !== 'string' || !form.fields.some(f => f.id === id && f.kind === 'signature'))) throw new HttpError(400, '서명 형식이 올바르지 않습니다.');
+    if(body.expectedResponseId!==undefined && body.expectedResponseId!==null && (typeof body.expectedResponseId!=='string' || !uuidPattern.test(body.expectedResponseId))) throw new HttpError(400,'이전 응답을 확인해 주세요.');
+    const previousSignatures = recipient?.response_id
+      ? dbResult(await db.from('consent_response_signatures').select('field_id,storage_path').eq('response_id',typeof body.expectedResponseId==='string'?body.expectedResponseId:recipient.response_id)) ?? [] : [];
     const cleanValues: Record<string, string> = {};
-    const signatures: Array<{ fieldId: string; data: ReturnType<typeof parseSignature> }> = [];
+    const signatures: Array<{ fieldId: string; data?: ReturnType<typeof parseSignature>; path?: string }> = [];
+    const validated = { ...submitted };
     for (const field of form.fields) {
-      const id = typeof field.id === 'string' ? field.id : '';
-      const kind = typeof field.kind === 'string' ? field.kind : '';
-      const label = typeof field.label === 'string' ? field.label : '필수 항목';
-      const value = submitted[id];
-      if (field.required && (typeof value !== 'string' || !value)) throw new HttpError(400, `${label} 항목을 입력해 주세요.`);
-      if (value === undefined || value === '') continue;
-      if (typeof value !== 'string') throw new HttpError(400, '응답 값 형식이 올바르지 않습니다.');
-      if (kind === 'signature') signatures.push({ fieldId: id, data: parseSignature(value) });
-      else {
-        if (value.length > 5000) throw new HttpError(400, `${label} 항목이 너무 깁니다.`);
-        cleanValues[id] = value;
+      const id = String(field.id); const value = submitted[id];
+      if (field.kind === 'signature' && reuse.includes(id)) {
+        const previous = previousSignatures.find(s => s.field_id === id);
+        if (!previous) throw new HttpError(409, '이전 서명을 확인하지 못했습니다. 문서를 다시 열어 주세요.');
+        signatures.push({ fieldId:id, path:previous.storage_path }); validated[id] = 'previous-signature';
+      } else if (value !== undefined && value !== '') {
+        if (typeof value !== 'string' || value.length > (field.kind === 'signature' ? 800000 : 5000)) throw new HttpError(400, '응답 값 형식이나 길이를 확인해 주세요.');
+        if (field.kind === 'signature') signatures.push({ fieldId:id, data:parseSignature(value) });
+        else cleanValues[id] = value;
       }
     }
-    if (recipient?.submitted_at && !form.allow_resubmission) throw new HttpError(409, '이미 제출한 가정통신문입니다. 담당자에게 문의해 주세요.');
-
+    const issue = consentResponseError(form.fields as unknown as QuestionField[], validated);
+    if (issue) throw new HttpError(400, issue);
+    if (typeof body.requestId !== 'string' || !uuidPattern.test(body.requestId) || !Number.isInteger(body.documentRevision))
+      throw new HttpError(400, '화면을 새로 열고 다시 제출해 주세요.');
+    const requestDigest = await hash(JSON.stringify([Object.entries(cleanValues).sort(), signatures.map(s => [s.fieldId,s.path ?? submitted[s.fieldId]]).sort(),body.documentRevision,body.expectedResponseId ?? null]));
+    // 재시도는 기존 커밋을 먼저 확인한다. 서명을 다시 업로드하지 않는다.
+    const existing = dbResult(await db.from('consent_responses').select('id,request_digest,recipient_id,submitted_at').eq('form_id',form.id).eq('request_id',body.requestId).maybeSingle());
+    if (existing) {
+      if (existing.request_digest !== requestDigest || (existing.recipient_id ?? null) !== (recipient?.id ?? null)) throw new HttpError(409, '다른 응답에 사용된 요청입니다.');
+      return json(200,{submitted:true,responseId:existing.id,replayed:true});
+    }
     const responseId = crypto.randomUUID();
     // 응답 본문은 평문으로 남기지 않는다. 복호는 소유자를 확인한 관리 함수만 한다.
     if (!consentCrypto.isConfigured()) throw new HttpError(503, '서버 준비가 끝나지 않았습니다. 잠시 후 다시 시도해 주세요.');
-    const inserted = await db.from('consent_responses').insert({
-      id: responseId,
-      form_id: form.id,
-      values_ciphertext: await consentCrypto.encryptPayload(cleanValues),
-      recipient_id: recipient?.id ?? null,
-    });
-    if (inserted.error) throw inserted.error;
     const uploaded: string[] = [];
     try {
+      const signatureRows = [];
       for (const signature of signatures) {
-        const path = `${form.id}/${responseId}/${signature.fieldId}.${signature.data.extension}`;
-        const result = await db.storage.from('consent-signatures').upload(path, signature.data.bytes, { contentType: signature.data.contentType });
-        if (result.error) throw result.error;
-        uploaded.push(path);
-        const row = await db.from('consent_response_signatures').insert({ response_id: responseId, field_id: signature.fieldId, storage_path: path });
-        if (row.error) throw row.error;
+        if (signature.data) {
+          const path = `${form.id}/${responseId}/${signature.fieldId}.${signature.data.extension}`;
+          dbResult(await db.storage.from('consent-signatures').upload(path, signature.data.bytes, { contentType: signature.data.contentType }));
+          uploaded.push(path); signatureRows.push({field_id:signature.fieldId,storage_path:path});
+        } else signatureRows.push({field_id:signature.fieldId,storage_path:signature.path});
       }
-      if (recipient) {
-        const linked = await db.from('consent_recipients')
-          .update({ response_id: responseId, submitted_at: new Date().toISOString() }).eq('id', recipient.id);
-        if (linked.error) throw linked.error;
+      const committed = dbResult(await db.rpc('commit_consent_response', {
+        p_token:token,p_recipient_token:body.recipientToken || null,p_response_id:responseId,p_request_id:body.requestId,
+        p_request_digest:requestDigest,p_values_ciphertext:await consentCrypto.encryptPayload(cleanValues),p_signatures:signatureRows,
+        p_document_revision:body.documentRevision,p_expected_response_id:body.expectedResponseId ?? null,
+      }));
+      // 동시 요청의 다른 쪽이 먼저 커밋했다면 이번 업로드는 쓰이지 않는다.
+      if (committed.replayed && uploaded.length) {
+        const removed = await db.storage.from('consent-signatures').remove(uploaded);
+        if (removed.error) await recordCleanup(db,form.owner_id,form.id,'submission',uploaded);
       }
-      const count = await db.rpc('increment_consent_response_count', { p_form_id: form.id });
-      if (count.error) throw count.error;
+      return json(200,{submitted:true,responseId:committed.responseId,replayed:committed.replayed});
     } catch (error) {
-      if (uploaded.length) await db.storage.from('consent-signatures').remove(uploaded);
-      await db.from('consent_responses').delete().eq('id', responseId);
+      // DB 응답 유실 시 커밋 여부부터 확인한다. 확인 실패면 파일을 보존한다.
+      const check = await db.from('consent_responses').select('id').eq('id',responseId).maybeSingle();
+      if (uploaded.length && !check.error && !check.data) {
+        const removed = await db.storage.from('consent-signatures').remove(uploaded);
+        if (removed.error) await recordCleanup(db,form.owner_id,form.id,'submission',uploaded);
+      } else if (uploaded.length && check.error) await recordCleanup(db,form.owner_id,form.id,'submission',uploaded);
       throw error;
     }
-    return json(200, { submitted: true });
+
   } catch (error) {
     if (error instanceof HttpError) return json(error.status, { error: error.message });
-    console.error(error);
+    console.error('consent public request failed');
     return json(500, { error: '가정통신문 요청을 처리하지 못했습니다.' });
   }
-});
+};
+if (import.meta.main) Deno.serve(consentPublicHandler);

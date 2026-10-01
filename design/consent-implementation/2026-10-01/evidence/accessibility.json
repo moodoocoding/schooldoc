@@ -1,0 +1,92 @@
+{
+  "browser": "154.0.8037.58",
+  "scans": [
+    {
+      "name": "빈 수합",
+      "layout": {
+        "width": 1366,
+        "scrollWidth": 1360,
+        "outside": []
+      },
+      "violations": [],
+      "incomplete": []
+    },
+    {
+      "name": "24명",
+      "layout": {
+        "width": 1366,
+        "scrollWidth": 1360,
+        "outside": []
+      },
+      "violations": [],
+      "incomplete": []
+    },
+    {
+      "name": "60명",
+      "layout": {
+        "width": 1366,
+        "scrollWidth": 1360,
+        "outside": []
+      },
+      "violations": [],
+      "incomplete": []
+    },
+    {
+      "name": "2000명·응답100건",
+      "layout": {
+        "width": 1366,
+        "scrollWidth": 1360,
+        "outside": []
+      },
+      "violations": [],
+      "incomplete": []
+    },
+    {
+      "name": "관리390px·루트글자200%",
+      "layout": {
+        "width": 390,
+        "scrollWidth": 384,
+        "outside": []
+      },
+      "violations": [],
+      "incomplete": []
+    },
+    {
+      "name": "공개390px",
+      "layout": {
+        "width": 390,
+        "scrollWidth": 384,
+        "outside": []
+      },
+      "violations": [],
+      "incomplete": [
+        "color-contrast"
+      ]
+    },
+    {
+      "name": "공개390px·루트글자200%·입력창",
+      "layout": {
+        "width": 390,
+        "scrollWidth": 384,
+        "outside": []
+      },
+      "violations": [],
+      "incomplete": [
+        "color-contrast"
+      ]
+    }
+  ],
+  "errors": [],
+  "largeExport": {
+    "rows": 2000,
+    "responses": 100,
+    "pending": 1900,
+    "namesPresent": true
+  },
+  "maximumCounts": {
+    "recipients": 2000,
+    "submitted": 100,
+    "pending": 1900,
+    "loadedHeaders": 100
+  }
+}

@@ -33,6 +33,10 @@ describe('consent response render', () => {
     expect(lines.join('')).toBe('보호자 확인 후 참가에 동의합니다');
   });
 
+  it('5000자 응답은 원본 칸에 무리하게 그리지 않고 별지 대상으로 구분한다',()=>{
+    const fitted=fitTextLines(measure,'긴 응답'.repeat(1000),100,20,10);expect(fitted.overflow).toBe(true);expect(fitted.lines).toEqual([]);
+  });
+
   it('짧은 글은 한 줄로 두고 글꼴을 줄이지 않는다', () => {
     const { lines, fontSize } = fitTextLines(measure, '예', 100, 40, 20);
     expect(lines).toEqual(['예']);

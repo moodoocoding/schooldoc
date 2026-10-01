@@ -1,0 +1,77 @@
+[
+  {
+    "file": "response.pdf",
+    "pages": 2,
+    "rendered": [
+      {
+        "image": "response-1.png",
+        "width": 662,
+        "height": 935,
+        "inkRatio": 0.0139
+      },
+      {
+        "image": "response-2.png",
+        "width": 662,
+        "height": 935,
+        "inkRatio": 0.0015
+      }
+    ],
+    "allPagesNonblank": true
+  },
+  {
+    "file": "long-response-with-signature.pdf",
+    "pages": 4,
+    "rendered": [
+      {
+        "image": "long-response-with-signature-1.png",
+        "width": 662,
+        "height": 935,
+        "inkRatio": 0.0105
+      },
+      {
+        "image": "long-response-with-signature-2.png",
+        "width": 662,
+        "height": 935,
+        "inkRatio": 0.0018
+      },
+      {
+        "image": "long-response-with-signature-3.png",
+        "width": 662,
+        "height": 936,
+        "inkRatio": 0.2068
+      },
+      {
+        "image": "long-response-with-signature-4.png",
+        "width": 662,
+        "height": 936,
+        "inkRatio": 0.0936
+      }
+    ],
+    "allPagesNonblank": true
+  },
+  {
+    "file": "qr-browser-print.pdf",
+    "pages": 3,
+    "rendered": [
+      {
+        "image": "qr-browser-print-1.png",
+        "width": 663,
+        "height": 937,
+        "inkRatio": 0.106
+      },
+      {
+        "image": "qr-browser-print-2.png",
+        "width": 663,
+        "height": 937,
+        "inkRatio": 0.1051
+      },
+      {
+        "image": "qr-browser-print-3.png",
+        "width": 663,
+        "height": 937,
+        "inkRatio": 0.1048
+      }
+    ],
+    "allPagesNonblank": true
+  }
+]
