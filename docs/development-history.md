@@ -77,3 +77,16 @@
 - 공통 파일: `src/features/activeWork/activeWorkProviders.ts`, `tests/e2e/active-work.spec.ts`는 별도 shared 커밋. `src/index.css`는 특별실 scoped 인쇄/색상, `DEVELOPMENT.md`는 특별실 동작·검증·적용 경계 설명만 추가. 의존성·인증·다른 기능 제품 파일 변경 없음.
 - DB 새 이력: `supabase/migrations/202610010600_special_room_scoped_sync.sql`. 관련 함수: `special-rooms-public`, `special-rooms-admin` 및 특별실 `_shared` 두 파일. DB/함수/프런트 운영 적용은 모두 미적용.
 - 작업일지는 기능·공통 코드와 분리한 `docs(special-rooms): 구현과 실제 Chrome 검증 일지 기록` 커밋으로 정리한다. GitHub/통합/main/운영 배포는 통합 세션에서 담당하며 이 세션에서는 실행하지 않았다.
+
+## 2026-10-02 네 기능 리뷰 수정 통합과 DB·서버 배포 (codex)
+
+- 가정통신문·등록부·자료 수합·특별실 예약의 완료 커밋과 기능별 작업일지를 별도 워크트리에서 통합했다. 네 기능 브랜치의 GitHub SHA가 인계 SHA와 같은지 확인했으며 [통합 PR #45](https://github.com/moodoocoding/schooldoc/pull/45)를 만들었다.
+- 기능별 기록: [가정통신문](feature-review-consent-2026-10-01.md), [등록부](feature-review-registry-2026-10-01.md), [자료 수합](feature-review-data-collect-2026-10-01.md), [특별실](feature-review-special-rooms-2026-10-01.md). 공통 CSS와 개발 참고 충돌은 모든 기능의 규칙을 보존해 해결했다. 기존 공유 main의 영수증 미커밋 변경은 보존하고 배포에 포함하지 않았다.
+- [통합 검사·적용 보고서](../design/feature-reviews/2026-10-02-integration/report.md): 타입·린트(기존 경고 6개)·빌드·전체 단위 501개 통과. 실제 설치 Chrome의 네 기능·진행 업무·스크롤 고유 검사 90개 통과, 공통 집계 보완 뒤 진행 업무 5개 재검사. PDF worker 공유 경로 및 모의 API 환경 부재를 바로잡은 재실행 결과와 첫 실패 로그도 구분해 기록했다.
+- 아홉 Edge Functions Deno check와 계약/로컬 SQL 검사 11개·10단계 통과. PGlite+pgcrypto에서 전체 마이그레이션 33개 함께 적용, 현재 응답 집계와 직접 제출 RPC 권한을 확인했다. Auth/Storage/Realtime 어댑터 한계를 표시했으며 실제 서비스 전체 검사로 보고하지 않았다.
+- 통합에서 가정통신문 재제출 누적 수가 진행 업무의 현재 응답 수로 표시되는 문제를 추가로 고쳤다. preparing 수합도 숨겼다. 이미 적용한 SQL을 수정하지 않고 새 202610020100_consent_active_summary.sql과 실제 Chrome·SQL fixture 검사를 추가했다.
+- Supabase jhystopaacyfvjxhnpyd에 신규 SQL 5개를 적용하고 local/remote 33개 이력과 실제 집계 함수 정의·권한을 확인했다. 관련 Edge 9개를 지정 배포해 ACTIVE·버전·기존 JWT 설정 유지 확인. 브라우저 공개 함수의 기존 verify_jwt=false를 배포 설정에도 명시했고 기존 암호화/Auth 키는 교체하지 않았다.
+- 배포된 API 읽기·형식 오류·익명 거부/RLS 검사 17개 통과. 운영 업무 생성·실제 제출·파일 삭제·파기, 실제 로그인·소유자 간 쓰기·서버 PDF·다중 연결 부하 검사는 자동 실행하지 않았다.
+- 가정통신문의 긴 QR 이름과 긴 목록 배치 개선이 남는다. 특별실 새 private 알림 서명키는 준비되지 않아 수동/복귀/5분 조건부 갱신을 사용하며 빠른 알림 활성화·Realtime 권한과 부하 검증은 남는다.
+- 이 기록 시점: GitHub 기능별 브랜치·통합 PR 게시 완료, DB·Edge 적용 확인, main 병합·프런트 운영 배포 대기. main 자동 배포가 확인돼 DB→지정 서버→main/프런트 순서를 지켰다. 최종 결과는 확인 후 다음 기록과 PR 배포 표에 반영한다.
+- 기존 외부 개발일지는 해당 checkout에서 확인되지 않아 저장소의 공용·기능별 일지를 사용했다. 실제 전문가·교사 사용성 시험을 받았다고 보고하지 않는다.
