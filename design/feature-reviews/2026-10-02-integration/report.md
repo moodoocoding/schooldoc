@@ -58,3 +58,7 @@ DEVELOPMENT.md와 src/index.css의 추가 부분 충돌은 양쪽 기능 규칙�
 - 지정 Edge Functions 아홉 개 배포 성공, ACTIVE 및 기존 verify_jwt 설정 유지 확인. [배포 로그](edge-deploy.txt), [버전](edge-versions.json). 가정통신문 공개는 false, 자료 수합 공개도 false이며 다른 7개 대상은 true다. 데이터 수합 공개의 기존 false 설정을 supabase/config.toml에 명시해 CLI 기본값으로 바뀌지 않게 했다.
 - [원격 API 결과](remote-api.json)의 17개 읽기/거부/익명 RLS 검사 통과. 업무 자료 생성·제출·파일 삭제·파기는 하지 않았다. 기존 키도 교체하지 않았다. 실제 로그인·소유자 간 쓰기·Storage 제출·서버 PDF·Realtime·부하 한계는 계속 남는다.
 - [통합 PR #45](https://github.com/moodoocoding/schooldoc/pull/45)를 첨부했다. DB·서버 적용 완료 후 main squash 병합과 Vercel 자동 운영 배포를 진행한다. 프런트엔드는 이 기록 시점에서 미적용이며 최종 운영 URL/배포 식별자는 PR 배포 표와 후속 일지에 기록한다.
+
+## main 병합과 프런트 운영 확인
+
+[PR #45](https://github.com/moodoocoding/schooldoc/pull/45)를 main `fdc2e19ffbf4c1f923998fbb4b5616b90f28e866`으로 squash 병합했다. Vercel `dpl_FkSNmp6MtwTk7bdCH3XK6KKcxLR8`의 READY·main SHA 일치를 확인했고 [운영 사이트](https://schooldoc-nine.vercel.app)를 설치된 Chrome으로 확인했다. 운영 데스크톱·모바일의 홈/로그인 전 관리 탐색/존재하지 않는 공개 링크 18개와 재시도 4개 통과, page error 0·가로 넘침 0. 실제 운영 404를 확인했지만 로그인 후 제출·Storage·PDF·Realtime·부하는 미검증이다. [최종 적용 기록](release.md)에 배포 ID·증거·재현 도구·전체 캡처·남은 일을 남겼다.
