@@ -1,0 +1,607 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Users\\panth\\.codex\\worktrees\\review-data-collect-20261001\\260812_schooldoc\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      ".tmp/data-collect-runtime/playwright.config.ts",
+      "tests/e2e/data-collect.spec.ts",
+      "tests/e2e/data-collect-fix.spec.ts"
+    ],
+    "configFile": "C:\\Users\\panth\\.codex\\worktrees\\review-data-collect-20261001\\260812_schooldoc\\.tmp\\data-collect-runtime\\playwright.config.ts",
+    "rootDir": "C:/Users/panth/.codex/worktrees/review-data-collect-20261001/260812_schooldoc/tests/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/panth/.codex/worktrees/review-data-collect-20261001/260812_schooldoc/.tmp/data-collect-playwright",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Users/panth/.codex/worktrees/review-data-collect-20261001/260812_schooldoc/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "/[\\\\/]data-collect[^\\\\/]*\\.spec\\.ts$/"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "C:/Users/panth/.codex/worktrees/review-data-collect-20261001/260812_schooldoc/design/feature-reviews/2026-10-01-data-collect-fix/playwright-final.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.62.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "data-collect-fix.spec.ts",
+      "file": "data-collect-fix.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "실제 Chrome: 잘못된 파일은 대상 생성 없이 차단하고 코드를 복구하여 버전을 유지한다",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4046,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-01T14:45:55.273Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "807de855a40730de4901-d52591f5411b9f03dd57",
+          "file": "data-collect-fix.spec.ts",
+          "line": 54,
+          "column": 1
+        },
+        {
+          "title": "실제 Chrome: 재제출 금지·동명이인·검색 빈 결과와 오류가 구분된다",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3770,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-01T14:45:59.649Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "807de855a40730de4901-f8e9cb629061aebe1fde",
+          "file": "data-collect-fix.spec.ts",
+          "line": 125,
+          "column": 1
+        },
+        {
+          "title": "실제 Chrome: Excel·ZIP·QR을 실제 파일로 저장하고 A4 PDF를 만든다",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2869,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-01T14:46:03.428Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "807de855a40730de4901-862ae5161e5e1de0d878",
+          "file": "data-collect-fix.spec.ts",
+          "line": 171,
+          "column": 1
+        },
+        {
+          "title": "실제 Chrome: 120명 페이지 이동·미제출 필터·마감 연장·모바일 및 200% 화면",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4345,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-01T14:46:06.307Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "807de855a40730de4901-e97e0edc23dda2d1ad35",
+          "file": "data-collect-fix.spec.ts",
+          "line": 213,
+          "column": 1
+        },
+        {
+          "title": "실제 Chrome: 긴 이름·혼합 상태·4000자 메모를 30명 A4 전체 페이지에 출력한다",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4681,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-01T14:46:10.660Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "807de855a40730de4901-3bcd0bbc1fbd17c482af",
+          "file": "data-collect-fix.spec.ts",
+          "line": 292,
+          "column": 1
+        },
+        {
+          "title": "실제 Chrome: 실제 마감 시각 경과 후 차단되고 연장 시 입력을 유지한다",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 55979,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-01T14:46:15.352Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "807de855a40730de4901-31831c1c0bd64e97f209",
+          "file": "data-collect-fix.spec.ts",
+          "line": 354,
+          "column": 1
+        },
+        {
+          "title": "실제 Chrome: 설정 명단 미리보기·취소·반영과 목록 20개 페이지를 확인한다",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 16897,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-01T14:47:11.335Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "807de855a40730de4901-ff582790a5bd95ddb688",
+          "file": "data-collect-fix.spec.ts",
+          "line": 401,
+          "column": 1
+        },
+        {
+          "title": "실제 Chrome: CSS 200% 확대에서 QR과 화면 바닥이 잘리지 않는다",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2273,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-01T14:47:28.243Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "807de855a40730de4901-72fb66a56377b1b3f010",
+          "file": "data-collect-fix.spec.ts",
+          "line": 467,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "data-collect.spec.ts",
+      "file": "data-collect.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "필요한 생성 입력만 보여주고 첫 오류로 이동한다",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1103,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-01T14:47:30.662Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "881850e1f6611f778c4c-db2b8b0a99e2bcf61442",
+          "file": "data-collect.spec.ts",
+          "line": 4,
+          "column": 1
+        },
+        {
+          "title": "붙여넣은 명단을 자동 분류하고 동명이인은 구분하게 한다",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1151,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-01T14:47:31.778Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "881850e1f6611f778c4c-5eea5ebddd95f74af28e",
+          "file": "data-collect.spec.ts",
+          "line": 21,
+          "column": 1
+        },
+        {
+          "title": "Excel의 성명 열을 자동 분석하고 사용자가 열을 바꿀 수 있다",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1717,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-01T14:47:32.941Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "881850e1f6611f778c4c-b700881fd9007e6b1a26",
+          "file": "data-collect.spec.ts",
+          "line": 41,
+          "column": 1
+        },
+        {
+          "title": "직접 입력과 붙여넣기를 하나의 이름 입력에서 처리한다",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1070,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-01T14:47:34.670Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "881850e1f6611f778c4c-cbf2582c1c72d71a68a9",
+          "file": "data-collect.spec.ts",
+          "line": 69,
+          "column": 1
+        },
+        {
+          "title": "마감 기한을 빠르게 고르거나 날짜와 시간을 따로 정한다",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1410,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-01T14:47:35.750Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "881850e1f6611f778c4c-b3c0512563c5c12535ca",
+          "file": "data-collect.spec.ts",
+          "line": 84,
+          "column": 1
+        },
+        {
+          "title": "배포 파일을 확인하고 이상 없음 또는 수정본으로 회신한다",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3215,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-01T14:47:37.169Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "881850e1f6611f778c4c-233aac4739f1fb89eebc",
+          "file": "data-collect.spec.ts",
+          "line": 125,
+          "column": 1
+        },
+        {
+          "title": "명단 없이 제출자가 이름을 입력해 자료를 제출한다",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2937,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-01T14:47:40.395Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "881850e1f6611f778c4c-b6f690fbd99aeee78d1a",
+          "file": "data-collect.spec.ts",
+          "line": 186,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-01T14:45:54.340Z",
+    "duration": 112109.423,
+    "expected": 15,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

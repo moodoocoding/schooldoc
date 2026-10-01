@@ -1,0 +1,44 @@
+
+> 260725_individual_data@0.0.0 test:e2e
+> playwright test tests/e2e/registry-sign.spec.ts tests/e2e/registry-accessibility.spec.ts tests/e2e/registry-optimization.spec.ts tests/e2e/app-shell-scroll.spec.ts
+
+
+Running 33 tests using 1 worker
+
+(node:57560) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 tests\e2e\app-shell-scroll.spec.ts:49:5 › 앱 껍데기 스크롤 › 등록부 화면을 맨 아래까지 내려도 빈 바닥이 없다 (1.6s)
+  ok  2 tests\e2e\app-shell-scroll.spec.ts:49:5 › 앱 껍데기 스크롤 › 학생 결과 안내 화면을 맨 아래까지 내려도 빈 바닥이 없다 (1.5s)
+  ok  3 tests\e2e\app-shell-scroll.spec.ts:49:5 › 앱 껍데기 스크롤 › 가정통신문 동의서 화면을 맨 아래까지 내려도 빈 바닥이 없다 (1.5s)
+  ok  4 tests\e2e\app-shell-scroll.spec.ts:49:5 › 앱 껍데기 스크롤 › 특별실 예약 화면을 맨 아래까지 내려도 빈 바닥이 없다 (1.4s)
+  ok  5 tests\e2e\app-shell-scroll.spec.ts:49:5 › 앱 껍데기 스크롤 › 자료 수합 화면을 맨 아래까지 내려도 빈 바닥이 없다 (1.4s)
+  ok  6 tests\e2e\app-shell-scroll.spec.ts:49:5 › 앱 껍데기 스크롤 › 학급 운영비 영수증 화면을 맨 아래까지 내려도 빈 바닥이 없다 (1.4s)
+  ok  7 tests\e2e\app-shell-scroll.spec.ts:49:5 › 앱 껍데기 스크롤 › 1인 1역 홈 화면을 맨 아래까지 내려도 빈 바닥이 없다 (1.4s)
+  ok  8 tests\e2e\app-shell-scroll.spec.ts:49:5 › 앱 껍데기 스크롤 › 1인 1역 배정 관리 화면을 맨 아래까지 내려도 빈 바닥이 없다 (1.5s)
+  ok  9 tests\e2e\app-shell-scroll.spec.ts:49:5 › 앱 껍데기 스크롤 › 1인 1역 배정 화면을 맨 아래까지 내려도 빈 바닥이 없다 (1.4s)
+  ok 10 tests\e2e\app-shell-scroll.spec.ts:49:5 › 앱 껍데기 스크롤 › 1인 1역 역할 목록 화면을 맨 아래까지 내려도 빈 바닥이 없다 (1.4s)
+  ok 11 tests\e2e\app-shell-scroll.spec.ts:49:5 › 앱 껍데기 스크롤 › 1인 1역 실천판 화면을 맨 아래까지 내려도 빈 바닥이 없다 (1.5s)
+  ok 12 tests\e2e\app-shell-scroll.spec.ts:49:5 › 앱 껍데기 스크롤 › 1인 1역 게시판 안내문 화면을 맨 아래까지 내려도 빈 바닥이 없다 (1.6s)
+  ok 13 tests\e2e\app-shell-scroll.spec.ts:49:5 › 앱 껍데기 스크롤 › 1인 1역 기록 화면을 맨 아래까지 내려도 빈 바닥이 없다 (1.4s)
+  ok 14 tests\e2e\app-shell-scroll.spec.ts:49:5 › 앱 껍데기 스크롤 › 1인 1역 교체 화면을 맨 아래까지 내려도 빈 바닥이 없다 (1.3s)
+  ok 15 tests\e2e\app-shell-scroll.spec.ts:49:5 › 앱 껍데기 스크롤 › 1인 1역 설정 화면을 맨 아래까지 내려도 빈 바닥이 없다 (1.3s)
+  ok 16 tests\e2e\app-shell-scroll.spec.ts:49:5 › 앱 껍데기 스크롤 › 학급 미션 화면을 맨 아래까지 내려도 빈 바닥이 없다 (1.2s)
+  ok 17 tests\e2e\app-shell-scroll.spec.ts:58:3 › 앱 껍데기 스크롤 › 세로 스크롤을 맡는 곳은 문서 하나뿐이다 (1.2s)
+  ok 18 tests\e2e\app-shell-scroll.spec.ts:79:3 › 앱 껍데기 스크롤 › 사이드바는 내려도 따라 붙는다 (1.2s)
+  ok 19 tests\e2e\registry-accessibility.spec.ts:31:1 › 360·768·1440px 등록부 화면에 넘침과 주요 접근성 위반이 없다 (4.2s)
+  ok 20 tests\e2e\registry-accessibility.spec.ts:71:1 › 서명 대화상자가 키보드 포커스를 고정하고 닫은 뒤 선택 버튼으로 돌려보낸다 (1.8s)
+  ok 21 tests\e2e\registry-accessibility.spec.ts:100:1 › 삭제 확인창은 안전한 취소 버튼에 초점을 두고 Escape 후 원래 버튼으로 복귀한다 (1.9s)
+  ok 22 tests\e2e\registry-optimization.spec.ts:35:1 › 가져오기 취소·추가·되돌리기와 포커스 복귀가 기존 명단을 보존한다 (1.1s)
+  ok 23 tests\e2e\registry-optimization.spec.ts:55:1 › 같은 마스킹 동명이인을 코드로 구분하고 오류·화면 크기 변경 뒤 획을 보존한다 (2.6s)
+  ok 24 tests\e2e\registry-optimization.spec.ts:88:1 › 현장 입력 취소는 행을 만들지 않고 최종 제출만 원문과 서명을 저장한다 (2.9s)
+  ok 25 tests\e2e\registry-optimization.spec.ts:106:1 › 공유·보관 설정과 링크 회수 및 종료 후 파기 수량을 확인한다 (2.5s)
+  ok 26 tests\e2e\registry-optimization.spec.ts:126:1 › 네 열과 긴 셀은 한 단으로 출력하고 A4 셀·하단을 넘지 않는다 (1.2s)
+  ok 27 tests\e2e\registry-optimization.spec.ts:141:1 › Chrome 인쇄 엔진은 41명 전체를 원본 A4 세 쪽으로 출력한다 (1.5s)
+  ok 28 tests\e2e\registry-sign.spec.ts:4:1 › 500명 명단은 50명씩 편집하고 인쇄 미리보기는 한 페이지만 렌더링한다 (2.4s)
+  ok 29 tests\e2e\registry-sign.spec.ts:68:1 › 제목 행 아래의 성명과 소속 헤더를 찾아 엑셀 명단을 불러온다 (1.3s)
+  ok 30 tests\e2e\registry-sign.spec.ts:121:1 › 등록부를 만들고 모바일에서 서명한 뒤 결과물을 내려받는다 (3.1s)
+  ok 31 tests\e2e\registry-sign.spec.ts:227:1 › 모바일 서명 창은 사진 입력 없이 직접 서명만 제공한다 (1.4s)
+  ok 32 tests\e2e\registry-sign.spec.ts:287:1 › 서명 링크 QR을 이미지 파일로 저장한다 (1.5s)
+  ok 33 tests\e2e\registry-sign.spec.ts:321:1 › 인쇄 미리보기 아래에 빈 공간이 남지 않는다 (1.3s)
+
+  33 passed (58.7s)

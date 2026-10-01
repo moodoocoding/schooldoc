@@ -16,7 +16,7 @@ export const DEFAULT_PRIVACY_RETENTION_SETTINGS: PrivacyRetentionSettings = {
 
 export interface RetainedWorkItem {
   id: string;
-  kind: 'consent-form' | 'data-collect' | 'class-mission';
+  kind: 'consent-form' | 'data-collect' | 'class-mission' | 'registry';
   boardId?: string;
   title: string;
   status: 'open' | 'closed';

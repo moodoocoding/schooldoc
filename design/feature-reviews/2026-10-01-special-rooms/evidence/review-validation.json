@@ -1,0 +1,10 @@
+{
+  "markdownLinksChecked": 89,
+  "scriptSyntaxChecked": 5,
+  "evidenceFiles": 48,
+  "completeDemo": true,
+  "completeNetworkMock": true,
+  "serverObservations": 20,
+  "boundaryContexts": 5,
+  "productSourceChanges": false
+}

@@ -29,6 +29,7 @@ export interface SpecialRoomBooking {
   /** 칸에 적히는 것. '6-1반'처럼 학급 이름이지 사람 이름이 아니다. */
   label: string;
   updatedAt: string;
+  revision?: number;
 }
 
 /** NEIS에서 받아 둔 학사일정 하루치. */
@@ -77,6 +78,14 @@ export interface SpecialRoomBoard {
   bookings: SpecialRoomBooking[];
   schoolDays: SchoolDay[];
   closures: SpecialRoomClosure[];
+  metadataRevision?: number;
+  calendarRevision?: number;
+  accessEpoch?: number;
+  scopeRevision?: number;
+  selectedRoomId?: string;
+  weekStart?: string;
+  thisWeekBookingCount?: number;
+  closureCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -97,3 +106,41 @@ export interface SpecialRoomBoardDraft {
   password: string;
   rooms: Pick<SpecialRoom, 'name' | 'location'>[];
 }
+
+export interface SpecialRoomBoardSummary {
+  id: string;
+  title: string;
+  status: 'open' | 'closed';
+  updatedAt: string;
+  roomCount: number;
+  bookingCount: number;
+}
+export type ExpectedBooking = { id: string; revision: number } | null;
+export interface BookingMutation {
+  booking: SpecialRoomBooking | null;
+  deletedId?: string;
+  scopeRevision: number;
+  roomId: string;
+  weekStart: string;
+  operationId: string;
+}
+export class SpecialRoomError extends Error {
+  status: number;
+  code: string;
+  current: SpecialRoomBooking | null;
+  constructor(
+    message: string,
+    status: number,
+    code = '',
+    current: SpecialRoomBooking | null = null,
+  ) {
+    super(message);
+    this.status = status;
+    this.code = code;
+    this.current = current;
+  }
+}
+export const expectedBooking = (
+  booking?: SpecialRoomBooking | null,
+): ExpectedBooking =>
+  booking ? { id: booking.id, revision: booking.revision ?? 1 } : null;

@@ -16,7 +16,8 @@ test('500명 명단은 50명씩 편집하고 인쇄 미리보기는 한 페이�
     `검증학교${String(index + 1).padStart(3, '0')}\t검증교사${String(index + 1).padStart(3, '0')}`
   )).join('\n');
   await page.getByLabel(/표 붙여넣기/).fill(rows);
-  await page.getByRole('button', { name: '명단 반영' }).click();
+  await page.getByRole('button', { name: '명단 확인' }).click();
+  await page.getByRole('button', { name: '기존 명단 바꾸기' }).click();
 
   await expect(page.getByRole('textbox', { name: '1번 참석자 성명', exact: true })).toHaveValue('검증교사001');
   await expect(page.getByRole('textbox', { name: '51번 참석자 성명', exact: true })).toHaveCount(0);
@@ -51,7 +52,7 @@ test('500명 명단은 50명씩 편집하고 인쇄 미리보기는 한 페이�
   await expect(page.locator('.registry-print-page')).toHaveCount(1);
   await page.getByLabel('인쇄 미리보기 페이지 선택').selectOption('50');
   await expect(page.locator('.registry-print-page')).toHaveCount(1);
-  await expect(page.locator('.registry-print-page')).toContainText('- 50 -');
+  await expect(page.locator('.registry-print-page')).toContainText('50 / 50');
   await expect(page.locator('.registry-print-page')).toContainText('검증교사500');
 
   await page.getByRole('button', { name: '다음', exact: true }).click();
@@ -109,6 +110,7 @@ test('제목 행 아래의 성명과 소속 헤더를 찾아 엑셀 명단을 �
     buffer: workbook,
   });
 
+  await page.getByRole('button', { name: '기존 명단 바꾸기' }).click();
   await expect(page.getByLabel('1번 참석자 성명')).toHaveValue('김하늘');
   await expect(page.getByLabel('1번 참석자 소속')).toHaveValue('새봄초등학교');
   await expect(page.getByLabel('2번 참석자 성명')).toHaveValue('이도윤');
@@ -149,7 +151,8 @@ test('등록부를 만들고 모바일에서 서명한 뒤 결과물을 내려�
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(publicUrl);
-  await page.getByPlaceholder('이름 또는 소속 검색').fill('테스트교사');
+  await page.getByPlaceholder('이름 검색').fill('테스트교사');
+  await page.getByRole('button', { name: '검색', exact: true }).click();
   await page.getByRole('button', { name: /테.*사.*선택/ }).click();
 
   const canvas = page.getByLabel('서명 입력 영역');
@@ -235,10 +238,11 @@ test('모바일 서명 창은 사진 입력 없이 직접 서명만 제공한다
     sessionStorage.clear();
   });
   await page.reload();
-  await page.getByPlaceholder('이름 또는 소속 검색').fill('김하늘');
+  await page.getByPlaceholder('이름 검색').fill('김하늘');
+  await page.getByRole('button', { name: '검색', exact: true }).click();
   await page.getByRole('button', { name: /김\*늘.*선택/ }).click();
 
-  const dialog = page.getByRole('dialog', { name: '김하늘님 서명' });
+  const dialog = page.getByRole('dialog', { name: '김*늘님 서명' });
   await expect(dialog).toBeVisible();
   await expect(page.getByRole('heading', { name: '직접 서명' })).toBeVisible();
   await expect(page.getByLabel('서명 입력 영역')).toBeVisible();

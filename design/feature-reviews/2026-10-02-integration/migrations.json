@@ -1,0 +1,50 @@
+{
+  "engine": "PGlite PostgreSQL with real pgcrypto",
+  "applied": [
+    "20260328074043_create_students_table_and_trigger.sql",
+    "202608120001_registry_sign.sql",
+    "202608130001_registry_auth_and_public_api.sql",
+    "202608130002_student_results.sql",
+    "202608130003_student_results_deidentification.sql",
+    "202608130004_student_results_protected_disputes.sql",
+    "202608130005_consent_forms.sql",
+    "202608140001_consent_page_sizes.sql",
+    "202608160001_consent_signature_access.sql",
+    "202608160002_consent_signature_delete.sql",
+    "202608160003_consent_recipients.sql",
+    "202608170001_consent_purge.sql",
+    "202608170002_consent_response_encryption.sql",
+    "202608170003_consent_response_plaintext_drop.sql",
+    "202608200001_registry_field_value_encryption.sql",
+    "202608210001_data_collect.sql",
+    "202608210002_special_room_reservation.sql",
+    "202608230001_special_room_period_and_saturday.sql",
+    "202608230002_special_room_closure.sql",
+    "202608240001_privacy_retention_lifecycle.sql",
+    "202608270001_active_work_summary.sql",
+    "202609270001_classroom_roles.sql",
+    "202609270100_class_missions.sql",
+    "202609270101_class_mission_purge.sql",
+    "202609280100_class_mission_purge_row_replacement.sql",
+    "202609280200_classroom_role_period_edits.sql",
+    "202610010001_classroom_role_teacher_record_priority.sql",
+    "202610010100_student_result_corrections.sql",
+    "202610010200_registry_io_and_atomic_submission.sql",
+    "202610010300_data_collect_submission_and_queries.sql",
+    "202610010600_special_room_scoped_sync.sql",
+    "202610011000_consent_integrity_io.sql",
+    "202610020100_consent_active_summary.sql"
+  ],
+  "summaryCurrentOnly": true,
+  "consentSummaryCurrentOnly": true,
+  "preparingConsentHidden": true,
+  "permissions": {
+    "registry_submit": false,
+    "direct_file_submit": false,
+    "direct_consent_submit": false
+  },
+  "limitations": [
+    "Auth/Storage/Realtime are schema adapters; not hosted Supabase verification",
+    "No multi-connection lock verification"
+  ]
+}

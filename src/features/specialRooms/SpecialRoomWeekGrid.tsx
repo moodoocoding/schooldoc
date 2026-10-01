@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { LoaderCircle } from 'lucide-react';
 import { BookingSheet } from './BookingSheet';
+import { specialRoomDrafts as drafts } from './specialRoomDrafts';
 import type { RepeatOutcome } from './specialRoomsRepeat';
 import { closureAt } from './specialRoomsClosure';
 import {
@@ -13,7 +14,13 @@ import {
   indexSchoolDays,
   weekDates,
 } from './specialRoomWeek';
-import type { Period, SchoolDay, SpecialRoomBooking, SpecialRoomClosure } from './types';
+import { expectedBooking, type ExpectedBooking } from './types';
+import type {
+  Period,
+  SchoolDay,
+  SpecialRoomBooking,
+  SpecialRoomClosure,
+} from './types';
 
 interface SpecialRoomWeekGridProps {
   mondayKey: string;
@@ -29,17 +36,33 @@ interface SpecialRoomWeekGridProps {
   /** 담당자가 건 휴관. 그 칸은 회색으로 덮고 누를 수 없다. */
   closures?: SpecialRoomClosure[];
   /** 매주 반복해서 잡는다. 없으면 시트에 반복 영역이 나오지 않는다. */
-  onRepeat?: (date: string, period: Period, label: string, until: string) => Promise<RepeatOutcome>;
+  onRepeat?: (
+    date: string,
+    period: Period,
+    label: string,
+    until: string,
+  ) => Promise<RepeatOutcome>;
   bookings: SpecialRoomBooking[];
   schoolDays: SchoolDay[];
   readOnly?: boolean;
   savingCell?: string;
-  onSave?: (date: string, period: Period, label: string) => void;
-  onClear?: (date: string, period: Period) => void;
+  onSave?: (
+    date: string,
+    period: Period,
+    label: string,
+    expected: ExpectedBooking,
+    operationId: string,
+  ) => Promise<void>;
+  onClear?: (
+    date: string,
+    period: Period,
+    expected: ExpectedBooking,
+    operationId: string,
+  ) => Promise<void>;
 }
 
 /**
- * 월~금 × 1~8교시 표.
+ * 월~금/토 × 1~9교시 표.
  *
  * 시간표와 같은 모양이라 교사가 설명 없이 읽는다. 빈 칸을 누르면 그 자리에서 바로 입력한다.
  * 별도 창을 띄우지 않는 이유는, 한 번에 여러 칸을 채우는 일이 흔하기 때문이다.
@@ -48,6 +71,7 @@ interface SpecialRoomWeekGridProps {
  */
 /** 점심이 오는 자리. 교시 수와 무관하게 4교시 뒤가 보통이다. */
 const LUNCH_AFTER_PERIOD = 4;
+// 한 탭의 입력만 보관한다. 다른 주/실로 이동해도 실패 초안을 다시 열 수 있다.
 
 export function SpecialRoomWeekGrid({
   mondayKey,
@@ -65,7 +89,13 @@ export function SpecialRoomWeekGrid({
   onSave,
   onClear,
 }: SpecialRoomWeekGridProps) {
-  const [editing, setEditing] = useState<{ date: string; period: Period } | null>(null);
+  const [editing, setEditing] = useState<{
+    date: string;
+    period: Period;
+    expected: ExpectedBooking;
+    operationId: string;
+    draft: string;
+  } | null>(null);
 
   const weekdays = weekdaysFor(includeSaturday);
   const periods = periodsFor(periodCount);
@@ -74,24 +104,32 @@ export function SpecialRoomWeekGrid({
   const days = indexSchoolDays(schoolDays);
 
   // 주가 바뀌거나 특별실을 바꾸면 시트를 접는다. 엉뚱한 칸에 저장되지 않게 한다.
-  useEffect(() => setEditing(null), [mondayKey, roomId, periodCount, includeSaturday]);
+  useEffect(
+    () => setEditing(null),
+    [mondayKey, roomId, periodCount, includeSaturday],
+  );
 
   const openCell = (date: string, period: Period) => {
-    if (readOnly) return;
-    setEditing({ date, period });
+    const key = roomId + '|' + bookingKey(date, period);
+    const current = booked.get(bookingKey(date, period));
+    const saved = drafts.get(key);
+    setEditing({
+      date,
+      period,
+      expected: saved ? saved.expected : expectedBooking(current),
+      operationId: saved?.operationId ?? crypto.randomUUID(),
+      draft: saved?.draft ?? current?.label ?? '',
+    });
   };
 
-  const commit = (date: string, period: Period, value: string) => {
-    const key = bookingKey(date, period);
-    const current = booked.get(key)?.label ?? '';
+  const commit = async (date: string, period: Period, value: string) => {
+    if (!editing) return;
     const next = value.trim();
+    if (next)
+      await onSave?.(date, period, next, editing.expected, editing.operationId);
+    else await onClear?.(date, period, editing.expected, editing.operationId);
+    drafts.delete(roomId + '|' + bookingKey(date, period));
     setEditing(null);
-    if (next === current.trim()) return;
-    if (!next) {
-      if (current) onClear?.(date, period);
-      return;
-    }
-    onSave?.(date, period, next);
   };
 
   const today = toDateKey(new Date());
@@ -108,16 +146,22 @@ export function SpecialRoomWeekGrid({
       */}
       <table className="w-full table-fixed border-collapse text-sm">
         <caption className="sr-only">
-          {weekdays[0]}요일부터 {weekdays[weekdays.length - 1]}요일까지 1교시부터 {periodCount}교시까지의 특별실 예약 표
+          {weekdays[0]}요일부터 {weekdays[weekdays.length - 1]}요일까지
+          1교시부터 {periodCount}교시까지의 특별실 예약 표
         </caption>
         {/* 칸 내용이나 편집 상태에 따라 열이 흔들리지 않도록 폭을 고정한다. */}
         <colgroup>
           <col className="w-[36px] sm:w-[64px]" />
-          {weekdays.map((day) => <col key={day} style={{ width: `${100 / weekdays.length}%` }} />)}
+          {weekdays.map((day) => (
+            <col key={day} style={{ width: `${100 / weekdays.length}%` }} />
+          ))}
         </colgroup>
         <thead>
           <tr>
-            <th scope="col" className="h-[56px] border-b border-[var(--sr-border-strong)] bg-[var(--sr-surface-muted)] px-1 text-[10px] font-bold text-[var(--sr-text-subtle)] sm:h-[68px] sm:text-[11px]">
+            <th
+              scope="col"
+              className="h-[56px] border-b border-[var(--sr-border-strong)] bg-[var(--sr-surface-muted)] px-1 text-[10px] font-bold text-[var(--sr-text-subtle)] sm:h-[68px] sm:text-[11px]"
+            >
               교시
             </th>
             {dates.map((date, index) => {
@@ -129,7 +173,11 @@ export function SpecialRoomWeekGrid({
                   scope="col"
                   aria-current={isToday ? 'date' : undefined}
                   className={`h-[56px] border-b border-l border-[var(--sr-border-strong)] px-0.5 py-2 align-middle sm:h-[68px] sm:px-2 ${
-                    note?.isOffDay ? 'bg-[var(--sr-closed)]' : isToday ? 'bg-[var(--sr-today-soft)]' : 'bg-[var(--sr-surface-muted)]'
+                    note?.isOffDay
+                      ? 'bg-[var(--sr-closed)]'
+                      : isToday
+                        ? 'bg-[var(--sr-today-soft)]'
+                        : 'bg-[var(--sr-surface-muted)]'
                   } ${isToday ? 'border-t-[3px] border-t-[var(--sr-today)]' : 'border-t-[3px] border-t-transparent'}`}
                 >
                   {/*
@@ -140,22 +188,30 @@ export function SpecialRoomWeekGrid({
                   */}
                   {/* 좁은 화면에서는 요일 아래 날짜를 두 줄로, 데스크톱에서는 한 줄로 읽는다. */}
                   <span className="flex flex-col items-center gap-0 sm:flex-row sm:justify-center sm:gap-1.5">
-                    <span className={`text-xs font-bold sm:text-sm ${note?.isOffDay ? 'text-[#C0261B]' : isToday ? 'text-[var(--sr-today)]' : 'text-[var(--sr-text)]'}`}>
+                    <span
+                      className={`text-xs font-bold sm:text-sm ${note?.isOffDay ? 'text-[#C0261B]' : isToday ? 'text-[var(--sr-today)]' : 'text-[var(--sr-text)]'}`}
+                    >
                       {weekdays[index]}
                     </span>
-                    <span className={`text-[10px] font-semibold sm:text-xs ${note?.isOffDay ? 'text-[#C0261B]' : 'text-[var(--sr-text-subtle)]'}`}>
+                    <span
+                      className={`text-[10px] font-semibold sm:text-xs ${note?.isOffDay ? 'text-[#C0261B]' : 'text-[var(--sr-text-subtle)]'}`}
+                    >
                       {formatDayLabel(date)}
                     </span>
                   </span>
                   {/* 색만으로 알리지 않는다. 흑백으로 봐도 글자로 구분된다. */}
                   {isToday ? (
-                    <span className="mx-auto mt-1 block w-fit rounded bg-[var(--sr-today)] px-1.5 py-0.5 text-[9px] font-bold text-white sm:text-[10px]">오늘</span>
+                    <span className="mx-auto mt-1 block w-fit rounded bg-[var(--sr-today)] px-1.5 py-0.5 text-[9px] font-bold text-white sm:text-[10px]">
+                      오늘
+                    </span>
                   ) : null}
                   {note?.events.length ? (
                     <span
                       title={note.events.join(' · ')}
                       className={`mx-auto mt-1 block w-fit max-w-full truncate rounded px-1.5 py-0.5 text-[10px] font-bold ${
-                        note.isOffDay ? 'bg-[#FBE4E2] text-[#8C1D18]' : 'bg-[var(--sr-accent-soft)] text-[var(--sr-accent-strong)]'
+                        note.isOffDay
+                          ? 'bg-[#FBE4E2] text-[#8C1D18]'
+                          : 'bg-[var(--sr-accent-soft)] text-[var(--sr-accent-strong)]'
                       }`}
                     >
                       {note.events.join(' · ')}
@@ -170,11 +226,18 @@ export function SpecialRoomWeekGrid({
           {periods.map((period) => {
             // 점심 자리에 선을 하나 두면 몇 교시인지 세지 않고도 위아래를 가늠한다.
             // 6교시 학교는 4교시 뒤, 8~9교시 학교도 4교시 뒤가 보통이다.
-            const afterLunch = period === LUNCH_AFTER_PERIOD ? 'border-b-2 border-b-[var(--sr-border-strong)]' : 'border-b border-b-[var(--sr-grid)]';
-            const lastRow = period === periods[periods.length - 1] ? 'border-b-0' : '';
+            const afterLunch =
+              period === LUNCH_AFTER_PERIOD
+                ? 'border-b-2 border-b-[var(--sr-border-strong)]'
+                : 'border-b border-b-[var(--sr-grid)]';
+            const lastRow =
+              period === periods[periods.length - 1] ? 'border-b-0' : '';
             return (
               <tr key={period}>
-                <th scope="row" className={`h-[48px] bg-[var(--sr-surface-muted)] px-1 text-[10px] font-bold text-[var(--sr-text-subtle)] sm:h-[64px] sm:text-xs lg:h-[68px] ${afterLunch} ${lastRow}`}>
+                <th
+                  scope="row"
+                  className={`h-[48px] bg-[var(--sr-surface-muted)] px-1 text-[10px] font-bold text-[var(--sr-text-subtle)] sm:h-[64px] sm:text-xs lg:h-[68px] ${afterLunch} ${lastRow}`}
+                >
                   {period}교시
                 </th>
                 {dates.map((date) => {
@@ -196,18 +259,31 @@ export function SpecialRoomWeekGrid({
                         : 'bg-[var(--sr-surface)]';
 
                   return (
-                    <td key={key} className={`border-l border-l-[var(--sr-grid)] p-0 ${tone} ${afterLunch} ${lastRow}`}>
+                    <td
+                      key={key}
+                      className={`border-l border-l-[var(--sr-grid)] p-0 ${tone} ${afterLunch} ${lastRow}`}
+                    >
                       <button
                         type="button"
-                        disabled={readOnly || isSaving || Boolean(closed)}
+                        disabled={
+                          isSaving ||
+                          (Boolean(closed) && !booking) ||
+                          (readOnly && !booking)
+                        }
                         aria-busy={isSaving || undefined}
                         onClick={() => openCell(date, period)}
-                        aria-label={closed
-                          ? `${cellName} 휴관${closed.reason ? ` · ${closed.reason}` : ''}`
-                          : booking ? `${cellName} ${booking.label} 고치기` : `${cellName} 예약하기`}
+                        aria-label={
+                          closed
+                            ? `${cellName} 휴관${closed.reason ? ` · ${closed.reason}` : ''}`
+                            : booking
+                              ? `${cellName} ${booking.label} ${readOnly ? '상세 보기' : '고치기'}`
+                              : `${cellName} 예약하기`
+                        }
                         title={closed?.reason || undefined}
                         className={`group relative flex h-[48px] w-full items-center justify-center p-1 sm:h-[64px] sm:p-2 lg:h-[68px] ${
-                          readOnly ? 'cursor-default' : 'cursor-pointer transition-colors hover:bg-[var(--sr-surface-hover)]'
+                          readOnly
+                            ? 'cursor-default'
+                            : 'cursor-pointer transition-colors hover:bg-[var(--sr-surface-hover)]'
                         } ${editingKey === key ? 'ring-2 ring-inset ring-[var(--sr-accent)]' : ''} disabled:cursor-default`}
                       >
                         {/*
@@ -224,27 +300,40 @@ export function SpecialRoomWeekGrid({
                           </span>
                         ) : booking ? (
                           <>
-                            {/* 모바일은 한 줄, 폭이 넉넉한 데스크톱은 두 줄까지 보여 준다. */}
+                            {/* 모바일과 데스크톱 모두 두 줄까지 보여 주고, 상세에서는 전체를 읽는다. */}
                             <span
                               title={booking.label}
-                              className="w-full truncate rounded-md border-l-[3px] border-l-[var(--sr-accent)] bg-[var(--sr-event)] px-1.5 py-1 text-left text-[10px] font-bold text-[var(--sr-event-text)] sm:hidden"
+                              className="w-full break-words rounded-md border-l-[3px] border-l-[var(--sr-accent)] bg-[var(--sr-event)] px-1.5 py-1 text-center text-[11px] leading-[15px] font-bold text-[var(--sr-event-text)] sm:hidden"
                             >
-                              {booking.label}
+                              <span className="line-clamp-2">
+                                {booking.label}
+                              </span>
                             </span>
                             <span
                               title={booking.label}
                               className="hidden min-h-[44px] w-full items-center rounded-md border-l-[3px] border-l-[var(--sr-accent)] bg-[var(--sr-event)] px-3 py-1.5 text-left text-xs font-bold leading-5 text-[var(--sr-event-text)] sm:flex"
                             >
-                              <span className="line-clamp-2">{booking.label}</span>
+                              <span className="line-clamp-2">
+                                {booking.label}
+                              </span>
                             </span>
                           </>
                         ) : readOnly ? null : (
-                          <span aria-hidden="true" className="hidden items-center gap-1 text-[11px] font-bold text-[var(--sr-accent)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 sm:inline-flex">
-                            <span className="text-base font-normal leading-none">+</span> 예약
+                          <span
+                            aria-hidden="true"
+                            className="hidden items-center gap-1 text-[11px] font-bold text-[var(--sr-accent)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 sm:inline-flex"
+                          >
+                            <span className="text-base font-normal leading-none">
+                              +
+                            </span>{' '}
+                            예약
                           </span>
                         )}
                         {isSaving ? (
-                          <LoaderCircle className="absolute right-1.5 top-1.5 h-3.5 w-3.5 animate-spin text-[var(--sr-accent)]" aria-hidden="true" />
+                          <LoaderCircle
+                            className="absolute right-1.5 top-1.5 h-3.5 w-3.5 animate-spin text-[var(--sr-accent)]"
+                            aria-hidden="true"
+                          />
                         ) : null}
                       </button>
                     </td>
@@ -258,6 +347,7 @@ export function SpecialRoomWeekGrid({
 
       {editing ? (
         <BookingSheet
+          key={roomId + editing.date + editing.period}
           cellName={`${formatDayLabel(editing.date)} ${editing.period}교시`}
           title={`${weekdays[dates.indexOf(editing.date)]} ${formatDayLabel(editing.date)} · ${editing.period}교시`}
           roomName={roomName}
@@ -265,12 +355,47 @@ export function SpecialRoomWeekGrid({
           weekdayLabel={weekdays[dates.indexOf(editing.date)] ?? ''}
           period={editing.period}
           termEndDate={termEndDate}
-          onRepeat={(label, until) => (
+          onRepeat={(label, until) =>
             onRepeat
               ? onRepeat(editing.date, editing.period, label, until)
-              : Promise.resolve({ created: [], skippedOffDay: [], skippedTaken: [] })
-          )}
-          current={booked.get(bookingKey(editing.date, editing.period))?.label ?? ''}
+              : Promise.resolve({
+                  created: [],
+                  skippedOffDay: [],
+                  skippedTaken: [],
+                })
+          }
+          initialDraft={editing.draft}
+          readOnly={
+            readOnly || Boolean(closureAt(closures, roomId, editing.date))
+          }
+          onDraftChange={(draft) => {
+            drafts.set(
+              roomId + '|' + bookingKey(editing.date, editing.period),
+              {
+                draft,
+                expected: editing.expected,
+                operationId: editing.operationId,
+              },
+            );
+            while (drafts.size > 64) drafts.delete(drafts.keys().next().value!);
+          }}
+          onConfirmCurrent={() => {
+            const next = {
+              ...editing,
+              expected: expectedBooking(
+                booked.get(bookingKey(editing.date, editing.period)),
+              ),
+              operationId: crypto.randomUUID(),
+            };
+            setEditing(next);
+            drafts.set(
+              roomId + '|' + bookingKey(editing.date, editing.period),
+              next,
+            );
+          }}
+          current={
+            booked.get(bookingKey(editing.date, editing.period))?.label ?? ''
+          }
           saving={savingCell === bookingKey(editing.date, editing.period)}
           onSubmit={(label) => commit(editing.date, editing.period, label)}
           onClose={() => setEditing(null)}
@@ -279,7 +404,9 @@ export function SpecialRoomWeekGrid({
 
       {!readOnly ? (
         <p className="border-t border-[var(--sr-grid)] bg-[var(--sr-surface-muted)] px-3 py-2.5 text-[11px] leading-5 text-[var(--sr-text-muted)] sm:px-4 sm:text-xs">
-          <span className="font-semibold text-[var(--sr-text)]">빈 칸을 눌러 예약하세요.</span>{' '}
+          <span className="font-semibold text-[var(--sr-text)]">
+            빈 칸을 눌러 예약하세요.
+          </span>{' '}
           누구나 예약을 수정할 수 있으니 기존 내용을 확인해 주세요.
         </p>
       ) : null}

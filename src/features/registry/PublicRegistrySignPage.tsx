@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { CheckCircle2, LockKeyhole, PenLine, Search, UserPlus } from 'lucide-react';
 import { useParams } from 'react-router-dom';
+import { RegistryConfirmDialog } from './RegistryConfirmDialog';
 import { SignatureDialog } from './SignatureDialog';
 import { isRegistryDemoMode } from './registryConfig';
-import { addParticipant, submitSignature } from './registryStore';
+import { submitWalkInSignature, submitSignature } from './registryStore';
 import { maskName, maskValue } from './registryUtils';
-import type { RegistryParticipant, SignatureSource } from './types';
+import type { RegistryParticipant, SignatureSource, SignatureVerification } from './types';
 import { useRegistryByToken } from './useRegistries';
 import { RemotePublicRegistrySignPage } from './RemotePublicRegistrySignPage';
 
@@ -19,7 +20,10 @@ function DemoPublicRegistrySignPage() {
   const { token } = useParams();
   const registry = useRegistryByToken(token);
   const [query, setQuery] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<RegistryParticipant | null>(null);
+  const [searchedQuery, setSearchedQuery] = useState('');
+  const [searchCode, setSearchCode] = useState('');
+  const [duplicateCount, setDuplicateCount] = useState(0);
   const [walkInName, setWalkInName] = useState('');
   const [walkInValues, setWalkInValues] = useState<Record<string, string>>({});
   const [successName, setSuccessName] = useState('');
@@ -30,13 +34,13 @@ function DemoPublicRegistrySignPage() {
   ));
 
   const searchResults = useMemo(() => {
-    if (!registry || registry.mode !== 'fixed' || !query.trim()) return [];
-    const keyword = query.trim().toLocaleLowerCase('ko-KR');
+    if (!registry || registry.mode !== 'fixed' || searchedQuery.trim().length < 2) return [];
+    const keyword = searchedQuery.trim().toLocaleLowerCase('ko-KR');
     return registry.participants.filter((participant) => (
       participant.name.toLocaleLowerCase('ko-KR').includes(keyword)
-      || Object.values(participant.values).some((value) => value.toLocaleLowerCase('ko-KR').includes(keyword))
-    ));
-  }, [query, registry]);
+      && (!searchCode.trim() || participant.verificationCode === searchCode.trim())
+    )).slice(0, 20);
+  }, [searchedQuery, searchCode, registry]);
 
   if (!registry) {
     return (
@@ -76,23 +80,30 @@ function DemoPublicRegistrySignPage() {
     );
   }
 
-  const selectedParticipant = registry.participants.find((participant) => participant.id === selectedId) ?? null;
+  const selectedParticipant = selected;
   const canAddWalkIn = registry.mode === 'custom' || registry.allowWalkIn;
 
-  const handleAddWalkIn = () => {
+  const handleAddWalkIn = (confirmed = false) => {
     if (!walkInName.trim()) return;
-    const created = addParticipant(registry.id, { name: walkInName.trim(), values: walkInValues });
-    if (created) setSelectedId(created.id);
+    const count = registry.participants.filter((p) => p.name === walkInName.trim()).length;
+    if (count && !confirmed) { setDuplicateCount(count); return; }
+    setDuplicateCount(0);
+    setSelected({ id: crypto.randomUUID(), rowNumber: 0, name: walkInName.trim(), values: walkInValues });
   };
-
-  const handleSubmit = (participant: RegistryParticipant, dataUrl: string, source: SignatureSource, values: Record<string, string>) => {
-    submitSignature(registry.id, { participantId: participant.id, dataUrl, source, values });
-    setSuccessName(participant.name);
-    setSelectedId(null);
-    setQuery('');
-    setWalkInName('');
-    setWalkInValues({});
+  const handleSubmit = (participant: RegistryParticipant, dataUrl: string, source: SignatureSource, values: Record<string, string>, verification: SignatureVerification) => {
+    if (participant.rowNumber > 0) {
+      const target = registry.participants.find((p) => p.id === participant.id)!;
+      const peers = registry.participants.filter((p) => p.name === target.name);
+      if (peers.length > 1 || target.verificationCode) {
+        const codeMatches = Boolean(target.verificationCode && verification.code === target.verificationCode);
+        const matches = peers.filter((p) => p.name === verification.verifyName.trim() && registry.columns.length > 0 && registry.columns.every((c) => Boolean(verification.verificationValues[c.id]?.trim()) && p.values[c.id] === verification.verificationValues[c.id]?.trim()));
+        if (!codeMatches && (target.verificationCode || matches.length !== 1 || matches[0].id !== target.id)) throw new Error('본인 확인 정보가 일치하지 않습니다. 담당자에게 확인 코드를 받아 주세요.');
+      }
+      submitSignature(registry.id, { participantId: participant.id, dataUrl, source, values });
+    } else submitWalkInSignature(registry.id, participant, { participantId: participant.id, dataUrl, source, values });
+    setSuccessName(participant.name); setSelected(null); setQuery(''); setSearchCode(''); setSearchedQuery(''); setWalkInName(''); setWalkInValues({});
   };
+  const selectParticipant = (participant: RegistryParticipant) => setSelected({ ...participant, name: maskName(participant.name), values: Object.fromEntries(Object.entries(participant.values).map(([key, value]) => [key, maskValue(value)])), requiresIdentity: registry.participants.filter((p) => p.name === participant.name).length > 1, requiresCode: Boolean(participant.verificationCode) });
 
   if (successName) {
     return (
@@ -127,20 +138,21 @@ function DemoPublicRegistrySignPage() {
         {registry.status === 'open' && registry.mode === 'fixed' ? (
           <section>
             <h2 className="text-lg font-extrabold text-[#0F172A]">내 이름 찾기</h2>
-            <p className="mt-1 text-sm text-[#526174]">이름이나 소속을 입력해 본인을 선택해 주세요.</p>
+            <p className="mt-1 text-sm text-[#526174]">이름을 두 글자 이상 입력하고 검색해 주세요.</p>
             <label className="relative mt-5 block">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#526174]" />
-              <input className={`${inputClass} pl-12`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="이름 또는 소속 검색" aria-label="이름 또는 소속 검색" autoComplete="off" />
+              <input className={`${inputClass} pl-12`} value={query} onChange={(event) => { setQuery(event.target.value); setSearchedQuery(''); }} onKeyDown={(event) => { if (event.key === 'Enter') setSearchedQuery(query); }} placeholder="이름 검색" aria-label="이름 검색" autoComplete="off" />
             </label>
 
-            {query.trim() ? (
+            <div className="mt-3 flex gap-2"><input className={inputClass} value={searchCode} onChange={(event) => { setSearchCode(event.target.value); setSearchedQuery(''); }} placeholder="확인 코드 (있는 경우)" aria-label="검색 확인 코드" inputMode="numeric" /><button type="button" disabled={query.trim().length < 2} onClick={() => setSearchedQuery(query)} className="min-h-[52px] shrink-0 rounded-lg bg-[#0F6CBD] px-5 font-bold text-white disabled:bg-[#AAB7C4]">검색</button></div>
+            {searchedQuery ? (
               <div className="mt-4 divide-y divide-[#EEF1F4] border-y border-[#DCE3EA] bg-white">
                 {searchResults.length > 0 ? searchResults.map((participant) => (
                   <button
                     key={participant.id}
                     type="button"
                     disabled={Boolean(participant.signature)}
-                    onClick={() => setSelectedId(participant.id)}
+                    onClick={() => selectParticipant(participant)}
                     className="flex min-h-[68px] w-full items-center justify-between gap-4 px-4 text-left hover:bg-[#F8FAFC] disabled:cursor-default disabled:bg-[#F8FAFC]"
                   >
                     <span>
@@ -174,14 +186,15 @@ function DemoPublicRegistrySignPage() {
                   <input className={inputClass} value={walkInValues[column.id] ?? ''} onChange={(event) => setWalkInValues((current) => ({ ...current, [column.id]: event.target.value }))} placeholder={`${column.label} 입력`} />
                 </label>
               ))}
-              <button type="button" disabled={!walkInName.trim()} onClick={handleAddWalkIn} className="mt-1 min-h-[52px] rounded-lg bg-[#0F6CBD] px-5 text-base font-bold text-white hover:bg-[#0B5B9F] disabled:cursor-not-allowed disabled:bg-[#AAB7C4]">정보 확인 후 서명하기</button>
+              <button type="button" disabled={!walkInName.trim()} onClick={() => handleAddWalkIn()} className="mt-1 min-h-[52px] rounded-lg bg-[#0F6CBD] px-5 text-base font-bold text-white hover:bg-[#0B5B9F] disabled:cursor-not-allowed disabled:bg-[#AAB7C4]">정보 확인 후 서명하기</button>
             </div>
           </section>
         ) : null}
       </div>
 
+      {duplicateCount > 0 ? <RegistryConfirmDialog title="같은 이름이 이미 있습니다" description={`같은 이름 ${duplicateCount}명이 등록되어 있습니다. 이미 서명하셨다면 담당자에게 확인해 주세요.`} confirmLabel="동명이인으로 추가" tone="primary" onCancel={() => setDuplicateCount(0)} onConfirm={() => handleAddWalkIn(true)} /> : null}
       {selectedParticipant && !selectedParticipant.signature ? (
-        <SignatureDialog registry={registry} participant={selectedParticipant} onClose={() => setSelectedId(null)} onSubmit={(dataUrl, source, values) => handleSubmit(selectedParticipant, dataUrl, source, values)} />
+        <SignatureDialog registry={registry} participant={selectedParticipant} initialCode={searchCode} onClose={() => setSelected(null)} onSubmit={(dataUrl, source, values, verification) => handleSubmit(selectedParticipant, dataUrl, source, values, verification)} />
       ) : null}
     </main>
   );

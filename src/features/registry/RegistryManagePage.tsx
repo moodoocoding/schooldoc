@@ -1,4 +1,6 @@
-import { useMemo, useRef, useState } from 'react';
+import { registryPrintPlan } from '../../../supabase/functions/_shared/registryPrintLayout';
+import { createRegistryPrintDocument } from './registryPrintDocument';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Check,
@@ -21,16 +23,23 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { RegistryConfirmDialog } from './RegistryConfirmDialog';
 import { isRegistryDemoMode } from './registryConfig';
 import { RegistryPrintSheet } from './RegistryPrintSheet';
+import { RegistryBrowserPrint } from './RegistryBrowserPrint';
 import { RegistryPagination } from './RegistryPagination';
 import {
   addParticipant,
+  previewRegistryPurge,
+  deleteRegistry,
+  loadRegistryImages,
+  rotateRegistryToken,
+  issueVerificationCode,
+  cleanupRegistryUploads,
   clearSignature,
   createRegistryPdf,
   removeParticipant,
   updateRegistry,
 } from './registryService';
-import { formatSignedAt, getRegistryPageSettings } from './registryUtils';
-import type { RegistryLayout } from './types';
+import { formatSignedAt } from './registryUtils';
+import type { RegistryLayout, RegistryParticipant, RegistryPurgeCounts } from './types';
 import { useRegistry } from './useRegistries';
 
 type Filter = 'all' | 'signed' | 'pending';
@@ -64,6 +73,44 @@ export function RegistryManagePage() {
   const [participantPage, setParticipantPage] = useState(1);
   const [printPage, setPrintPage] = useState(1);
   const [renderAllPrintPages, setRenderAllPrintPages] = useState(false);
+  const printHandlerRef = useRef<(() => Promise<void>) | null>(null);
+  useEffect(() => { const onKey=(event:KeyboardEvent)=>{if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase()==='p' && printHandlerRef.current) {event.preventDefault();void printHandlerRef.current();}}; window.addEventListener('keydown',onKey); return()=>window.removeEventListener('keydown',onKey); }, []);
+  const [images, setImages] = useState<Record<string, RegistryParticipant>>({});
+  const [imageRetry, setImageRetry] = useState(0);
+  const [imageLoading, setImageLoading] = useState(false);
+  const imageCache = useRef(new Map<string, { participant: RegistryParticipant; until: number }>());
+  const [sharePassword, setSharePassword] = useState('');
+  const [shareNotice, setShareNotice] = useState('');
+  const [rotateConfirm, setRotateConfirm] = useState(false);
+  const [purgeCounts, setPurgeCounts] = useState<RegistryPurgeCounts | null>(null);
+  const plan = useMemo(() => registry ? registryPrintPlan(registry) : null, [registry]);
+  printHandlerRef.current = null;
+  const printPageCount = registry && plan ? Math.max(1,Math.ceil(registry.participants.length/plan.pageSize)) : 1;
+  const safePrintPage = Math.min(printPage,printPageCount);
+  const printRegistry = useMemo(() => registry ? { ...registry, participants:registry.participants.map((p) => {
+    const loaded=images[p.id]; return loaded && loaded.signaturePath===p.signaturePath && p.signature ? { ...p, signature: loaded.signature, imageError:loaded.imageError } : p;
+  }) } : null, [registry,images]);
+  useEffect(() => {
+    if (!registry || !plan || isRegistryDemoMode) return;
+    let active = true;
+    const requested = renderAllPrintPages ? registry.participants : registry.participants.slice((safePrintPage-1)*plan.pageSize,safePrintPage*plan.pageSize);
+    const needed=requested.filter((p)=>p.signature && !imageCache.current.has(p.signaturePath ?? p.id));
+    const expired=requested.filter((p)=>p.signature && (imageCache.current.get(p.signaturePath ?? p.id)?.until ?? Infinity)<=Date.now());
+    for (const p of expired) imageCache.current.delete(p.signaturePath ?? p.id);
+    const toLoad=[...needed,...expired];
+    if (!toLoad.length) { setImages(Object.fromEntries(requested.flatMap((p)=>{const c=imageCache.current.get(p.signaturePath ?? p.id);return c?[[p.id,c.participant]]:[];}))); return; }
+    setImageLoading(true);
+    void loadRegistryImages(toLoad).then((loaded) => {
+      if (!active) return;
+      for (const p of loaded) imageCache.current.set(p.signaturePath ?? p.id,{participant:p,until:Date.now()+50*60*1000});
+      setImages((current)=>({...current,...Object.fromEntries(loaded.map((p)=>[p.id,p]))}));
+    }).catch(() => { if(active) setImages((current)=>({...current,...Object.fromEntries(toLoad.map((p)=>[p.id,{...p,imageError:true}]))})); })
+      .finally(()=>{if(active) setImageLoading(false);});
+    return ()=>{active=false;};
+  }, [registry, safePrintPage, plan, renderAllPrintPages, imageRetry]);
+  const retryImages = () => { imageCache.current.clear(); setImages({}); setImageRetry((n)=>n+1); };
+  const markImageError = (id:string) => { imageCache.current.clear(); setImages((current)=>({...current,[id]:{...registry!.participants.find((p)=>p.id===id)!,imageError:true}})); };
+
 
   const filteredParticipants = useMemo(() => {
     if (!registry) return [];
@@ -113,9 +160,6 @@ export function RegistryManagePage() {
     (safeParticipantPage - 1) * PARTICIPANTS_PER_PAGE,
     safeParticipantPage * PARTICIPANTS_PER_PAGE,
   );
-  const printSettings = getRegistryPageSettings(registry.layout);
-  const printPageCount = Math.max(1, Math.ceil(registry.participants.length / (printSettings.columns * printSettings.rowsPerColumn)));
-  const safePrintPage = Math.min(printPage, printPageCount);
 
   const copyPublicUrl = async () => {
     await navigator.clipboard.writeText(publicUrl);
@@ -132,7 +176,6 @@ export function RegistryManagePage() {
       setNewName('');
       setNewValues({});
       setParticipantPage(Math.ceil((registry.participants.length + 1) / PARTICIPANTS_PER_PAGE));
-      await refresh();
     } catch (mutationError) {
       setActionError(mutationError instanceof Error ? mutationError.message : '참석자를 추가하지 못했습니다.');
     } finally {
@@ -145,23 +188,23 @@ export function RegistryManagePage() {
     setActionError('');
     try {
       await updateRegistry(registry.id, patch);
-      await refresh();
+      return true;
     } catch (mutationError) {
       setActionError(mutationError instanceof Error ? mutationError.message : '등록부를 수정하지 못했습니다.');
+      return false;
     } finally {
       setIsMutating(false);
     }
   };
 
   const handleParticipantAction = async () => {
-    if (!pendingAction) return;
+    if (!pendingAction || isMutating) return;
     setIsMutating(true);
     setActionError('');
     try {
       if (pendingAction.kind === 'resign') await clearSignature(registry.id, pendingAction.participantId);
       else await removeParticipant(registry.id, pendingAction.participantId);
       setPendingAction(null);
-      await refresh();
     } catch (mutationError) {
       setActionError(mutationError instanceof Error ? mutationError.message : '요청을 처리하지 못했습니다.');
     } finally {
@@ -183,6 +226,7 @@ export function RegistryManagePage() {
   };
 
   const exportPdf = async () => {
+    if (isExporting) return;
     setIsExporting(true);
     setActionError('');
     try {
@@ -204,43 +248,20 @@ export function RegistryManagePage() {
       await waitForPaint();
       const pages = Array.from(printRef.current?.querySelectorAll<HTMLElement>('.registry-print-page') ?? []);
       if (pages.length === 0) return;
-      await document.fonts?.ready;
-      await Promise.all(pages.flatMap((page) => (
-        Array.from(page.querySelectorAll('img')).map((image) => image.decode().catch(() => undefined))
-      )));
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-        import('html2canvas'),
-        import('jspdf'),
-      ]);
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
-      for (let index = 0; index < pages.length; index += 1) {
-        const canvas = await html2canvas(pages[index], {
-          scale: 2,
-          backgroundColor: '#ffffff',
-          useCORS: true,
-          logging: false,
-          width: 794,
-          height: 1123,
-          windowWidth: 794,
-          windowHeight: 1123,
-          onclone: (clonedDocument) => {
-            clonedDocument.querySelectorAll<HTMLElement>('.registry-print-frame').forEach((frame) => {
-              frame.style.width = 'auto';
-              frame.style.height = 'auto';
-            });
-            clonedDocument.querySelectorAll<HTMLElement>('.registry-print-preview').forEach((preview) => {
-              preview.style.transform = 'none';
-            });
-            clonedDocument.querySelectorAll<HTMLElement>('.registry-print-page').forEach((page) => {
-              page.style.transform = 'none';
-              page.style.boxShadow = 'none';
-            });
-          },
-        });
-        if (index > 0) pdf.addPage('a4', 'portrait');
-        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297, undefined, 'FAST');
-      }
-      pdf.save(fileName(registry.title, 'pdf'));
+      const standalone = await createRegistryPrintDocument(printRef.current!);
+      try {
+        const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'),import('jspdf')]);
+        const pdf = new jsPDF({ orientation:'portrait',unit:'mm',format:'a4',compress:true });
+        for (let index=0;index<standalone.pages.length;index++) {
+          const page=standalone.pages[index];
+          // 각 쪽을 문서 맨 위로 이동해 이전 쪽의 좌표/스크롤 영향을 제거한다.
+          standalone.document.body.replaceChildren(page);
+          const canvas=await html2canvas(page,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false,width:794,height:1123,windowWidth:794,windowHeight:1123,scrollX:0,scrollY:0});
+          if (index) pdf.addPage('a4','portrait');
+          pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,0,210,297,undefined,'FAST');
+        }
+        pdf.save(fileName(registry.title,'pdf'));
+      } finally { standalone.dispose(); }
     } catch (exportError) {
       setActionError(exportError instanceof Error ? exportError.message : 'PDF를 만들지 못했습니다.');
     } finally {
@@ -248,6 +269,24 @@ export function RegistryManagePage() {
       setIsExporting(false);
     }
   };
+
+  const printAll = async () => {
+    if (isExporting) return;
+    setActionError(''); setIsExporting(true);
+    try {
+      const complete = { ...registry, participants: await loadRegistryImages(registry.participants) };
+      if (complete.participants.some((p)=>p.signature && (!p.signature.dataUrl || p.imageError))) throw new Error('완료된 서명 이미지를 확인한 뒤 인쇄해 주세요.');
+      setImages(Object.fromEntries(complete.participants.map((p)=>[p.id,p]))); setRenderAllPrintPages(true); await waitForPaint();
+      const doc = await createRegistryPrintDocument(printRef.current!);
+      const cleanup = () => doc.dispose();
+      doc.frame.contentWindow!.addEventListener('afterprint',cleanup,{once:true});
+      doc.frame.contentWindow!.print();
+      window.setTimeout(cleanup,60000);
+    } catch (error) { setActionError(error instanceof Error ? error.message : '인쇄 자료를 준비하지 못했습니다.'); }
+    finally { setRenderAllPrintPages(false);setIsExporting(false); }
+  };
+
+  printHandlerRef.current = printAll;
 
   const exportExcel = async () => {
     const { default: writeXlsxFile } = await import('write-excel-file/browser');
@@ -274,12 +313,13 @@ export function RegistryManagePage() {
         </button>
         <div className="flex items-center gap-2">
           <span className={`rounded-md px-2.5 py-1 text-xs font-bold ${registry.status === 'open' ? 'bg-[#E6F4EA] text-[#126B32]' : 'bg-[#EEF1F4] text-[#526174]'}`}>{registry.status === 'open' ? '수합 중' : '종료'}</span>
-          <button type="button" disabled={isMutating} onClick={() => void handleUpdate({ status: registry.status === 'open' ? 'closed' : 'open' })} className="min-h-[40px] rounded-lg border border-[#DCE3EA] bg-white px-3 text-xs font-bold text-[#334155] hover:bg-[#F6F8FB] disabled:opacity-50">
+          <button type="button" disabled={isMutating} onClick={() => void handleUpdate({ status: registry.status === 'open' ? 'closed' : 'open' })} className="min-h-[44px] rounded-lg border border-[#DCE3EA] bg-white px-3 text-xs font-bold text-[#334155] hover:bg-[#F6F8FB] disabled:opacity-50">
             {registry.status === 'open' ? '수합 종료' : '다시 열기'}
           </button>
         </div>
       </div>
 
+      {error ? <p role="alert" className="text-sm text-[#B42318]">{error}<button type="button" onClick={()=>void refresh()} className="ml-3 min-h-[44px] rounded-lg border px-4">현황 다시 불러오기</button></p> : null}
       {actionError ? <p role="alert" className="border-y border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm font-semibold text-[#B42318]">{actionError}</p> : null}
 
       <div>
@@ -314,7 +354,7 @@ export function RegistryManagePage() {
           <div ref={qrRef} className="flex items-center justify-center rounded-lg bg-white p-3 ring-1 ring-[#DCE3EA]">
             <QRCodeSVG value={publicUrl} size={190} level="M" includeMargin aria-label="서명 QR 코드" />
           </div>
-          <button type="button" disabled={savingQr} onClick={() => void downloadQrImage()} className="inline-flex min-h-[40px] w-full items-center justify-center gap-2 rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD] hover:bg-[#EFF6FC] disabled:border-[#C8D0DA] disabled:text-[#94A3B8]">
+          <button type="button" disabled={savingQr} onClick={() => void downloadQrImage()} className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD] hover:bg-[#EFF6FC] disabled:border-[#C8D0DA] disabled:text-[#94A3B8]">
             {savingQr ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ImageDown className="h-4 w-4" />}
             {savingQr ? '저장 중' : 'QR 이미지 저장'}
           </button>
@@ -332,6 +372,18 @@ export function RegistryManagePage() {
               <ExternalLink className="h-5 w-5" />
             </a>
           </div>
+          <details className="mt-5 border-t border-[#DCE3EA] pt-4">
+            <summary className="flex min-h-[44px] cursor-pointer items-center text-sm font-bold text-[#334155]">공유·보관 설정</summary>
+            <div className="mt-3 space-y-3">
+            <label className="flex min-h-[44px] items-center gap-3 text-sm font-bold"><input type="checkbox" checked={registry.allowWalkIn} disabled={isMutating || registry.mode==='custom'} onChange={(event)=>void handleUpdate({allowWalkIn:event.target.checked})} />명단 외 참석자 추가 허용</label>
+            <div className="flex flex-wrap gap-2"><input type="password" className={`${inputClass} max-w-sm`} value={sharePassword} onChange={(event)=>setSharePassword(event.target.value)} placeholder="새 비밀번호 (비우면 보호 해제)" aria-label="변경할 공개 비밀번호" /><button type="button" disabled={isMutating} onClick={()=>void handleUpdate({publicPassword:sharePassword}).then((saved)=>{ if(saved) setSharePassword(''); })} className="min-h-[44px] rounded-lg border px-4 text-sm font-bold">비밀번호 적용</button><button type="button" disabled={isMutating} onClick={()=>setRotateConfirm(true)} className="min-h-[44px] rounded-lg border px-4 text-sm font-bold">공개 링크 재발급</button></div>
+            <label className="flex flex-wrap items-center gap-2 text-sm font-bold">종료 후 보관 기간<select className={`${inputClass} max-w-40`} value={registry.retentionMonths ?? ''} disabled={isMutating} onChange={(event)=>void handleUpdate({retentionMonths:Number(event.target.value)})}><option value="" disabled>기존 업무: 미설정</option>{Array.from(new Set([1,3,12,...(registry.retentionMonths ? [registry.retentionMonths] : [])])).sort((a,b)=>a-b).map((n)=><option key={n} value={n}>{n}개월</option>)}</select></label>
+            <button type="button" onClick={()=>void cleanupRegistryUploads(registry.id).then((r)=>setShareNotice(`미참조 파일 ${r.removedCount}개를 정리했습니다. 24시간 이내 업로드는 보존합니다.`)).catch((error)=>setActionError(error instanceof Error ? error.message : '정리하지 못했습니다.'))} className="min-h-[44px] rounded-lg border px-4 text-xs font-bold">실패한 업로드 정리 재시도</button>
+            {registry.status === 'closed' ? <button type="button" disabled={isMutating} onClick={() => void previewRegistryPurge(registry.id).then(setPurgeCounts).catch((error) => setActionError(error instanceof Error ? error.message : '파기 대상을 확인하지 못했습니다.'))} className="min-h-[44px] rounded-lg border border-[#FECACA] px-4 text-sm font-bold text-[#B42318]">파기 대상 확인</button> : null}
+            {registry.purgeStartedAt ? <p role="alert" className="text-sm text-[#B42318]">파기가 진행 중입니다. 목록에서 대상 수량을 확인하고 파기를 재시도해 주세요.</p> : null}
+            </div>
+          </details>
+          {shareNotice ? <p role="status" className="mt-3 text-sm text-[#126B32]">{shareNotice}</p> : null}
           {registry.publicPassword || registry.isPasswordProtected ? <p className="mt-3 text-xs font-semibold text-[#526174]">비밀번호 보호 사용 중</p> : null}
           {isRegistryDemoMode ? <p className="mt-2 text-xs font-bold text-[#B54708]">로컬 데모 링크는 현재 브라우저에서만 동작하며 다른 기기에는 공유할 수 없습니다.</p> : null}
         </div>
@@ -350,7 +402,7 @@ export function RegistryManagePage() {
             </label>
             <div className="grid grid-cols-3 rounded-lg border border-[#DCE3EA] bg-[#F6F8FB] p-1">
               {(['all', 'signed', 'pending'] as Filter[]).map((option) => (
-                <button key={option} type="button" onClick={() => { setFilter(option); setParticipantPage(1); }} aria-pressed={filter === option} className={`min-h-[36px] rounded-md px-3 text-xs font-bold ${filter === option ? 'bg-white text-[#0F6CBD] shadow-sm' : 'text-[#526174]'}`}>
+                <button key={option} type="button" onClick={() => { setFilter(option); setParticipantPage(1); }} aria-pressed={filter === option} className={`min-h-[44px] rounded-md px-3 text-xs font-bold ${filter === option ? 'bg-white text-[#0F6CBD] shadow-sm' : 'text-[#526174]'}`}>
                   {{ all: '전체', signed: '완료', pending: '미서명' }[option]}
                 </button>
               ))}
@@ -380,12 +432,13 @@ export function RegistryManagePage() {
                   <td className="px-4 py-3 text-xs text-[#526174]">{formatSignedAt(participant.signature?.signedAt) || '-'}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-1">
+                      {!participant.signature && (participant.requiresCode || participant.verificationCode || registry.participants.some((other)=>other.id!==participant.id && other.name===participant.name)) ? <button type="button" disabled={isMutating} onClick={()=>void issueVerificationCode(registry.id,participant.id).then((code)=>setShareNotice(`${participant.name} 확인 코드: ${code} · 본인에게 직접 안내해 주세요.`)).catch((error)=>setActionError(error instanceof Error ? error.message : '코드를 발급하지 못했습니다.'))} className="min-h-[44px] rounded-lg border px-2 text-xs font-bold" aria-label={`${participant.name} 확인 코드 발급`}>확인 코드</button> : null}
                       {participant.signature ? (
-                        <button type="button" onClick={() => setPendingAction({ kind: 'resign', participantId: participant.id, participantName: participant.name })} className="flex h-9 w-9 items-center justify-center rounded-lg text-[#526174] hover:bg-[#EFF6FC] hover:text-[#0F6CBD]" aria-label={`${participant.name} 재서명`} title="재서명">
+                        <button type="button" onClick={() => setPendingAction({ kind: 'resign', participantId: participant.id, participantName: participant.name })} className="flex h-11 w-11 items-center justify-center rounded-lg text-[#526174] hover:bg-[#EFF6FC] hover:text-[#0F6CBD]" aria-label={`${participant.name} 재서명`} title="재서명">
                           <RefreshCw className="h-4 w-4" />
                         </button>
                       ) : null}
-                      <button type="button" onClick={() => setPendingAction({ kind: 'delete', participantId: participant.id, participantName: participant.name })} className="flex h-9 w-9 items-center justify-center rounded-lg text-[#94A3B8] hover:bg-[#FEF2F2] hover:text-[#B42318]" aria-label={`${participant.name} 삭제`} title="참석자 삭제">
+                      <button type="button" onClick={() => setPendingAction({ kind: 'delete', participantId: participant.id, participantName: participant.name })} className="flex h-11 w-11 items-center justify-center rounded-lg text-[#94A3B8] hover:bg-[#FEF2F2] hover:text-[#B42318]" aria-label={`${participant.name} 삭제`} title="참석자 삭제">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
@@ -415,27 +468,34 @@ export function RegistryManagePage() {
             <p className="mt-1 text-xs text-[#526174]">서명 결과가 반영된 등록부를 PDF 또는 엑셀로 저장합니다.</p>
             <div className="mt-4 grid grid-cols-4 rounded-lg border border-[#DCE3EA] bg-[#F6F8FB] p-1">
               {([10, 15, 20, 30] as RegistryLayout[]).map((option) => (
-                <button key={option} type="button" disabled={isMutating} onClick={() => { setPrintPage(1); void handleUpdate({ layout: option }); }} aria-pressed={registry.layout === option} className={`min-h-[40px] rounded-md px-3 text-xs font-bold disabled:opacity-50 ${registry.layout === option ? 'bg-white text-[#0F6CBD] shadow-sm' : 'text-[#526174]'}`}>{option <= 15 ? `1단 ${option}` : `2단 ${option}`}</button>
+                <button key={option} type="button" disabled={isMutating} onClick={() => { setPrintPage(1); void handleUpdate({ layout: option }); }} aria-pressed={registry.layout === option} className={`min-h-[44px] rounded-md px-3 text-xs font-bold disabled:opacity-50 ${registry.layout === option ? 'bg-white text-[#0F6CBD] shadow-sm' : 'text-[#526174]'}`}>{option <= 15 ? `1단 ${option}` : `2단 ${option}`}</button>
               ))}
             </div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <button type="button" onClick={() => void exportExcel()} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-[#DCE3EA] px-4 text-sm font-bold text-[#334155] hover:bg-[#F6F8FB]"><FileSpreadsheet className="h-4 w-4" /> 엑셀 다운로드</button>
-            <button type="button" disabled={isExporting} onClick={() => void exportPdf()} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-[#0F6CBD] px-5 text-sm font-bold text-white hover:bg-[#0B5B9F] disabled:bg-[#AAB7C4]"><Download className="h-4 w-4" /> {isExporting ? 'PDF 만드는 중' : 'PDF 다운로드'}</button>
+            <button type="button" disabled={isExporting} onClick={() => void printAll()} className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[#DCE3EA] px-4 text-sm font-bold">전체 인쇄</button>
+            <button type="button" disabled={isExporting || !plan?.valid} onClick={() => void exportPdf()} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-[#0F6CBD] px-5 text-sm font-bold text-white hover:bg-[#0B5B9F] disabled:bg-[#AAB7C4]"><Download className="h-4 w-4" /> {isExporting ? 'PDF 만드는 중' : 'PDF 다운로드'}</button>
           </div>
         </div>
 
-        <div tabIndex={0} role="region" aria-label="등록부 인쇄 미리보기" className="mt-6 h-[720px] overflow-auto rounded-lg bg-[#E8ECF1] p-5">
+        {plan?.adjusted ? <p className="mt-4 text-sm text-[#526174]">긴 항목을 모두 표시하기 위해 {plan.tableColumns}단 · 한 단 {plan.rowsPerColumn}명으로 배치했습니다.</p> : null}
+        {imageLoading ? <p role="status" className="mt-4 text-sm">이 쪽의 서명 이미지를 불러오는 중입니다.</p> : null}
+        {Object.values(images).some((p)=>p.imageError) ? <div role="alert" className="mt-4 flex flex-wrap items-center gap-3 text-sm text-[#B42318]">서명 완료 상태는 유지됩니다. 이미지를 다시 확인해 주세요.<button type="button" onClick={retryImages} className="min-h-[44px] rounded-lg border px-4">서명 이미지 다시 불러오기</button></div> : null}
+        <div tabIndex={0} role="region" aria-label="등록부 인쇄 미리보기" className="mt-6 overflow-x-auto rounded-lg bg-[#E8ECF1] p-5">
           {/* 축소 배율과 자리 크기를 registry-print-frame이 함께 정한다. index.css 참고 */}
-          <div className={`registry-print-frame${renderAllPrintPages ? ' is-exporting' : ''}`}>
+          <div className={`registry-print-frame mx-auto${renderAllPrintPages ? ' is-exporting' : ''}`}>
             <div ref={printRef} className="registry-print-preview w-max">
-              <RegistryPrintSheet registry={registry} pageIndex={renderAllPrintPages ? undefined : safePrintPage - 1} />
+              <RegistryPrintSheet onImageError={markImageError} registry={printRegistry ?? registry} pageIndex={renderAllPrintPages ? undefined : safePrintPage - 1} />
             </div>
           </div>
         </div>
         <RegistryPagination currentPage={safePrintPage} pageSize={1} totalItems={printPageCount} onPageChange={setPrintPage} label="인쇄 미리보기 페이지" itemLabel="쪽" showItemRange={false} />
       </section>
 
+      <RegistryBrowserPrint registry={printRegistry ?? registry} />
+      {purgeCounts ? <RegistryConfirmDialog title="등록부를 영구 파기할까요?" description={`참석자 ${purgeCounts.recordCount}명 · 서명 ${purgeCounts.signatureCount}건 · 서명 파일 ${purgeCounts.fileCount}개를 파기합니다. 되돌릴 수 없고 기존 링크와 QR도 사용할 수 없습니다.`} confirmLabel={isMutating ? '파기 중' : '영구 파기'} onCancel={() => { if (!isMutating) setPurgeCounts(null); }} onConfirm={() => { if (isMutating) return; setIsMutating(true); void deleteRegistry(registry.id, purgeCounts).then(() => navigate('/tools/registry-sign')).catch((error) => setActionError(error instanceof Error ? error.message : '파기하지 못했습니다.')).finally(() => setIsMutating(false)); }} /> : null}
+      {rotateConfirm ? <RegistryConfirmDialog title="공개 링크를 재발급할까요?" description="기존 링크와 QR은 사용할 수 없게 됩니다. 새 링크와 QR을 다시 안내해 주세요." confirmLabel="링크 재발급" tone="primary" onCancel={()=>{if(!isMutating)setRotateConfirm(false);}} onConfirm={()=>{setIsMutating(true);void rotateRegistryToken(registry.id).then(()=>setRotateConfirm(false)).catch((error)=>setActionError(error instanceof Error ? error.message : '재발급하지 못했습니다.')).finally(()=>setIsMutating(false));}} /> : null}
       {pendingAction ? (
         <RegistryConfirmDialog
           title={pendingAction.kind === 'resign' ? '서명을 다시 받을까요?' : '참석자를 삭제할까요?'}

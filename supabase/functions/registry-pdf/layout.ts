@@ -33,27 +33,7 @@ export const chunkPdfRows = <T>(rows: T[], chunkSize: number) => {
   return chunks;
 };
 
-export const getPdfColumnWidths = (
-  tableWidth: number,
-  compact: boolean,
-  fieldCount: number,
-): PdfColumnWidths => {
-  const number = compact ? 25.5 : 39;
-  const signature = compact ? 66 : 112.5;
-  const preferredName = compact ? 52.5 : 87;
-
-  if (fieldCount === 0) {
-    return { number, name: tableWidth - number - signature, fields: [], signature };
-  }
-
-  const fieldWidth = (tableWidth - number - preferredName - signature) / fieldCount;
-  return {
-    number,
-    name: preferredName,
-    fields: Array.from({ length: fieldCount }, () => fieldWidth),
-    signature,
-  };
-};
+export { registryColumnWidths as getPdfColumnWidths } from '../_shared/registryPrintLayout.ts';
 
 export const fitPdfFontSize = (
   textWidthAtSizeOne: number,

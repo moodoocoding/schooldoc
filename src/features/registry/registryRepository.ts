@@ -7,6 +7,7 @@ import type {
   RegistryMode,
   RegistryParticipant,
   RegistryStatus,
+  RegistrySummary,
   SignatureSource,
 } from './types';
 
@@ -20,9 +21,13 @@ interface RegistryRow {
   layout: RegistryLayout;
   status: 'draft' | RegistryStatus;
   allow_walk_in: boolean;
-  password_digest: string | null;
+  password_digest?: string | null;
+  has_password?: boolean;
   created_at: string;
   updated_at: string;
+  retention_months?: number | null;
+  closed_at?: string | null;
+  purge_started_at?: string | null;
 }
 
 interface ColumnRow {
@@ -39,6 +44,7 @@ interface ParticipantRow {
   name: string;
   field_values: Record<string, string> | null;
   status: 'pending' | 'signed';
+  requires_code?: boolean;
   signed_at: string | null;
 }
 
@@ -96,14 +102,6 @@ const listParticipantFilePaths = async (registryId: string, participantId: strin
 );
 
 /** 등록부 아래 모든 서명 파일. 이전에 지우다 만 것까지 함께 걷힌다. */
-const listRegistryFilePaths = async (registryId: string) => {
-  const paths: string[] = [];
-  for (const participantFolder of await listStorageNames(registryId)) {
-    paths.push(...await listParticipantFilePaths(registryId, participantFolder));
-  }
-  return paths;
-};
-
 /**
  * 지운 뒤 실제로 사라졌는지 다시 확인한다.
  *
@@ -129,9 +127,9 @@ const fail = (message: string, error?: { message?: string } | null): never => {
   throw new Error(error?.message ? `${message}: ${error.message}` : message);
 };
 
-const notify = () => window.dispatchEvent(new CustomEvent(CHANGE_EVENT));
+const notify = (registryId?: string) => window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: { registryId } }));
 
-const loadSignatureUrls = async (rows: SignatureRow[]) => {
+export const loadSignatureUrls = async (rows: SignatureRow[]) => {
   const paths = rows.map((row) => row.storage_path);
   if (paths.length === 0) return new Map<string, string>();
 
@@ -151,7 +149,7 @@ const assembleRegistries = async (
   participantRows: ParticipantRow[],
   signatureRows: SignatureRow[],
 ) => {
-  const signatureUrls = await loadSignatureUrls(signatureRows);
+  // 제출 상태는 DB에서 읽고, 이미지 URL은 필요한 인쇄 쪽에서만 발급한다.
   const signaturesByParticipant = new Map(signatureRows.map((row) => [row.participant_id, row]));
 
   return registryRows.map<Registry>((row) => {
@@ -164,16 +162,18 @@ const assembleRegistries = async (
       .toSorted((a, b) => a.row_number - b.row_number)
       .map<RegistryParticipant>((participant) => {
         const signature = signaturesByParticipant.get(participant.id);
-        const signedUrl = signature ? signatureUrls.get(signature.storage_path) : undefined;
+
         return {
           id: participant.id,
           rowNumber: participant.row_number,
           name: participant.name,
           values: participant.field_values ?? {},
-          signature: signature && signedUrl ? {
-            dataUrl: signedUrl,
-            source: signature.source,
-            signedAt: participant.signed_at ?? signature.created_at,
+          requiresCode: participant.requires_code,
+          signaturePath: signature?.storage_path,
+          signature: participant.status === 'signed' ? {
+            dataUrl: '',
+            source: signature?.source ?? 'draw',
+            signedAt: participant.signed_at ?? signature?.created_at ?? '',
           } : undefined,
         };
       });
@@ -188,11 +188,14 @@ const assembleRegistries = async (
       status: row.status === 'draft' ? 'closed' : row.status,
       layout: row.layout,
       allowWalkIn: row.allow_walk_in,
-      isPasswordProtected: Boolean(row.password_digest),
+      isPasswordProtected: Boolean(row.has_password ?? row.password_digest),
       columns,
       participants,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      retentionMonths: row.retention_months ?? undefined,
+      closedAt: row.closed_at ?? undefined,
+      purgeStartedAt: row.purge_started_at ?? undefined,
     };
   });
 };
@@ -219,22 +222,20 @@ const loadRelatedRows = async (registryRows: RegistryRow[]) => {
 export const listRemoteRegistries = async () => {
   const { data, error } = await client()
     .from('registries')
-    .select('id, public_token, mode, title, left_header, right_header, layout, status, allow_walk_in, password_digest, created_at, updated_at')
+    .select('id, public_token, mode, title, left_header, right_header, layout, status, allow_walk_in, password_digest, created_at, updated_at, retention_months, closed_at')
     .order('updated_at', { ascending: false });
   if (error) fail('등록부 목록을 불러오지 못했습니다', error);
   return loadRelatedRows((data ?? []) as RegistryRow[]);
 };
 
 export const getRemoteRegistry = async (id: string) => {
-  const { data, error } = await client()
-    .from('registries')
-    .select('id, public_token, mode, title, left_header, right_header, layout, status, allow_walk_in, password_digest, created_at, updated_at')
-    .eq('id', id)
-    .maybeSingle();
-  if (error) fail('등록부를 불러오지 못했습니다', error);
-  if (!data) return null;
-  return (await loadRelatedRows([data as RegistryRow]))[0] ?? null;
+  const result = await callParticipants<{ registry: RegistryRow; columns: ColumnRow[]; participants: ParticipantRow[]; signatures: SignatureRow[] }>({ action: 'snapshot', registryId: id });
+  return (await assembleRegistries([result.registry], result.columns, result.participants, result.signatures))[0] ?? null;
 };
+
+export const issueRemoteVerificationCode = async (registryId: string, participantId: string) => (
+  await callParticipants<{ code: string }>({ action: 'verificationCode', registryId, participantId })
+).code;
 
 export const createRemoteRegistry = async (draft: RegistryDraft) => {
   const { data: userData, error: userError } = await client().auth.getUser();
@@ -251,6 +252,7 @@ export const createRemoteRegistry = async (draft: RegistryDraft) => {
     layout: draft.layout,
     status: 'open',
     allow_walk_in: draft.allowWalkIn,
+    retention_months: draft.retentionMonths ?? 3,
   }).select('id').single();
   if (error) fail('등록부를 만들지 못했습니다', error);
   if (!data) throw new Error('생성한 등록부 식별자를 확인하지 못했습니다.');
@@ -290,10 +292,8 @@ export const createRemoteRegistry = async (draft: RegistryDraft) => {
     throw error;
   }
 
-  notify();
-  const registry = await getRemoteRegistry(registryId);
-  if (!registry) throw new Error('생성한 등록부를 다시 불러오지 못했습니다.');
-  return registry;
+  notify(registryId);
+  return { id: registryId };
 };
 
 export const updateRemoteRegistry = async (id: string, patch: Partial<Registry>) => {
@@ -303,6 +303,7 @@ export const updateRemoteRegistry = async (id: string, patch: Partial<Registry>)
   if (patch.rightHeader !== undefined) values.right_header = patch.rightHeader;
   if (patch.layout !== undefined) values.layout = patch.layout;
   if (patch.status !== undefined) values.status = patch.status;
+  if (patch.retentionMonths !== undefined) values.retention_months = patch.retentionMonths;
   if (patch.allowWalkIn !== undefined) values.allow_walk_in = patch.allowWalkIn;
 
   if (Object.keys(values).length > 0) {
@@ -316,18 +317,16 @@ export const updateRemoteRegistry = async (id: string, patch: Partial<Registry>)
     });
     if (error) fail('공개 비밀번호를 수정하지 못했습니다', error);
   }
-  notify();
-  return getRemoteRegistry(id);
+  notify(id);
+  // 호출 화면의 refresh와 Realtime이 같은 조회를 공유한다.
+  return null;
 };
 
-export const deleteRemoteRegistry = async (id: string) => {
-  // 파일을 먼저 지우고 확인한 뒤에야 행을 지운다. 순서가 바뀌면 남은 파일을 못 지운다.
-  await removeSignatureFiles(await listRegistryFilePaths(id), () => listRegistryFilePaths(id));
-
-  const { error } = await client().from('registries').delete().eq('id', id);
-  if (error) fail('등록부를 삭제하지 못했습니다', error);
-  notify();
+export const previewRemoteRegistryPurge = (registryId: string) => callParticipants<import('./types').RegistryPurgeCounts>({ action: 'previewPurge', registryId });
+export const deleteRemoteRegistry = async (registryId: string, counts: import('./types').RegistryPurgeCounts) => {
+  await callParticipants({ action: 'purge', registryId, confirmed: true, ...counts }); notify(registryId);
 };
+export const cleanupRemoteRegistryUploads = async (registryId: string) => callParticipants<{removedCount:number}>({ action: 'cleanupUploads', registryId });
 
 export const addRemoteParticipant = async (
   registryId: string,
@@ -340,7 +339,7 @@ export const addRemoteParticipant = async (
     name: participant.name,
     values: participant.values,
   });
-  notify();
+  notify(registryId);
   return {
     id: created.id,
     rowNumber: created.rowNumber,
@@ -360,7 +359,7 @@ export const removeRemoteParticipant = async (registryId: string, participantId:
     .eq('registry_id', registryId)
     .eq('id', participantId);
   if (error) fail('참석자를 삭제하지 못했습니다', error);
-  notify();
+  notify(registryId);
 };
 
 export const clearRemoteSignature = async (registryId: string, participantId: string) => {
@@ -383,7 +382,7 @@ export const clearRemoteSignature = async (registryId: string, participantId: st
     .delete()
     .eq('participant_id', participantId);
   if (deleteError) fail('기존 서명을 삭제하지 못했습니다', deleteError);
-  notify();
+  notify(registryId);
 };
 
 export const createRemoteRegistryPdf = async (registryId: string) => {
@@ -408,19 +407,53 @@ export const createRemoteRegistryPdf = async (registryId: string) => {
   return data;
 };
 
-export const subscribeRemoteRegistries = (listener: () => void) => {
-  const onLocalChange = () => listener();
-  window.addEventListener(CHANGE_EVENT, onLocalChange);
-  const channel = client()
-    .channel(`registry-admin-${crypto.randomUUID()}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'registries' }, listener)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'registry_columns' }, listener)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'registry_participants' }, listener)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'registry_signatures' }, listener)
-    .subscribe();
+export const listRemoteRegistrySummaries = async (): Promise<RegistrySummary[]> => {
+  const { data, error } = await client().rpc('registry_owner_summaries');
+  if (error) fail('등록부 요약을 불러오지 못했습니다', error);
+  return (data ?? []).map((row: Record<string, unknown>) => ({
+    id: String(row.id), title: String(row.title), leftHeader: String(row.left_header),
+    rightHeader: String(row.right_header), mode: row.mode as RegistryMode,
+    status: row.status === 'draft' ? 'closed' : row.status as RegistryStatus,
+    participantCount: Number(row.participant_count), signedCount: Number(row.signed_count),
+    updatedAt: String(row.updated_at),
+  }));
+};
 
+export const loadParticipantImages = async (participants: RegistryParticipant[]) => {
+  const rows = participants.filter((p) => p.signature && p.signaturePath).map((p) => ({ storage_path: p.signaturePath! })) as SignatureRow[];
+  const urls = await loadSignatureUrls(rows);
+  return participants.map((p) => !p.signature ? p : ({ ...p, imageError: !p.signaturePath || !urls.get(p.signaturePath),
+    signature: { ...p.signature, dataUrl: urls.get(p.signaturePath ?? '') ?? '' } }));
+};
+
+export const rotateRemoteRegistryToken = async (id: string) => {
+  const { error } = await client().rpc('rotate_registry_token', { p_registry_id: id });
+  if (error) fail('공개 링크를 재발급하지 못했습니다', error);
+  notify(id);
+};
+
+export const subscribeRemoteRegistries = (listener: () => void, registryId?: string) => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const schedule = () => {
+    if (timer !== undefined) return;
+    // 첫 이벤트부터 350ms 안에 갱신한다. 연속 제출이 와도 현황 갱신을 미루지 않는다.
+    timer = setTimeout(() => { timer = undefined; listener(); }, 350);
+  };
+  const localChange = (event: Event) => { const changed = (event as CustomEvent<{registryId?:string}>).detail?.registryId; if (!registryId || !changed || changed===registryId) schedule(); };
+  window.addEventListener(CHANGE_EVENT, localChange);
+  const channel = client().channel(`registry-admin-${crypto.randomUUID()}`);
+  for (const table of ['registries', 'registry_columns', 'registry_participants']) {
+    const filter = registryId ? `${table === 'registries' ? 'id' : 'registry_id'}=eq.${registryId}` : undefined;
+    channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table, filter }, schedule)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table, filter }, schedule);
+  }
+  // DELETE 이벤트는 서버 필터가 적용되지 않는다. 삭제는 명령 응답/재진입에서 동기화한다.
+  let connected = false;
+  channel.subscribe((status) => { if (status === 'SUBSCRIBED') { if (connected) schedule(); connected = true; } });
+  const visible = () => { if (document.visibilityState === 'visible') schedule(); };
+  document.addEventListener('visibilitychange', visible);
   return () => {
-    window.removeEventListener(CHANGE_EVENT, onLocalChange);
-    void client().removeChannel(channel);
+    clearTimeout(timer); window.removeEventListener(CHANGE_EVENT, localChange);
+    document.removeEventListener('visibilitychange', visible); void client().removeChannel(channel);
   };
 };

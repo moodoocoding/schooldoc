@@ -1,0 +1,4 @@
+
+> 260725_individual_data@0.0.0 typecheck
+> tsc -b --noEmit
+

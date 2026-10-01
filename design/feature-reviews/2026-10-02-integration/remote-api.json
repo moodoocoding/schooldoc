@@ -1,0 +1,116 @@
+{
+  "project": "jhystopaacyfvjxhnpyd",
+  "mode": "read and rejection only; no business records created or deleted",
+  "results": [
+    {
+      "function": "consent-forms-public",
+      "action": "metadata",
+      "status": 404,
+      "expected": 404,
+      "hasError": true
+    },
+    {
+      "function": "consent-forms-public",
+      "action": "metadata",
+      "status": 400,
+      "expected": 400,
+      "hasError": true
+    },
+    {
+      "function": "registry-public",
+      "action": "metadata",
+      "status": 404,
+      "expected": 404,
+      "hasError": true
+    },
+    {
+      "function": "registry-public",
+      "action": "metadata",
+      "status": 400,
+      "expected": 400,
+      "hasError": true
+    },
+    {
+      "function": "data-collect-public",
+      "action": "metadata",
+      "status": 404,
+      "expected": 404,
+      "hasError": true
+    },
+    {
+      "function": "data-collect-public",
+      "action": "metadata",
+      "status": 400,
+      "expected": 400,
+      "hasError": true
+    },
+    {
+      "function": "special-rooms-public",
+      "action": "metadata",
+      "status": 404,
+      "expected": 404,
+      "hasError": true
+    },
+    {
+      "function": "special-rooms-public",
+      "action": "metadata",
+      "status": 400,
+      "expected": 400,
+      "hasError": true
+    },
+    {
+      "function": "consent-forms-admin",
+      "action": "list",
+      "status": 401,
+      "expected": 401,
+      "hasError": true
+    },
+    {
+      "function": "registry-participants",
+      "action": "snapshot",
+      "status": 401,
+      "expected": 401,
+      "hasError": true
+    },
+    {
+      "function": "registry-pdf",
+      "status": 401,
+      "expected": 401,
+      "hasError": true
+    },
+    {
+      "function": "data-collect-admin",
+      "action": "list",
+      "status": 401,
+      "expected": 401,
+      "hasError": true
+    },
+    {
+      "function": "special-rooms-admin",
+      "action": "calendar",
+      "status": 401,
+      "expected": 401,
+      "hasError": true
+    },
+    {
+      "resource": "consent_forms",
+      "status": 200,
+      "anonymousRows": 0
+    },
+    {
+      "resource": "registries",
+      "status": 200,
+      "anonymousRows": 0
+    },
+    {
+      "resource": "data_collections",
+      "status": 200,
+      "anonymousRows": 0
+    },
+    {
+      "resource": "special_room_boards",
+      "status": 200,
+      "anonymousRows": 0
+    }
+  ]
+}

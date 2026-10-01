@@ -1,0 +1,41 @@
+running 8 tests from ./tests/server/registryPublic.test.ts
+공개 검색은 원문·암호문 없이 마스킹과 확인 조건만 반환한다 ... ok (15ms)
+서명은 한 완료 RPC에서 암호문으로 저장되고 동일 재시도는 업로드하지 않는다 ... ok (2ms)
+SQL 실패는 해당 시도 파일만 정리하고 재시도에 새 파일 경로를 사용한다 ...
+------- output -------
+registry-public request failed
+----- output end -----
+SQL 실패는 해당 시도 파일만 정리하고 재시도에 새 파일 경로를 사용한다 ... ok (3ms)
+완료 응답 유실 후 저장 사실을 확인하면 성공하고 참조 파일을 지우지 않는다 ... ok (1ms)
+Storage 제거 성공 응답 뒤 잔존 파일을 확인하고 개인정보 없는 재시도 기록을 남긴다 ...
+------- output -------
+registry-public request failed
+----- output end -----
+Storage 제거 성공 응답 뒤 잔존 파일을 확인하고 개인정보 없는 재시도 기록을 남긴다 ... ok (1ms)
+이미지 업로드·복호화 실패는 DB 완료 저장을 실행하지 않는다 ...
+------- output -------
+registry-public request failed
+registry-public request failed
+----- output end -----
+이미지 업로드·복호화 실패는 DB 완료 저장을 실행하지 않는다 ... ok (1ms)
+동명이인 원문 조건이 두 명에 일치하면 서명을 저장하지 않는다 ... ok (773µs)
+현장 미리보기는 쓰지 않고 최종 제출에만 원문 항목을 봉인한다 ... ok (1ms)
+running 2 tests from ./tests/server/specialRooms.test.ts
+HTTP boundary: one RPC, typed conflicts, strict period and fail closed ... ok (13ms)
+notification JWT: dedicated role, board+epoch, short TTL, real ES256 signature ... ok (30ms)
+running 1 test from ./tests/server/specialRoomsSql.test.ts
+special rooms PostgreSQL migration and atomic contracts ...
+  apply 202608210002_special_room_reservation.sql ... ok (19ms)
+  apply 202608230001_special_room_period_and_saturday.sql ... ok (3ms)
+  apply 202608230002_special_room_closure.sql ... ok (4ms)
+  apply 202610010600_special_room_scoped_sync.sql ... ok (20ms)
+  9교시 생성과 빈 칸 CAS ... ok (25ms)
+  selected scope snapshot and real event rows ... ok (12ms)
+  repeat counts and same operation replay ... ok (11ms)
+  settings, closed repeat, hidden record correction and closure guard ... ok (8ms)
+  calendar transaction diff/no-op/rollback/source check ... ok (20ms)
+  owner summaries, private topic claims, direct viewer denial ... ok (18ms)
+special rooms PostgreSQL migration and atomic contracts ... ok (1s)
+
+ok | 11 passed (10 steps) | 0 failed (1s)
+

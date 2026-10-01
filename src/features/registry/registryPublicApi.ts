@@ -25,6 +25,8 @@ interface ParticipantsResponse {
     values: Record<string, string>;
     signed: boolean;
     signedAt?: string;
+    requiresIdentity?: boolean;
+    requiresCode?: boolean;
   }>;
 }
 
@@ -51,6 +53,8 @@ const mapParticipant = (participant: ParticipantsResponse['participants'][number
   rowNumber: participant.rowNumber,
   name: participant.name,
   values: participant.values,
+  requiresIdentity: participant.requiresIdentity,
+  requiresCode: participant.requiresCode,
   signature: participant.signed ? {
     dataUrl: '',
     source: 'draw',
@@ -82,8 +86,8 @@ export const unlockPublicRegistry = async (token: string, password: string) => {
   await invoke<{ ok: true }>({ action: 'unlock', token, password });
 };
 
-export const searchPublicParticipants = async (token: string, password: string, query: string) => {
-  const { participants } = await invoke<ParticipantsResponse>({ action: 'search', token, password, query });
+export const searchPublicParticipants = async (token: string, password: string, query: string, code = '') => {
+  const { participants } = await invoke<ParticipantsResponse>({ action: 'search', token, password, query, code });
   return participants.map(mapParticipant);
 };
 
@@ -121,6 +125,8 @@ export const submitPublicSignature = async (
   values: Record<string, string>,
   width: number,
   height: number,
+  verification: import('./types').SignatureVerification,
+  walkIn?: { name: string; values: Record<string, string>; confirmDuplicate: boolean },
 ) => {
   await invoke<{ ok: true }>({
     action: 'submit',
@@ -132,5 +138,9 @@ export const submitPublicSignature = async (
     values,
     width,
     height,
+    ...verification,
+    walkInName: walkIn?.name,
+    walkInValues: walkIn?.values,
+    confirmDuplicate: walkIn?.confirmDuplicate,
   });
 };

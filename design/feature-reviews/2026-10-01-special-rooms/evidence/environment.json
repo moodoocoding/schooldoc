@@ -1,0 +1,11 @@
+{
+  "reviewedAt": "2026-10-01 Asia/Seoul",
+  "baseCommit": "c208afefca40bb4f15cab164fc292661e80fb9a0",
+  "chrome": "154.0.8037.58",
+  "node": "v22.15.1",
+  "port": 4184,
+  "demo": "VITE_SPECIAL_ROOMS_DEMO_MODE=true",
+  "supabase": "unconfigured",
+  "operatingSystem": "Windows",
+  "noRemoteDataOperations": true
+}

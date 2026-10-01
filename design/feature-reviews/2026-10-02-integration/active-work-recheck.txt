@@ -1,0 +1,16 @@
+
+> 260725_individual_data@0.0.0 test:e2e
+> playwright test tests/e2e/active-work.spec.ts
+
+
+Running 5 tests using 1 worker
+
+(node:33008) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 tests\e2e\active-work.spec.ts:4:3 › 진행 중인 업무 › 홈은 진행 요약으로 바뀌지 않고 전체 업무 도구를 그대로 보여준다 (1.1s)
+  ok 2 tests\e2e\active-work.spec.ts:21:3 › 진행 중인 업무 › 도구 제목은 목록으로, 개별 업무는 관리 화면으로 이동한다 (1.6s)
+  ok 3 tests\e2e\active-work.spec.ts:57:3 › 진행 중인 업무 › 종료한 수합은 숨기고 열린 수합의 지난 기한은 마감 지남으로 표시한다 (974ms)
+  ok 4 tests\e2e\active-work.spec.ts:95:3 › 진행 중인 업무 › 단건 업무도 반쪽 카드가 아닌 전체 폭 목록 행으로 표시한다 (658ms)
+  ok 5 tests\e2e\active-work.spec.ts:137:1 › 가정통신문 재제출은 현재 응답 수로 표시하고 준비 중인 수합은 숨긴다 (737ms)
+
+  5 passed (6.0s)

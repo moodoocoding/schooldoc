@@ -18,22 +18,25 @@ const openBoard = async (page: Page) => {
   await expect(page.getByRole('rowheader')).toHaveCount(8);
 };
 
-const weekFit = (page: Page) => page.evaluate(() => {
-  const table = document.querySelector('table');
-  if (!table) return null;
-  const days = [...table.querySelectorAll('thead th')].slice(1);
-  const inside = days.filter((th) => {
-    const r = th.getBoundingClientRect();
-    return r.left >= -1 && r.right <= window.innerWidth + 1 && r.width > 0;
-  }).length;
-  const scroller = table.parentElement as HTMLElement;
-  return {
-    days: days.length,
-    inside,
-    horizontal: scroller.scrollWidth - scroller.clientWidth,
-    documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  };
-});
+const weekFit = (page: Page) =>
+  page.evaluate(() => {
+    const table = document.querySelector('table');
+    if (!table) return null;
+    const days = [...table.querySelectorAll('thead th')].slice(1);
+    const inside = days.filter((th) => {
+      const r = th.getBoundingClientRect();
+      return r.left >= -1 && r.right <= window.innerWidth + 1 && r.width > 0;
+    }).length;
+    const scroller = table.parentElement as HTMLElement;
+    return {
+      days: days.length,
+      inside,
+      horizontal: scroller.scrollWidth - scroller.clientWidth,
+      documentOverflow:
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+    };
+  });
 
 test('375px에서 5일이 모두 보이고 가로 스크롤이 없다', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
@@ -45,14 +48,22 @@ test('375px에서 5일이 모두 보이고 가로 스크롤이 없다', async ({
   expect(fit?.horizontal, '표 안에서 옆으로 밀 것이 없어야 한다').toBe(0);
   expect(fit?.documentOverflow).toBe(0);
 
-  const navigationTops = await page.evaluate(() => (
-    [...document.querySelectorAll('section[aria-label="예약 주간 선택"] button')]
-      .map((button) => Math.round(button.getBoundingClientRect().top))
-  ));
-  expect(Math.max(...navigationTops) - Math.min(...navigationTops), '주간 이동 버튼이 한 줄에 있어야 한다').toBeLessThanOrEqual(1);
+  const navigationTops = await page.evaluate(() =>
+    [
+      ...document.querySelectorAll(
+        'section[aria-label="예약 주간 선택"] button[aria-label="지난 주"], section[aria-label="예약 주간 선택"] button[aria-label="다음 주"]',
+      ),
+    ].map((button) => Math.round(button.getBoundingClientRect().top)),
+  );
+  expect(
+    Math.max(...navigationTops) - Math.min(...navigationTops),
+    '주간 이동 버튼이 한 줄에 있어야 한다',
+  ).toBeLessThanOrEqual(1);
 });
 
-test('320px처럼 더 좁은 화면에서도 문서가 가로로 넘치지 않는다', async ({ page }) => {
+test('320px처럼 더 좁은 화면에서도 문서가 가로로 넘치지 않는다', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 320, height: 720 });
   await openBoard(page);
 
@@ -69,7 +80,9 @@ test('데스크톱에서도 5일이 그대로 보인다', async ({ page }) => {
   expect(fit?.horizontal).toBe(0);
 });
 
-test('데스크톱에서는 폭을 제한하고 행 높이를 넉넉하게 쓴다', async ({ page }) => {
+test('데스크톱에서는 폭을 제한하고 행 높이를 넉넉하게 쓴다', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await openBoard(page);
 
@@ -91,7 +104,9 @@ test('데스크톱에서는 폭을 제한하고 행 높이를 넉넉하게 쓴�
   expect(layout?.cellHeight).toBeGreaterThanOrEqual(64);
 });
 
-test('공개 예약표는 웜 그레이·포레스트·테라코타의 주간 플래너 배색을 쓴다', async ({ page }) => {
+test('공개 예약표는 웜 그레이·포레스트·테라코타의 주간 플래너 배색을 쓴다', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await openBoard(page);
 
@@ -109,7 +124,7 @@ test('공개 예약표는 웜 그레이·포레스트·테라코타의 주간 �
   expect(palette).toEqual({
     canvas: 'rgb(244, 243, 239)',
     accent: '#315f50',
-    today: 'rgb(199, 101, 76)',
+    today: 'rgb(164, 65, 45)',
   });
 });
 
@@ -117,7 +132,10 @@ test('칸을 누르면 시트가 열려 어디를 잡는지 알려 준다', asyn
   await page.setViewportSize({ width: 375, height: 812 });
   await openBoard(page);
 
-  await page.getByRole('button', { name: /교시 예약하기$/ }).first().click();
+  await page
+    .getByRole('button', { name: /교시 예약하기$/ })
+    .first()
+    .click();
 
   const sheet = page.getByRole('dialog');
   await expect(sheet).toBeVisible();
@@ -131,12 +149,17 @@ test('시트에서 적어 저장하면 표에 반영되고 시트가 닫힌다',
   await page.setViewportSize({ width: 375, height: 812 });
   await openBoard(page);
 
-  await page.getByRole('button', { name: /교시 예약하기$/ }).first().click();
+  await page
+    .getByRole('button', { name: /교시 예약하기$/ })
+    .first()
+    .click();
   await page.getByRole('textbox', { name: /사용 내용$/ }).fill('6-1반');
   await page.getByRole('button', { name: '저장' }).click();
 
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /6-1반 고치기$/ })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /6-1반 고치기$/ }),
+  ).toBeVisible();
   await expect(page.getByText('저장됨', { exact: true })).toBeVisible();
 });
 
@@ -144,19 +167,28 @@ test('예약 지우기 버튼으로 지운다', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await openBoard(page);
 
-  await page.getByRole('button', { name: /교시 예약하기$/ }).first().click();
+  await page
+    .getByRole('button', { name: /교시 예약하기$/ })
+    .first()
+    .click();
   await page.getByRole('textbox', { name: /사용 내용$/ }).fill('6-1반');
   await page.getByRole('button', { name: '저장' }).click();
-  await expect(page.getByRole('button', { name: /6-1반 고치기$/ })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /6-1반 고치기$/ }),
+  ).toBeVisible();
 
   // 비우고 저장하는 것 말고, 지우려고 온 사람을 위한 길이 따로 있어야 한다.
   await page.getByRole('button', { name: /6-1반 고치기$/ }).click();
   await page.getByRole('button', { name: '바꾸기' }).click();
   await page.getByRole('button', { name: '예약 지우기' }).click();
-  await expect(page.getByRole('button', { name: /6-1반 고치기$/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /6-1반 고치기$/ })).toHaveCount(
+    0,
+  );
 });
 
-test('Escape로 시트를 닫으면 아무것도 저장되지 않고 원래 칸으로 돌아온다', async ({ page }) => {
+test('Escape로 시트를 닫으면 아무것도 저장되지 않고 원래 칸으로 돌아온다', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await openBoard(page);
 
@@ -166,7 +198,9 @@ test('Escape로 시트를 닫으면 아무것도 저장되지 않고 원래 칸�
   await page.keyboard.press('Escape');
 
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /실수로 적음/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /실수로 적음/ })).toHaveCount(
+    0,
+  );
   await expect(cell).toBeFocused();
 });
 
@@ -175,21 +209,33 @@ test('긴 이름은 칸에서 잘리지만 시트에서는 전부 읽힌다', as
   await openBoard(page);
 
   const long = '6학년 1반 과학 실험 안전교육';
-  await page.getByRole('button', { name: /교시 예약하기$/ }).first().click();
+  await page
+    .getByRole('button', { name: /교시 예약하기$/ })
+    .first()
+    .click();
   await page.getByRole('textbox', { name: /사용 내용$/ }).fill(long);
   await page.getByRole('button', { name: '저장' }).click();
 
-  const cell = page.getByRole('button', { name: new RegExp(`${long} 고치기$`) });
+  const cell = page.getByRole('button', {
+    name: new RegExp(`${long} 고치기$`),
+  });
   await expect(cell).toBeVisible();
 
-  // 칸에서는 한 줄로 자른다. 글자 중간이 잘려 보이면 안 된다.
-  const clipped = await cell.locator('span').first().evaluate((el) => ({
-    boxHeight: Math.round(el.getBoundingClientRect().height),
-    lineHeight: Math.round(parseFloat(getComputedStyle(el).lineHeight)),
-  }));
-  expect(clipped.boxHeight, '칩이 한 줄 높이여야 한다').toBeLessThanOrEqual(clipped.lineHeight + 10);
+  // 칸에서는 최대 두 줄로 표시하고 상세에서는 원문 전체를 유지한다.
+  const clipped = await cell
+    .locator('span')
+    .first()
+    .evaluate((el) => ({
+      boxHeight: Math.round(el.getBoundingClientRect().height),
+      lineHeight: Math.round(parseFloat(getComputedStyle(el).lineHeight)),
+    }));
+  expect(clipped.boxHeight, '칩이 두 줄 안에 읽혀야 한다').toBeLessThanOrEqual(
+    clipped.lineHeight * 2 + 10,
+  );
 
   await cell.click();
   await page.getByRole('button', { name: '바꾸기' }).click();
-  await expect(page.getByRole('textbox', { name: /사용 내용$/ })).toHaveValue(long);
+  await expect(page.getByRole('textbox', { name: /사용 내용$/ })).toHaveValue(
+    long,
+  );
 });

@@ -28,11 +28,11 @@ const db = createClient(supabaseUrl, serviceRoleKey, {
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const actionLimits: Record<string, number> = {
-  metadata: 60,
-  unlock: 10,
-  search: 30,
-  'walk-in': 10,
-  submit: 10,
+  metadata: 360,
+  unlock: 180,
+  search: 360,
+  'walk-in': 180,
+  submit: 180,
 };
 
 interface RegistryRow {
@@ -60,55 +60,6 @@ const hashBytes = async (value: BufferSource) => {
 };
 
 const hashText = (value: string) => hashBytes(new TextEncoder().encode(value));
-
-const consumeRateLimit = async (request: Request, action: string, token: string) => {
-  const ip = request.headers.get('cf-connecting-ip')
-    ?? request.headers.get('x-real-ip')
-    ?? request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-    ?? 'unknown';
-  const key = await hashText(`${ip}:${token}:${action}`);
-  const { data, error } = await db.rpc('consume_registry_rate_limit', {
-    p_request_key: key,
-    p_window_seconds: 60,
-    p_max_requests: actionLimits[action] ?? 10,
-  });
-  if (error) throw error;
-  if (!data) throw new HttpError(429, '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.');
-};
-
-const getRegistry = async (token: string) => {
-  const { data, error } = await db
-    .from('registries')
-    .select('id, public_token, mode, title, left_header, right_header, layout, status, allow_walk_in, password_digest')
-    .eq('public_token', token)
-    .maybeSingle();
-  if (error) throw error;
-  if (!data) throw new HttpError(404, '등록부를 찾을 수 없습니다.');
-  return data as RegistryRow;
-};
-
-const getColumns = async (registryId: string) => {
-  const { data, error } = await db
-    .from('registry_columns')
-    .select('id, label, position')
-    .eq('registry_id', registryId)
-    .order('position');
-  if (error) throw error;
-  return (data ?? []) as ColumnRow[];
-};
-
-const verifyPassword = async (registry: RegistryRow, password: unknown) => {
-  if (!registry.password_digest) return;
-  if (typeof password !== 'string' || password.length > 200) {
-    throw new HttpError(401, '비밀번호가 맞지 않습니다.');
-  }
-  const { data, error } = await db.rpc('verify_registry_password', {
-    p_registry_id: registry.id,
-    p_password: password,
-  });
-  if (error) throw error;
-  if (!data) throw new HttpError(401, '비밀번호가 맞지 않습니다.');
-};
 
 const cleanValues = (
   value: unknown,
@@ -204,152 +155,139 @@ const participantResponse = (participant: Record<string, unknown>) => ({
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (request.method !== 'POST') return response(405, { error: '허용되지 않은 요청입니다.' });
-
   try {
     const body = await request.json() as Record<string, unknown>;
     const action = typeof body.action === 'string' ? body.action : '';
     const token = typeof body.token === 'string' ? body.token : '';
-    if (!Object.hasOwn(actionLimits, action) || !uuidPattern.test(token)) {
-      throw new HttpError(400, '요청 형식이 올바르지 않습니다.');
-    }
-
-    await consumeRateLimit(request, action, token);
-    const registry = await getRegistry(token);
-    const columns = await getColumns(registry.id);
-
-    if (action === 'metadata') {
-      return response(200, {
-        registry: {
-          id: registry.id,
-          publicToken: registry.public_token,
-          title: registry.title,
-          leftHeader: registry.left_header,
-          rightHeader: registry.right_header,
-          mode: registry.mode,
-          status: registry.status === 'draft' ? 'closed' : registry.status,
-          layout: registry.layout,
-          allowWalkIn: registry.allow_walk_in,
-          hasPassword: Boolean(registry.password_digest),
-          columns: columns.map((column) => ({ id: column.id, label: column.label })),
-        },
-      });
-    }
-
-    await verifyPassword(registry, body.password);
+    if (!Object.hasOwn(actionLimits, action) || !uuidPattern.test(token)) throw new HttpError(400, '요청 형식이 올바르지 않습니다.');
+    const name = typeof body.name === 'string' ? body.name.trim() : '';
+    const query = typeof body.query === 'string' ? body.query.trim() : '';
+    const password = typeof body.password === 'string' ? body.password : '';
+    if (password.length > 200) throw new HttpError(400, '비밀번호 길이를 확인해 주세요.');
+    const participantId = typeof body.participantId === 'string' && uuidPattern.test(body.participantId) ? body.participantId : null;
+    if (action === 'search' && (query.length < 2 || query.length > 100)) throw new HttpError(400, '검색어를 두 글자 이상 입력해 주세요.');
+    const code = typeof body.code === 'string' ? body.code : '';
+    if (code.length > 100) throw new HttpError(400, '확인 코드를 확인해 주세요.');
+    const ip = request.headers.get('cf-connecting-ip') ?? request.headers.get('x-real-ip') ?? request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+    const { data: context, error: contextError } = await db.rpc('registry_public_context', {
+      p_token: token, p_action: action, p_ip_key: await hashText(ip), p_password: password,
+      p_query: action === 'walk-in' ? name : query, p_participant_id: participantId, p_code: code,
+    });
+    if (contextError) throw contextError;
+    if (context.error) throw new HttpError(context.status, context.error);
+    const registry = context.registry as RegistryRow & { owner_id: string };
+    const columns = context.columns as ColumnRow[];
+    if (action === 'metadata') return response(200, { registry: {
+      id: registry.id, publicToken: registry.public_token, title: registry.title,
+      leftHeader: registry.left_header, rightHeader: registry.right_header, mode: registry.mode,
+      status: registry.status === 'draft' ? 'closed' : registry.status, layout: registry.layout,
+      allowWalkIn: registry.allow_walk_in, hasPassword: Boolean(context.has_password),
+      columns: columns.map((c) => ({ id: c.id, label: c.label })),
+    }});
     if (action === 'unlock') return response(200, { ok: true });
-    if (registry.status !== 'open') throw new HttpError(409, '서명 수합이 종료되었습니다.');
-
     if (action === 'search') {
       if (registry.mode !== 'fixed') throw new HttpError(400, '검색할 사전 명단이 없습니다.');
-      const query = typeof body.query === 'string' ? body.query.trim() : '';
-      if (query.length < 2 || query.length > 100) throw new HttpError(400, '검색어를 두 글자 이상 입력해 주세요.');
-      const { data, error } = await db.rpc('search_registry_participants', {
-        p_registry_id: registry.id,
-        p_query: query,
-        p_limit: 10,
-      });
-      if (error) throw error;
-      const found = await Promise.all((data ?? []).map(async (participant: Record<string, unknown>) => ({
-        ...participantResponse(participant),
-        values: maskFieldValues(await decodeFieldValues(participant)),
+      const found = await Promise.all(context.participants.map(async (p: Record<string, unknown>) => ({
+        ...participantResponse(p), values: maskFieldValues(await decodeFieldValues(p)),
+        requiresIdentity: p.requires_identity === true, requiresCode: p.requires_code === true,
       })));
       return response(200, { participants: found });
     }
-
     if (action === 'walk-in') {
       if (!registry.allow_walk_in && registry.mode !== 'custom') throw new HttpError(403, '현장 참석자 추가가 허용되지 않습니다.');
-      const name = typeof body.name === 'string' ? body.name.trim() : '';
       if (name.length < 1 || name.length > 100) throw new HttpError(400, '성명을 확인해 주세요.');
       const values = cleanValues(body.values, columns);
-
-      // 행사장에서는 이미 명단에 있는 사람이 자기를 못 찾고 다시 등록하는 일이 잦다.
-      // 같은 이름이 있으면 한 번 되묻고, 그래도 등록하겠다면 그때 만든다.
-      if (body.confirmDuplicate !== true) {
-        const { count, error: duplicateError } = await db
-          .from('registry_participants')
-          .select('id', { count: 'exact', head: true })
-          .eq('registry_id', registry.id)
-          .eq('name', name);
-        if (duplicateError) throw duplicateError;
-        if ((count ?? 0) > 0) return response(200, { duplicateCount: count ?? 0 });
-      }
-
-      const { data, error } = await db.rpc('create_registry_walk_in', {
-        p_registry_id: registry.id,
-        p_name: name,
-        p_field_values: {},
-      });
-      if (error) throw error;
-      const created = data as Record<string, unknown>;
-      const { error: sealError } = await db.from('registry_participants')
-        .update({ field_values: null, field_values_ciphertext: await registryCrypto.encryptPayload(values) })
-        .eq('id', created.id as string);
-      if (sealError) throw sealError;
-      return response(200, {
-        participants: [{ ...participantResponse(created), values: maskFieldValues(values) }],
-      });
+      if (context.duplicate_count > 0 && body.confirmDuplicate !== true) return response(200, { duplicateCount: context.duplicate_count });
+      // 최종 제출 전에는 참석자 행을 만들지 않는다. 취소한 초안은 이 브라우저 메모리에만 있다.
+      return response(200, { participants: [{ id: crypto.randomUUID(), rowNumber: 0, name: maskName(name), values: maskFieldValues(values), signed: false }] });
     }
-
     if (action === 'submit') {
-      const participantId = typeof body.participantId === 'string' ? body.participantId : '';
+      if (!participantId) throw new HttpError(400, '참석자를 확인해 주세요.');
       const source = body.source === 'draw' || body.source === 'photo' ? body.source : null;
-      const width = Number(body.width);
-      const height = Number(body.height);
-      if (!uuidPattern.test(participantId) || !source) throw new HttpError(400, '서명 제출 정보가 올바르지 않습니다.');
-      if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 5000 || height > 5000) {
-        throw new HttpError(400, '서명 이미지 크기가 올바르지 않습니다.');
-      }
-
-      const { data: participant, error: participantError } = await db
-        .from('registry_participants')
-        .select('id, registry_id, status, field_values, field_values_ciphertext')
-        .eq('id', participantId)
-        .eq('registry_id', registry.id)
-        .maybeSingle();
-      if (participantError) throw participantError;
-      if (!participant) throw new HttpError(404, '참석자를 찾을 수 없습니다.');
-      if (participant.status === 'signed') throw new HttpError(409, '이미 서명이 제출되었습니다.');
-
-      const values = cleanValues(body.values, columns);
+      const width = Number(body.width), height = Number(body.height);
+      if (!source || !Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 5000 || height > 5000) throw new HttpError(400, '서명 이미지 크기가 올바르지 않습니다.');
+      const requestId = typeof body.requestId === 'string' && uuidPattern.test(body.requestId) ? body.requestId : crypto.randomUUID();
       const signature = parseSignature(body.dataUrl);
-      const storagePath = `${registry.id}/${participantId}/${crypto.randomUUID()}.${signature.extension}`;
-      const contentHash = await hashBytes(signature.bytes);
-      const { error: uploadError } = await db.storage
-        .from('registry-signatures')
-        .upload(storagePath, signature.bytes, { contentType: signature.contentType, upsert: false });
-      if (uploadError) throw uploadError;
-
-      const { error: insertError } = await db.from('registry_signatures').insert({
-        registry_id: registry.id,
-        participant_id: participantId,
-        source,
-        storage_path: storagePath,
-        content_hash: contentHash,
-        width,
-        height,
-      });
-      if (insertError) {
-        await db.storage.from('registry-signatures').remove([storagePath]);
-        if (insertError.code === '23505') throw new HttpError(409, '이미 서명이 제출되었습니다.');
-        throw insertError;
+      const contentHash = await hashBytes(new Uint8Array(signature.bytes).buffer);
+      const canonical = (value: unknown) => Object.fromEntries(Object.entries((value ?? {}) as Record<string, unknown>).toSorted(([a],[b]) => a.localeCompare(b)));
+      const requestDigest = await hashText(JSON.stringify([participantId, contentHash, source, width, height, canonical(body.values), body.walkInName ?? '', canonical(body.walkInValues), body.confirmDuplicate === true]));
+      const participant = context.participant as Record<string, unknown> | null;
+      const previous = context.prior_signature;
+      if (previous) {
+        if (previous.request_id === requestId && previous.content_hash === contentHash && previous.request_digest === requestDigest) return response(200, { ok: true });
+        throw new HttpError(409, '이미 서명이 제출되었습니다.');
       }
-
-      // 서명자가 채운 항목만 덮어쓴다. 통째로 바꾸면 교사가 미리 넣어 둔 소속이 지워진다.
-      const filled = Object.fromEntries(Object.entries(values).filter(([, value]) => value !== ''));
-      const merged = { ...(await decodeFieldValues(participant)), ...filled };
-      const { error: updateError } = await db
-        .from('registry_participants')
-        .update({ field_values: null, field_values_ciphertext: await registryCrypto.encryptPayload(merged) })
-        .eq('id', participantId)
-        .eq('registry_id', registry.id);
-      if (updateError) throw updateError;
+      const walkInName = typeof body.walkInName === 'string' ? body.walkInName.trim() : '';
+      if (!participant && !walkInName) throw new HttpError(404, '참석자를 찾을 수 없습니다.');
+      const submitted = cleanValues(body.values, columns);
+      const initial = participant ? await decodeFieldValues(participant) : cleanValues(body.walkInValues, columns);
+      const peers = context.peers as Record<string, unknown>[];
+      if (participant && (peers.length > 1 || participant.requires_code)) {
+        if (participant.requires_code) {
+          if (participant.code_valid !== true) throw new HttpError(401, '교사가 안내한 본인 확인 코드를 입력해 주세요.');
+        } else {
+          const verify = cleanValues(body.verificationValues, columns);
+          const verifyName = typeof body.verifyName === 'string' ? body.verifyName.trim() : '';
+          if (verifyName !== participant.name || columns.length === 0) throw new HttpError(401, '동명이인은 성명과 소속을 확인하거나 교사에게 확인 코드를 요청해 주세요.');
+          const matches = [];
+          for (const peer of peers) {
+            const actual = await decodeFieldValues(peer);
+            if (columns.every((c) => actual[c.id]?.trim() === verify[c.id]?.trim() && Boolean(verify[c.id]))) matches.push(peer.id);
+          }
+          if (matches.length !== 1 || matches[0] !== participantId) throw new HttpError(401, '본인 정보로 구분하지 못했습니다. 교사에게 확인 코드를 요청해 주세요.');
+        }
+      }
+      const filled = Object.fromEntries(Object.entries(submitted).filter(([, v]) => v !== ''));
+      // 암호화 실패는 업로드/서명 저장 전에 중단한다.
+      const ciphertext = await registryCrypto.encryptPayload({ ...initial, ...filled });
+      // HTTP 시도마다 다른 파일을 써서 실패한 재시도가 동시 성공 요청의 파일을 지우지 않는다.
+      const storageFileName = `${requestId}-${contentHash}-${crypto.randomUUID()}.${signature.extension}`;
+      const storagePath = `${registry.id}/${participantId}/${storageFileName}`;
+      const { error: uploadError } = await db.storage.from('registry-signatures').upload(storagePath, signature.bytes, { contentType: signature.contentType, upsert: false });
+      if (uploadError) throw uploadError;
+      const { data: saved, error: saveError } = await db.rpc('registry_commit_signature', {
+        p_registry_id: registry.id, p_token: token, p_password: password, p_participant_id: participantId,
+        p_request_id: requestId, p_expected_updated_at: participant?.updated_at ?? null,
+        p_name: participant ? null : walkInName, p_ciphertext: ciphertext, p_source: source,
+        p_path: storagePath, p_hash: contentHash, p_width: width, p_height: height,
+        p_request_digest: requestDigest, p_confirm_duplicate: body.confirmDuplicate === true,
+      });
+      const cleanAttemptUpload = async () => {
+        const removed = await db.storage.from('registry-signatures').remove([storagePath]);
+        const { data: remaining, error: listError } = await db.storage.from('registry-signatures').list(`${registry.id}/${participantId}`);
+        if (removed.error || listError || remaining?.some((f) => f.name === storageFileName)) {
+          const { error: recordError } = await db.from('registry_cleanup_attempts').insert({ owner_id: registry.owner_id, registry_id: registry.id, purpose: 'upload', file_count: 1 });
+          if (recordError) throw recordError;
+        }
+      };
+      if (saved?.replayed) {
+        await cleanAttemptUpload();
+        return response(200, { ok: true });
+      }
+      if (saveError) {
+        // 응답 유실일 수 있으므로 파일을 먼저 지우지 않는다. 저장 결과를 확인한다.
+        const { data: persisted, error: verifyError } = await db.from('registry_signatures').select('request_id,content_hash,request_digest,storage_path').eq('participant_id',participantId).eq('registry_id',registry.id).maybeSingle();
+        if (!verifyError && persisted?.request_id === requestId && persisted.content_hash === contentHash && persisted.request_digest === requestDigest) {
+          if (persisted.storage_path !== storagePath) await cleanAttemptUpload();
+          return response(200, { ok: true });
+        }
+        if (verifyError) {
+          const { error: recordError } = await db.from('registry_cleanup_attempts').insert({ owner_id: registry.owner_id, registry_id: registry.id, purpose: 'upload', file_count: 1 });
+          if (recordError) throw recordError;
+          throw saveError;
+        }
+      }
+      if (saveError || saved?.error) {
+        await cleanAttemptUpload();
+        if (saved?.error) throw new HttpError(saved.status, saved.error);
+        throw saveError;
+      }
       return response(200, { ok: true });
     }
-
     throw new HttpError(400, '지원하지 않는 요청입니다.');
   } catch (error) {
     if (error instanceof HttpError) return response(error.status, { error: error.message });
-    console.error('registry-public failed', error);
-    return response(500, { error: '서명 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.' });
+    console.error('registry-public request failed');
+    return response(500, { error: '서명 요청을 처리하지 못했습니다. 입력과 서명을 유지한 채 다시 시도해 주세요.' });
   }
 });
