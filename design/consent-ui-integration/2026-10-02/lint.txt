@@ -1,0 +1,10 @@
+
+> 260725_individual_data@0.0.0 lint
+> oxlint
+
+src/features/specialRooms/BookingSheet.tsx:21:14: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/components/StudentPortal.tsx:51:15: warning react-hooks(exhaustive-deps): React Hook useEffect has a missing dependency: 'updateStudentStatus' help: Either include it or remove the dependency array.
+src/components/Classmate.tsx:54:7: warning react-hooks(exhaustive-deps): React hook useEffect depends on `students`, which changes every render help: Try memoizing this variable with `useRef` or `useCallback`.
+src/components/ToolCard.tsx:13:14: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+design/feature-reviews/2026-10-01-consent/server-probe.mjs:49:144: warning eslint(no-unused-vars): Parameter 'b' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.
+design/feature-reviews/2026-10-01-class-missions/verify.mjs:42:109: warning eslint(no-unused-vars): Parameter 'codeHash' is declared but never used. Unused parameters should start with a '_'. help: Consider removing this parameter.

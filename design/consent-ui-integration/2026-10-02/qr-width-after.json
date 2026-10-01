@@ -1,0 +1,55 @@
+{
+  "browser": "installed Google Chrome channel chrome",
+  "mode": "demo with fictional roster",
+  "results": [
+    {
+      "viewport": 390,
+      "x": 28,
+      "width": 334,
+      "right": 362,
+      "clippedCards": 0,
+      "horizontalOverflow": 0
+    },
+    {
+      "viewport": 640,
+      "x": 48,
+      "width": 544,
+      "right": 592,
+      "clippedCards": 0,
+      "horizontalOverflow": 0
+    },
+    {
+      "viewport": 768,
+      "x": 112.203125,
+      "width": 607.796875,
+      "right": 720,
+      "clippedCards": 0,
+      "horizontalOverflow": 0
+    },
+    {
+      "viewport": 1024,
+      "x": 304,
+      "width": 672,
+      "right": 976,
+      "clippedCards": 0,
+      "horizontalOverflow": 0
+    },
+    {
+      "viewport": 1280,
+      "x": 371,
+      "width": 794,
+      "right": 1165,
+      "clippedCards": 0,
+      "horizontalOverflow": 0
+    },
+    {
+      "viewport": 1570,
+      "x": 516,
+      "width": 794,
+      "right": 1310,
+      "clippedCards": 0,
+      "horizontalOverflow": 0
+    }
+  ],
+  "pageErrors": []
+}

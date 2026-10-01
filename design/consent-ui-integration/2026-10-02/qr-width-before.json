@@ -1,0 +1,13 @@
+{
+  "browser": "installed Google Chrome via Playwright channel chrome",
+  "mode": "demo source server with fictional six-person roster",
+  "sourceCommit": "b0a84d26fe6eb0160675c9c419365e802f1844dd",
+  "finding": "screen-only sm fixed A4 width clips right QR column at intermediate viewport widths",
+  "measurements": [
+    {"viewport":640,"x":48,"width":794,"right":842,"clippedCards":3},
+    {"viewport":768,"x":112,"width":794,"right":906,"clippedCards":3},
+    {"viewport":1024,"x":147,"width":794,"right":941,"clippedCards":0},
+    {"viewport":1280,"x":275,"width":794,"right":1069,"clippedCards":0},
+    {"viewport":1570,"x":420,"width":794,"right":1214,"clippedCards":0}
+  ]
+}
