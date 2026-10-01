@@ -149,10 +149,11 @@ export const getStudentResultEventPublicRecipient = (eventId: string, recipientI
   return event && recipient ? publicResult(event, recipient) : null;
 };
 
-export const confirmStudentResult = (eventId: string, recipientId: string) => {
+export const confirmStudentResult = (eventId: string, recipientId: string, expectedUpdatedAt?: string) => {
   const event = read().find((candidate) => candidate.id === eventId && candidate.status === 'open');
   const recipient = event?.recipients.find((candidate) => candidate.id === recipientId);
-  if (!event?.allowConfirmation || !recipient || recipient.status === 'disputed') return null;
+  if (!event?.allowConfirmation || !recipient || recipient.status === 'disputed'
+    || (expectedUpdatedAt && recipient.updatedAt !== expectedUpdatedAt)) return null;
   return updateRecipient(eventId, recipientId, (current) => ({
     ...current,
     status: 'confirmed',

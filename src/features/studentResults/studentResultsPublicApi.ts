@@ -50,12 +50,12 @@ export const authenticatePublicStudentResultByToken = async (token: string, pers
   return invoke<PublicStudentResultSession>({ action: 'personal', token, personalToken });
 };
 
-export const confirmPublicStudentResult = async (sessionToken: string, eventId: string, recipientId: string): Promise<PublicStudentResultSession | null> => {
+export const confirmPublicStudentResult = async (sessionToken: string, eventId: string, recipientId: string, expectedUpdatedAt?: string): Promise<PublicStudentResultSession | null> => {
   if (isStudentResultsDemoMode) {
-    const result = local.confirmStudentResult(eventId, recipientId);
+    const result = local.confirmStudentResult(eventId, recipientId, expectedUpdatedAt);
     return result ? { sessionToken, result: stripSecrets(result) } : null;
   }
-  return invoke<PublicStudentResultSession>({ action: 'confirm', sessionToken });
+  return invoke<PublicStudentResultSession>({ action: 'confirm', sessionToken, expectedUpdatedAt });
 };
 
 export const disputePublicStudentResult = async (sessionToken: string, eventId: string, recipientId: string, message: string): Promise<PublicStudentResultSession | null> => {

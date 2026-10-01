@@ -398,6 +398,15 @@ test('총점·이의 작성 보호·교사 정정·학생 새로고침이 이어
   await expect(page.getByRole('row', { name: /김하늘/ })).toContainText('재확인 필요');
   await studentPage.getByRole('button', { name: '최신 결과 확인' }).click();
   await expect(studentPage.getByText('95 / 100').first()).toBeVisible();
+  await page.getByRole('button', { name: '김하늘 학생 결과 정정' }).click();
+  await page.getByRole('dialog').getByLabel('합산 결과 / 100').fill('96');
+  await page.getByRole('dialog').getByLabel('수정 사유').fill('원본 재대조');
+  await page.getByRole('dialog').getByRole('button', { name: '결과 정정 저장' }).click();
+  await studentPage.getByRole('button', { name: '내용 확인 완료' }).click();
+  await expect(studentPage.getByRole('alert')).toContainText('최신 결과를 확인');
+  await studentPage.getByRole('button', { name: '최신 결과 확인' }).click();
+  await expect(studentPage.getByText('96 / 100').first()).toBeVisible();
+  await studentPage.getByRole('button', { name: '내용 확인 완료' }).click();
 
   await page.getByRole('button', { name: '안내 정보 수정' }).click();
   const settings = page.getByRole('dialog');

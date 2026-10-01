@@ -86,8 +86,9 @@ export function PublicStudentResultPage() {
     if (!result || !sessionToken) return;
     setSubmitting(true);
     try {
-      const updated = await confirmPublicStudentResult(sessionToken, result.event.id, result.recipient.id);
-      if (updated) setResult(updated.result);
+      const updated = await confirmPublicStudentResult(sessionToken, result.event.id, result.recipient.id, result.recipient.updatedAt);
+      if (!updated) throw new Error('결과가 변경되었습니다. 최신 결과를 확인한 뒤 다시 진행해 주세요.');
+      setResult(updated.result);
       setConfirmWarning(false);
       setDispute('');
       setError('');
