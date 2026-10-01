@@ -19,6 +19,9 @@ supabase/.temp/
 # 운영 비밀값 메모. 저장소에 올리지 않는다.
 SECRETS.local.md
 
+# 로컬 영수증 원본·샘플 자료
+/docs/영수증폴더/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
