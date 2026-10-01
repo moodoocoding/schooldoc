@@ -6,7 +6,7 @@ import type { AuthenticatedStudentResult, PublicStudentResult, PublicStudentResu
 export interface StudentResultMetadata { title: string; description: string; status: 'open' | 'closed' }
 
 const stripSecrets = (value: AuthenticatedStudentResult): PublicStudentResult => {
-  const { verificationCode: _verificationCode, personalToken: _personalToken, ...recipient } = value.recipient;
+  const { verificationCode: _verificationCode, personalToken: _personalToken, revisions: _revisions, ...recipient } = value.recipient;
   return { event: value.event, recipient };
 };
 
@@ -50,12 +50,12 @@ export const authenticatePublicStudentResultByToken = async (token: string, pers
   return invoke<PublicStudentResultSession>({ action: 'personal', token, personalToken });
 };
 
-export const confirmPublicStudentResult = async (sessionToken: string, eventId: string, recipientId: string): Promise<PublicStudentResultSession | null> => {
+export const confirmPublicStudentResult = async (sessionToken: string, eventId: string, recipientId: string, expectedUpdatedAt?: string): Promise<PublicStudentResultSession | null> => {
   if (isStudentResultsDemoMode) {
-    const result = local.confirmStudentResult(eventId, recipientId);
+    const result = local.confirmStudentResult(eventId, recipientId, expectedUpdatedAt);
     return result ? { sessionToken, result: stripSecrets(result) } : null;
   }
-  return invoke<PublicStudentResultSession>({ action: 'confirm', sessionToken });
+  return invoke<PublicStudentResultSession>({ action: 'confirm', sessionToken, expectedUpdatedAt });
 };
 
 export const disputePublicStudentResult = async (sessionToken: string, eventId: string, recipientId: string, message: string): Promise<PublicStudentResultSession | null> => {
@@ -64,4 +64,19 @@ export const disputePublicStudentResult = async (sessionToken: string, eventId: 
     return result ? { sessionToken, result: stripSecrets(result) } : null;
   }
   return invoke<PublicStudentResultSession>({ action: 'dispute', sessionToken, message });
+};
+
+export const refreshPublicStudentResult = async (sessionToken: string, eventId: string, recipientId: string, token: string, personalToken?: string | null): Promise<PublicStudentResultSession | null> => {
+  if (isStudentResultsDemoMode) {
+    const result = personalToken
+      ? local.authenticateStudentResultByToken(token, personalToken)
+      : local.getStudentResultEventPublicRecipient(eventId, recipientId);
+    return result ? { sessionToken, result: stripSecrets(result) } : null;
+  }
+  return invoke<PublicStudentResultSession>({ action: 'session', sessionToken });
+};
+
+export const endPublicStudentResultSession = async (sessionToken: string) => {
+  if (isStudentResultsDemoMode) return;
+  await invoke<{ ok: boolean }>({ action: 'logout', sessionToken });
 };

@@ -34,6 +34,7 @@ const actionLimits: Record<string, number> = {
   session: 60,
   confirm: 10,
   dispute: 10,
+  logout: 10,
 };
 
 interface EventRow {
@@ -51,9 +52,10 @@ interface RecipientRow {
   event_id: string;
   identity_ciphertext: string;
   result_ciphertext: string;
-  status: 'unviewed' | 'viewed' | 'confirmed' | 'disputed' | 'reconfirm';
+  status: 'unviewed' | 'viewed' | 'confirmed' | 'disputed' | 'reconfirm' | 'replied';
   viewed_at: string | null;
   confirmed_at: string | null;
+  updated_at: string;
 }
 
 interface IdentityPayload { studentKey: string; name: string; verificationCode: string }
@@ -104,7 +106,7 @@ const getEventById = async (eventId: string) => {
 const getRecipient = async (eventId: string, recipientId: string) => {
   const { data, error } = await db
     .from('student_result_recipients')
-    .select('id, event_id, identity_ciphertext, result_ciphertext, status, viewed_at, confirmed_at')
+    .select('id, event_id, identity_ciphertext, result_ciphertext, status, viewed_at, confirmed_at, updated_at')
     .eq('event_id', eventId)
     .eq('id', recipientId)
     .maybeSingle();
@@ -116,7 +118,7 @@ const getRecipient = async (eventId: string, recipientId: string) => {
 const getColumns = async (eventId: string) => {
   const { data, error } = await db
     .from('student_result_columns')
-    .select('id, label, max_score, description, position')
+    .select('id, label, max_score, description, kind, position')
     .eq('event_id', eventId)
     .order('position');
   if (error) throw error;
@@ -125,6 +127,7 @@ const getColumns = async (eventId: string) => {
     label: column.label,
     maxScore: Number(column.max_score),
     description: column.description,
+    kind: column.kind ?? undefined,
   }));
 };
 
@@ -137,7 +140,7 @@ const markViewed = async (recipient: RecipientRow) => {
     .eq('id', recipient.id)
     .eq('event_id', recipient.event_id)
     .eq('status', 'unviewed')
-    .select('id, event_id, identity_ciphertext, result_ciphertext, status, viewed_at, confirmed_at')
+    .select('id, event_id, identity_ciphertext, result_ciphertext, status, viewed_at, confirmed_at, updated_at')
     .maybeSingle();
   if (error) throw error;
   return (data as RecipientRow | null) ?? { ...recipient, status: 'viewed', viewed_at: viewedAt };
@@ -186,6 +189,7 @@ const buildResult = async (event: EventRow, rawRecipient: RecipientRow) => {
       status: recipient.status,
       viewedAt: recipient.viewed_at ?? undefined,
       confirmedAt: recipient.confirmed_at ?? undefined,
+      updatedAt: recipient.updated_at,
       dispute,
     },
   };
@@ -285,7 +289,7 @@ Deno.serve(async (request) => {
       if (!uuidPattern.test(personalToken)) throw new HttpError(401, '개인 조회 링크가 올바르지 않습니다.');
       const { data, error } = await db
         .from('student_result_recipients')
-        .select('id, event_id, identity_ciphertext, result_ciphertext, status, viewed_at, confirmed_at')
+        .select('id, event_id, identity_ciphertext, result_ciphertext, status, viewed_at, confirmed_at, updated_at')
         .eq('event_id', event.id)
         .eq('personal_token', personalToken)
         .maybeSingle();
@@ -297,6 +301,11 @@ Deno.serve(async (request) => {
     }
 
     const session = await resolveSession(sessionToken);
+    if (action === 'logout') {
+      const { error } = await db.from('student_result_public_sessions').delete().eq('token', sessionToken);
+      if (error) throw error;
+      return respond(200, { ok: true });
+    }
     const event = await getEventById(session.eventId);
     if (event.status !== 'open') throw new HttpError(409, '결과 안내가 종료되었습니다.');
     const recipient = await getRecipient(event.id, session.recipientId);
@@ -307,16 +316,25 @@ Deno.serve(async (request) => {
 
     if (action === 'confirm') {
       if (!event.allow_confirmation) throw new HttpError(403, '결과 확인 기능이 열려 있지 않습니다.');
+      if (recipient.status === 'disputed') throw new HttpError(409, '제출한 이의에 대한 답변을 기다려 주세요.');
+      const expectedUpdatedAt = typeof body.expectedUpdatedAt === 'string' ? body.expectedUpdatedAt : '';
+      if (expectedUpdatedAt && recipient.updated_at !== expectedUpdatedAt) {
+        throw new HttpError(409, '결과가 변경되었습니다. 최신 결과를 확인한 뒤 다시 진행해 주세요.');
+      }
       const confirmedAt = new Date().toISOString();
-      const { error } = await db
+      let update = db
         .from('student_result_recipients')
         .update({ status: 'confirmed', confirmed_at: confirmedAt })
         .eq('id', recipient.id)
         .eq('event_id', event.id);
+      // Older deployed clients omit this field during the function-first rollout.
+      if (expectedUpdatedAt) update = update.eq('updated_at', expectedUpdatedAt);
+      const { data: confirmed, error } = await update.select('id').maybeSingle();
       if (error) throw error;
+      if (!confirmed) throw new HttpError(409, '결과가 변경되었습니다. 최신 결과를 확인한 뒤 다시 진행해 주세요.');
       return respond(200, {
         sessionToken,
-        result: await buildResult(event, { ...recipient, status: 'confirmed', confirmed_at: confirmedAt }),
+        result: await buildResult(event, await getRecipient(event.id, recipient.id)),
       });
     }
 

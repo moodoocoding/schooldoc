@@ -47,7 +47,7 @@ test('교사 생성부터 학생 이의와 재확인까지 로컬 흐름이 이�
   await expect(page.getByRole('row', { name: /김하늘/ })).toContainText('이의');
 
   await page.getByPlaceholder('교사 답변').fill('산출 내역을 다시 확인했습니다.');
-  await page.getByRole('button', { name: '답변' }).click();
+  await page.getByRole('button', { name: '김하늘 학생의 이의에 답변' }).click();
   await expect(page.getByRole('row', { name: /김하늘/ })).toContainText('재확인 필요');
 
   await studentPage.reload();
@@ -345,4 +345,101 @@ test('학생이 결과를 열면 교사 표에 바로 반영된다', async ({ co
 
   await expect(row).toContainText('조회');
   await expect(row).toBeVisible();
+});
+
+test('총점·이의 작성 보호·교사 정정·학생 새로고침이 이어진다', async ({ context, page }) => {
+  await page.goto('/tools/student-results/new');
+  await page.getByPlaceholder('예: 2학기 수행평가 결과').fill('2학기 시험 결과');
+  await page.getByPlaceholder('학생에게 보여줄 안내').fill('과목 점수와 총점을 확인하세요.');
+  await page.getByLabel('1번 항목명').fill('국어');
+  await page.getByLabel('국어 배점').fill('50');
+  await page.getByRole('button', { name: '항목 추가' }).click();
+  await page.getByLabel('2번 항목명').fill('합산 결과');
+  await page.getByLabel('합산 결과 배점').fill('100');
+  await page.getByLabel('합산 결과 항목 종류').selectOption('total');
+  await page.getByLabel('1번 학생 성명').fill('김하늘');
+  await page.getByLabel('1번 학생 확인번호').fill('4821');
+  await page.getByLabel('1번 학생 국어 점수').fill('47');
+  await page.getByLabel('1번 학생 합산 결과 점수').fill('92');
+  await page.getByRole('button', { name: '결과 안내 만들기' }).click();
+  await expect(page).toHaveURL(/\/tools\/student-results\/[0-9a-f-]+$/);
+
+  await page.getByRole('tab', { name: '접속 정보' }).click();
+  const publicLink = await page.getByRole('link', { name: '학생 화면 열기' }).getAttribute('href');
+  await page.getByRole('tab', { name: '현황' }).click();
+  const studentPage = await context.newPage();
+  await studentPage.goto(publicLink!);
+  await studentPage.getByLabel('성명').fill('김하늘');
+  await studentPage.getByLabel('확인번호').fill('4821');
+  await studentPage.getByRole('button', { name: '내 결과 조회' }).click();
+  await expect(studentPage.getByText('92 / 100').first()).toBeVisible();
+  await expect(studentPage.getByText('과목 점수와 총점을 확인하세요.')).toBeVisible();
+
+  await studentPage.getByLabel('이의 내용').fill('점수 산출표를 확인해 주세요.');
+  await studentPage.getByRole('button', { name: '내용 확인 완료' }).click();
+  await expect(studentPage.getByRole('alertdialog')).toContainText('작성 중인 이의');
+  await studentPage.getByRole('alertdialog').getByRole('button', { name: '이의 계속 작성' }).click();
+  await expect(studentPage.getByLabel('이의 내용')).toHaveValue('점수 산출표를 확인해 주세요.');
+  await studentPage.getByRole('button', { name: '이의 제출' }).click();
+  await expect(studentPage.getByText('내가 보낸 이의')).toBeVisible();
+
+  await page.getByPlaceholder('교사 답변').fill('점수를 다시 계산했습니다.');
+  await page.getByRole('button', { name: '김하늘 학생의 이의에 답변' }).click();
+  await studentPage.getByRole('button', { name: '최신 결과 확인' }).click();
+  await expect(studentPage.getByText('점수를 다시 계산했습니다.')).toBeVisible();
+  await studentPage.getByRole('button', { name: '내용 확인 완료' }).click();
+  await expect(page.getByRole('row', { name: /김하늘/ })).toContainText('확인');
+
+  await page.getByRole('button', { name: '김하늘 학생 결과 정정' }).click();
+  const correction = page.getByRole('dialog');
+  await correction.getByLabel('합산 결과 / 100').fill('95');
+  await correction.getByLabel('수정 사유').fill('산출표 대조');
+  await correction.getByRole('button', { name: '결과 정정 저장' }).click();
+  await expect(page.getByRole('row', { name: /김하늘/ })).toContainText('재확인 필요');
+  await studentPage.getByRole('button', { name: '최신 결과 확인' }).click();
+  await expect(studentPage.getByText('95 / 100').first()).toBeVisible();
+  await page.getByRole('button', { name: '김하늘 학생 결과 정정' }).click();
+  await page.getByRole('dialog').getByLabel('합산 결과 / 100').fill('96');
+  await page.getByRole('dialog').getByLabel('수정 사유').fill('원본 재대조');
+  await page.getByRole('dialog').getByRole('button', { name: '결과 정정 저장' }).click();
+  await studentPage.getByRole('button', { name: '내용 확인 완료' }).click();
+  await expect(studentPage.getByRole('alert')).toContainText('최신 결과를 확인');
+  await studentPage.getByRole('button', { name: '최신 결과 확인' }).click();
+  await expect(studentPage.getByText('96 / 100').first()).toBeVisible();
+  await studentPage.getByRole('button', { name: '내용 확인 완료' }).click();
+
+  await page.getByRole('button', { name: '안내 정보 수정' }).click();
+  const settings = page.getByRole('dialog');
+  await settings.getByLabel('제목').fill('수정된 2학기 시험 결과');
+  await settings.getByRole('button', { name: '변경 저장' }).click();
+  await studentPage.getByRole('button', { name: '최신 결과 확인' }).click();
+  await expect(studentPage.getByRole('heading', { name: '수정된 2학기 시험 결과' })).toBeVisible();
+  await studentPage.getByRole('button', { name: '조회 종료' }).click();
+  await expect(studentPage.getByRole('button', { name: '내 결과 조회' })).toBeVisible();
+});
+
+test('17명 QR은 빈 페이지 없이 3장 PDF로 내려받는다', async ({ page }, testInfo) => {
+  await page.goto('/tools/student-results/new');
+  const csv = [
+    '2026학년도 결과 안내',
+    '학번,성명,확인번호,점수/100',
+    ...Array.from({ length: 17 }, (_, index) => `${index + 1},가상학생${index + 1},${String(4000 + index)},80`),
+  ].join('\n');
+  await page.getByTestId('student-results-file-input').setInputFiles({
+    name: '가상학생17명.csv', mimeType: 'text/csv', buffer: Buffer.from(csv, 'utf8'),
+  });
+  await page.getByRole('button', { name: '분석 결과 적용' }).click();
+  await expect(page.getByLabel('17번 학생 성명')).toHaveValue('가상학생17');
+  await page.getByRole('button', { name: '결과 안내 만들기' }).click();
+  await page.getByRole('tab', { name: '접속 정보' }).click();
+  await page.getByRole('checkbox', { name: '검색 결과 학생 전체 선택' }).check();
+  await page.getByRole('button', { name: '선택 QR PDF (17명)' }).click();
+  await expect(page.getByTestId('student-result-qr-page')).toHaveCount(3);
+  const pendingDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'PDF 다운로드' }).click();
+  const download = await pendingDownload;
+  const filePath = testInfo.outputPath('qr-17-students.pdf');
+  await download.saveAs(filePath);
+  const pdf = await import('node:fs/promises').then((fs) => fs.readFile(filePath));
+  expect(pdf.toString('latin1').match(/\/Type \/Page\b/g)).toHaveLength(3);
 });
