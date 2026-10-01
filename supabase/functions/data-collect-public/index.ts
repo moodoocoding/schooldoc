@@ -1,209 +1,611 @@
-import { createClient } from 'npm:@supabase/supabase-js@2.110.8';
-import { dataCollectCrypto } from '../_shared/dataCollectCrypto.ts';
-import { dataCollectSubmissionTargetPrefix } from '../_shared/dataCollectStoragePaths.ts';
+import { createClient } from "npm:@supabase/supabase-js@2.110.8";
+import { dataCollectCrypto } from "../_shared/dataCollectCrypto.ts";
+import {
+  DATA_COLLECT_EXTENSIONS,
+  dataCollectFileError,
+  validDataCollectDecision,
+} from "../_shared/dataCollectRules.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-const json = (status: number, body: Record<string, unknown>) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' } });
-class HttpError extends Error { constructor(public status: number, message: string) { super(message); } }
-
-const url = Deno.env.get('SUPABASE_URL');
-const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_SECRET_KEY');
-if (!url || !key) throw new Error('Supabase service environment is not configured.');
-const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const FILE_BUCKET = 'data-collect-files';
-const TEMPLATE_BUCKET = 'data-collect-templates';
-const MAX_FILE_SIZE = 50 * 1024 * 1024;
-const allowedExtensions = new Set(['hwp', 'hwpx', 'docx', 'xlsx', 'pdf', 'png', 'jpg', 'jpeg']);
-
-interface CollectionRow { id: string; public_token: string; title: string; description: string; kind: string; mode: 'fixed' | 'custom'; allow_walk_in: boolean; template_path: string | null; template_name_ciphertext: string | null; template_size: number | null; template_mime: string | null; status: 'open' | 'closed'; due_at: string | null; password_digest: string | null; allow_resubmit: boolean; }
-interface TargetRow { id: string; collection_id: string; display_label: string; display_owner: string; label_search: string[]; owner_search: string[]; personal_token: string; }
-const readString = (value: unknown, max: number) => typeof value === 'string' ? value.trim().slice(0, max) : '';
-const hash = async (value: string) => {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
-};
-const normalize = (value: string) => value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('ko-KR');
-const searchPrefix = (value: string) => normalize(value).replaceAll(' ', '');
-const rateLimit = async (request: Request, token: string, action: string) => {
-  const ip = request.headers.get('cf-connecting-ip') ?? request.headers.get('x-forwarded-for')?.split(',')[0] ?? 'unknown';
-  const result = await db.rpc('consume_data_collect_rate_limit', { p_request_key: await hash(`${ip}:${token}:${action}`), p_window_seconds: 60, p_max_requests: action === 'submit' ? 8 : 40 });
-  if (result.error) throw result.error;
-  if (!result.data) throw new HttpError(429, '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.');
+const json = (status: number, body: Record<string, unknown>) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json; charset=utf-8",
+    },
+  });
+class HttpError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+const url = Deno.env.get("SUPABASE_URL");
+const key =
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
+  Deno.env.get("SUPABASE_SECRET_KEY");
+if (!url || !key)
+  throw new Error("Supabase service environment is not configured.");
+const db = createClient(url, key, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
+const uuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const FILE_BUCKET = "data-collect-files",
+  TEMPLATE_BUCKET = "data-collect-templates";
+interface CollectionRow {
+  id: string;
+  public_token: string;
+  title: string;
+  description: string;
+  kind: string;
+  mode: "fixed" | "custom";
+  template_path: string | null;
+  template_name_ciphertext: string | null;
+  template_size: number | null;
+  template_mime: string | null;
+  status: "open" | "closed";
+  due_at: string | null;
+  password_digest: string | null;
+  allow_resubmit: boolean;
+}
+interface TargetRow {
+  id: string;
+  personal_token: string;
+  display_label: string;
+  display_owner: string;
+}
+interface UploadRow {
+  id: string;
+  collection_id: string;
+  personal_token: string;
+  claim_hash: string;
+  storage_path: string;
+  expires_at: string;
+  consumed_at: string | null;
+}
+const str = (v: unknown, max: number) =>
+  typeof v === "string" ? v.trim().slice(0, max) : "";
+const hash = async (v: string | ArrayBuffer) =>
+  Array.from(
+    new Uint8Array(
+      await crypto.subtle.digest(
+        "SHA-256",
+        typeof v === "string" ? new TextEncoder().encode(v) : v,
+      ),
+    ),
+    (b) => b.toString(16).padStart(2, "0"),
+  ).join("");
+const normalize = (v: string) =>
+  v
+    .normalize("NFKC")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase("ko-KR")
+    .replaceAll(" ", "");
+const closed = (c: CollectionRow) =>
+  c.status === "closed" ||
+  Boolean(c.due_at && new Date(c.due_at).getTime() <= Date.now());
+const ipOf = (r: Request) =>
+  r.headers.get("cf-connecting-ip") ??
+  r.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+  "unknown";
+const limit = async (
+  request: Request,
+  token: string,
+  person = "",
+  guess = false,
+) => {
+  const ip = ipOf(request);
+  const keys = guess
+    ? [["guess:" + ip + ":" + token, 40]]
+    : [
+        ["ip:" + ip, 1200],
+        ["collection-ip:" + ip + ":" + token, 600],
+        ...(person ? [["participant:" + token + ":" + person, 12]] : []),
+      ];
+  const limits = await Promise.all(
+    keys.map(async ([k, max]) => ({ key: await hash(String(k)), max })),
+  );
+  const result = await db.rpc("consume_data_collect_limits", {
+    p_limits: limits,
+  });
+  if (result.error)
+    throw new HttpError(
+      503,
+      "요청 제한을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    );
+  if (!result.data)
+    throw new HttpError(
+      429,
+      "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+    );
 };
 const getCollection = async (token: string) => {
-  if (!uuidPattern.test(token)) throw new HttpError(400, '요청 주소가 올바르지 않습니다.');
-  const result = await db.from('data_collections').select('*').eq('public_token', token).maybeSingle();
+  if (!uuidPattern.test(token))
+    throw new HttpError(400, "요청 주소가 올바르지 않습니다.");
+  const result = await db
+    .from("data_collections")
+    .select("*")
+    .eq("public_token", token)
+    .maybeSingle();
   if (result.error) throw result.error;
-  if (!result.data) throw new HttpError(404, '자료 수합을 찾을 수 없습니다.');
+  if (!result.data) throw new HttpError(404, "자료 수합을 찾을 수 없습니다.");
   return result.data as CollectionRow;
 };
-const getTarget = async (collectionId: string, targetToken: string) => {
-  if (!uuidPattern.test(targetToken)) throw new HttpError(404, '제출 대상을 찾을 수 없습니다.');
-  const result = await db.from('data_collection_targets').select('*').eq('collection_id', collectionId).eq('personal_token', targetToken).maybeSingle();
-  if (result.error) throw result.error;
-  if (!result.data) throw new HttpError(404, '제출 대상을 찾을 수 없습니다.');
-  return result.data as TargetRow;
-};
-const createWalkInTarget = async (collectionId: string, name: string) => {
-  const latest = await db.from('data_collection_targets').select('row_number').eq('collection_id', collectionId).order('row_number', { ascending: false }).limit(1).maybeSingle();
-  if (latest.error) throw latest.error;
-  const identity = { label: name, owner: '' };
-  const inserted = await db.from('data_collection_targets').insert({
-    collection_id: collectionId,
-    row_number: Number(latest.data?.row_number ?? 0) + 1,
-    label_ciphertext: await dataCollectCrypto.encryptPayload(identity),
-    owner_ciphertext: await dataCollectCrypto.encryptPayload(identity),
-    label_search: [await dataCollectCrypto.nameLookup(searchPrefix(name))],
-    owner_search: [],
-    display_label: name.length > 3 ? `${name[0]}○${name.at(-1)}` : `${name[0]}${name.length > 1 ? '○' : ''}`,
-    display_owner: '',
-  }).select('*').single();
-  if (inserted.error) throw inserted.error;
-  return inserted.data as TargetRow;
-};
-const isClosed = (collection: CollectionRow) => collection.status === 'closed' || Boolean(collection.due_at && new Date(collection.due_at).getTime() < Date.now());
-const ensureOpen = (collection: CollectionRow) => {
-  if (isClosed(collection)) throw new HttpError(410, '자료 수합이 종료되었습니다.');
-};
-const verifyPassword = async (collection: CollectionRow, password: unknown) => {
-  if (!collection.password_digest) return;
-  if (typeof password !== 'string' || password.length > 200) throw new HttpError(401, '비밀번호가 맞지 않습니다.');
-  const result = await db.rpc('verify_data_collection_password', { p_collection_id: collection.id, p_password: password });
-  if (result.error) throw result.error;
-  if (!result.data) throw new HttpError(401, '비밀번호가 맞지 않습니다.');
-};
-const metadataSummary = (collection: CollectionRow) => ({
-  accessGranted: false,
-  title: collection.title,
-  status: collection.status,
-  dueAt: collection.due_at ?? '',
-  passwordRequired: Boolean(collection.password_digest),
-});
-const authorizedMetadata = async (collection: CollectionRow) => {
-  let template: Record<string, unknown> | null = null;
-  if (collection.template_path) {
-    const signed = await db.storage.from(TEMPLATE_BUCKET).createSignedUrl(collection.template_path, 300);
-    if (signed.error) throw signed.error;
-    template = { name: collection.template_name_ciphertext ? await dataCollectCrypto.decryptPayload<string>(collection.template_name_ciphertext) : '배포 파일', size: collection.template_size ?? 0, mimeType: collection.template_mime ?? 'application/octet-stream', url: signed.data?.signedUrl ?? '' };
+const getTarget = async (c: CollectionRow, token: string, optional = false) => {
+  if (!uuidPattern.test(token)) {
+    if (optional && !token) return null;
+    throw new HttpError(404, "제출 대상을 찾을 수 없습니다.");
   }
-  return { accessGranted: true, title: collection.title, description: collection.description, kind: collection.kind, mode: collection.mode, status: collection.status, dueAt: collection.due_at ?? '', passwordRequired: Boolean(collection.password_digest), allowResubmit: collection.allow_resubmit, hasTemplate: Boolean(collection.template_path), template };
+  const result = await db
+    .from("data_collection_targets")
+    .select("id,personal_token,display_label,display_owner")
+    .eq("collection_id", c.id)
+    .eq("personal_token", token)
+    .maybeSingle();
+  if (result.error) throw result.error;
+  if (!result.data && !optional)
+    throw new HttpError(404, "제출 대상을 찾을 수 없습니다.");
+  return result.data as TargetRow | null;
 };
-
-const extensionOf = (name: string) => name.toLowerCase().split('.').pop() ?? '';
-const validMagic = (extension: string, bytes: Uint8Array) => {
-  const starts = (values: number[]) => values.every((value, index) => bytes[index] === value);
-  if (extension === 'pdf') return starts([0x25, 0x50, 0x44, 0x46]);
-  if (extension === 'png') return starts([0x89, 0x50, 0x4e, 0x47]);
-  if (extension === 'jpg' || extension === 'jpeg') return starts([0xff, 0xd8, 0xff]);
-  if (extension === 'hwp') return starts([0xd0, 0xcf, 0x11, 0xe0]);
-  return starts([0x50, 0x4b, 0x03, 0x04]);
+const verifyPassword = async (c: CollectionRow, password: unknown) => {
+  if (!c.password_digest) return;
+  if (typeof password !== "string" || password.length > 200)
+    throw new HttpError(401, "비밀번호가 맞지 않습니다.");
+  const result = await db.rpc("verify_data_collection_password", {
+    p_collection_id: c.id,
+    p_password: password,
+  });
+  if (result.error) throw result.error;
+  if (!result.data) throw new HttpError(401, "비밀번호가 맞지 않습니다.");
 };
-const validateUploaded = async (path: string, name: string) => {
-  const extension = extensionOf(name);
-  if (!allowedExtensions.has(extension)) throw new HttpError(400, '허용되지 않은 파일 형식입니다.');
-  const downloaded = await db.storage.from(FILE_BUCKET).download(path);
-  if (downloaded.error) throw new HttpError(400, '제출 파일을 읽지 못했습니다.');
-  if (downloaded.data.size === 0 || downloaded.data.size > MAX_FILE_SIZE) throw new HttpError(400, '파일은 50MB보다 작아야 합니다.');
-  const bytes = new Uint8Array(await downloaded.data.slice(0, 8).arrayBuffer());
-  if (!validMagic(extension, bytes)) throw new HttpError(400, '파일 확장자와 실제 파일 형식이 일치하지 않습니다.');
-  const digest = await crypto.subtle.digest('SHA-256', await downloaded.data.arrayBuffer());
-  return { byteSize: downloaded.data.size, mimeType: downloaded.data.type || 'application/octet-stream', contentHash: Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('') };
+const claimHash = (c: CollectionRow, personal: string, id: string) =>
+  dataCollectCrypto.nameLookup(c.id + ":" + personal + ":" + id);
+const readUpload = async (c: CollectionRow, path: string) => {
+  const result = await db
+    .from("data_collection_uploads")
+    .select("*")
+    .eq("collection_id", c.id)
+    .eq("storage_path", path)
+    .maybeSingle();
+  if (result.error) throw result.error;
+  return result.data as UploadRow | null;
 };
-
+const cleanup = async (upload: UploadRow) => {
+  // 확정된 참조가 없는 예약만 정리한다. DB 확정 여부가 불명확하면 파일을 지우지 않는다.
+  // 확정 RPC와 같은 예약 행을 잠그는 조건부 UPDATE로 정리 권한을 먼저 얻는다.
+  const invalidated = await db
+    .from("data_collection_uploads")
+    .update({ expires_at: "1970-01-01T00:00:00Z" })
+    .eq("id", upload.id)
+    .is("consumed_at", null)
+    .select("id");
+  if (invalidated.error || !invalidated.data?.length) return;
+  const referenced = await db
+    .from("data_collection_files")
+    .select("id")
+    .eq("storage_path", upload.storage_path)
+    .limit(1);
+  if (referenced.error || referenced.data?.length) return;
+  const removed = await db.storage
+    .from(FILE_BUCKET)
+    .remove([upload.storage_path]);
+  if (removed.error) {
+    await db.from("data_collection_cleanup").upsert({
+      storage_path: upload.storage_path,
+      collection_id: upload.collection_id,
+      last_error_code: "storage_remove_failed",
+    });
+    return;
+  }
+  await db
+    .from("data_collection_uploads")
+    .delete()
+    .eq("id", upload.id)
+    .is("consumed_at", null);
+};
+const rpcError = (message: string) => {
+  const mapping: Record<string, [number, string]> = {
+    collection_full: [
+      422,
+      "제출 대상 2,000명 한도에 도달했습니다. 담당자에게 문의해 주세요.",
+    ],
+    collection_closed: [410, "자료 수합이 종료되었습니다."],
+    resubmit_disabled: [
+      409,
+      "이미 제출한 자료입니다. 담당자에게 문의해 주세요.",
+    ],
+    request_conflict: [
+      409,
+      "같은 요청의 내용이 변경되었습니다. 입력을 확인해 다시 제출해 주세요.",
+    ],
+    invalid_upload_claim: [
+      400,
+      "업로드 정보가 만료되었거나 올바르지 않습니다. 파일을 다시 선택해 주세요.",
+    ],
+    invalid_decision: [422, "요청 종류에 맞는 회신 방법을 선택해 주세요."],
+    invalid_file: [400, "제출할 파일을 선택해 주세요."],
+    target_not_found: [404, "제출 대상을 찾을 수 없습니다."],
+    collection_not_found: [404, "자료 수합을 찾을 수 없습니다."],
+  };
+  const item = Object.entries(mapping).find(([code]) => message.includes(code));
+  return item ? new HttpError(...item[1]) : null;
+};
 Deno.serve(async (request) => {
-  if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  if (request.method !== 'POST') return json(405, { error: '허용되지 않은 요청입니다.' });
+  if (request.method === "OPTIONS")
+    return new Response("ok", { headers: corsHeaders });
+  if (request.method !== "POST")
+    return json(405, { error: "허용되지 않은 요청입니다." });
   try {
-    const body = await request.json().catch(() => ({})) as Record<string, unknown>;
-    const action = readString(body.action, 40);
-    const token = readString(body.token, 80);
-    if (!['metadata', 'search', 'prepare-upload', 'submit'].includes(action)) throw new HttpError(400, '지원하지 않는 요청입니다.');
-    await rateLimit(request, token, action);
-    const collection = await getCollection(token);
-    if (action === 'metadata') {
-      // 종료된 수합과 비밀번호 검증 전 응답에는 signed URL을 만들거나 포함하지 않는다.
-      if (isClosed(collection)) return json(200, { collection: metadataSummary(collection) });
-      const passwordWasSubmitted = Object.prototype.hasOwnProperty.call(body, 'password');
-      if (collection.password_digest && !passwordWasSubmitted) return json(200, { collection: metadataSummary(collection) });
-      await verifyPassword(collection, body.password);
-      return json(200, { collection: await authorizedMetadata(collection) });
+    const body = (await request.json().catch(() => ({}))) as Record<
+      string,
+      unknown
+    >;
+    const action = str(body.action, 40),
+      token = str(body.token, 80);
+    if (
+      ![
+        "metadata",
+        "template-download",
+        "search",
+        "resume",
+        "prepare-upload",
+        "submit",
+      ].includes(action)
+    )
+      throw new HttpError(400, "지원하지 않는 요청입니다.");
+    // 제한 장애 때 업무/명단을 읽기 전에 중단한다.
+    await limit(
+      request,
+      token,
+      ["prepare-upload", "submit"].includes(action)
+        ? str(body.personalToken, 80)
+        : "",
+    );
+    const c = await getCollection(token);
+    const summary = {
+      accessGranted: false,
+      title: c.title,
+      status: c.status,
+      dueAt: c.due_at ?? "",
+      passwordRequired: Boolean(c.password_digest),
+    };
+    if (
+      action === "metadata" &&
+      (closed(c) ||
+        (c.password_digest &&
+          !Object.prototype.hasOwnProperty.call(body, "password")))
+    )
+      return json(200, { collection: summary });
+    if (closed(c)) throw new HttpError(410, "자료 수합이 종료되었습니다.");
+    try {
+      await verifyPassword(c, body.password);
+    } catch (error) {
+      if (error instanceof HttpError && error.status === 401)
+        await limit(request, token, "", true);
+      throw error;
     }
-    ensureOpen(collection);
-    await verifyPassword(collection, body.password);
-    if (!dataCollectCrypto.isConfigured()) throw new HttpError(503, '서버 준비가 끝나지 않았습니다. 잠시 후 다시 시도해 주세요.');
-
-    const personalToken = readString(body.personalToken, 80);
-    if (action === 'search') {
-      if (collection.mode === 'custom') throw new HttpError(422, '이 자료 수합은 제출할 때 이름을 직접 입력합니다.');
-      let rows: TargetRow[];
-      if (personalToken) {
-        rows = [await getTarget(collection.id, personalToken)];
-      } else {
-        const listed = await db.from('data_collection_targets').select('id, collection_id, display_label, display_owner, label_search, owner_search, personal_token').eq('collection_id', collection.id).limit(2000);
-        if (listed.error) throw listed.error;
-        rows = (listed.data ?? []) as TargetRow[];
+    if (action === "metadata" || action === "template-download") {
+      let template: Record<string, unknown> | null = null;
+      if (c.template_path) {
+        let downloadUrl = "";
+        if (action === "template-download" || body.lazyDownload !== true) {
+          const signed = await db.storage
+            .from(TEMPLATE_BUCKET)
+            .createSignedUrl(c.template_path, 300);
+          if (signed.error) throw signed.error;
+          downloadUrl = signed.data?.signedUrl ?? "";
+        }
+        template = {
+          name: c.template_name_ciphertext
+            ? await dataCollectCrypto.decryptPayload<string>(
+                c.template_name_ciphertext,
+              )
+            : "배포 파일",
+          size: c.template_size ?? 0,
+          mimeType: c.template_mime ?? "application/octet-stream",
+          url: downloadUrl,
+        };
       }
-      if (personalToken) return json(200, { targets: rows.map((row) => ({ token: row.personal_token, label: row.display_label, owner: row.display_owner })) });
-      const query = searchPrefix(readString(body.query, 120));
-      if (query.length < 2) throw new HttpError(422, '두 글자 이상 입력해 주세요.');
+      if (action === "template-download") return json(200, { template });
+      return json(200, {
+        collection: {
+          ...summary,
+          accessGranted: true,
+          description: c.description,
+          kind: c.kind,
+          mode: c.mode,
+          allowResubmit: c.allow_resubmit,
+          hasTemplate: Boolean(c.template_path),
+          template,
+        },
+      });
+    }
+    if (!dataCollectCrypto.isConfigured())
+      throw new HttpError(
+        503,
+        "서버 준비가 끝나지 않았습니다. 잠시 후 다시 시도해 주세요.",
+      );
+    let personal = str(body.personalToken, 80);
+    if (action === "search") {
+      if (c.mode === "custom")
+        throw new HttpError(
+          422,
+          "이 자료 수합은 제출할 때 이름을 직접 입력합니다.",
+        );
+      if (personal) {
+        const t = await getTarget(c, personal);
+        return json(200, {
+          targets: [
+            {
+              token: t!.personal_token,
+              label: t!.display_label,
+              owner: t!.display_owner,
+            },
+          ],
+        });
+      }
+      const query = normalize(str(body.query, 120));
+      if (query.length < 2)
+        throw new HttpError(422, "두 글자 이상 입력해 주세요.");
       const needle = await dataCollectCrypto.nameLookup(query);
-      const matches = rows.filter((row) => row.label_search.includes(needle) || row.owner_search.includes(needle)).slice(0, 10);
-      return json(200, { targets: matches.map((row) => ({ token: row.personal_token, label: row.display_label, owner: row.display_owner })) });
+      const result = await db
+        .from("data_collection_targets")
+        .select("personal_token,display_label,display_owner")
+        .eq("collection_id", c.id)
+        .or(
+          "label_search.cs." +
+            JSON.stringify([needle]) +
+            ",owner_search.cs." +
+            JSON.stringify([needle]),
+        )
+        .order("row_number")
+        .limit(10);
+      if (result.error) throw result.error;
+      if (!result.data?.length) await limit(request, token, "", true);
+      return json(200, {
+        targets: (result.data ?? []).map((row) => ({
+          token: row.personal_token,
+          label: row.display_label,
+          owner: row.display_owner,
+        })),
+      });
     }
-
-    if (action === 'prepare-upload') {
-      const name = readString(body.fileName, 500);
-      if (!name || !allowedExtensions.has(extensionOf(name))) throw new HttpError(400, '허용되지 않은 파일 형식입니다.');
-      if (collection.mode === 'custom' && !readString(body.respondentName, 120)) throw new HttpError(422, '제출자 이름을 입력해 주세요.');
-      const target = collection.mode === 'fixed' || personalToken ? await getTarget(collection.id, personalToken) : null;
-      const path = `${dataCollectSubmissionTargetPrefix(collection.id, target?.id ?? 'walk-in')}/${crypto.randomUUID()}-${name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-      const signed = await db.storage.from(FILE_BUCKET).createSignedUploadUrl(path);
-      if (signed.error) throw signed.error;
-      return json(200, { path, token: signed.data.token });
+    if (action === "resume") {
+      const t = await getTarget(c, personal);
+      const current = await db
+        .from("data_collection_files")
+        .select("revision,response_kind")
+        .eq("collection_id", c.id)
+        .eq("target_id", t!.id)
+        .eq("is_current", true)
+        .maybeSingle();
+      if (current.error) throw current.error;
+      return json(200, {
+        target: { label: t!.display_label, owner: t!.display_owner },
+        submission: current.data
+          ? {
+              revision: current.data.revision,
+              decision: current.data.response_kind,
+            }
+          : null,
+      });
     }
-
-    const decision = readString(body.decision, 20);
-    if (!['confirmed', 'corrected', 'submitted'].includes(decision)) throw new HttpError(422, '회신 방법을 선택해 주세요.');
-    const respondentName = readString(body.respondentName, 120);
-    let target = collection.mode === 'fixed' ? await getTarget(collection.id, personalToken) : null;
-    const storagePath = readString(body.storagePath, 1000);
-    const originalName = readString(body.fileName, 500);
-    if (collection.mode === 'custom') {
-      if (!respondentName) throw new HttpError(422, '제출자 이름을 입력해 주세요.');
-      if (personalToken) {
-        target = await getTarget(collection.id, personalToken);
-      } else if (decision !== 'confirmed' && (!storagePath || !originalName || !storagePath.startsWith(`${dataCollectSubmissionTargetPrefix(collection.id, 'walk-in')}/`))) {
-        throw new HttpError(400, '제출 파일이 없습니다.');
+    let requestId = str(body.requestId, 80);
+    if (requestId && !uuidPattern.test(requestId))
+      throw new HttpError(400, "제출 요청 정보가 올바르지 않습니다.");
+    if (action === "prepare-upload") {
+      requestId ||= crypto.randomUUID();
+      if (!personal && c.mode === "custom") personal = crypto.randomUUID();
+      const target = await getTarget(c, personal, c.mode === "custom");
+      if (!target && !str(body.respondentName, 120))
+        throw new HttpError(422, "제출자 이름을 입력해 주세요.");
+      if (target && !c.allow_resubmit) {
+        const done = await db
+          .from("data_collection_files")
+          .select("id")
+          .eq("collection_id", c.id)
+          .eq("target_id", target.id)
+          .eq("is_current", true)
+          .maybeSingle();
+        if (done.error) throw done.error;
+        if (done.data)
+          throw new HttpError(
+            409,
+            "이미 제출한 자료입니다. 담당자에게 문의해 주세요.",
+          );
       }
-      target ??= await createWalkInTarget(collection.id, respondentName);
+      const name = str(body.fileName, 500),
+        extension = name.toLowerCase().split(".").pop() ?? "";
+      if (!(DATA_COLLECT_EXTENSIONS as readonly string[]).includes(extension))
+        throw new HttpError(400, "허용되지 않은 파일 형식입니다.");
+      if (Number(body.fileSize) > 50 * 1024 * 1024 || body.fileSize === 0)
+        throw new HttpError(400, "제출 파일은 최대 50MiB입니다.");
+      const path = c.id + "/pending/" + requestId + "/file." + extension;
+      const claim = await claimHash(c, personal, requestId);
+      const previous = await readUpload(c, path);
+      if (
+        previous &&
+        (previous.claim_hash !== claim ||
+          new Date(previous.expires_at).getTime() <= Date.now() ||
+          previous.consumed_at)
+      )
+        throw new HttpError(409, "업로드 정보를 다시 준비해 주세요.");
+      if (!previous) {
+        const reserved = await db.from("data_collection_uploads").insert({
+          id: requestId,
+          collection_id: c.id,
+          personal_token: personal,
+          claim_hash: claim,
+          storage_path: path,
+        });
+        if (reserved.error) throw reserved.error;
+      }
+      const signed = await db.storage
+        .from(FILE_BUCKET)
+        .createSignedUploadUrl(path);
+      if (signed.error) throw signed.error;
+      return json(200, {
+        path,
+        token: signed.data.token,
+        requestId,
+        personalToken: personal,
+      });
     }
-    if (!target) throw new HttpError(404, '제출 대상을 찾을 수 없습니다.');
-    const history = await db.from('data_collection_files').select('revision').eq('collection_id', collection.id).eq('target_id', target.id).order('revision', { ascending: false }).limit(1).maybeSingle();
-    if (history.error) throw history.error;
-    if (history.data && !collection.allow_resubmit) throw new HttpError(409, '이미 제출한 자료입니다. 담당자에게 문의해 주세요.');
-    const revision = Number(history.data?.revision ?? 0) + 1;
-    if (decision !== 'confirmed') {
-      const expectedPrefix = `${dataCollectSubmissionTargetPrefix(collection.id, collection.mode === 'custom' && !personalToken ? 'walk-in' : target.id)}/`;
-      if (!storagePath || !originalName || !storagePath.startsWith(expectedPrefix)) throw new HttpError(400, '제출 파일이 없습니다.');
-      const info = await validateUploaded(storagePath, originalName);
-      await db.from('data_collection_files').update({ is_current: false }).eq('collection_id', collection.id).eq('target_id', target.id);
-      const inserted = await db.from('data_collection_files').insert({ collection_id: collection.id, target_id: target.id, response_kind: decision, revision, is_current: true, storage_path: storagePath, original_name_ciphertext: await dataCollectCrypto.encryptPayload(originalName), content_hash: info.contentHash, byte_size: info.byteSize, mime_type: info.mimeType, note_ciphertext: body.note ? await dataCollectCrypto.encryptPayload(readString(body.note, 4000)) : null });
-      if (inserted.error) { await db.storage.from(FILE_BUCKET).remove([storagePath]); throw inserted.error; }
+    const decision = str(body.decision, 20);
+    if (!validDataCollectDecision(Boolean(c.template_path), decision))
+      throw new HttpError(422, "요청 종류에 맞는 회신 방법을 선택해 주세요.");
+    const path = str(body.storagePath, 1000),
+      name = str(body.fileName, 500);
+    let upload: UploadRow | null = null;
+    if (decision !== "confirmed") {
+      if (!path || !name)
+        throw new HttpError(400, "제출할 파일을 선택해 주세요.");
+      upload = await readUpload(c, path);
+      if (!upload)
+        throw new HttpError(
+          400,
+          "올바른 업로드 정보가 없습니다. 파일을 다시 선택해 주세요.",
+        );
+      requestId ||= upload.id;
+      personal ||= upload.personal_token;
+      if (
+        upload.id !== requestId ||
+        upload.personal_token !== personal ||
+        upload.claim_hash !== (await claimHash(c, personal, requestId))
+      )
+        throw new HttpError(403, "이 제출 파일에 접근할 권한이 없습니다.");
     } else {
-      await db.from('data_collection_files').update({ is_current: false }).eq('collection_id', collection.id).eq('target_id', target.id);
-      const inserted = await db.from('data_collection_files').insert({ collection_id: collection.id, target_id: target.id, response_kind: 'confirmed', revision, is_current: true, note_ciphertext: body.note ? await dataCollectCrypto.encryptPayload(readString(body.note, 4000)) : null });
-      if (inserted.error) throw inserted.error;
+      requestId ||= crypto.randomUUID();
+      if (path)
+        throw new HttpError(
+          422,
+          "이상 없음 회신에는 파일을 첨부하지 않습니다.",
+        );
+      if (!personal && c.mode === "custom") personal = crypto.randomUUID();
     }
-    await db.from('data_collection_targets').update({ submitted_at: new Date().toISOString(), status: decision }).eq('id', target.id);
-    return json(200, { submitted: true, revision, decision, personalToken: collection.mode === 'custom' ? target.personal_token : undefined });
+    const target = await getTarget(c, personal, c.mode === "custom");
+    const respondentName = str(body.respondentName, 120);
+    if (!target && !respondentName)
+      throw new HttpError(422, "제출자 이름을 입력해 주세요.");
+    const digest = await dataCollectCrypto.nameLookup(
+      JSON.stringify({
+        personal,
+        decision,
+        path,
+        name,
+        note: str(body.note, 4000),
+        respondentName,
+      }),
+    );
+    const previous = await db
+      .from("data_collection_files")
+      .select("target_id,request_digest,revision,response_kind")
+      .eq("collection_id", c.id)
+      .eq("request_id", requestId)
+      .maybeSingle();
+    if (previous.error) throw previous.error;
+    if (previous.data) {
+      if (
+        previous.data.request_digest !== digest ||
+        previous.data.target_id !== target?.id
+      )
+        throw new HttpError(409, "같은 요청의 내용이 변경되었습니다.");
+      return json(200, {
+        submitted: true,
+        revision: previous.data.revision,
+        decision: previous.data.response_kind,
+        personalToken: personal,
+      });
+    }
+    let info: {
+      byteSize: number;
+      mimeType: string;
+      contentHash: string;
+    } | null = null;
+    if (upload) {
+      if (
+        upload.consumed_at ||
+        new Date(upload.expires_at).getTime() <= Date.now()
+      )
+        throw new HttpError(
+          400,
+          "업로드 정보가 만료되었습니다. 파일을 다시 선택해 주세요.",
+        );
+      const downloaded = await db.storage.from(FILE_BUCKET).download(path);
+      if (downloaded.error)
+        throw new HttpError(
+          400,
+          "제출 파일을 읽지 못했습니다. 다시 시도해 주세요.",
+        );
+      const error = await dataCollectFileError(downloaded.data, name);
+      if (error) {
+        await cleanup(upload);
+        throw new HttpError(400, error);
+      }
+      info = {
+        byteSize: downloaded.data.size,
+        mimeType: downloaded.data.type || "application/octet-stream",
+        contentHash: await hash(await downloaded.data.arrayBuffer()),
+      };
+    }
+    const identity = !target
+      ? await dataCollectCrypto.encryptPayload({
+          label: respondentName,
+          owner: "",
+        })
+      : null;
+    const finalized = await db.rpc("finalize_data_collection_submission", {
+      p_collection_id: c.id,
+      p_personal_token: personal,
+      p_request_id: requestId,
+      p_request_digest: digest,
+      p_decision: decision,
+      p_claim_hash: upload?.claim_hash ?? "",
+      p_storage_path: upload?.storage_path ?? null,
+      p_name_ciphertext: upload
+        ? await dataCollectCrypto.encryptPayload(name)
+        : null,
+      p_identity_ciphertext: identity,
+      p_display_label: respondentName
+        ? respondentName[0] +
+          "○" +
+          (respondentName.length > 2 ? respondentName.at(-1) : "")
+        : "",
+      p_label_search: respondentName
+        ? [await dataCollectCrypto.nameLookup(normalize(respondentName))]
+        : [],
+      p_content_hash: info?.contentHash ?? null,
+      p_byte_size: info?.byteSize ?? null,
+      p_mime_type: info?.mimeType ?? null,
+      p_note_ciphertext: body.note
+        ? await dataCollectCrypto.encryptPayload(str(body.note, 4000))
+        : null,
+    });
+    if (finalized.error) {
+      // 네트워크 오류는 확정 성공일 수 있으므로 파일을 지우지 않는다.
+      const mapped = rpcError(finalized.error.message);
+      if (mapped && upload) await cleanup(upload);
+      if (mapped) throw mapped;
+      throw finalized.error;
+    }
+    return json(200, finalized.data);
   } catch (error) {
-    if (error instanceof HttpError) return json(error.status, { error: error.message });
-    console.error(error);
-    return json(500, { error: '자료 수합 요청을 처리하지 못했습니다.' });
+    if (error instanceof HttpError)
+      return json(error.status, { error: error.message });
+    console.error("data-collect-public request failed");
+    return json(500, {
+      error:
+        "자료 수합 요청을 처리하지 못했습니다. 입력을 유지한 채 다시 시도해 주세요.",
+    });
   }
 });
