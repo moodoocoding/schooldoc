@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { jsPDF } from 'jspdf';
 import AxeBuilder from '@axe-core/playwright';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 
 const evidence = 'design/consent-field-editor/2026-10-02/evidence';
 const phase = process.env.CONSENT_UI_PHASE ?? 'final';
@@ -117,4 +117,20 @@ test('60명 QR도 열 장의 A4에 명단을 빠짐없이 인쇄한다',async({p
   await page.pdf({path:`${evidence}/${phase}-qr-60-print.pdf`,format:'A4',printBackground:true,preferCSSPageSize:true});
   await page.getByTestId('consent-qr-page').last().scrollIntoViewIfNeeded(); await capture(page,'qr-60-desktop');
   await page.getByRole('button',{name:'미제출자 52명',exact:true}).click(); await expect(page.getByTestId('consent-qr-page')).toHaveCount(9); await expect(page.getByTestId('consent-qr-card')).toHaveCount(52);
+});
+test('QR 배부 자료는 모바일·태블릿·데스크톱에서 모두 보이고 A4 저장 규격을 유지한다',async({page})=>{
+  const errors=errorsOf(page); await seedManage(page,6); await page.getByRole('button',{name:'개인 QR 배부 자료',exact:true}).click();
+  const measurements=[];
+  for(const width of [390,640,768,1024,1280,1570]) {
+    await page.setViewportSize({width,height:900}); await noOverflow(page);
+    await expect(page.getByTestId('consent-qr-card')).toHaveCount(6);
+    const measured=await page.getByTestId('consent-qr-page').evaluateAll(papers=>papers.map(paper=>({width:innerWidth,paper:paper.getBoundingClientRect().toJSON(),outside:[...paper.querySelectorAll('[data-testid="consent-qr-card"],svg,[data-testid="consent-qr-name"],[data-testid="consent-qr-identity"],button')].filter(el=>{const r=el.getBoundingClientRect();return r.width>0&&(r.left<0||r.right>innerWidth+1);}).length,clipped:[...paper.querySelectorAll('[data-testid="consent-qr-card"]')].filter(card=>[...card.querySelectorAll('p')].some(el=>{const r=el.getBoundingClientRect(),c=card.getBoundingClientRect();return el.scrollWidth>el.clientWidth+1||el.scrollHeight>el.clientHeight+1||r.bottom>c.bottom+1||r.right>c.right+1;})).length})));
+    expect(measured[0].outside).toBe(0); expect(measured[0].clipped).toBe(0); measurements.push(...measured);
+    await expect(page.getByTestId('consent-qr-name').first()).toHaveText(longName); await expect(page.getByTestId('consent-qr-identity').first()).toHaveText(longIdentity);
+    await capture(page,`qr-width-${width}`);
+  }
+  await page.setViewportSize({width:768,height:900});
+  const pdf=page.waitForEvent('download'); await page.getByRole('button',{name:'PDF 다운로드',exact:true}).click(); await (await pdf).saveAs(`${evidence}/tablet-qr-768-download.pdf`);
+  await page.setViewportSize({width:390,height:844}); await page.pdf({path:`${evidence}/tablet-qr-390-print.pdf`,format:'A4',printBackground:true,preferCSSPageSize:true});
+  await writeFile(`${evidence}/tablet-qr-layout.json`,JSON.stringify({browser:page.context().browser()!.version(),widths:measurements,pageErrors:errors},null,2)); expect(errors).toEqual([]);
 });

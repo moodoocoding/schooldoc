@@ -4,7 +4,7 @@ from pypdf import PdfReader
 from PIL import Image, ImageDraw
 base=Path('design/consent-field-editor/2026-10-02/evidence')
 reports=[]
-for filename,expected in [('final-qr-download.pdf',4),('final-qr-print.pdf',4),('final-qr-60-print.pdf',10)]:
+for filename,expected in [('final-qr-download.pdf',4),('final-qr-print.pdf',4),('final-qr-60-print.pdf',10),('tablet-qr-768-download.pdf',1),('tablet-qr-390-print.pdf',1)]:
     reader=PdfReader(base/filename)
     assert len(reader.pages)==expected, (filename,len(reader.pages))
     prefix=base/filename.removesuffix('.pdf')
@@ -16,7 +16,7 @@ for filename,expected in [('final-qr-download.pdf',4),('final-qr-print.pdf',4),(
         im=Image.open(png).convert('L'); ink=sum(im.histogram()[:230])/(im.width*im.height)
         assert ink>0.01, (filename,png,'blank')
         rendered.append({'image':png.name,'width':im.width,'height':im.height,'inkRatio':round(ink,4)})
-    cols=2 if expected==4 else 5
+    cols=2 if expected==4 else min(expected,5)
     sheet=Image.new('RGB',(cols*320,math.ceil(expected/cols)*475),'#d6dce3')
     draw=ImageDraw.Draw(sheet)
     for index,png in enumerate(pngs):

@@ -95,3 +95,15 @@ node node_modules/@playwright/test/cli.js test tests/e2e/app-shell-scroll.spec.t
 긴 QR 이름과 긴 목록 공유 우선 배치는 이전 보고서의 후속 미수정 항목이었으며 이번에 완료했다. 정상 A4 이름60자/식별값60자에서 줄임표 없이 확인했다. 전체 명단을 펼치거나 모바일 QR을 한 열로 볼 때 페이지가 길어지는 특성과6명/쪽 출력의 종이 증가를 남은 설계 제약으로 기록한다.
 
 외부 공용 작업일지 `../schooldoc-docs/development-history.md`와 `pro/ux-ui-expert.md`는 없어 읽거나 복원하지 않았다. [전용 작업일지](../../../docs/feature-review-consent-2026-10-01.md)에 완료·검증·인계 상태를 추가한다. 시험 DB/키/JWT/의존성은 기존 `.runtime/` 무시 규칙을 유지했고 신규 검증 폴더도 `.runtime/`를 제외한다. 새 증거 PDF는 binary로 보존한다.
+## 통합 전 추가 QR 반응형 보완 (codex)
+
+2026-10-02. 첫 기능 커밋과 일지 커밋 이후 통합 세션의 실제 Chrome 검토에서640px/768px QR 페이지 잘림이 전달됐다. `sm:w-[794px]`가640px부터 화면용 페이지를 고정해 오른쪽 카드3개를 화면 밖으로 밀었다. 앞선390px/1366px 검사만으로 이 중간 구간을 확인하지 못한 한계다. 기존 커밋은 재작성하지 않고 이 보완을 별도 fix 커밋으로 추가한다.
+
+화면 페이지의 고정 너비를 제거해 가용 너비를 사용하고1024px 미만에서는 한 열로 배치했다. 인쇄는 A4 두 열×세 행을 유지하며 PDF 저장 시 복제본에794×1123px·42/48px 여백·두 열/세 행·빈 칸 표시를 명시해 화면 폭과 출력 규격을 분리했다.6명/쪽·QR104px·PNG1024×1024 및 기존 다쪽 출력/미제출 필터는 유지한다. 공통 CSS·DB/API와 다른 기능은 변경하지 않았다.
+
+- 실제 headed Chrome 새 폭 검사1개와 기존 QR24/60명2개, 총3개 통과.390/640/768/1024/1280/1570px 모두6개 카드·QR·이름·식별값·이미지 저장 버튼의 가로 이탈0, 긴 값 잘림0, pageerror0. [측정](evidence/tablet-qr-layout.json).
+- 전체 화면 [390px](evidence/final-qr-width-390.png), [640px](evidence/final-qr-width-640.png), [768px](evidence/final-qr-width-768.png), [1024px](evidence/final-qr-width-1024.png), [1280px](evidence/final-qr-width-1280.png), [1570px](evidence/final-qr-width-1570.png)을 직접 열어 모든 카드와 저장 버튼을 확인했다. 좁은 화면은 문서의 세로 스크롤로 나머지 카드를 본다.
+- 768px에서 실제 내려받은 [PDF](evidence/tablet-qr-768-download.pdf)와390px 실제 [인쇄 PDF](evidence/tablet-qr-390-print.pdf) 각각 A4 한 쪽에6명 모두 정상. [다운로드 렌더](evidence/tablet-qr-768-download-1.png), [인쇄 렌더](evidence/tablet-qr-390-print-1.png)에서 긴 이름·식별값, QR 크기와 여섯 카드·푸터를 확인했다. 기존4/4/10쪽도 재확인해 현재 PDF5개20쪽 A4·빈 페이지0이다.
+- `npm run typecheck`·`npm run lint`·`npm run build` 통과, 기존 lint6개·번들 경고 유지. `npm test -- tests/unit/consentRecipientSheet.test.ts tests/unit/scrollContainersAreDeliberate.test.ts tests/unit/accessibleNamesDoNotOverlap.test.ts`3파일45개 통과. 이어 전체 단위501개도 최종 재확인했다. E2E의 중복 제외 누적은64개다.
+
+추가 세 프로파일 판단: 웹디자인은640/768px의 밀도/잘림 수정 필요→한 열 전체 캡처로 통과, UX는 화면에서6명을 세로로 확인하고 A4는 두 열로 배부할 수 있어 통과, UI는 카드/QR/전체 이름/저장 버튼의 실제 경계 측정과 다운로드/인쇄 재확인으로 통과다. 앞선 여섯 AI 관점 중 밀도·반응형·출력 근거를 이 자료로 갱신하며 실제 전문가 검토로 해석하지 않는다. 종이 증가·모바일 세로 길이·실물 인쇄/카메라의 미검증은 그대로다. 수정본/일지는 별도 로컬 커밋으로 추가하며 원격 push·PR·main 병합·운영 배포는 통합 세션 담당이다.

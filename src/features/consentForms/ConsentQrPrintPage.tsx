@@ -90,6 +90,13 @@ export function ConsentQrPrintPage() {
           // 저장 버튼은 화면에만 둔다. PDF에 찍히면 배부물이 지저분해진다.
           onclone: (clonedDocument) => {
             clonedDocument.querySelectorAll<HTMLElement>('.qr-save-button').forEach((button) => button.remove());
+            // 화면 너비와 관계없이 저장본은 같은 A4 두 열·세 행으로 만든다.
+            clonedDocument.querySelectorAll<HTMLElement>('.consent-qr-print-page').forEach((sheet) => {
+              Object.assign(sheet.style, { width: '794px', height: '1123px', padding: '42px 48px' });
+              const grid = sheet.querySelector<HTMLElement>('[data-testid="consent-qr-grid"]');
+              if (grid) Object.assign(grid.style, { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gridTemplateRows: 'repeat(3, minmax(0, 1fr))' });
+              sheet.querySelectorAll<HTMLElement>('[data-qr-empty]').forEach((slot) => { slot.style.display = 'block'; });
+            });
           },
         });
         if (index > 0) pdf.addPage('a4', 'portrait');
@@ -128,17 +135,17 @@ export function ConsentQrPrintPage() {
         : <div className="bg-[#E9EDF2] px-3 py-6 sm:px-4 print:m-0 print:overflow-visible print:bg-white print:p-0">
           <div ref={pagesRef} className="consent-qr-print-root mx-auto w-full max-w-[794px] space-y-6 print:space-y-0">
             {pages.map((pageRecipients, pageIndex) => (
-              <section key={pageIndex} data-testid="consent-qr-page" className="consent-qr-print-page flex min-h-[1123px] w-full shrink-0 flex-col bg-white px-5 py-6 sm:h-[1123px] sm:w-[794px] sm:px-[48px] sm:py-[42px] print:h-[1123px] print:w-[794px] print:px-[48px] print:py-[42px] shadow-[0_8px_28px_rgba(15,23,42,0.16)]">
+              <section key={pageIndex} data-testid="consent-qr-page" className="consent-qr-print-page flex min-h-[1123px] w-full shrink-0 flex-col bg-white px-5 py-6 lg:h-[1123px] lg:px-[48px] lg:py-[42px] print:h-[1123px] print:w-[794px] print:px-[48px] print:py-[42px] shadow-[0_8px_28px_rgba(15,23,42,0.16)]">
                 <header className="mb-5 border-b-2 border-[#334155] pb-4">
                   <div className="flex items-center justify-between gap-5">
                     <div className="min-w-0"><p className="text-[12px] font-bold text-[#334155]">가정통신문 수합{target === 'pending' ? ' · 미제출자 재배부' : ''}</p><h2 className="mt-1 truncate text-[21px] font-extrabold text-[#0F172A]">{draft.title}</h2></div>
                     <div className="flex shrink-0 items-center gap-2 text-[12px] font-bold text-[#526174]"><QrCode className="h-4 w-4" />개인 응답 QR</div>
                   </div>
                 </header>
-                <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2 sm:grid-rows-3 print:grid-cols-2 print:grid-rows-3">
+                <div data-testid="consent-qr-grid" className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-2 lg:grid-rows-3 print:grid-cols-2 print:grid-rows-3">
                   {Array.from({ length: RECIPIENTS_PER_SHEET }, (_, slot) => {
                     const recipient = pageRecipients[slot];
-                    if (!recipient) return <div key={`empty-${slot}`} aria-hidden="true" className="hidden sm:block print:block" />;
+                    if (!recipient) return <div key={`empty-${slot}`} data-qr-empty aria-hidden="true" className="hidden lg:block print:block" />;
                     return (
                       <div key={recipient.id} data-testid="consent-qr-card" className="flex min-w-0 items-center gap-3 border border-dashed border-[#94A3B8] px-3 py-3">
                         <div className="flex shrink-0 flex-col items-center gap-1">

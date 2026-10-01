@@ -13,8 +13,17 @@
     "result": "pass"
   },
   "chromeDemo": {
-    "uniqueTests": 63,
+    "uniqueTests": 64,
     "result": "pass",
+    "lastQrRegression": 3,
+    "qrWidths": [
+      390,
+      640,
+      768,
+      1024,
+      1280,
+      1570
+    ],
     "lastDirectRegression": 25,
     "questionsAndRecovery": 13,
     "spaceAndFoldSave": 4
@@ -30,8 +39,8 @@
     "violations": 0
   },
   "qrPdf": {
-    "documents": 3,
-    "pages": 18,
+    "documents": 5,
+    "pages": 20,
     "A4": true,
     "blankPages": 0
   },
@@ -39,19 +48,21 @@
   "sourceHashes": {
     "src/features/consentForms/ConsentFieldEditor.tsx": "3babb2c67991019712f2c3456a56382b57db317be4133f1c10c4bdcbfb4e487e",
     "src/features/consentForms/ConsentFormsManagePage.tsx": "188573e4bda7f18c70f91f8295744710b246b93cda97a3cb1a61537e7821ae47",
-    "src/features/consentForms/ConsentQrPrintPage.tsx": "59f33e535fbc5e5cdad692f3576820e54a0b14a9f4c8f022c4612be16c68d0fb",
+    "src/features/consentForms/ConsentQrPrintPage.tsx": "57640bb944d4450aa4aeaedd5fdebcc80798589de90b0b14a6574e6565c2e3ad",
     "src/features/consentForms/consentRecipientSheet.ts": "92cef8e3eb9c497d619241231bc59c0180063f0b8c36cf7c8f4a313619448e1e",
-    "tests/e2e/consent-editor-layout.spec.ts": "c2ce850dcc5c923c7e6e9eb0a012f23a38c5b043026c361428edbab44f0659b8",
+    "tests/e2e/consent-editor-layout.spec.ts": "fa6e1704c2bba5c4976eaa4aa26fe81ea23c1fd3f79fee76399b09f4093c3afd",
     "tests/e2e/consent-forms.spec.ts": "e3988329dbe3e53a0083ec4b1460ad455486de60c2ddbe2986edc0f4aeca92f8",
     "tests/e2e/consent-questions.spec.ts": "7f4c864cc7bdd5e1e86677912a965adfcf40ca1d36b4f29d11611c9428a0c674",
     "tests/e2e/consent-small-fields.spec.ts": "65804183e6e63126fe17bac991c8fe37ce4eb5c450441d540ca030b05250b7da"
   },
   "pdfHashes": {
-    "final-qr-60-print.pdf": "f454ff9e13ce18d1b8c3522b7bcb8c475d716a10cad6cd1e0acd0a8a39f71399",
-    "final-qr-download.pdf": "523ecf92efc14beedb3fe5ca66baa2d2db31bbad93f0ef43754a3a73089e5750",
-    "final-qr-print.pdf": "bff0add6a38539102d950b49133beb14c214c6ae3db74fc5f1f5da5d9731b09a"
+    "final-qr-60-print.pdf": "ddc80809e50997db5657f8d1c8313af408d95db9255fb3d0658a53e51937619f",
+    "final-qr-download.pdf": "92deafd268e43b11542b178006bb352d0a1f618ef21d28fedc130c9315d2f9de",
+    "final-qr-print.pdf": "743dfaa3a757b738af519a1f3666eea3c15a808e8c63070c0dc8e3942b4ea994",
+    "tablet-qr-390-print.pdf": "3d224d9fb5c5fc83d42af69236e69fa2d2b2f0177ec7ccb56110527e1949ac68",
+    "tablet-qr-768-download.pdf": "0f390fc0cbd28e072a69c69ce5890cc80f5314aba632302728dcd9d4d0211cb3"
   },
-  "markdownLinksChecked": 62,
+  "markdownLinksChecked": 78,
   "missingLinks": [],
   "remoteWrites": false
 }

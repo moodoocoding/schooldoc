@@ -131,6 +131,34 @@
           "inkRatio": 0.0768
         }
       ]
+    },
+    {
+      "file": "tablet-qr-768-download.pdf",
+      "pages": 1,
+      "A4": true,
+      "allPagesNonblank": true,
+      "rendered": [
+        {
+          "image": "tablet-qr-768-download-1.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.0813
+        }
+      ]
+    },
+    {
+      "file": "tablet-qr-390-print.pdf",
+      "pages": 1,
+      "A4": true,
+      "allPagesNonblank": true,
+      "rendered": [
+        {
+          "image": "tablet-qr-390-print-1.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.088
+        }
+      ]
     }
   ],
   "qrPngs": {
