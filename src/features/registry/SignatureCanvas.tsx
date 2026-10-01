@@ -18,9 +18,16 @@ export function SignatureCanvas({ onChange }: SignatureCanvasProps) {
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
       const ratio = window.devicePixelRatio || 1;
-      const previous = hasInkRef.current ? canvas.toDataURL('image/png') : null;
-      canvas.width = Math.max(1, Math.round(rect.width * ratio));
-      canvas.height = Math.max(1, Math.round(rect.height * ratio));
+      const width = Math.max(1, Math.round(rect.width * ratio));
+      const height = Math.max(1, Math.round(rect.height * ratio));
+      if (canvas.width === width && canvas.height === height) return;
+      // 연속 resize 사이의 비동기 이미지 복원이 빈 캔버스를 덮지 않도록 픽셀을 복사한다.
+      const previous = document.createElement('canvas');
+      previous.width = canvas.width;
+      previous.height = canvas.height;
+      if (hasInkRef.current) previous.getContext('2d')?.drawImage(canvas, 0, 0);
+      canvas.width = width;
+      canvas.height = height;
       const context = canvas.getContext('2d');
       if (!context) return;
       context.scale(ratio, ratio);
@@ -28,11 +35,7 @@ export function SignatureCanvas({ onChange }: SignatureCanvasProps) {
       context.lineJoin = 'round';
       context.lineWidth = 3;
       context.strokeStyle = '#0F172A';
-      if (previous) {
-        const image = new Image();
-        image.onload = () => context.drawImage(image, 0, 0, rect.width, rect.height);
-        image.src = previous;
-      }
+      if (hasInkRef.current) context.drawImage(previous, 0, 0, rect.width, rect.height);
     };
 
     resize();

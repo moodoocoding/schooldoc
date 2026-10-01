@@ -1,19 +1,20 @@
 import { useRef, useState } from 'react';
 import { Check, LoaderCircle, PenLine, X } from 'lucide-react';
 import { SignatureCanvas } from './SignatureCanvas';
-import type { Registry, RegistryParticipant, SignatureSource } from './types';
+import type { Registry, RegistryParticipant, SignatureSource, SignatureVerification } from './types';
 import { useDialogFocus } from './useDialogFocus';
 
 interface SignatureDialogProps {
   registry: Registry;
   participant: RegistryParticipant;
+  initialCode?: string;
   onClose: () => void;
-  onSubmit: (dataUrl: string, source: SignatureSource, values: Record<string, string>) => void | Promise<void>;
+  onSubmit: (dataUrl: string, source: SignatureSource, values: Record<string, string>, verification: SignatureVerification) => void | Promise<void>;
 }
 
 const inputClass = 'min-h-[48px] w-full rounded-lg border border-[#DCE3EA] bg-white px-3.5 text-base text-[#0F172A] focus:border-[#0F6CBD] focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]/15';
 
-export function SignatureDialog({ registry, participant, onClose, onSubmit }: SignatureDialogProps) {
+export function SignatureDialog({ registry, participant, initialCode = '', onClose, onSubmit }: SignatureDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [drawDataUrl, setDrawDataUrl] = useState<string | null>(null);
@@ -21,15 +22,21 @@ export function SignatureDialog({ registry, participant, onClose, onSubmit }: Si
   const [submitError, setSubmitError] = useState('');
   // 빈 채로 연다. 화면에 보이는 기존 값은 가려진 것이라, 그대로 돌려보내면 원문을 덮는다.
   // 서버는 채워 보낸 항목만 반영하므로 비워 두면 교사가 넣어 둔 값이 그대로 남는다.
-  const [values, setValues] = useState<Record<string, string>>({});
-  useDialogFocus(dialogRef, onClose, closeButtonRef);
+  const [values, setValues] = useState<Record<string, string>>(participant.rowNumber === 0 ? participant.values : {});
+  const [verifyName, setVerifyName] = useState('');
+  const [verificationValues, setVerificationValues] = useState<Record<string, string>>({});
+  const [code, setCode] = useState(initialCode);
+  const requestRef = useRef({ fingerprint: '', id: crypto.randomUUID() });
+  useDialogFocus(dialogRef, () => { if (!isSubmitting) onClose(); }, closeButtonRef);
 
   const handleSubmit = async () => {
     if (!drawDataUrl || isSubmitting) return;
     setIsSubmitting(true);
     setSubmitError('');
     try {
-      await onSubmit(drawDataUrl, 'draw', values);
+      const fingerprint = JSON.stringify([drawDataUrl, values, verifyName, verificationValues, code]);
+      if (requestRef.current.fingerprint !== fingerprint) requestRef.current = { fingerprint, id: crypto.randomUUID() };
+      await onSubmit(drawDataUrl, 'draw', values, { requestId: requestRef.current.id, verifyName, verificationValues, code });
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : '서명을 제출하지 못했습니다.');
       setIsSubmitting(false);
@@ -45,18 +52,28 @@ export function SignatureDialog({ registry, participant, onClose, onSubmit }: Si
             <h2 id="signature-dialog-title" className="mt-1 text-xl font-extrabold text-[#0F172A]">{participant.name}님 서명</h2>
             <p id="signature-dialog-description" className="sr-only">참석 정보를 확인하고 서명 입력 영역에 직접 서명합니다.</p>
           </div>
-          <button ref={closeButtonRef} type="button" onClick={onClose} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-[#526174] hover:bg-[#F6F8FB]" aria-label="서명 창 닫기">
+          <button ref={closeButtonRef} type="button" disabled={isSubmitting} onClick={onClose} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-[#526174] hover:bg-[#F6F8FB]" aria-label="서명 창 닫기">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
+          {participant.requiresIdentity || participant.requiresCode ? <fieldset disabled={isSubmitting} className="space-y-3 rounded-lg border border-[#C8D0DA] bg-[#F8FAFC] p-4">
+            <legend className="px-1 text-sm font-bold text-[#334155]">본인 확인</legend>
+            <p className="text-sm leading-6 text-[#526174]">동명이인은 성명과 등록된 항목을 정확히 입력하거나 담당자에게 확인 코드를 받아 주세요.</p>
+            <label className="grid gap-2 text-sm font-bold">확인 코드<input className={inputClass} inputMode="numeric" autoComplete="off" value={code} onChange={(event) => setCode(event.target.value)} /></label>
+            {!participant.requiresCode ? <>
+              <label className="grid gap-2 text-sm font-bold">등록된 성명<input className={inputClass} value={verifyName} onChange={(event) => setVerifyName(event.target.value)} /></label>
+              {registry.columns.map((column) => <label key={column.id} className="grid gap-2 text-sm font-bold">등록된 {column.label}<input className={inputClass} value={verificationValues[column.id] ?? ''} onChange={(event) => setVerificationValues((current) => ({ ...current, [column.id]: event.target.value }))} /></label>)}
+            </> : null}
+          </fieldset> : null}
           {registry.columns.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2">
               {registry.columns.map((column) => (
                 <label key={column.id} className="grid gap-2 text-sm font-bold text-[#334155]">
                   {column.label}
                   <input
+                    disabled={isSubmitting}
                     className={inputClass}
                     value={values[column.id] ?? ''}
                     onChange={(event) => setValues((current) => ({ ...current, [column.id]: event.target.value }))}

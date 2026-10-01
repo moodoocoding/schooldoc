@@ -1,0 +1,368 @@
+{
+  "observations": [
+    {
+      "name": "all-pages-export-DOM",
+      "detail": [
+        {
+          "height": 1123,
+          "title": "가상　여러　쪽　출력　검토",
+          "rows": [
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78
+          ],
+          "bottom": 1581,
+          "pageBottom": 1639
+        },
+        {
+          "height": 1123,
+          "title": "가상　여러　쪽　출력　검토",
+          "rows": [
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78
+          ],
+          "bottom": 2728,
+          "pageBottom": 2786
+        },
+        {
+          "height": 1123,
+          "title": "가상　여러　쪽　출력　검토",
+          "rows": [
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78,
+            78
+          ],
+          "bottom": 3875,
+          "pageBottom": 3933
+        }
+      ]
+    },
+    {
+      "name": "mobile-create-outside-elements",
+      "detail": [
+        {
+          "tag": "TABLE",
+          "classes": "w-full min-w-[740px] border-collapse text-sm",
+          "rect": {
+            "x": 32,
+            "y": 616,
+            "width": 740,
+            "height": 102,
+            "top": 616,
+            "right": 772,
+            "bottom": 718,
+            "left": 32
+          },
+          "scrollWidth": 740,
+          "clientWidth": 740,
+          "overflowX": "visible"
+        },
+        {
+          "tag": "THEAD",
+          "classes": "bg-[#F6F8FB] text-xs font-bold text-[#334155]",
+          "rect": {
+            "x": 32,
+            "y": 616,
+            "width": 740,
+            "height": 40.5,
+            "top": 616,
+            "right": 772,
+            "bottom": 656.5,
+            "left": 32
+          },
+          "scrollWidth": 740,
+          "clientWidth": 740,
+          "overflowX": "visible"
+        },
+        {
+          "tag": "TR",
+          "classes": "",
+          "rect": {
+            "x": 32,
+            "y": 616,
+            "width": 740,
+            "height": 40.5,
+            "top": 616,
+            "right": 772,
+            "bottom": 656.5,
+            "left": 32
+          },
+          "scrollWidth": 740,
+          "clientWidth": 740,
+          "overflowX": "visible"
+        },
+        {
+          "tag": "TH",
+          "classes": "min-w-44 px-3 py-3 text-left",
+          "rect": {
+            "x": 342,
+            "y": 616,
+            "width": 254,
+            "height": 40.5,
+            "top": 616,
+            "right": 596,
+            "bottom": 656.5,
+            "left": 342
+          },
+          "scrollWidth": 254,
+          "clientWidth": 254,
+          "overflowX": "visible"
+        },
+        {
+          "tag": "TH",
+          "classes": "w-32 px-3 py-3 text-center",
+          "rect": {
+            "x": 596,
+            "y": 616,
+            "width": 128,
+            "height": 40.5,
+            "top": 616,
+            "right": 724,
+            "bottom": 656.5,
+            "left": 596
+          },
+          "scrollWidth": 128,
+          "clientWidth": 128,
+          "overflowX": "visible"
+        },
+        {
+          "tag": "TH",
+          "classes": "w-12",
+          "rect": {
+            "x": 724,
+            "y": 616,
+            "width": 48,
+            "height": 40.5,
+            "top": 616,
+            "right": 772,
+            "bottom": 656.5,
+            "left": 724
+          },
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "overflowX": "visible"
+        },
+        {
+          "tag": "SPAN",
+          "classes": "sr-only",
+          "rect": {
+            "x": 747,
+            "y": 635,
+            "width": 1,
+            "height": 1,
+            "top": 635,
+            "right": 748,
+            "bottom": 636,
+            "left": 747
+          },
+          "scrollWidth": 21,
+          "clientWidth": 1,
+          "overflowX": "hidden"
+        },
+        {
+          "tag": "TBODY",
+          "classes": "",
+          "rect": {
+            "x": 32,
+            "y": 656.5,
+            "width": 740,
+            "height": 61.5,
+            "top": 656.5,
+            "right": 772,
+            "bottom": 718,
+            "left": 32
+          },
+          "scrollWidth": 740,
+          "clientWidth": 740,
+          "overflowX": "visible"
+        },
+        {
+          "tag": "TR",
+          "classes": "border-t border-[#EEF1F4]",
+          "rect": {
+            "x": 32,
+            "y": 656.5,
+            "width": 740,
+            "height": 61.5,
+            "top": 656.5,
+            "right": 772,
+            "bottom": 718,
+            "left": 32
+          },
+          "scrollWidth": 740,
+          "clientWidth": 740,
+          "overflowX": "visible"
+        },
+        {
+          "tag": "TD",
+          "classes": "px-3 py-2",
+          "rect": {
+            "x": 342,
+            "y": 656.5,
+            "width": 254,
+            "height": 61.5,
+            "top": 656.5,
+            "right": 596,
+            "bottom": 718,
+            "left": 342
+          },
+          "scrollWidth": 254,
+          "clientWidth": 254,
+          "overflowX": "visible"
+        },
+        {
+          "tag": "INPUT",
+          "classes": "min-h-[44px] w-full rounded-lg border border-[#DCE3EA] bg-white px-3.5 text-sm text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#0F6CBD] focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]/15",
+          "rect": {
+            "x": 354,
+            "y": 665.5,
+            "width": 230,
+            "height": 44,
+            "top": 665.5,
+            "right": 584,
+            "bottom": 709.5,
+            "left": 354
+          },
+          "scrollWidth": 228,
+          "clientWidth": 228,
+          "overflowX": "clip"
+        },
+        {
+          "tag": "TD",
+          "classes": "w-32 px-3 py-2 text-center",
+          "rect": {
+            "x": 596,
+            "y": 656.5,
+            "width": 128,
+            "height": 61.5,
+            "top": 656.5,
+            "right": 724,
+            "bottom": 718,
+            "left": 596
+          },
+          "scrollWidth": 128,
+          "clientWidth": 128,
+          "overflowX": "visible"
+        },
+        {
+          "tag": "SPAN",
+          "classes": "inline-block h-10 w-24 border-b border-[#CBD5E1]",
+          "rect": {
+            "x": 612,
+            "y": 665,
+            "width": 96,
+            "height": 40,
+            "top": 665,
+            "right": 708,
+            "bottom": 705,
+            "left": 612
+          },
+          "scrollWidth": 96,
+          "clientWidth": 96,
+          "overflowX": "visible"
+        },
+        {
+          "tag": "TD",
+          "classes": "px-1 py-2",
+          "rect": {
+            "x": 724,
+            "y": 656.5,
+            "width": 48,
+            "height": 61.5,
+            "top": 656.5,
+            "right": 772,
+            "bottom": 718,
+            "left": 724
+          },
+          "scrollWidth": 48,
+          "clientWidth": 48,
+          "overflowX": "visible"
+        },
+        {
+          "tag": "BUTTON",
+          "classes": "flex h-10 w-10 items-center justify-center rounded-lg text-[#94A3B8] hover:bg-[#FEF3F2] hover:text-[#B42318]",
+          "rect": {
+            "x": 728,
+            "y": 667.5,
+            "width": 40,
+            "height": 40,
+            "top": 667.5,
+            "right": 768,
+            "bottom": 707.5,
+            "left": 728
+          },
+          "scrollWidth": 40,
+          "clientWidth": 40,
+          "overflowX": "visible"
+        }
+      ]
+    },
+    {
+      "name": "mobile-create-table-scroll",
+      "detail": {
+        "scrollLeft": 300,
+        "scrollWidth": 740,
+        "clientWidth": 326
+      }
+    },
+    {
+      "name": "create-preview-css200",
+      "detail": {
+        "viewport": 1366,
+        "documentWidth": 1366
+      }
+    }
+  ]
+}

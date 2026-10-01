@@ -1,0 +1,1498 @@
+{
+  "chrome": "154.0.8037.58",
+  "base": "http://127.0.0.1:4182",
+  "mode": "local-demo / network-blocked-mock",
+  "observations": [
+    {
+      "name": "manual-and-back-retains",
+      "detail": true
+    },
+    {
+      "name": "paste-header-and-replacement",
+      "detail": {
+        "first": "성명",
+        "second": "가상홍길동",
+        "rows": 2,
+        "confirmation": 0
+      }
+    },
+    {
+      "name": "create-mobile-overflow",
+      "detail": {
+        "width": 390,
+        "documentWidth": 748,
+        "height": 2472
+      }
+    },
+    {
+      "name": "create-preview-space",
+      "detail": {
+        "region": 1163,
+        "page": 1010.699951171875,
+        "scrollHeight": 1163
+      }
+    },
+    {
+      "name": "created",
+      "detail": {
+        "manage": "http://127.0.0.1:4182/tools/registry-sign/e6482e5c-d09a-4598-ba2c-b52ce4449599",
+        "publicUrl": "http://127.0.0.1:4182/s/registry/1aee0551fa314ff381042596a2116c1b",
+        "count": 24
+      }
+    },
+    {
+      "name": "clipboard",
+      "detail": "http://127.0.0.1:4182/s/registry/1aee0551fa314ff381042596a2116c1b"
+    },
+    {
+      "name": "download:QR 이미지 저장",
+      "detail": {
+        "suggested": "가상 연수 등록부 리뷰_서명QR.png",
+        "bytes": 36748
+      }
+    },
+    {
+      "name": "axe-teacher",
+      "detail": []
+    },
+    {
+      "name": "duplicate-identification-demo",
+      "detail": [
+        "가***늘가상****선택",
+        "가***늘가상****선택"
+      ]
+    },
+    {
+      "name": "keyboard-focus-loop",
+      "detail": [
+        {
+          "tag": "INPUT",
+          "name": "",
+          "inDialog": true
+        },
+        {
+          "tag": "BUTTON",
+          "name": "다시 쓰기",
+          "inDialog": true
+        },
+        {
+          "tag": "BUTTON",
+          "name": "서명 창 닫기",
+          "inDialog": true
+        },
+        {
+          "tag": "INPUT",
+          "name": "",
+          "inDialog": true
+        },
+        {
+          "tag": "BUTTON",
+          "name": "다시 쓰기",
+          "inDialog": true
+        },
+        {
+          "tag": "BUTTON",
+          "name": "서명 창 닫기",
+          "inDialog": true
+        },
+        {
+          "tag": "INPUT",
+          "name": "",
+          "inDialog": true
+        },
+        {
+          "tag": "BUTTON",
+          "name": "다시 쓰기",
+          "inDialog": true
+        }
+      ]
+    },
+    {
+      "name": "axe-signature-dialog",
+      "detail": []
+    },
+    {
+      "name": "canvas-rotation",
+      "detail": {
+        "width": 580,
+        "height": 190,
+        "inkPixels": 1875
+      }
+    },
+    {
+      "name": "canvas-save-and-rotation-data",
+      "detail": {
+        "beforeResizeBytes": 5370,
+        "savedBytes": 5370
+      }
+    },
+    {
+      "name": "pending-filter",
+      "detail": 23
+    },
+    {
+      "name": "signed-filter",
+      "detail": 1
+    },
+    {
+      "name": "download:엑셀 다운로드",
+      "detail": {
+        "suggested": "가상 연수 등록부 리뷰.xlsx",
+        "bytes": 3512
+      }
+    },
+    {
+      "name": "exported-excel",
+      "detail": [
+        {
+          "sheet": "Sheet1",
+          "data": [
+            [
+              "연번",
+              "성명",
+              "소속",
+              "서명 상태",
+              "서명 시각"
+            ],
+            [
+              1,
+              "가상김하늘",
+              "가상학교 1반",
+              "완료",
+              "2026-10-01T12:06:02.641Z"
+            ],
+            [
+              2,
+              "가상김하늘",
+              "가상학교 2반",
+              "미서명",
+              null
+            ],
+            [
+              3,
+              "가상참석자03",
+              "가상학교 3반",
+              "미서명",
+              null
+            ],
+            [
+              4,
+              "가상참석자04",
+              "가상학교 4반",
+              "미서명",
+              null
+            ],
+            [
+              5,
+              "가상참석자05",
+              "가상학교 5반",
+              "미서명",
+              null
+            ],
+            [
+              6,
+              "가상참석자06",
+              "가상학교 6반",
+              "미서명",
+              null
+            ],
+            [
+              7,
+              "가상참석자07",
+              "가상학교 7반",
+              "미서명",
+              null
+            ],
+            [
+              8,
+              "가상참석자08",
+              "가상학교 8반",
+              "미서명",
+              null
+            ],
+            [
+              9,
+              "가상참석자09",
+              "가상학교 9반",
+              "미서명",
+              null
+            ],
+            [
+              10,
+              "가상참석자10",
+              "가상학교 10반",
+              "미서명",
+              null
+            ],
+            [
+              11,
+              "가상참석자11",
+              "가상학교 11반",
+              "미서명",
+              null
+            ],
+            [
+              12,
+              "가상참석자12",
+              "가상학교 12반",
+              "미서명",
+              null
+            ],
+            [
+              13,
+              "가상참석자13",
+              "가상학교 13반",
+              "미서명",
+              null
+            ],
+            [
+              14,
+              "가상참석자14",
+              "가상학교 14반",
+              "미서명",
+              null
+            ],
+            [
+              15,
+              "가상참석자15",
+              "가상학교 15반",
+              "미서명",
+              null
+            ],
+            [
+              16,
+              "가상참석자16",
+              "가상학교 16반",
+              "미서명",
+              null
+            ],
+            [
+              17,
+              "가상참석자17",
+              "가상학교 17반",
+              "미서명",
+              null
+            ],
+            [
+              18,
+              "가상참석자18",
+              "가상학교 18반",
+              "미서명",
+              null
+            ],
+            [
+              19,
+              "가상참석자19",
+              "가상학교 19반",
+              "미서명",
+              null
+            ],
+            [
+              20,
+              "가상참석자20",
+              "가상학교 20반",
+              "미서명",
+              null
+            ],
+            [
+              21,
+              "가상참석자21",
+              "가상학교 21반",
+              "미서명",
+              null
+            ],
+            [
+              22,
+              "가상참석자22",
+              "가상학교 22반",
+              "미서명",
+              null
+            ],
+            [
+              23,
+              "가상참석자23",
+              "가상학교 23반",
+              "미서명",
+              null
+            ],
+            [
+              24,
+              "가상참석자24",
+              "가상학교 24반",
+              "미서명",
+              null
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "download:PDF 다운로드",
+      "detail": {
+        "suggested": "가상 연수 등록부 리뷰.pdf",
+        "bytes": 287304
+      }
+    },
+    {
+      "name": "print-DOM-page-count",
+      "detail": 1
+    },
+    {
+      "name": "teacher-mobile-overflow",
+      "detail": {
+        "width": 390,
+        "documentWidth": 390,
+        "height": 4280
+      }
+    },
+    {
+      "name": "teacher-css200-overflow",
+      "detail": {
+        "width": 1366,
+        "documentWidth": 1366,
+        "height": 7096
+      }
+    },
+    {
+      "name": "signed-public-blocked",
+      "detail": 1
+    },
+    {
+      "name": "public-css200-overflow",
+      "detail": {
+        "width": 390,
+        "documentWidth": 390,
+        "height": 1902
+      }
+    },
+    {
+      "name": "teacher-requested-resign",
+      "detail": true
+    },
+    {
+      "name": "close-reopen",
+      "detail": true
+    },
+    {
+      "name": "boundary-print-layout",
+      "detail": {
+        "page": {
+          "x": 140,
+          "y": 3116,
+          "width": 682.8400268554688,
+          "height": 965.780029296875,
+          "top": 3116,
+          "right": 822.8400268554688,
+          "bottom": 4081.780029296875,
+          "left": 140
+        },
+        "table": {
+          "x": 186.44000244140625,
+          "y": 3265.639892578125,
+          "width": 288.1000061035156,
+          "height": 1044.900146484375,
+          "top": 3265.639892578125,
+          "right": 474.5400085449219,
+          "bottom": 4310.5400390625,
+          "left": 186.44000244140625
+        },
+        "rows": [
+          67.080078125,
+          67.080078125,
+          67.079833984375,
+          67.080078125,
+          67.080078125,
+          67.080078125,
+          67.079833984375,
+          67.080078125,
+          67.079833984375,
+          67.080078125,
+          67.080078125,
+          67.080078125,
+          67.080078125,
+          67.080078125,
+          67.07958984375,
+          67.080078125,
+          67.080078125,
+          67.079833984375,
+          67.080078125,
+          67.080078125,
+          67.080078125,
+          67.079833984375,
+          67.080078125,
+          67.079833984375,
+          67.080078125,
+          67.080078125,
+          67.080078125,
+          67.080078125,
+          67.080078125,
+          67.07958984375
+        ],
+        "overflowing": [
+          {
+            "text": "소속학교명",
+            "width": 35,
+            "scrollWidth": 52,
+            "height": 43,
+            "scrollHeight": 43
+          },
+          {
+            "text": "학년반번호",
+            "width": 35,
+            "scrollWidth": 52,
+            "height": 43,
+            "scrollHeight": 43
+          },
+          {
+            "text": "직위또는업무명",
+            "width": 35,
+            "scrollWidth": 71,
+            "height": 43,
+            "scrollHeight": 43
+          },
+          {
+            "text": "추가확인사항",
+            "width": 35,
+            "scrollWidth": 61,
+            "height": 43,
+            "scrollHeight": 43
+          },
+          {
+            "text": "가상외국인참석자알렉산드리아긴성명테스트",
+            "width": 69,
+            "scrollWidth": 181,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 1",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 1",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 1",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 1",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 2",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 2",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 2",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 2",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 3",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 3",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 3",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 3",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 4",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 4",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 4",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 4",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 5",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 5",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 5",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 5",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 6",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 6",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 6",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 6",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 7",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 7",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 7",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 7",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 8",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 8",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 8",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 8",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 9",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 9",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 9",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 9",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 10",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 10",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 10",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 10",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 11",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 11",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 11",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 11",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 12",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 12",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 12",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 12",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 13",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 13",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 13",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 13",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 14",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 14",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 14",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 14",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 15",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 15",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 15",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 15",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "소속학교명",
+            "width": 35,
+            "scrollWidth": 52,
+            "height": 43,
+            "scrollHeight": 43
+          },
+          {
+            "text": "학년반번호",
+            "width": 35,
+            "scrollWidth": 52,
+            "height": 43,
+            "scrollHeight": 43
+          },
+          {
+            "text": "직위또는업무명",
+            "width": 35,
+            "scrollWidth": 71,
+            "height": 43,
+            "scrollHeight": 43
+          },
+          {
+            "text": "추가확인사항",
+            "width": 35,
+            "scrollWidth": 61,
+            "height": 43,
+            "scrollHeight": 43
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 16",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 16",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 16",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 16",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 17",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 17",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 17",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 17",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 18",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 18",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 18",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 18",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 19",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 19",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 19",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 19",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 20",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 20",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 20",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 20",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 21",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 21",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 21",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 21",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 22",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 22",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 22",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 22",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 23",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 23",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 23",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 23",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 24",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 24",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 24",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 24",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 25",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 25",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 25",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 25",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 26",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 26",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 26",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 26",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 27",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 27",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 27",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 27",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 28",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 28",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 28",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 28",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 29",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 29",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 29",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 29",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 30",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 30",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 30",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          },
+          {
+            "text": "가상학교 긴 추가항목 데이터 30",
+            "width": 35,
+            "scrollWidth": 43,
+            "height": 77,
+            "scrollHeight": 77
+          }
+        ],
+        "footer": {
+          "x": 186.44000244140625,
+          "y": 4002.66015625,
+          "width": 589.9600219726562,
+          "height": 29.23974609375,
+          "top": 4002.66015625,
+          "right": 776.4000244140625,
+          "bottom": 4031.89990234375,
+          "left": 186.44000244140625
+        }
+      }
+    },
+    {
+      "name": "download:PDF 다운로드",
+      "detail": {
+        "suggested": "가상 연수 등록부 리뷰.pdf",
+        "bytes": 239500
+      }
+    },
+    {
+      "name": "500-roster-paging",
+      "detail": {
+        "renderedRows": 50,
+        "printPages": 1,
+        "last": 1
+      }
+    },
+    {
+      "name": "custom-cancel-leaves-participant",
+      "detail": 1
+    },
+    {
+      "name": "custom-two-rows-after-cancel-submit",
+      "detail": [
+        "1가상현장참석자가상현장학교미서명-",
+        "2가상현장참석자가상현장학교완료10. 01. 오후 09:06"
+      ]
+    },
+    {
+      "name": "demo-delete-invalidates-link",
+      "detail": true
+    },
+    {
+      "name": "mock-submit-error-preserves",
+      "detail": {
+        "value": "가상수정학교",
+        "enabled": true
+      }
+    },
+    {
+      "name": "mock-retry-success",
+      "detail": true
+    },
+    {
+      "name": "stale-search-on-error",
+      "detail": {
+        "query": "가상홍길동",
+        "buttons": [
+          "가***늘가상****선택",
+          "가***늘가상****선택"
+        ]
+      }
+    },
+    {
+      "name": "mock-duplicate-walkin",
+      "detail": {
+        "calls": 3,
+        "requests": [
+          {
+            "action": "metadata"
+          },
+          {
+            "action": "metadata"
+          },
+          {
+            "action": "unlock"
+          },
+          {
+            "action": "unlock"
+          },
+          {
+            "action": "search",
+            "query": "가상학교"
+          },
+          {
+            "action": "search",
+            "query": "가상김하늘"
+          },
+          {
+            "action": "submit"
+          },
+          {
+            "action": "submit"
+          },
+          {
+            "action": "search",
+            "query": "가상김하늘"
+          },
+          {
+            "action": "search",
+            "query": "가상홍길동"
+          },
+          {
+            "action": "walk-in",
+            "confirmDuplicate": false
+          },
+          {
+            "action": "walk-in",
+            "confirmDuplicate": false
+          },
+          {
+            "action": "walk-in",
+            "confirmDuplicate": true
+          },
+          {
+            "action": "metadata"
+          },
+          {
+            "action": "metadata"
+          },
+          {
+            "action": "unlock"
+          },
+          {
+            "action": "walk-in",
+            "confirmDuplicate": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "axe-public-mock",
+      "detail": []
+    },
+    {
+      "name": "custom-duplicate-has-no-search",
+      "detail": {
+        "searchInputCount": 0,
+        "message": "“가상현장참석자” 이름이 이미 명단에 있습니다\n\n같은 이름으로 1명이 등록되어 있습니다. 이미 등록하셨다면 위에서 이름을 검색해 서명해 주세요. 동명이인이라면 그대로 추가할 수 있습니다.\n\n취소\n동명이인으로 추가"
+      }
+    }
+  ],
+  "errors": [],
+  "blocked": [
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"
+  ]
+}

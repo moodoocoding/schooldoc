@@ -1,4 +1,7 @@
-import { useRef, useState } from 'react';
+import { registryPrintPlan } from '../../../supabase/functions/_shared/registryPrintLayout';
+import { useTeacherAuth } from '../../auth/teacherAuth';
+import { getDefaultRetentionMonths, loadPrivacyRetentionSettings } from '../settings/privacyRetentionSettings';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -12,9 +15,10 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createRegistry } from './registryService';
-import { createColumn, createParticipant, getRegistryPageSettings, parseExcelRows, parsePastedRows } from './registryUtils';
+import { createColumn, createParticipant, parseExcelRows, parsePastedRows } from './registryUtils';
 import { RegistryPrintSheet } from './RegistryPrintSheet';
 import { RegistryPagination } from './RegistryPagination';
+import { RegistryRosterImportDialog } from './RegistryRosterImportDialog';
 import type { Registry, RegistryColumn, RegistryDraft, RegistryLayout, RegistryMode } from './types';
 
 const STEPS = ['기본 정보', '표와 명단', '인쇄 미리보기', '공유 설정'];
@@ -24,6 +28,10 @@ const inputClass = 'min-h-[44px] w-full rounded-lg border border-[#DCE3EA] bg-wh
 
 export function RegistryCreatePage() {
   const navigate = useNavigate();
+  const { user } = useTeacherAuth();
+  const [retentionMonths, setRetentionMonths] = useState(() => getDefaultRetentionMonths(user?.id ?? ''));
+  const [retentionTouched, setRetentionTouched] = useState(false);
+  useEffect(() => { let active = true; if (user) void loadPrivacyRetentionSettings(user.id).then((settings) => { if (active && !retentionTouched) setRetentionMonths(settings.defaultRetentionMonths); }); return () => { active = false; }; }, [user, retentionTouched]);
   const excelInputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<RegistryMode>('fixed');
@@ -42,15 +50,14 @@ export function RegistryCreatePage() {
   const [isCreating, setIsCreating] = useState(false);
   const [participantPage, setParticipantPage] = useState(1);
   const [previewPage, setPreviewPage] = useState(1);
+  const [importedRows, setImportedRows] = useState<Array<ReturnType<typeof createParticipant>> | null>(null);
+  const [beforeImport, setBeforeImport] = useState<typeof participants | null>(null);
 
   const cleanParticipants = participants.filter((participant) => participant.name.trim());
   const participantPageCount = Math.max(1, Math.ceil(participants.length / PARTICIPANTS_PER_PAGE));
   const safeParticipantPage = Math.min(participantPage, participantPageCount);
   const participantPageStart = (safeParticipantPage - 1) * PARTICIPANTS_PER_PAGE;
   const visibleParticipants = participants.slice(participantPageStart, participantPageStart + PARTICIPANTS_PER_PAGE);
-  const printSettings = getRegistryPageSettings(layout);
-  const previewPageCount = Math.max(1, Math.ceil(cleanParticipants.length / (printSettings.columns * printSettings.rowsPerColumn)));
-  const safePreviewPage = Math.min(previewPage, previewPageCount);
 
   const previewRegistry: Registry = {
     id: 'preview',
@@ -71,6 +78,16 @@ export function RegistryCreatePage() {
     })),
     createdAt: '',
     updatedAt: '',
+  };
+
+  const printPlan = registryPrintPlan(previewRegistry);
+  const previewPageCount = Math.max(1, Math.ceil(cleanParticipants.length / printPlan.pageSize));
+  const safePreviewPage = Math.min(previewPage, previewPageCount);
+  const applyImport = (replace: boolean) => {
+    if (!importedRows) return;
+    const next = replace ? importedRows : [...cleanParticipants, ...importedRows];
+    if (next.length > 2000) { setError('명단은 2,000명까지 등록할 수 있습니다.'); return; }
+    setBeforeImport(participants); setParticipants(next); setImportedRows(null); setParticipantPage(1); setPasteText(''); setError('');
   };
 
   const updateColumn = (id: string, label: string) => {
@@ -105,6 +122,7 @@ export function RegistryCreatePage() {
   };
 
   const addParticipantRow = () => {
+    if (participants.length >= 2000) { setError('명단은 2,000명까지 등록할 수 있습니다.'); return; }
     setParticipants((current) => [...current, createParticipant(columns)]);
     setParticipantPage(Math.ceil((participants.length + 1) / PARTICIPANTS_PER_PAGE));
   };
@@ -115,9 +133,7 @@ export function RegistryCreatePage() {
       setError('붙여넣은 명단에서 성명을 찾지 못했습니다. 탭으로 열을 구분해 주세요.');
       return;
     }
-    setParticipants(imported);
-    setParticipantPage(1);
-    setPasteText('');
+    setImportedRows(imported);
     setError('');
   };
 
@@ -130,8 +146,7 @@ export function RegistryCreatePage() {
         setError('엑셀에서 참석자 이름을 찾지 못했습니다. 성명 열을 확인해 주세요.');
         return;
       }
-      setParticipants(imported);
-      setParticipantPage(1);
+      setImportedRows(imported);
       setError('');
     } catch (importError) {
       console.error('등록부 명단 엑셀을 읽지 못했습니다.', importError);
@@ -166,6 +181,7 @@ export function RegistryCreatePage() {
       allowWalkIn: mode === 'custom' ? true : allowWalkIn,
       publicPassword: publicPassword.trim() || undefined,
       columns: columns.map((column) => ({ ...column, label: column.label.trim() })),
+      retentionMonths,
       participants: mode === 'fixed' ? cleanParticipants : [],
     };
     setIsCreating(true);
@@ -287,7 +303,7 @@ export function RegistryCreatePage() {
                   <div key={column.id} className="flex items-center gap-2">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F6F8FB] text-xs font-bold text-[#526174]">{index + 1}</span>
                     <input className={inputClass} value={column.label} onChange={(event) => updateColumn(column.id, event.target.value)} aria-label={`${index + 1}번째 열 이름`} />
-                    <button type="button" onClick={() => removeColumn(column.id)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[#94A3B8] hover:bg-[#FEF3F2] hover:text-[#B42318]" aria-label={`${column.label} 열 삭제`}>
+                    <button type="button" onClick={() => removeColumn(column.id)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-[#94A3B8] hover:bg-[#FEF3F2] hover:text-[#B42318]" aria-label={`${column.label} 열 삭제`}>
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
@@ -357,8 +373,9 @@ export function RegistryCreatePage() {
                     <span className="flex items-center gap-2"><ClipboardPaste className="h-4 w-4" /> 표 붙여넣기</span>
                     <textarea className={`${inputClass} min-h-24 py-3 font-mono`} value={pasteText} onChange={(event) => setPasteText(event.target.value)} placeholder="소속[TAB]성명 형식의 표를 붙여넣으세요" />
                   </label>
-                  <button type="button" onClick={importPaste} className="min-h-[44px] self-end rounded-lg bg-[#334155] px-5 text-sm font-bold text-white hover:bg-[#0F172A]">명단 반영</button>
+                  <button type="button" onClick={importPaste} className="min-h-[44px] self-end rounded-lg bg-[#334155] px-5 text-sm font-bold text-white hover:bg-[#0F172A]">명단 확인</button>
                 </div>
+                {beforeImport ? <button type="button" className="mt-3 min-h-[44px] rounded-lg border px-4 text-sm font-bold" onClick={() => { setParticipants(beforeImport); setBeforeImport(null); setParticipantPage(1); }}>명단 가져오기 되돌리기</button> : null}
               </div>
             ) : (
               <div className="border-t border-[#DCE3EA] py-12 text-center">
@@ -405,6 +422,8 @@ export function RegistryCreatePage() {
               <h2 className="text-lg font-bold text-[#0F172A]">공개 서명 설정</h2>
               <p className="mt-1 text-xs text-[#526174]">등록부를 만든 뒤 링크와 QR이 생성됩니다.</p>
             </div>
+            <label className="grid gap-2 text-sm font-bold text-[#334155]">종료 후 보관 기간<select className={inputClass} value={retentionMonths} onChange={(event) => { setRetentionTouched(true); setRetentionMonths(Number(event.target.value)); }}>{[1,3,12].map((n) => <option key={n} value={n}>{n}개월</option>)}</select></label>
+            <p className="text-xs text-[#526174]">기간이 지나면 파기 예정 목록에 표시하며, 교사가 확인한 뒤 파기합니다.</p>
             <label className="flex min-h-[64px] items-center justify-between gap-5 border-y border-[#DCE3EA] py-4">
               <span>
                 <span className="block text-sm font-bold text-[#0F172A]">명단 외 참석자 추가</span>
@@ -442,6 +461,7 @@ export function RegistryCreatePage() {
           </button>
         )}
       </div>
+      {importedRows ? <RegistryRosterImportDialog rows={importedRows} columns={columns} currentCount={cleanParticipants.length} onCancel={() => setImportedRows(null)} onApply={applyImport} /> : null}
     </div>
   );
 }

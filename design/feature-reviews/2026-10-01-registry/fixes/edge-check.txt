@@ -1,0 +1,6 @@
+Download https://registry.npmjs.org/rolldown/-/rolldown-1.2.12.tgz
+Download https://registry.npmjs.org/@rolldown/binding-win32-x64-msvc/-/binding-win32-x64-msvc-1.2.12.tgz
+Download https://registry.npmjs.org/@oxc-project/types/-/types-0.152.0.tgz
+Check supabase/functions/registry-public/index.ts
+Check supabase/functions/registry-participants/index.ts
+Check supabase/functions/registry-pdf/index.ts

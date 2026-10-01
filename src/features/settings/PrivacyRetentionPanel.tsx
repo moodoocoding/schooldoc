@@ -29,10 +29,10 @@ const dateLabel = (value: string | Date) => {
 };
 
 const kindLabel = (kind: RetainedWorkItem['kind']) => kind === 'consent-form' ? '가정통신문 수합'
-  : kind === 'data-collect' ? '자료 수합' : '학급 미션';
+  : kind === 'data-collect' ? '자료 수합' : kind === 'registry' ? '등록부 서명' : '학급 미션';
 const managePath = (item: RetainedWorkItem) => item.kind === 'consent-form'
   ? `/tools/consent-forms/${item.id}`
-  : item.kind === 'data-collect' ? `/tools/data-collect/${item.id}`
+  : item.kind === 'registry' ? `/tools/registry-sign/${item.id}` : item.kind === 'data-collect' ? `/tools/data-collect/${item.id}`
     : `/tools/class-missions?board=${encodeURIComponent(item.boardId ?? '')}&mission=${encodeURIComponent(item.id)}`;
 
 export function PrivacyRetentionPanel({ userId, isLoggedIn }: { userId: string; isLoggedIn: boolean }) {
@@ -168,7 +168,7 @@ export function PrivacyRetentionPanel({ userId, isLoggedIn }: { userId: string; 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 id="purge-schedule-heading" className="flex items-center gap-2 text-base font-bold text-[#0F172A]"><Archive className="h-4 w-4 text-[#0F6CBD]" />파기 예정 자료</h2>
-          <p className="mt-1 text-xs text-[#64748B]">종료한 가정통신문 수합·자료 수합·학급 미션을 한곳에서 확인합니다. 학급 미션은 종료 후 90일이 기준입니다.</p>
+          <p className="mt-1 text-xs text-[#64748B]">종료한 등록부 서명·가정통신문 수합·자료 수합·학급 미션을 한곳에서 확인합니다. 학급 미션은 종료 후 90일이 기준입니다.</p>
         </div>
         <button type="button" disabled={!isLoggedIn || loading} onClick={() => void refresh()} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-[#C8D0DA] px-3 text-xs font-bold text-[#334155] disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />새로고침</button>
       </div>
@@ -193,7 +193,7 @@ export function PrivacyRetentionPanel({ userId, isLoggedIn }: { userId: string; 
                     </div>
                     <div className="flex shrink-0 gap-2">
                       <button type="button" onClick={() => navigate(managePath(item))} className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-[#C8D0DA] px-3 text-xs font-bold text-[#334155]"><ExternalLink className="h-3.5 w-3.5" />업무 열기</button>
-                      {due ? item.kind === 'class-mission'
+                      {due ? (item.kind === 'class-mission' || item.kind === 'registry')
                         ? <button type="button" onClick={() => navigate(managePath(item))} className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-[#B42318] px-3 text-xs font-bold text-[#B42318] hover:bg-[#FEF2F2]"><Trash2 className="h-3.5 w-3.5" />파기 대상 확인</button>
                         : <button type="button" onClick={() => setPendingPurge(item)} className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-[#B42318] px-3 text-xs font-bold text-[#B42318] hover:bg-[#FEF2F2]"><Trash2 className="h-3.5 w-3.5" />영구 파기</button> : null}
                     </div>

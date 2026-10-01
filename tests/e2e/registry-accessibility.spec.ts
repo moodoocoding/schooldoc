@@ -57,6 +57,15 @@ test('360·768·1440px 등록부 화면에 넘침과 주요 접근성 위반이 
     contentType: 'image/png',
   });
 
+  await page.evaluate(() => { document.body.style.zoom = '2'; });
+  await expectNoHorizontalOverflow(page);
+  await expectNoAxeViolations(page, 'main');
+  await testInfo.attach('registry-manage-css-200', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png',
+  });
+  await page.evaluate(() => { document.body.style.zoom = ''; });
+
   await page.setViewportSize({ width: 360, height: 800 });
   await resetDemo(page, '/s/registry/demo-digital-training-2026');
   await expect(page.getByRole('heading', { name: '내 이름 찾기' })).toBeVisible();
@@ -71,12 +80,13 @@ test('360·768·1440px 등록부 화면에 넘침과 주요 접근성 위반이 
 test('서명 대화상자가 키보드 포커스를 고정하고 닫은 뒤 선택 버튼으로 돌려보낸다', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 });
   await resetDemo(page, '/s/registry/demo-digital-training-2026');
-  await page.getByLabel('이름 또는 소속 검색').fill('김하늘');
+  await page.getByLabel('이름 검색').fill('김하늘');
+  await page.getByRole('button', { name: '검색', exact: true }).click();
   const participantButton = page.getByRole('button', { name: /김\*늘.*선택/ });
   await participantButton.focus();
   await page.keyboard.press('Enter');
 
-  const dialog = page.getByRole('dialog', { name: '김하늘님 서명' });
+  const dialog = page.getByRole('dialog', { name: '김*늘님 서명' });
   await expect(dialog).toBeVisible();
   await expect(page.getByRole('button', { name: '서명 창 닫기' })).toBeFocused();
   await expectNoAxeViolations(page, '[role="dialog"]');
@@ -99,6 +109,9 @@ test('서명 대화상자가 키보드 포커스를 고정하고 닫은 뒤 선�
 test('삭제 확인창은 안전한 취소 버튼에 초점을 두고 Escape 후 원래 버튼으로 복귀한다', async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
   await resetDemo(page, '/tools/registry-sign');
+  await page.getByRole('button', { name: /2026 교직원 디지털 역량 강화 연수 등록부 열기/ }).click();
+  await page.getByRole('button', { name: '수합 종료', exact: true }).click();
+  await page.getByRole('button', { name: '등록부 목록', exact: true }).click();
   const deleteButton = page.getByRole('button', { name: /2026 교직원 디지털 역량 강화 연수 삭제/ });
   await deleteButton.focus();
   await page.keyboard.press('Enter');
