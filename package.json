@@ -57,6 +57,9 @@
     "vitest": "^4.1.11"
   },
   "main": "electron/main.cjs",
+  "overrides": {
+    "dompurify": "3.4.16"
+  },
   "author": "SchoolDoc",
   "description": "SchoolDoc Windows portable"
 }
