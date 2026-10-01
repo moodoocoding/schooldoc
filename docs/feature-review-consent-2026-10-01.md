@@ -36,3 +36,38 @@
 
 리뷰 자료 커밋: `7447fb22ba6c66681f43643646170f663366dacd`.
 일지는 리뷰 자료와 별도 로컬 문서 커밋으로 보존한다. GitHub push·PR 생성·main 병합은 미실행. DB·Edge Functions·프런트엔드 배포는 모두 미적용이다.
+
+
+## DB 최적화 구현·실제 Chrome 재검증 (codex)
+
+2026-10-02 완료(2026-10-01 착수). 사용자 요청으로 13개 발견 사항의 수정과 DB 최적화를 구현했다. 작업 브랜치는 `codex/consent-integrity-io-20261001`이며 공유 main checkout은 유지했다. 사용자가 선택한 격리 로컬 DB와 가상 자료만 사용했다.
+
+- 원자적 명단 확정/응답 저장, 제출 UUID 멱등·동시성 제어, 불변 원본 revision, 최신/이력 분리, 개인 응답·서명 복원, 종료/확인 후 파일 우선 파기를 구현했다.
+- 얇은 목록과 초기 bundle60개, 커서 조회, 요청 시 본문/서명 조회, 명단 변경분 저장, 메모리 원본/상세 캐시로 불필요한 I/O를 줄였다. 같은2,000명/응답100건에서 초기 응답량617,697→29,773바이트(95.18% 감소), 업무 요청3→1. 운영 디스크 IOPS·과금 절감률은 측정하지 않았다.
+- 실제 설치 Chrome을 headed Playwright로 제어해 실제 HTTP/Deno/PostgREST/PostgreSQL 경로에서 핵심15흐름을 통과했다. 저장 후 ACK 유실/명단 서버 장애/파일 삭제 실패를 주입해 같은 수합·같은 응답 재시도와 파기 복구를 실제로 확인했다. Auth/Storage는 로컬 JWT·디스크 어댑터로, hosted Supabase 검증은 아니다.
+- 타입/lint/build/Deno 서버 check 통과, 전체 단위58파일473검사·관련 데모 Chrome E2E56검사 통과, 마지막 페이징/이름 보완의 해당 파일16검사 재통과. 실제 SQL9검사·이전 암호화 자료 위 전체 신규 마이그레이션 검사 통과. 기존 lint 경고8건/대형 bundle 경고 유지.
+- 실제 Chrome7상태 접근성 위반0·pageerror0,2,000명 중 제출100/미제출1900·Excel전체2000명 및 이름 확인. 실제 PDF2/4/3쪽 전체 렌더·시각 확인. 세 프로파일과 여섯 독립 AI 모의 관점의 1차→2차 수정·재검증을 기록했다. 실제 전문가/교사 인터뷰가 아니다.
+
+[상세 구현·검증 보고서](../design/consent-implementation/2026-10-01/report.md)에 항목별 완료 근거, 실제/모의 구분, 전체 화면, PDF/Excel, 정확한 명령과 남은 확인 범위를 보존했다. `DEVELOPMENT.md`에 새로운 DB 저장/조회 및 호환 전환 원칙을 추가했다.
+
+원격 integration·운영 Google OAuth/Storage·실제 기기/프린터/카메라·브라우저 UI zoom200%는 미실행. 200%는 root CSS 글자 확대다. 구현·검증 완료 당시 원격 DB/Edge Functions/프런트엔드 배포는 모두 미적용, GitHub push/PR/main 병합/새 커밋도 미실행이었다. 후속 로컬 커밋은 아래 인계 항목에 기록한다. 신규 SQL은 격리 로컬 DB에만 적용했다. 운영 적용 시 구 직접 수정 API 권한 회수에 따른 점검/호환 전환이 필요하다. 외부 공용 개발일지와 `pro/ux-ui-expert.md`가 없어 기존 전용 일지에 추가했다.
+
+## 통합 세션 인계·로컬 커밋 (codex)
+
+2026-10-02. 통합 세션에서 전달된 사용자 승인에 따라 자기 워크트리의 기능 변경·관련 테스트·검증 보고서·가상 산출물을 로컬 커밋했다. 기존 리뷰 커밋은 확인만 했으며 재작성하지 않았다. 이 작업일지는 기능 커밋과 별도 문서 커밋으로 보존한다.
+
+- 워크트리: `C:/Users/panth/.codex/worktrees/review-consent-20261001/260812_schooldoc`.
+- 브랜치: `codex/consent-integrity-io-20261001`.
+- 기능 커밋: `fd293cea6dcb532671d5b12b40ea38f809b208b7` — `fix(consent): 응답 저장 무결성과 DB 조회 최적화`.
+- 검증 보고서: [구현·검증 보고서](../design/consent-implementation/2026-10-01/report.md). 커밋 전 결과: [commit-readiness.json](../design/consent-implementation/2026-10-01/evidence/commit-readiness.json).
+- 커밋 전 재확인: `npm run typecheck`·`npm run lint` 통과(기존 경고8), `npm test -- tests/unit/consentSubmissionIntegrity.test.ts tests/unit/consentResponseRender.test.ts` 2파일13검사 통과. staged diff 통과, 주요 검증 소스6개의 manifest 해시 일치, 최종 일지를 포함한 로컬 Markdown 링크30개 누락0.
+- 산출물 보완: 가상 원본 PDF가 Git에서 텍스트로 판정되는 문제를 검증 폴더 `.gitattributes`의 PDF binary 지정으로 해결했다. PDF4개 모두 작업 파일과 staged blob 바이트 일치 확인. 시험 DB/키/토큰/의존성은 `.runtime/` 제외 상태다.
+- 기존 완료 검증: 단위473·데모 Chrome E2E56/최종16·실제 PostgreSQL9·실제 Chrome15·axe7상태 위반0·PDF 전체 시각 확인. 이번 인계에는 서버/Chrome를 재시작하거나 원격 검사를 추가 실행하지 않았다. Auth/Storage는 로컬 어댑터이고 hosted Supabase/Google OAuth 성공으로 보고하지 않는다.
+
+앞서 알린 미완료 항목은 다음과 같이 남겼다. F01~F13 결함 수정은 완료했으며, 긴 QR 이름 줄임표는 기존 A4 카드 규격을 유지한 후속 출력 개선이다. 긴 명단/응답의 초기60개·추가 조회 범위는 개선했지만, 목록 접기와 공유 영역 우선 배치는 추가 UX 구조 변경으로 남겼다. 각각 카드 높이/다쪽 출력 및 업무 우선순위 설계·전체 화면 재검증이 필요하므로 이번 확정된 기능 인계에 구조 변경을 추가하지 않았다. 관련 없는 lint8건과 기존 대형 bundle 경고도 유지했다.
+
+공통 파일 변경은 `DEVELOPMENT.md`의 가정통신문 DB 규칙, `src/index.css`의 가정통신문에 한정한 인쇄/관리 스타일, `src/features/settings/privacyRetentionSettings.ts`의 가정통신문 파기 확인 수량 전달이다. 공유 main checkout과 다른 세션/기능의 파일은 수정하거나 포함하지 않았다.
+
+DB 마이그레이션: `supabase/migrations/202610011000_consent_integrity_io.sql`. 관련 Edge Functions: `consent-forms-admin`, `consent-forms-public`. 두 함수가 함께 사용하는 신규 `_shared/consentServer.ts`도 기능 커밋에 포함했다. 신규 SQL은 격리 로컬 DB 적용 확인이며 원격 DB는 미적용, 서버 함수와 프런트도 운영 미적용이다. 구 직접 수정 권한 회수 때문에 호환 전환과 프런트 자동 배포 순서 조정이 필요하다.
+
+GitHub push·PR·main 병합·Supabase DB/함수·프런트 운영 배포는 통합 세션 담당이며 이 세션에서는 실행하지 않았다. hosted Supabase Auth/Storage/Google OAuth·실제 원격 제출/권한 검증은 허용된 가상 자료와 대상으로 배포 이후 수행할 남은 검사다. 실제 기기/프린터/카메라·Chrome UI zoom200%·화면낭독기 전체 흐름·운영 IOPS/과금도 미확인이다. 로컬 DB/HTTP/Chrome 증거와 원격 검사 결과를 구분해 인계한다.
