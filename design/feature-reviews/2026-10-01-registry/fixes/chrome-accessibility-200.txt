@@ -1,0 +1,14 @@
+
+> 260725_individual_data@0.0.0 test:e2e
+> playwright test tests/e2e/registry-accessibility.spec.ts
+
+
+Running 3 tests using 1 worker
+
+(node:55856) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 tests\e2e\registry-accessibility.spec.ts:31:1 › 360·768·1440px 등록부 화면에 넘침과 주요 접근성 위반이 없다 (5.1s)
+  ok 2 tests\e2e\registry-accessibility.spec.ts:80:1 › 서명 대화상자가 키보드 포커스를 고정하고 닫은 뒤 선택 버튼으로 돌려보낸다 (1.8s)
+  ok 3 tests\e2e\registry-accessibility.spec.ts:109:1 › 삭제 확인창은 안전한 취소 버튼에 초점을 두고 Escape 후 원래 버튼으로 복귀한다 (1.9s)
+
+  3 passed (10.1s)

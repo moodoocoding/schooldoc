@@ -43,10 +43,10 @@ export const fitTextLines = (
     }
     if (current) lines.push(current);
     if (lines.length * lineHeight <= maxHeight && lines.every((line) => measure(line, fontSize) <= maxWidth)) {
-      return { fontSize, lineHeight, lines };
+      return { fontSize, lineHeight, lines, overflow:false };
     }
   }
-  return { fontSize: 5, lineHeight: 6.25, lines: [text] };
+  return { fontSize:5,lineHeight:6.25,lines:[],overflow:true };
 };
 
 const loadImage = async (source: string) => {
@@ -63,7 +63,14 @@ const drawText = (context: CanvasRenderingContext2D, text: string, rect: ReturnT
     context.font = `600 ${fontSize}px ${FONT_STACK}`;
     return context.measureText(value).width;
   };
-  const { fontSize, lineHeight, lines } = fitTextLines(measure, text, innerWidth, innerHeight, innerHeight * TEXT_HEIGHT_RATIO);
+  const fitted = fitTextLines(measure, text, innerWidth, innerHeight, innerHeight * TEXT_HEIGHT_RATIO);
+  if(fitted.overflow) {
+    context.save();context.beginPath();context.rect(rect.left,rect.top,rect.width,rect.height);context.clip();
+    context.font=`600 ${Math.max(5,Math.min(innerHeight*.45,14))}px ${FONT_STACK}`;context.fillStyle=TEXT_COLOR;context.textBaseline='middle';
+    context.fillText('긴 응답: 별지 참조',rect.left+padding,rect.top+rect.height/2,innerWidth);context.restore();return true;
+  }
+  const {fontSize,lineHeight,lines}=fitted;
+  context.save();context.beginPath();context.rect(rect.left,rect.top,rect.width,rect.height);context.clip();
   context.font = `600 ${fontSize}px ${FONT_STACK}`;
   context.fillStyle = TEXT_COLOR;
   context.textAlign = 'left';
@@ -72,6 +79,7 @@ const drawText = (context: CanvasRenderingContext2D, text: string, rect: ReturnT
   lines.forEach((line, index) => {
     context.fillText(line, rect.left + padding, blockTop + lineHeight * (index + 0.5));
   });
+  context.restore();return false;
 };
 
 /** 원본 문서에 이미 뜻이 적혀 있으므로 표시만 그린다. 응답 화면과 같은 모습이어야 한다. */
@@ -146,6 +154,7 @@ const drawPageValues = (
   pageIndex: number,
   pageWidth: number,
   pageHeight: number,
+  overflow: Array<{label:string;value:string;page:number}>,
 ) => {
   fields.filter((field) => field.pageIndex === pageIndex).forEach((field) => {
     const value = response.values[field.id] ?? '';
@@ -160,8 +169,28 @@ const drawPageValues = (
       if (value === 'true') drawCheckbox(context, rect);
       return;
     }
-    drawText(context, formatConsentValue(field, value), rect);
+    if(drawText(context,formatConsentValue(field,value),rect)) overflow.push({label:field.label,value:formatConsentValue(field,value),page:pageIndex+1});
   });
+};
+
+/** 긴 응답은 원본을 덮지 않고 같은 응답의 A4 별지에 전체 내용을 보존한다. */
+const appendOverflowPages=(pdf:{addPage:(size:number[],orientation:'portrait')=>unknown;addImage:(image:string,type:'PNG',x:number,y:number,w:number,h:number,alias?:undefined,compression?:'FAST')=>unknown},items:Array<{label:string;value:string;page:number}>,response:ConsentResponseRecord)=>{
+ if(!items.length)return;
+ const canvas=document.createElement('canvas');canvas.width=1190;canvas.height=1684;
+ const ctx=canvas.getContext('2d');if(!ctx)throw new Error('긴 응답 별지를 준비하지 못했습니다.');
+ const commit=()=>{pdf.addPage([595,842],'portrait');pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,0,595,842,undefined,'FAST');};
+ let y=0;
+ const start=()=>{ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle=TEXT_COLOR;ctx.textBaseline='top';ctx.font=`700 28px ${FONT_STACK}`;ctx.fillText('긴 응답 · 원본 가정통신문 별지',64,48);ctx.font=`500 18px ${FONT_STACK}`;ctx.fillText(`제출 ${response.submittedAt} · 응답 ${response.id.slice(0,8)}`,64,88);y=142;};
+ start();
+ for(const item of items){
+   if(y>1540){commit();start();}
+   ctx.font=`700 24px ${FONT_STACK}`;ctx.fillText(`${item.page}쪽 · ${item.label}`,64,y,1062);y+=42;
+   ctx.font=`500 24px ${FONT_STACK}`;let line='';
+   const draw=()=>{if(y>1580){commit();start();ctx.font=`500 24px ${FONT_STACK}`;}ctx.fillText(line,64,y);y+=34;line='';};
+   for(const ch of item.value){if(ch==='\n'){draw();continue;}if(line && ctx.measureText(line+ch).width>1062)draw();line+=ch;}
+   if(line)draw();y+=28;
+ }
+ commit();canvas.width=0;canvas.height=0;
 };
 
 /**
@@ -190,6 +219,7 @@ export const renderConsentResponsesPdf = async ({ file, fields, responses, onPro
       const response = responses[index];
       onProgress?.(index, responses.length);
       const signatures = await loadSignatures(fields, response);
+      const overflow:Array<{label:string;value:string;page:number}>=[];
       try {
         basePages.forEach((base, pageIndex) => {
           // 크기를 다시 지정하면 캔버스가 초기화되므로 작업용 캔버스 하나를 계속 재사용한다.
@@ -198,7 +228,7 @@ export const renderConsentResponsesPdf = async ({ file, fields, responses, onPro
           const context = work.getContext('2d');
           if (!context) throw new Error('PDF 합성 화면을 준비하지 못했습니다.');
           context.drawImage(base, 0, 0);
-          drawPageValues(context, fields, response, signatures, pageIndex, work.width, work.height);
+          drawPageValues(context, fields, response, signatures, pageIndex, work.width, work.height,overflow);
 
           const pageWidth = work.width / RENDER_SCALE;
           const pageHeight = work.height / RENDER_SCALE;
@@ -207,6 +237,7 @@ export const renderConsentResponsesPdf = async ({ file, fields, responses, onPro
           else pdf = new jsPDF({ unit: 'pt', format: [pageWidth, pageHeight], orientation, compress: true });
           pdf.addImage(work.toDataURL('image/png'), 'PNG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
         });
+        if(pdf) appendOverflowPages(pdf,overflow,response);
       } finally {
         signatures.forEach((image) => image.close());
       }

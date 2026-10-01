@@ -1,0 +1,82 @@
+[
+  {
+    "name": "30-max-rooms-mobile",
+    "timezone": "Asia/Seoul",
+    "time": "2026-10-01T02:00:00Z",
+    "range": "과학실\n가상 특별실 2\n가상 특별실 3\n가상 특별실 4\n가상 특별실 5\n가상 특별실 6\n가상 특별실 7\n가상 특별실 8\n가상 특별실 9\n가상 특별실 10\n가상 특별실 11\n가상 특별실 12\n가상 특별실 13\n가상 특별실 14\n가상 특별실 15\n가상 특별실 16\n가상 특별실 17\n가상 특별실 18\n가상 특별실 19\n가상 특별실 20\n가상 특별실 21\n가상 특별실 22\n가상 특별실 23\n가상 특별실 24\n가상 특별실 25\n가상 특별실 26\n가상 특별실 27\n가상 특별실 28\n가상 특별실 29\n가상 특별실 30\n가상 특별실 31\n가상 특별실 32\n가상 특별실 33\n가상 특별실 34\n가상 특별실 35\n가상 특별실 36\n가상 특별실 37\n가상 특별실 38\n가상 특별실 39\n가상 특별실 40\n가상 특별실 41\n가상 특별실 42\n가상 특별실 43\n가상 특별실 44\n가상 특별실 45\n가상 특별실 46\n가상 특별실 47\n가상 특별실 48\n가상 특별실 49\n가상 특별실 50\n2026년 9월 28일 ~ 10월 2일\n이번 주",
+    "today": "목\n10/1\n오늘",
+    "tabCount": 50,
+    "pageWidth": {
+      "scroll": 390,
+      "client": 390,
+      "tableTop": 1447
+    },
+    "firstChip": {
+      "text": "6학년1반",
+      "clientWidth": 41,
+      "scrollWidth": 49,
+      "fontSize": "10px"
+    }
+  },
+  {
+    "name": "31-short-labels-mobile",
+    "timezone": "Asia/Seoul",
+    "time": "2026-10-01T02:00:00Z",
+    "range": "과학실\n가상 특별실 2\n가상 특별실 3\n2026년 9월 28일 ~ 10월 2일\n이번 주",
+    "today": "목\n10/1\n오늘",
+    "tabCount": 3,
+    "pageWidth": {
+      "scroll": 390,
+      "client": 390,
+      "tableTop": 273
+    },
+    "firstChip": {
+      "text": "6학년1반",
+      "clientWidth": 41,
+      "scrollWidth": 49,
+      "fontSize": "10px"
+    }
+  },
+  {
+    "name": "32-year-boundary",
+    "timezone": "Asia/Seoul",
+    "time": "2026-12-31T15:30:00Z",
+    "range": "과학실\n가상 특별실 2\n가상 특별실 3\n2026년 12월 28일 ~ 1월 1일\n이번 주",
+    "today": "금\n1/1\n오늘",
+    "tabCount": 3,
+    "pageWidth": {
+      "scroll": 1366,
+      "client": 1366,
+      "tableTop": 225
+    },
+    "firstChip": null
+  },
+  {
+    "name": "33-sunday-seoul",
+    "timezone": "Asia/Seoul",
+    "time": "2026-10-04T00:00:00Z",
+    "range": "과학실\n가상 특별실 2\n가상 특별실 3\n2026년 10월 5일 ~ 9일\n이번 주",
+    "today": "",
+    "tabCount": 3,
+    "pageWidth": {
+      "scroll": 1366,
+      "client": 1366,
+      "tableTop": 225
+    },
+    "firstChip": null
+  },
+  {
+    "name": "34-same-instant-losangeles",
+    "timezone": "America/Los_Angeles",
+    "time": "2026-10-04T00:00:00Z",
+    "range": "과학실\n가상 특별실 2\n가상 특별실 3\n2026년 9월 28일 ~ 10월 2일\n이번 주",
+    "today": "토\n10/3\n오늘",
+    "tabCount": 3,
+    "pageWidth": {
+      "scroll": 1366,
+      "client": 1366,
+      "tableTop": 225
+    },
+    "firstChip": null
+  }
+]

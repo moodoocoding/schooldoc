@@ -1,0 +1,18 @@
+running 2 tests from ./tests/server/specialRooms.test.ts
+HTTP boundary: one RPC, typed conflicts, strict period and fail closed ... ok (20ms)
+notification JWT: dedicated role, board+epoch, short TTL, real ES256 signature ... ok (47ms)
+running 1 test from ./tests/server/specialRoomsSql.test.ts
+special rooms PostgreSQL migration and atomic contracts ...
+  apply 202608210002_special_room_reservation.sql ... ok (24ms)
+  apply 202608230001_special_room_period_and_saturday.sql ... ok (5ms)
+  apply 202608230002_special_room_closure.sql ... ok (5ms)
+  apply 202610010600_special_room_scoped_sync.sql ... ok (25ms)
+  9교시 생성과 빈 칸 CAS ... ok (31ms)
+  selected scope snapshot and real event rows ... ok (12ms)
+  repeat counts and same operation replay ... ok (14ms)
+  settings, closed repeat, hidden record correction and closure guard ... ok (11ms)
+  calendar transaction diff/no-op/rollback/source check ... ok (18ms)
+  owner summaries, private topic claims, direct viewer denial ... ok (20ms)
+special rooms PostgreSQL migration and atomic contracts ... ok (1s)
+
+ok | 3 passed (10 steps) | 0 failed (1s)

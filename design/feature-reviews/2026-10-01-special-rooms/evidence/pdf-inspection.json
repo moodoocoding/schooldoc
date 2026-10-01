@@ -1,0 +1,36 @@
+{
+  "public": {
+    "pages": 1,
+    "text_lengths": [
+      0
+    ],
+    "rendered_pages": [
+      {
+        "file": "public-print-1.png",
+        "nonwhite_pixels": 0
+      }
+    ]
+  },
+  "teacher": {
+    "pages": 3,
+    "text_lengths": [
+      0,
+      0,
+      0
+    ],
+    "rendered_pages": [
+      {
+        "file": "teacher-print-1.png",
+        "nonwhite_pixels": 0
+      },
+      {
+        "file": "teacher-print-2.png",
+        "nonwhite_pixels": 0
+      },
+      {
+        "file": "teacher-print-3.png",
+        "nonwhite_pixels": 0
+      }
+    ]
+  }
+}

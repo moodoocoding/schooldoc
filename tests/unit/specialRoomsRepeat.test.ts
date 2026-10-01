@@ -34,13 +34,13 @@ describe('매주 같은 요일로 펼친다', () => {
     expect(dates).toEqual(['2026-12-29', '2027-01-05', '2027-01-12', '2027-01-19']);
   });
 
-  test('마지막 날짜가 시작일보다 앞서면 그 칸 하나만 잡는다', () => {
-    // 날짜를 잘못 골랐다고 아무것도 안 잡히면, 누른 칸까지 사라져 더 혼란스럽다.
-    expect(repeatDates('2026-08-25', '2026-08-01')).toEqual(['2026-08-25']);
+  test('마지막 날짜가 시작일보다 앞서면 안내하고 거절한다', () => {
+    expect(() => repeatDates('2026-08-25','2026-08-01')).toThrow('시작 날짜');
   });
 
-  test('아무리 멀리 잡아도 한 학년도를 넘기지 않는다', () => {
-    expect(repeatDates('2026-03-02', '2099-12-31')).toHaveLength(REPEAT_WEEKS_MAX);
+  test('52주를 넘으면 조용히 자르지 않고 거절한다', () => {
+    expect(() => repeatDates('2026-03-02','2099-12-31')).toThrow('52주');
+    expect(repeatDates('2026-03-02',repeatUntilFromWeeks('2026-03-02',REPEAT_WEEKS_MAX))).toHaveLength(REPEAT_WEEKS_MAX);
   });
 });
 

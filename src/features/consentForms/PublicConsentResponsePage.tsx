@@ -1,12 +1,12 @@
 import { AlertCircle, CheckCircle2, LoaderCircle, LockKeyhole } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { ConsentResponseForm } from './ConsentResponseForm';
 import { consentChoiceConfigError, consentResponseError } from '../../../supabase/functions/_shared/consentQuestions';
 import { DocumentPreparingError, retryLoad } from './consentDocumentReady';
 import { isConsentFormsDemoMode } from './consentFormsConfig';
-import { addConsentLocalResponse, getConsentLocalDraftByToken, hashConsentPassword } from './consentFormsLocalStore';
-import { getConsentPublicDocument, getConsentPublicMetadata, submitConsentPublicResponse } from './consentFormsPublicApi';
+import { addConsentLocalResponse, getConsentLocalRecipient, listConsentLocalHistory, getConsentLocalDraftByToken, hashConsentPassword } from './consentFormsLocalStore';
+import { getConsentPublicDocument, openConsentPublicDocument, submitConsentPublicResponse } from './consentFormsPublicApi';
 import type { ConsentPublicDocument, ConsentPublicMetadata } from './types';
 
 const asFile = async (url: string, title: string) => {
@@ -38,6 +38,7 @@ export function PublicConsentResponsePage() {
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const submissionAttempt=useRef<{payload:string;id:string} | null>(null);
   const [preparing, setPreparing] = useState(false);
 
   useEffect(() => {
@@ -54,18 +55,21 @@ export function PublicConsentResponsePage() {
             pageCount: localDraft.pageCount ?? 1,
             pageSizes: localDraft.pageSizes ?? Array.from({ length: localDraft.pageCount ?? 1 }, () => ({ width: 210, height: 297 })),
           };
+          const recipient=getConsentLocalRecipient(localDraft.id,recipientToken);
+          if(recipient){const previous=listConsentLocalHistory(localDraft.id,recipient.id)[0];Object.assign(nextDocument,{recipientName:recipient.name,recipientSubmitted:Boolean(previous),previousResponseId:previous?.id ?? null,previousValues:previous?.values ?? {}});}
+          nextDocument.documentRevision=localDraft.documentRevision ?? 1;
           const file = await asFile(nextDocument.sourceUrl, nextDocument.title);
-          if (active) { setDocument(nextDocument); setPdfFile(file); }
+          if (active) { setDocument(nextDocument); setValues(nextDocument.previousValues ?? {}); setPdfFile(file); }
           return;
         }
-        const nextMetadata = await retryLoad(() => getConsentPublicMetadata(token, recipientToken));
+        const nextMetadata = await retryLoad(() => openConsentPublicDocument(token, recipientToken));
         if (!active) return;
         setMetadata(nextMetadata);
         if (!nextMetadata.passwordRequired) {
           const notePreparing = () => { if (active) setPreparing(true); };
-          const nextDocument = await retryLoad(() => getConsentPublicDocument(token, '', recipientToken), { attempts: 15, onPreparing: notePreparing });
+          const nextDocument = 'sourceUrl' in nextMetadata ? nextMetadata : await retryLoad(() => getConsentPublicDocument(token, '', recipientToken), { attempts:15,onPreparing:notePreparing });
           const file = await retryLoad(() => asFile(nextDocument.sourceUrl, nextDocument.title), { attempts: 15, onPreparing: notePreparing });
-          if (active) { setDocument(nextDocument); setPdfFile(file); setPreparing(false); }
+          if (active) { setDocument(nextDocument); setValues(nextDocument.previousValues ?? {}); setPdfFile(file); setPreparing(false); }
         }
       } catch (loadError) {
         if (active) {
@@ -89,12 +93,15 @@ export function PublicConsentResponsePage() {
         if (await hashConsentPassword(password) !== localDraft.passwordHash) throw new Error('비밀번호가 맞지 않습니다.');
         if (!localDraft.sourcePdfDataUrl) throw new Error('이 수합에는 원본 PDF가 저장되지 않았습니다. 새 수합을 만들어 주세요.');
         const nextDocument: ConsentPublicDocument = { title: localDraft.title, description: localDraft.description, passwordRequired: true, status: localDraft.status, deadline: localDraft.deadline, fields: localDraft.fields, sourceUrl: localDraft.sourcePdfDataUrl, allowResubmission: localDraft.allowResubmission, pageCount: localDraft.pageCount ?? 1, pageSizes: localDraft.pageSizes ?? Array.from({ length: localDraft.pageCount ?? 1 }, () => ({ width: 210, height: 297 })) };
-        setDocument(nextDocument);
+        const recipient=getConsentLocalRecipient(localDraft.id,recipientToken);
+        if(recipient){const previous=listConsentLocalHistory(localDraft.id,recipient.id)[0];Object.assign(nextDocument,{recipientName:recipient.name,recipientSubmitted:Boolean(previous),previousResponseId:previous?.id ?? null,previousValues:previous?.values ?? {}});}
+        nextDocument.documentRevision=localDraft.documentRevision ?? 1;
+        setDocument(nextDocument);setValues(nextDocument.previousValues ?? {});
         setPdfFile(await asFile(nextDocument.sourceUrl, nextDocument.title));
       } else {
         const notePreparing = () => setPreparing(true);
         const nextDocument = await retryLoad(() => getConsentPublicDocument(token, password, recipientToken), { attempts: 15, onPreparing: notePreparing });
-        setDocument(nextDocument);
+        setDocument(nextDocument);setValues(nextDocument.previousValues ?? {});
         setPdfFile(await retryLoad(() => asFile(nextDocument.sourceUrl, nextDocument.title), { attempts: 15, onPreparing: notePreparing }));
         setPreparing(false);
       }
@@ -111,8 +118,13 @@ export function PublicConsentResponsePage() {
     setSubmitting(true);
     setError('');
     try {
-      if (localDraft) addConsentLocalResponse(localDraft.id, values);
-      else await submitConsentPublicResponse(token, password, values, recipientToken);
+      const payload=JSON.stringify(values);
+      if(submissionAttempt.current?.payload!==payload) submissionAttempt.current={payload,id:crypto.randomUUID()};
+      const requestId=submissionAttempt.current.id;
+      const expectedResponseId=document.previousResponseId ?? null;
+      const reuseSignatureFields=document.fields.filter(f=>f.kind==='signature' && Boolean(values[f.id]) && values[f.id]===document.previousValues?.[f.id]).map(f=>f.id);
+      if(localDraft) addConsentLocalResponse(localDraft.id,values,recipientToken,requestId,expectedResponseId);
+      else await submitConsentPublicResponse(token,password,values,recipientToken,{requestId,documentRevision:document.documentRevision ?? 1,expectedResponseId,reuseSignatureFields});
       setSubmitted(true);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : '응답을 제출하지 못했습니다.');
@@ -125,6 +137,7 @@ export function PublicConsentResponsePage() {
   const deadlinePassed = Boolean(metadata.deadline && metadata.deadline < new Date().toISOString().slice(0, 10));
   if (metadata.status === 'closed' || deadlinePassed) return <CenterMessage icon={<LockKeyhole className="mx-auto h-8 w-8 text-[#64748B]" />} title="응답이 종료되었습니다" description="추가 제출이 필요하면 담당자에게 문의해 주세요." />;
   if (metadata.passwordRequired && !document) return <main className="grid min-h-screen place-items-center bg-[#F3F5F7] p-5"><form className="w-full max-w-md border-y border-[#DCE3EA] bg-white px-6 py-8" onSubmit={(event) => void unlock(event)}><LockKeyhole className="h-8 w-8 text-[#0F6CBD]" /><h1 className="mt-4 text-xl font-extrabold">문서 비밀번호 입력</h1><p className="mt-2 text-sm text-[#526174]">{metadata.title}</p><label className="mt-6 block text-sm font-bold">비밀번호<input type="password" autoFocus value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 min-h-[48px] w-full rounded-lg border border-[#C8D0DA] px-3 font-normal" /></label>{error ? <p role="alert" className="mt-3 text-sm font-semibold text-[#B42318]">{error}</p> : null}<button type="submit" disabled={loading} className="mt-5 min-h-[48px] w-full rounded-lg bg-[#0F6CBD] text-sm font-bold text-white disabled:bg-[#AAB7C4]">{loading ? '문서 여는 중' : '문서 확인하기'}</button></form></main>;
+  if (document?.recipientSubmitted && !document.allowResubmission) return <CenterMessage icon={<CheckCircle2 className="mx-auto h-11 w-11 text-[#126B32]" />} title="이미 응답을 제출했습니다" description="담당자에게 제출 완료 상태가 전달되었습니다. 수정이 필요하면 담당자에게 문의해 주세요." />;
   if (submitted) return <CenterMessage icon={<CheckCircle2 className="mx-auto h-11 w-11 text-[#126B32]" />} title="응답을 제출했습니다" description="담당자에게 응답 완료 상태가 전달됩니다." />;
   // 안내 정보가 먼저 도착하고 원본은 뒤늦게 도착한다.
   // 이 사이를 오류로 단정하면 정상 대기 중에 오류 화면이 스친다.

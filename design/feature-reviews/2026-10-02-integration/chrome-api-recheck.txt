@@ -1,0 +1,14 @@
+
+> 260725_individual_data@0.0.0 test:e2e
+> playwright test tests/e2e/consent-forms.spec.ts --grep 원본이 준비|원본이 늦게|개인 링크로
+
+
+Running 3 tests using 1 worker
+
+(node:48904) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 tests\e2e\consent-forms.spec.ts:225:1 › 원본이 준비 중이면 오류 대신 준비 화면을 띄우고 준비되면 자동으로 연다 (5.0s)
+  ok 2 tests\e2e\consent-forms.spec.ts:266:1 › 원본이 늦게 도착해도 오류 화면이 스치지 않는다 (3.0s)
+  ok 3 tests\e2e\consent-forms.spec.ts:401:1 › 개인 링크로 들어오면 누구의 문서인지 알려주고 제출을 그 사람에게 연결한다 (1.5s)
+
+  3 passed (10.8s)

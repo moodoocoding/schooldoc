@@ -1,0 +1,95 @@
+{
+  "keyboard": [
+    {
+      "tag": "INPUT",
+      "type": "file",
+      "width": 1,
+      "height": 1,
+      "labelOutline": "rgb(15, 23, 42) none 3px",
+      "labelBoxShadow": "none"
+    },
+    {
+      "fileSelectedByKeyboard": "virtual.pdf"
+    },
+    {
+      "submissionByKeyboard": true
+    }
+  ],
+  "formats": [
+    {
+      "extension": "pdf",
+      "accepted": true,
+      "fixture": "header-only synthetic"
+    },
+    {
+      "extension": "png",
+      "accepted": true,
+      "fixture": "header-only synthetic"
+    },
+    {
+      "extension": "jpg",
+      "accepted": true,
+      "fixture": "header-only synthetic"
+    },
+    {
+      "extension": "jpeg",
+      "accepted": true,
+      "fixture": "header-only synthetic"
+    },
+    {
+      "extension": "hwp",
+      "accepted": true,
+      "fixture": "header-only synthetic"
+    },
+    {
+      "extension": "hwpx",
+      "accepted": true,
+      "fixture": "header-only synthetic"
+    },
+    {
+      "extension": "docx",
+      "accepted": true,
+      "fixture": "header-only synthetic"
+    },
+    {
+      "extension": "xlsx",
+      "accepted": true,
+      "fixture": "header-only synthetic"
+    },
+    {
+      "extension": "exe",
+      "accepted": false,
+      "message": "한글, Word, Excel, PDF 또는 이미지 파일만 올릴 수 있습니다."
+    },
+    {
+      "name": "zero.pdf",
+      "accepted": false,
+      "message": "내용이 없는 파일은 올릴 수 없습니다."
+    },
+    {
+      "name": "disguised.pdf",
+      "accepted": false,
+      "message": "파일 확장자와 실제 파일 형식이 일치하지 않습니다."
+    },
+    {
+      "name": "large51.pdf",
+      "accepted": false,
+      "message": "파일은 50MB보다 작아야 합니다."
+    }
+  ],
+  "zoom": {
+    "teacher": {
+      "qrLeft": 1081.40625,
+      "qrRight": 1369.40625,
+      "cardRight": 1302,
+      "viewport": 1366,
+      "overflowsCard": true
+    },
+    "participant": {
+      "viewport": 390,
+      "width": 390,
+      "height": 1688,
+      "zoom": "2"
+    }
+  }
+}

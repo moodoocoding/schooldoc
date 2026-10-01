@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-10-02T01:10:01.6868936+09:00",
+  "branch": "codex/consent-integrity-io-20261001",
+  "typecheck": "pass",
+  "lint": "pass (8 existing warnings)",
+  "focusedUnit": {
+    "result": "pass",
+    "files": 2,
+    "tests": 13,
+    "command": "npm test -- tests/unit/consentSubmissionIntegrity.test.ts tests/unit/consentResponseRender.test.ts"
+  },
+  "diffCheck": "pass",
+  "manifestHashMatches": 6,
+  "remoteTestsRun": false,
+  "serversRestarted": false,
+  "validationSource": "Original full local verification preserved; only commit readiness checks rerun.",
+  "stagedDiffCheck": "pass after PDF binary attribute",
+  "pdfStagedBytesPreserved": true,
+  "localMarkdownLinks": "28 checked, 0 missing"
+}

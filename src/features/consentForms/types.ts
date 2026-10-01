@@ -66,6 +66,10 @@ export interface ConsentLocalDraft {
   pageSizes?: ConsentPageSize[];
   /** 보관 개월. 지나면 정리 화면에 모이지만 자동으로 지워지지는 않는다. */
   retentionMonths?: number;
+  publicationState?: 'preparing' | 'ready' | 'purging';
+  documentRevision?: number;
+  currentResponseCount?: number;
+  updatedAt?: string;
   sourcePath?: string;
   sourcePdfDataUrl?: string;
 }
@@ -96,6 +100,9 @@ export interface ConsentResponseRecord {
   /** 필드 ID별 응답 값. 서명 필드는 이미지 URL 또는 data URL을 담는다. */
   values: Record<string, string>;
   recipientId?: string | null;
+  detailsLoaded?: boolean;
+  /** 아직 조회하지 않은 명단 대상은 상세 요청 때 이름을 가져온다. */
+  recipientName?: string;
 }
 
 export interface ConsentPublicDocument extends ConsentPublicMetadata {
@@ -104,6 +111,9 @@ export interface ConsentPublicDocument extends ConsentPublicMetadata {
   allowResubmission: boolean;
   pageCount: number;
   pageSizes: ConsentPageSize[];
+  documentRevision?: number;
+  previousResponseId?: string | null;
+  previousValues?: Record<string, string>;
   recipientName?: string;
   recipientSubmitted?: boolean;
 }

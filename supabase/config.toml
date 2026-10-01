@@ -23,3 +23,7 @@ verify_jwt = false
 
 [functions.class-missions-public]
 verify_jwt = false
+
+# 공개 토큰 검증은 handler가 수행한다. 기존 운영 verify_jwt=false를 배포에서도 유지한다.
+[functions.data-collect-public]
+verify_jwt = false

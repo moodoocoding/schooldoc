@@ -1,0 +1,155 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Users\\panth\\.codex\\worktrees\\review-data-collect-20261001\\260812_schooldoc\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      ".tmp/data-collect-runtime/playwright.config.ts",
+      "tests/e2e/data-collect-fix.spec.ts",
+      "--grep",
+      "마감 시각|120명",
+      "--reporter=list,json"
+    ],
+    "configFile": "C:\\Users\\panth\\.codex\\worktrees\\review-data-collect-20261001\\260812_schooldoc\\.tmp\\data-collect-runtime\\playwright.config.ts",
+    "rootDir": "C:/Users/panth/.codex/worktrees/review-data-collect-20261001/260812_schooldoc/tests/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/panth/.codex/worktrees/review-data-collect-20261001/260812_schooldoc/.tmp/data-collect-playwright",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Users/panth/.codex/worktrees/review-data-collect-20261001/260812_schooldoc/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "/[\\\\/]data-collect[^\\\\/]*\\.spec\\.ts$/"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.62.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "data-collect-fix.spec.ts",
+      "file": "data-collect-fix.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "실제 Chrome: 120명 페이지 이동·미제출 필터·마감 연장·모바일 및 200% 화면",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3850,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-01T14:52:45.546Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "807de855a40730de4901-e97e0edc23dda2d1ad35",
+          "file": "data-collect-fix.spec.ts",
+          "line": 213,
+          "column": 1
+        },
+        {
+          "title": "실제 Chrome: 실제 마감 시각 경과 후 차단되고 연장 시 입력을 유지한다",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 21588,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-01T14:52:49.677Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "807de855a40730de4901-31831c1c0bd64e97f209",
+          "file": "data-collect-fix.spec.ts",
+          "line": 354,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-01T14:52:44.921Z",
+    "duration": 26545.548,
+    "expected": 2,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

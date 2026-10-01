@@ -112,6 +112,7 @@ export function ConsentResponseForm({ document, file, values, setValues, submitt
     </header>
     <form inert={Boolean(signatureField) || submitting} onSubmit={event => void submit(event)}>
       <div className="mx-auto max-w-[834px] px-4 pt-4 text-sm text-[#526174]">
+        {document.recipientSubmitted ? <p role="status" className="mb-2 font-semibold text-[#126B32]">이미 제출한 응답을 불러왔습니다. 수정 후 다시 제출하면 최신 응답으로 반영됩니다.</p> : null}
         {document.description ? <p className="mb-2">{document.description}</p> : null}
         <p>문서를 읽고 회색 입력칸을 눌러 작성해 주세요. 어느 칸이든 다시 수정할 수 있습니다.</p>
       </div>
@@ -145,9 +146,9 @@ export function ConsentResponseForm({ document, file, values, setValues, submitt
         {error || serverError ? <p role="alert" className="mx-auto max-w-[794px] py-2 text-sm font-semibold text-[#B42318]">{error || serverError}</p> : null}
         <div className="mx-auto max-w-[794px]">
           {pdfReady && !reviewing ? <p className="truncate pb-1 pt-2 text-xs text-[#526174]" aria-live="polite">{current ? `${step + 1}/${questions.length} · ${current.label}${current.choice ? current.choice.mode === 'single' ? ' · 하나만 선택' : ` · ${current.required ? `${current.choice.minSelections}개 이상 선택` : '복수 선택 가능'}` : ''}` : '회색 칸을 누르거나 입력 시작을 선택하세요.'}</p> : null}
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <button type="button" disabled={!pdfReady || (step <= 0 && !reviewing)} onClick={() => move(reviewing ? Math.max(0, step) : step - 1)} className={control}>{reviewing ? '계속 수정' : '이전'}</button>
-            <div className="flex gap-2">{!reviewing && step < questions.length - 1 ? <button type="button" disabled={!pdfReady} onClick={() => move(step + 1)} className={control}>{step < 0 ? '입력 시작' : '다음'}</button> : null}<button type="submit" disabled={submitting || !pdfReady} className="min-h-[48px] rounded-lg bg-[#0F6CBD] px-4 text-sm font-bold text-white disabled:opacity-50">{submitting ? '제출 중' : reviewing ? '작성 완료' : '응답 확인'}</button></div>
+            <div className="flex min-w-0 flex-wrap gap-2">{!reviewing && step < questions.length - 1 ? <button type="button" disabled={!pdfReady} onClick={() => move(step + 1)} className={control}>{step < 0 ? '입력 시작' : '다음'}</button> : null}<button type="submit" disabled={submitting || !pdfReady} className="min-h-[48px] rounded-lg bg-[#0F6CBD] px-4 text-sm font-bold text-white disabled:opacity-50">{submitting ? '제출 중' : reviewing ? '작성 완료' : '응답 확인'}</button></div>
           </div>
         </div>
       </footer>

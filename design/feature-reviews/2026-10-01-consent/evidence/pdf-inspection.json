@@ -1,0 +1,168 @@
+{
+  "response.pdf": {
+    "pages": 2,
+    "pageSizes": [
+      [
+        595.0,
+        841.5
+      ],
+      [
+        595.0,
+        841.5
+      ]
+    ],
+    "rendered": [
+      {
+        "png": "response-1.png",
+        "size": [
+          744,
+          1052
+        ],
+        "nonWhiteBounds": [
+          71,
+          75,
+          416,
+          486
+        ]
+      },
+      {
+        "png": "response-2.png",
+        "size": [
+          744,
+          1052
+        ],
+        "nonWhiteBounds": [
+          72,
+          75,
+          424,
+          511
+        ]
+      }
+    ]
+  },
+  "personal-qr-sheet.pdf": {
+    "pages": 3,
+    "pageSizes": [
+      [
+        595.28,
+        841.89
+      ],
+      [
+        595.28,
+        841.89
+      ],
+      [
+        595.28,
+        841.89
+      ]
+    ],
+    "rendered": [
+      {
+        "png": "personal-qr-sheet-1.png",
+        "size": [
+          745,
+          1053
+        ],
+        "nonWhiteBounds": [
+          0,
+          0,
+          745,
+          1053
+        ]
+      },
+      {
+        "png": "personal-qr-sheet-2.png",
+        "size": [
+          745,
+          1053
+        ],
+        "nonWhiteBounds": [
+          0,
+          0,
+          745,
+          1053
+        ]
+      },
+      {
+        "png": "personal-qr-sheet-3.png",
+        "size": [
+          745,
+          1053
+        ],
+        "nonWhiteBounds": [
+          0,
+          0,
+          745,
+          1053
+        ]
+      }
+    ]
+  },
+  "personal-qr-browser-print.pdf": {
+    "pages": 4,
+    "pageSizes": [
+      [
+        595.92,
+        842.88
+      ],
+      [
+        595.92,
+        842.88
+      ],
+      [
+        595.92,
+        842.88
+      ],
+      [
+        595.92,
+        842.88
+      ]
+    ],
+    "rendered": [
+      {
+        "png": "personal-qr-browser-print-1.png",
+        "size": [
+          745,
+          1054
+        ],
+        "nonWhiteBounds": null
+      },
+      {
+        "png": "personal-qr-browser-print-2.png",
+        "size": [
+          745,
+          1054
+        ],
+        "nonWhiteBounds": null
+      },
+      {
+        "png": "personal-qr-browser-print-3.png",
+        "size": [
+          745,
+          1054
+        ],
+        "nonWhiteBounds": null
+      },
+      {
+        "png": "personal-qr-browser-print-4.png",
+        "size": [
+          745,
+          1054
+        ],
+        "nonWhiteBounds": null
+      }
+    ]
+  },
+  "public-qr.png": {
+    "size": [
+      1024,
+      1024
+    ]
+  },
+  "personal-qr.png": {
+    "size": [
+      1024,
+      1024
+    ]
+  }
+}

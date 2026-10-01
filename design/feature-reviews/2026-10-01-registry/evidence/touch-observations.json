@@ -1,0 +1,22 @@
+{
+  "method": "Chrome CDP touch emulation; not physical phone",
+  "rect": {
+    "x": 38,
+    "y": 475,
+    "width": 314,
+    "height": 190
+  },
+  "dpr": 3,
+  "ink": {
+    "width": 942,
+    "height": 570,
+    "minX": 184,
+    "maxX": 522,
+    "minY": 223,
+    "maxY": 346,
+    "inkPixels": 3503
+  },
+  "scrollBefore": 0,
+  "scrollAfter": 0,
+  "clearDisablesSubmit": true
+}

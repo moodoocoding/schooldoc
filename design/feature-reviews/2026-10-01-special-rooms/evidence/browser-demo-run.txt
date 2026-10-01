@@ -1,0 +1,29 @@
+create, 9 periods, Saturday, three rooms {"manage":"http://127.0.0.1:4184/tools/special-rooms/827093ad-7b68-4921-a2c8-28528dbddb29","link":"http://127.0.0.1:4184/s/rooms/aa9e7504-b102-4834-872a-11c234838422","rows":9}
+QR PNG download {"file":"가상 새빛학교 2학기 특별실_예약QR.png","signature":"89504e470d0a1a0a","bytes":36732}
+link copy visual feedback {"copied":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-check h-4 w-4\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"></path></svg>"}
+wrong public password {"alert":"비밀번호가 맞지 않습니다."}
+existing cell confirmation {"text":"목 10/1 · 1교시\n\n과학실\n\n이미 6학년1반 실험이 잡혀 있습니다. 바꿀까요?\n\n취소\n바꾸기","focus":"취소"}
+save/reload/modify/delete {"passed":true}
+axe public {"violationRules":["color-contrast"],"nodes":19}
+axe teacher {"violationRules":["color-contrast"],"nodes":16}
+closure blocks and retains {"disabled":true,"stored":24}
+shape reduced {"teacherRows":4,"publicRows":4}
+save failure recovery {"alert":"가상 저장 실패","draftAfterReopen":""}
+live concurrent change in open draft {"draft":"다른 교사 예약","confirmationShown":0}
+concurrent overwrite {"warningRequired":false,"stored":true}
+past week write {"stored":1}
+repeat results {"text":"3번 잡았습니다. 휴업일 1번은 건너뛰었습니다."}
+mobile shape {"viewport":{"w":390,"h":844},"scrollWidth":390,"clientWidth":390,"bodyHeight":924,"dialog":null}
+keyboard dialog {"focusName":"10/1 9교시 사용 내용"}
+escape focus return {"focused":true}
+small mobile repeat dialog {"viewport":{"w":390,"h":568},"scrollWidth":390,"clientWidth":390,"bodyHeight":924,"dialog":{"top":90.5,"bottom":568,"height":477.5,"overflow":"visible"}}
+CSS200 repeat dialog {"viewport":{"w":1366,"h":900},"scrollWidth":1366,"clientWidth":1366,"bodyHeight":1082,"dialog":{"top":-27.5,"bottom":927.5,"height":955,"overflow":"visible"}}
+teacher CSS200 {"viewport":{"w":1366,"h":900},"scrollWidth":1366,"clientWidth":1366,"bodyHeight":1711,"dialog":null}
+print exports {"public":"public-a4.pdf","teacher":"teacher-a4.pdf","explicitPrintControls":0}
+closed cells {"enabled":0}
+demo closed repeat divergence {"notice":["예약이 종료되어 보기만 할 수 있습니다","2번 잡았습니다."]}
+teacher status failure UI {"alerts":[],"errors":["가상 상태 저장 실패"]}
+optional school search failure {"alert":"Supabase 연결 정보가 없습니다."}
+delete confirm {"text":"“가상 새빛학교 2학기 특별실” 예약표를 지울까요?\n\n특별실 3곳과 예약 31건이 함께 사라집니다. 지운 뒤에는 되돌릴 수 없고 배부한 링크도 열리지 않습니다.\n\n취소\n영구 삭제"}
+delete canceled retains {"cards":1}
+missing public board {"text":"예약표를 찾을 수 없습니다.","buttons":0}

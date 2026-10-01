@@ -1,0 +1,332 @@
+{
+  "method": "TypeScript source transpiled in Node VM; all DB/RPC/Storage/Auth/crypto mocked; no network",
+  "observations": [
+    {
+      "name": "invalid-token",
+      "detail": {
+        "status": 400,
+        "body": {
+          "error": "요청 형식이 올바르지 않습니다."
+        }
+      }
+    },
+    {
+      "name": "wrong-password",
+      "detail": {
+        "status": 401,
+        "body": {
+          "error": "비밀번호가 맞지 않습니다."
+        }
+      }
+    },
+    {
+      "name": "closed-submit",
+      "detail": {
+        "status": 409,
+        "body": {
+          "error": "서명 수합이 종료되었습니다."
+        }
+      }
+    },
+    {
+      "name": "participant-from-other-registry",
+      "detail": {
+        "status": 404,
+        "body": {
+          "error": "참석자를 찾을 수 없습니다."
+        }
+      }
+    },
+    {
+      "name": "invalid-image",
+      "detail": {
+        "status": 400,
+        "body": {
+          "error": "서명 이미지는 500KB 이하만 제출할 수 있습니다."
+        }
+      }
+    },
+    {
+      "name": "normal-submit",
+      "detail": {
+        "status": 200,
+        "body": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "normal-preserves-teacher-field",
+      "detail": {
+        "affiliation": "가상학교 1반"
+      }
+    },
+    {
+      "name": "duplicate-submit",
+      "detail": {
+        "status": 409,
+        "body": {
+          "error": "이미 서명이 제출되었습니다."
+        }
+      }
+    },
+    {
+      "name": "server-masked-duplicate",
+      "detail": {
+        "status": 200,
+        "body": {
+          "participants": [
+            {
+              "id": "00000000-0000-4000-8000-000000000001",
+              "rowNumber": 1,
+              "name": "가***늘",
+              "values": {
+                "affiliation": "가상****"
+              },
+              "signed": true
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000002",
+              "rowNumber": 2,
+              "name": "가***늘",
+              "values": {
+                "affiliation": "가상****"
+              },
+              "signed": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "name-only-affiliation-search",
+      "detail": {
+        "status": 200,
+        "body": {
+          "participants": []
+        }
+      }
+    },
+    {
+      "name": "partial-submit-failure",
+      "detail": {
+        "first": {
+          "status": 500,
+          "body": {
+            "error": "서명 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."
+          }
+        },
+        "retry": {
+          "status": 409,
+          "body": {
+            "error": "이미 서명이 제출되었습니다."
+          }
+        },
+        "signatureCount": 1,
+        "fileCount": 1,
+        "participant": {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "registry_id": "11111111-1111-4111-8111-111111111111",
+          "row_number": 1,
+          "name": "가상김하늘",
+          "field_values": {
+            "affiliation": "가상학교 1반"
+          },
+          "status": "signed"
+        }
+      }
+    },
+    {
+      "name": "partial-walkin-failure",
+      "detail": {
+        "response": {
+          "status": 500,
+          "body": {
+            "error": "서명 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."
+          }
+        },
+        "newParticipant": {
+          "id": "00000000-0000-4000-8000-000000000124",
+          "registry_id": "11111111-1111-4111-8111-111111111111",
+          "row_number": 25,
+          "name": "가상새참석자",
+          "field_values": {},
+          "status": "pending"
+        }
+      }
+    },
+    {
+      "name": "same-ip-24-submits",
+      "detail": {
+        "statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          429,
+          429,
+          429,
+          429,
+          429,
+          429,
+          429,
+          429,
+          429,
+          429,
+          429,
+          429,
+          429,
+          429
+        ],
+        "accepted": 10,
+        "rejected": 14
+      }
+    },
+    {
+      "name": "same-ip-31-searches",
+      "detail": {
+        "accepted": 30,
+        "rejected": 1
+      }
+    },
+    {
+      "name": "rate-limit-unavailable-blocks",
+      "detail": {
+        "status": 500,
+        "body": {
+          "error": "서명 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."
+        }
+      }
+    },
+    {
+      "name": "teacher-no-auth",
+      "detail": {
+        "status": 401,
+        "body": {
+          "error": "로그인이 필요합니다."
+        }
+      }
+    },
+    {
+      "name": "teacher-invalid-auth",
+      "detail": {
+        "status": 401,
+        "body": {
+          "error": "로그인 정보를 확인하지 못했습니다."
+        }
+      }
+    },
+    {
+      "name": "teacher-other-owner-write",
+      "detail": {
+        "status": 403,
+        "body": {
+          "error": "이 등록부를 관리할 권한이 없습니다."
+        }
+      }
+    },
+    {
+      "name": "teacher-other-owner-read",
+      "detail": {
+        "status": 200,
+        "body": {
+          "participants": []
+        }
+      }
+    },
+    {
+      "name": "teacher-encryption-unavailable",
+      "detail": {
+        "status": 503,
+        "body": {
+          "error": "등록부 암호화 키가 설정되지 않아 참석자 명단을 쓸 수 없습니다."
+        }
+      }
+    },
+    {
+      "name": "signed-status-lost-with-missing-url",
+      "detail": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "rowNumber": 1,
+        "name": "가상김하늘",
+        "values": {
+          "affiliation": "가상학교 1반"
+        }
+      }
+    },
+    {
+      "name": "delete-verifies-storage-removal",
+      "detail": {
+        "error": "서명 이미지 1건을 지우지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "remaining": 1
+      }
+    },
+    {
+      "name": "delete-retry-clears-storage",
+      "detail": {
+        "remaining": 0
+      }
+    },
+    {
+      "name": "pdf-missing-signature-silent",
+      "detail": {
+        "images": 0,
+        "error": false
+      }
+    },
+    {
+      "name": "pdf-boundary-text",
+      "detail": {
+        "draws": [
+          {
+            "text": "가상학교긴추가항목데이터입니다",
+            "x": 0,
+            "y": 18.75,
+            "size": 5.5,
+            "font": {},
+            "color": {
+              "r": 0.06,
+              "g": 0.09,
+              "b": 0.15
+            },
+            "textWidth": 82.5
+          },
+          {
+            "text": "가상 첫 줄",
+            "x": 0,
+            "y": 100,
+            "size": 9.5,
+            "font": {},
+            "color": {
+              "r": 0.2,
+              "g": 0.25,
+              "b": 0.33
+            },
+            "textWidth": 57
+          },
+          {
+            "text": "가상 둘째 줄",
+            "x": 0,
+            "y": 88,
+            "size": 9.5,
+            "font": {},
+            "color": {
+              "r": 0.2,
+              "g": 0.25,
+              "b": 0.33
+            },
+            "textWidth": 66.5
+          }
+        ],
+        "cellWidth": 26.5,
+        "thirdHeaderLinePresent": false
+      }
+    }
+  ]
+}

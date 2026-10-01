@@ -1,0 +1,33 @@
+
+> 260725_individual_data@0.0.0 build
+> tsc -b && vite build
+
+vite v8.1.5 building client environment for production...
+[2K
+transforming...✓ 2350 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                 0.72 kB │ gzip:   0.47 kB
+dist/assets/pdf.worker.min-CLrFZWeq.mjs     1,312.45 kB
+dist/assets/index-XGji_lWE.css                129.75 kB │ gzip:  21.59 kB
+dist/assets/typeof-B5XbjTb1.js                  0.27 kB │ gzip:   0.16 kB
+dist/assets/receiptExportData-CvVQEcZm.js       0.94 kB │ gzip:   0.59 kB
+dist/assets/receiptExportExcel-3mYKxExl.js      2.73 kB │ gzip:   1.50 kB
+dist/assets/receiptExportPdf-DQBJBPIC.js        7.50 kB │ gzip:   3.68 kB
+dist/assets/browser-BQakVJvE.js                15.84 kB │ gzip:   7.50 kB
+dist/assets/papaparse.min-B4Im3d70.js          19.26 kB │ gzip:   7.01 kB
+dist/assets/purify.es-Bwt4ulIK.js              27.13 kB │ gzip:  10.54 kB
+dist/assets/web-worker-5m2-La1l.js             58.83 kB │ gzip:  15.27 kB
+dist/assets/browser-Dsu8d5GH.js                59.69 kB │ gzip:  14.36 kB
+dist/assets/index.es-C-AsYiS0.js              151.47 kB │ gzip:  48.92 kB
+dist/assets/html2canvas-BdPw-cwy.js           199.55 kB │ gzip:  46.77 kB
+dist/assets/jspdf.es.min-BADs4eJy.js          393.15 kB │ gzip: 126.64 kB
+dist/assets/pdf-CUFtg_5U.js                   482.52 kB │ gzip: 145.98 kB
+dist/assets/index-aZJXq7rA.js               1,285.36 kB │ gzip: 343.18 kB
+
+✓ built in 1.65s
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.

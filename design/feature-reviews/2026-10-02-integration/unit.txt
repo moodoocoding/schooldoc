@@ -1,0 +1,13 @@
+
+> 260725_individual_data@0.0.0 test
+> vitest run
+
+
+ RUN  v4.1.11 C:/Users/panth/.codex/worktrees/feature-review-integration-20261002/260812_schooldoc
+
+
+ Test Files  63 passed (63)
+      Tests  501 passed (501)
+   Start at  01:56:08
+   Duration  2.37s (transform 5.82s, setup 0ms, import 10.49s, tests 1.05s, environment 10ms)
+

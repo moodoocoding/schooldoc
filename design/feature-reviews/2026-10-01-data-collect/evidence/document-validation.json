@@ -1,0 +1,20 @@
+{
+  "checks": [
+    {
+      "file": "design\\feature-reviews\\2026-10-01-data-collect\\review.md",
+      "links": 25,
+      "sourceLocations": 42
+    },
+    {
+      "file": "design\\feature-reviews\\2026-10-01-data-collect\\evidence\\index.md",
+      "links": 62,
+      "sourceLocations": 0
+    },
+    {
+      "file": "docs\\feature-review-data-collect-2026-10-01.md",
+      "links": 1,
+      "sourceLocations": 0
+    }
+  ],
+  "failures": []
+}

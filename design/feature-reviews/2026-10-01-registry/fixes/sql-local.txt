@@ -1,0 +1,19 @@
+PASS snapshot preserves 1500 rows and strips digests
+PASS foreign owner snapshot denied
+PASS owner summary RLS
+PASS anonymous commit RPC denied
+PASS 60 participants from same school IP admitted
+PASS per participant abuse limit
+PASS failed code counter, correct search and digest redaction
+PASS issued code required for submission
+PASS owner atomic addition, ownership and 2000 participant cap
+PASS token rotation invalidates old public context
+PASS SQL exception rolls back signature and participant together
+PASS atomic save, exact replay and changed retry rejection
+PASS walk-in preview creates no rows
+PASS walk-in creates participant only at final atomic submission
+PASS failed password counter and correct retry
+PASS close denies submission and reopen resets retention start
+PASS purge verifies counts and locks reopen/roster changes
+PASS purge DB transaction and non-identifying audit
+{"engine":"PGlite PostgreSQL with pgcrypto","checks":18,"limitations":["No Supabase Auth/Storage/Realtime gateway","No multi-connection concurrency verification"]}

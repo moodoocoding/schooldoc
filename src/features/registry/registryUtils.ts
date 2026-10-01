@@ -135,19 +135,9 @@ export const formatSignedAt = (date: string | undefined) => {
   }).format(new Date(date));
 };
 
-export const parsePastedRows = (text: string, columns: RegistryColumn[]) => text
-  .split(/\r?\n/)
-  .map((line) => line.trim())
-  .filter(Boolean)
-  .map((line) => {
-    const cells = line.split('\t').map((cell) => cell.trim());
-    if (columns.length === 0) return createParticipant(columns, cells[0] ?? '');
-    const nameIndex = cells.length > columns.length ? cells.length - 1 : 0;
-    const name = cells[nameIndex] ?? '';
-    const values = cells.filter((_, index) => index !== nameIndex);
-    return createParticipant(columns, name, values);
-  })
-  .filter((participant) => participant.name);
+export const parsePastedRows = (text: string, columns: RegistryColumn[]) => parseExcelRows(
+  text.split(/\r?\n/).filter((line) => line.trim()).map((line) => line.split('\t')), columns,
+);
 
 export const getRegistryPageSettings = (layout: Registry['layout']) => {
   if (layout === 20) return { columns: 2, rowsPerColumn: 10 } as const;

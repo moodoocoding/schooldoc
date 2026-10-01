@@ -1,3 +1,4 @@
+import { validDate } from '../_shared/specialRooms.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8';
 
 /**
@@ -27,7 +28,6 @@ const db = createClient(url, serviceKey, { auth: { persistSession: false, autoRe
 
 const NEIS_BASE = 'https://open.neis.go.kr/hub';
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
 const neisKey = () => Deno.env.get('NEIS_API_KEY')?.trim() ?? '';
 
@@ -66,6 +66,7 @@ const readNeis = async (path: string, params: Record<string, string>) => {
   let payload: Record<string, unknown>;
   try {
     const response = await fetch(`${NEIS_BASE}/${path}?${query}`, { signal: AbortSignal.timeout(15_000) });
+    if (!response.ok) throw new Error('NEIS HTTP failure');
     payload = await response.json() as Record<string, unknown>;
   } catch {
     throw new HttpError(502, 'NEIS에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.');
@@ -79,10 +80,11 @@ const readNeis = async (path: string, params: Record<string, string>) => {
   }
 
   const blocks = Object.values(payload)[0];
-  if (!Array.isArray(blocks)) return [];
+  if (!Array.isArray(blocks)) throw new HttpError(502, 'NEIS 응답 형식이 올바르지 않습니다.');
   const rowBlock = blocks.find((block) => block && typeof block === 'object' && 'row' in block);
   const rows = (rowBlock as { row?: unknown[] } | undefined)?.row;
-  return Array.isArray(rows) ? rows as Record<string, string>[] : [];
+  if (!Array.isArray(rows)) throw new HttpError(502, 'NEIS 응답 형식이 올바르지 않습니다.');
+  return rows as Record<string, string>[];
 };
 
 /** NEIS의 YYYYMMDD를 YYYY-MM-DD로. */
@@ -122,7 +124,7 @@ Deno.serve(async (request) => {
       }
       const from = typeof body.from === 'string' ? body.from : '';
       const to = typeof body.to === 'string' ? body.to : '';
-      if (!datePattern.test(from) || !datePattern.test(to)) throw new HttpError(400, '기간이 올바르지 않습니다.');
+      if (!validDate(from) || !validDate(to) || to < from || Date.parse(to) - Date.parse(from) > 370 * 86400000) throw new HttpError(400, '기간이 올바르지 않습니다.');
 
       const rows = await readNeis('SchoolSchedule', {
         pIndex: '1',
@@ -133,8 +135,8 @@ Deno.serve(async (request) => {
         AA_TO_YMD: toNeisDate(to),
       });
 
+      if (rows.length >= 1000 || rows.some(row => typeof row.AA_YMD !== 'string' || !/^\d{8}$/.test(row.AA_YMD) || !validDate(toDateKey(row.AA_YMD)) || toDateKey(row.AA_YMD) < from || toDateKey(row.AA_YMD) > to)) throw new HttpError(502, 'NEIS 일정이 누락되었거나 기간이 올바르지 않습니다.');
       const days = rows
-        .filter((row) => typeof row.AA_YMD === 'string' && row.AA_YMD.length === 8)
         .map((row) => ({
           board_id: boardId,
           day: toDateKey(row.AA_YMD),
@@ -143,17 +145,12 @@ Deno.serve(async (request) => {
           is_off_day: Boolean(row.SBTR_DD_SC_NM) && row.SBTR_DD_SC_NM !== '해당없음',
         }));
 
-      // 받은 기간만 갈아 끼운다. 전체를 지우면 다른 기간에 받아 둔 것이 사라진다.
-      const cleared = await db.from('special_room_school_days')
-        .delete().eq('board_id', boardId).gte('day', from).lte('day', to);
-      if (cleared.error) throw cleared.error;
-
-      if (days.length > 0) {
-        const { error } = await db.from('special_room_school_days')
-          .upsert(days, { onConflict: 'board_id,day,event_name' });
-        if (error) throw error;
-      }
-      return json(200, { count: days.length });
+      const { data, error } = await db.rpc('sync_special_room_school_days', {
+        p_board: boardId, p_owner: userId, p_office: board.neis_office_code, p_school: board.neis_school_code,
+        p_from: from, p_to: to, p_days: days.map(({ board_id: _boardId, ...day }) => day),
+      });
+      if (error) throw error;
+      return json(Number(data.status ?? 200), data);
     }
 
     throw new HttpError(400, '지원하지 않는 요청입니다.');

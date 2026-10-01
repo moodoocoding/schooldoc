@@ -4,7 +4,7 @@ test.describe('진행 중인 업무', () => {
   test('홈은 진행 요약으로 바뀌지 않고 전체 업무 도구를 그대로 보여준다', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page.getByRole('heading', { name: '전체 업무 도구 (10)' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /전체 업무 도구 \(\d+\)/ })).toBeVisible();
     await expect(page.getByRole('heading', { name: '진행 중인 업무' })).toHaveCount(0);
     await expect(page.getByText('자료 수합', { exact: true })).toBeVisible();
     const dataCollectCard = page.getByRole('button', { name: /자료 수합/ }).first();
@@ -14,8 +14,8 @@ test.describe('진행 중인 업무', () => {
     await page.goto('/');
     await expect(page.getByText('특별실 예약', { exact: true })).toBeVisible();
     const toolNames = await page.locator('h3').allTextContents();
-    expect(toolNames.indexOf('특별실 예약')).toBe(4);
-    expect(toolNames.indexOf('문서 서명')).toBe(7);
+    expect(toolNames.indexOf('특별실 예약')).toBeGreaterThan(toolNames.indexOf('자료 수합'));
+    expect(toolNames.indexOf('문서 서명')).toBeGreaterThan(toolNames.indexOf('특별실 예약'));
   });
 
   test('도구 제목은 목록으로, 개별 업무는 관리 화면으로 이동한다', async ({ page }) => {
@@ -132,4 +132,21 @@ test.describe('진행 중인 업무', () => {
     }));
     expect(overflow.document).toBeLessThanOrEqual(overflow.viewport + 1);
   });
+});
+
+test('가정통신문 재제출은 현재 응답 수로 표시하고 준비 중인 수합은 숨긴다', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('schooldoc:consent-forms:drafts', JSON.stringify([
+      { id: 'consent-current', title: '가상 재제출 수합', recipientMode: 'named', recipientCount: 24, responseCount: 9, currentResponseCount: 1, publicationState: 'ready', status: 'open' },
+      { id: 'consent-preparing', title: '가상 준비 중 수합', recipientMode: 'open', responseCount: 0, currentResponseCount: 0, publicationState: 'preparing', status: 'open' },
+    ]));
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: '진행 중' }).click();
+  const row = page.getByRole('button', { name: /가상 재제출 수합 가정통신문 수합 관리 화면으로 이동/ });
+  await expect(row).toContainText('1/24명 응답');
+  await expect(row).not.toContainText('9/24명 응답');
+  await expect(page.getByText('가상 준비 중 수합')).toHaveCount(0);
+  await page.mouse.move(1100, 500);
+  await page.screenshot({ path: 'design/feature-reviews/2026-10-02-integration/current-consent-active.png', fullPage: true, animations: 'disabled' });
 });

@@ -4,10 +4,10 @@ import { listRemoteConsentForms } from '../consentForms/consentFormsRepository';
 import { dataCollectOwnerId, isDataCollectDemoMode } from '../dataCollect/dataCollectConfig';
 import { listDataCollections, subscribeDataCollections } from '../dataCollect/dataCollectService';
 import { isRegistryDemoMode } from '../registry/registryConfig';
-import { listRegistries, subscribeRegistries } from '../registry/registryService';
+import { listRegistrySummaries, subscribeRegistries } from '../registry/registryService';
 import { isSpecialRoomsDemoMode } from '../specialRooms/specialRoomsConfig';
 import { isMissionsDemo, listMissionBoards, missionCounts, missionDateLabel, missionToday } from '../classMissions/missionApi';
-import { listBoards, subscribeSpecialRooms } from '../specialRooms/specialRoomsService';
+import { listAllSummaries, subscribeSpecialRooms } from '../specialRooms/specialRoomsService';
 import { isStudentResultsDemoMode, studentResultsOwnerId } from '../studentResults/studentResultsConfig';
 import { listStudentResultEvents, subscribeStudentResults } from '../studentResults/studentResultsService';
 import type {
@@ -37,18 +37,18 @@ const registryProvider: ActiveWorkProvider = {
   subscribe: subscribeRegistries,
   load: async ({ userId }) => {
     if (!userId && !isRegistryDemoMode) return [];
-    const registries = await listRegistries();
+    const registries = await listRegistrySummaries();
     return registries
       .filter((registry) => registry.status === 'open')
       .map((registry): ActiveWorkItem => {
-        const signedCount = registry.participants.filter((participant) => participant.signature).length;
+        const signedCount = registry.signedCount;
         return {
           id: registry.id,
           toolId: 'registry-sign',
           toolName: '등록부 서명',
           title: registry.title,
           statusLabel: '수합 중',
-          progressLabel: `${signedCount}/${registry.participants.length}명 서명`,
+          progressLabel: `${signedCount}/${registry.participantCount}명 서명`,
           updatedAt: registry.updatedAt,
           listPath: '/tools/registry-sign',
           detailPath: `/tools/registry-sign/${registry.id}`,
@@ -96,9 +96,10 @@ const consentFormsProvider: ActiveWorkProvider = {
     if (!userId && !isConsentFormsDemoMode) return [];
     const forms = isConsentFormsDemoMode ? getConsentLocalDrafts() : await listRemoteConsentForms();
     return forms
-      .filter((form) => form.status === 'open')
+      .filter((form) => form.status === 'open' && (form.publicationState ?? 'ready') === 'ready')
       .map((form): ActiveWorkItem => {
         const overdue = hasPassed(form.deadline, now);
+        const responseCount = form.currentResponseCount ?? form.responseCount;
         return {
           id: form.id,
           toolId: 'notice-collect',
@@ -106,8 +107,8 @@ const consentFormsProvider: ActiveWorkProvider = {
           title: form.title,
           statusLabel: overdue ? '마감 지남' : '수합 중',
           progressLabel: form.recipientMode === 'named'
-            ? `${form.responseCount}/${form.recipientCount}명 응답`
-            : `응답 ${form.responseCount}건`,
+            ? `${responseCount}/${form.recipientCount}명 응답`
+            : `응답 ${responseCount}건`,
           updatedAt: form.createdAt,
           listPath: '/tools/consent-forms',
           detailPath: `/tools/consent-forms/${form.id}`,
@@ -157,7 +158,7 @@ const specialRoomsProvider: ActiveWorkProvider = {
   load: async ({ userId }) => {
     const ownerId = userId || (isSpecialRoomsDemoMode ? 'local-demo-teacher' : '');
     if (!ownerId) return [];
-    const boards = await listBoards(ownerId);
+    const boards = await listAllSummaries(ownerId, 'open');
     return boards
       .filter((board) => board.status === 'open')
       .map((board): ActiveWorkItem => ({
@@ -166,7 +167,7 @@ const specialRoomsProvider: ActiveWorkProvider = {
         toolName: '특별실 예약',
         title: board.title,
         statusLabel: '예약 중',
-        progressLabel: `특별실 ${board.rooms.length}곳 · 예약 ${board.bookings.length}건`,
+        progressLabel: `특별실 ${board.roomCount}곳 · 예약 ${board.bookingCount}건`,
         updatedAt: board.updatedAt,
         listPath: '/tools/special-rooms',
         detailPath: `/tools/special-rooms/${board.id}`,

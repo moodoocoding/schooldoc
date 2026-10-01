@@ -1,0 +1,154 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Users\\panth\\.codex\\worktrees\\review-data-collect-20261001\\260812_schooldoc\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      ".tmp/data-collect-runtime/playwright.config.ts",
+      "tests/e2e/data-collect-list.spec.ts",
+      "--headed",
+      "--reporter=list,json"
+    ],
+    "configFile": "C:\\Users\\panth\\.codex\\worktrees\\review-data-collect-20261001\\260812_schooldoc\\.tmp\\data-collect-runtime\\playwright.config.ts",
+    "rootDir": "C:/Users/panth/.codex/worktrees/review-data-collect-20261001/260812_schooldoc/tests/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/panth/.codex/worktrees/review-data-collect-20261001/260812_schooldoc/.tmp/data-collect-playwright",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Users/panth/.codex/worktrees/review-data-collect-20261001/260812_schooldoc/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "/[\\\\/]data-collect[^\\\\/]*\\.spec\\.ts$/"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.62.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "data-collect-list.spec.ts",
+      "file": "data-collect-list.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "실제 Chrome: 수동 새로고침 뒤 이전·다음 목록은 유효한 캐시를 다시 사용한다",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 11147,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-01T15:23:05.778Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "06e6549b23bc4a1fbfe8-5cb9207fad76a3069ff8",
+          "file": "data-collect-list.spec.ts",
+          "line": 48,
+          "column": 1
+        },
+        {
+          "title": "실제 Chrome: 목록을 열어 둔 채 실제 마감 시각을 지나면 조회 없이 상태가 바뀐다",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 53408,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-01T15:23:17.191Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "06e6549b23bc4a1fbfe8-0d0b1d1d83dc1a0b8aa2",
+          "file": "data-collect-list.spec.ts",
+          "line": 116,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-01T15:23:05.161Z",
+    "duration": 65623.838,
+    "expected": 2,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

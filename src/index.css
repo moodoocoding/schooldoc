@@ -68,15 +68,15 @@
   --sr-surface-muted: #f0efea;
   --sr-surface-hover: #edf1ed;
   --sr-text: #24312c;
-  --sr-text-muted: #67736e;
-  --sr-text-subtle: #7b8580;
+  --sr-text-muted: #52615a;
+  --sr-text-subtle: #59655f;
   --sr-border: #dedcd4;
   --sr-border-strong: #c9c7be;
   --sr-grid: #e8e5de;
   --sr-accent: #315f50;
   --sr-accent-strong: #274b40;
   --sr-accent-soft: #e7efe9;
-  --sr-today: #c7654c;
+  --sr-today: #a4412d;
   --sr-today-soft: #fff1eb;
   --sr-today-wash: #fffaf7;
   --sr-event: #dcebe3;
@@ -124,7 +124,7 @@
   --sr-surface-hover: var(--sd-surface-hover);
   --sr-text: var(--sd-text);
   --sr-text-muted: var(--sd-text-muted);
-  --sr-text-subtle: var(--sd-text-subtle);
+  --sr-text-subtle: #526174;
   --sr-border: var(--sd-border);
   --sr-border-strong: var(--sd-border-strong);
   --sr-grid: var(--sd-divider);
@@ -532,6 +532,8 @@ html[data-schooldoc-font-size="large"] .schooldoc-admin-shell {
     visibility: hidden;
   }
 
+  .consent-qr-print-root,
+  .consent-qr-print-root *,
   .registry-print-root,
   .registry-print-root *,
   .student-result-qr-print-root,
@@ -546,6 +548,7 @@ html[data-schooldoc-font-size="large"] .schooldoc-admin-shell {
     inset: 0;
   }
 
+  .consent-qr-print-root,
   .student-result-qr-print-root {
     position: absolute;
     inset: 0;
@@ -571,14 +574,78 @@ html[data-schooldoc-font-size="large"] .schooldoc-admin-shell {
   }
 
   .registry-print-page,
+  .consent-qr-print-page,
   .student-result-qr-print-page {
     box-shadow: none !important;
     break-after: page;
     page-break-after: always;
   }
 
+  .consent-qr-print-page:last-child,
   .student-result-qr-print-page:last-child {
     break-after: auto;
     page-break-after: auto;
   }
+}
+
+/* 좁은 화면과 글자 확대에서도 관리 작업이 줄바꿈된다. */
+.consent-manage button { min-width: 44px; min-height: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.consent-manage button svg { flex-shrink: 0; }
+.consent-manage button:disabled { opacity: .5; cursor: not-allowed; }
+
+.consent-recipient-row, .consent-response-row {display: grid;grid-template-columns: auto minmax(0,1fr);align-items: start;gap: .5rem;}
+.consent-recipient-row > button, .consent-response-row > button {grid-column: 2;justify-self: start;}
+.consent-recipient-row > div {overflow-wrap: anywhere;}
+@media (min-width: 640px) {
+ .consent-recipient-row, .consent-response-row {display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;}
+}
+
+@media print {
+ .data-collect-print-root, .data-collect-print-root * { visibility: visible; }
+ .data-collect-print-root { position: absolute; top: 0; left: 0; width: 210mm; padding: 12mm; background: white; color: #111; font-size: 10pt; }
+ .data-collect-print-root h1 { font-size: 17pt; font-weight: 700; margin-bottom: 3mm; overflow-wrap: anywhere; }
+ .data-collect-print-root p { margin-bottom: 5mm; }
+ .data-collect-print-root table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+ .data-collect-print-root th, .data-collect-print-root td { border: 1px solid #bbb; padding: 2mm; vertical-align: top; white-space: pre-wrap; overflow-wrap: anywhere; }
+ .data-collect-print-root th:first-child { width: 8%; }
+ .data-collect-print-root th:nth-child(2) { width: 25%; }
+ .data-collect-print-root th:nth-child(3) { width: 22%; }
+ .data-collect-print-root thead { display: table-header-group; }
+ .data-collect-print-root tr { break-inside: avoid; }
+}
+
+@media print {
+ body:has(> .data-collect-print-root) #root { display: none; }
+ .data-collect-print-root { position: static; width: 186mm; padding: 0; page: auto; }
+}
+
+@media print {
+ .data-collect-print-notes { break-before: page; }
+ .data-collect-print-notes h2 { font-size: 15pt; font-weight: 700; margin-bottom: 5mm; }
+ .data-collect-print-notes h3 { font-weight: 700; margin-bottom: 3mm; break-after: avoid; overflow-wrap: anywhere; }
+ .data-collect-print-notes p { white-space: pre-wrap; overflow-wrap: anywhere; orphans: 3; widows: 3; }
+}
+
+.special-room-print-root { display: none; }
+@media print {
+  @page special-rooms-week { size: A4 landscape; margin: 10mm; }
+  body:has(.special-room-print-root) { page: special-rooms-week; }
+  body:has(.special-room-print-root) #root { display: none !important; }
+  .special-room-screen > :not(.special-room-print-root) { display: none !important; }
+  .special-room-screen:not(:has(.special-room-print-root)) { display: none !important; }
+  .special-room-print-root, .special-room-print-root * { visibility: visible !important; }
+  .special-room-print-root { display: block; page: special-rooms-week; position: static; width: 100%; color: #24312c; background: white; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .special-room-print-root h1 { font-size: 18pt; font-weight: 700; }
+  .special-room-print-root > p { margin: 2mm 0; font-size: 10pt; }
+  .special-room-print-root .special-room-planner { width: 100%; max-width: none; box-shadow: none; }
+  .special-room-print-root table { break-inside: auto; }
+  .special-room-print-root tr { break-inside: avoid; }
+  .special-room-print-root :is(th,td,td button) { height: 12mm !important; }
+  .special-room-print-root td button { height: auto !important; min-height: 12mm; padding: 1mm; }
+  .special-room-print-root td span { font-size: 9pt; }
+  .special-room-print-root .line-clamp-2 { display: block; overflow: visible; -webkit-line-clamp: unset; }
+  .special-room-print-root .truncate { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
+  .special-room-print-root .sm\:hidden { display: none; }
+  .special-room-print-root .sm\:flex { display: flex; min-height: 0; padding: 1mm 2mm; line-height: 1.25; }
+  .special-room-print-root button { outline: none; }
 }

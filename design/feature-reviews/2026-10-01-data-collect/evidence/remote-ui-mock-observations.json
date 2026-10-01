@@ -1,0 +1,372 @@
+{
+  "browser": "154.0.8037.58",
+  "mode": "actual remote React code + synthetic API module; no network",
+  "checks": [
+    {
+      "name": "ordinary teacher opens management",
+      "observation": {
+        "headingVisible": true,
+        "email": "ordinary-teacher@example.invalid"
+      }
+    },
+    {
+      "name": "remote update remains stale",
+      "observation": {
+        "getRequestsDuringExternalChange": 0,
+        "stalePendingRows": 1,
+        "updatedAfterReload": true
+      }
+    },
+    {
+      "name": "load error hidden and no retry button",
+      "observation": {
+        "serverErrorShown": false,
+        "retryControl": 0,
+        "visibleText": "SD\n가\n자료 수합을 찾을 수 없습니다\n목록으로 돌아가기"
+      }
+    },
+    {
+      "name": "unscoped draft crosses accounts",
+      "observation": {
+        "newUser": "teacher-b",
+        "restoredTitle": "가상 A교사 미완료 초안",
+        "restoredStudent": "가상A학생"
+      }
+    },
+    {
+      "name": "remote search errors and empty result hidden",
+      "observation": {
+        "validationMessageShown": false,
+        "serverErrorShown": false,
+        "emptyResultMessageShown": false
+      }
+    },
+    {
+      "name": "remote submit without file and upload failure recovery",
+      "observation": {
+        "noFileSubmitRequest": {
+          "action": "submit",
+          "token": "20000000-0000-4000-8000-000000000001",
+          "personalToken": "40000000-0000-4000-8000-000000000001",
+          "password": "",
+          "respondentName": "",
+          "decision": "submitted",
+          "storagePath": "",
+          "fileName": "",
+          "note": "가상 복구 메모"
+        },
+        "noteKept": "가상 복구 메모",
+        "fileKept": "virtual.pdf",
+        "retryCompleted": true
+      }
+    },
+    {
+      "name": "custom remote reload loses returned personal token",
+      "observation": {
+        "afterReloadPersonalToken": ""
+      }
+    }
+  ],
+  "screens": [
+    {
+      "name": "31-mock-general-teacher",
+      "axe": [
+        {
+          "id": "svg-img-alt",
+          "impact": "serious",
+          "nodes": [
+            [
+              "svg[height=\"144\"]"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "32-mock-management-stale",
+      "axe": [
+        {
+          "id": "svg-img-alt",
+          "impact": "serious",
+          "nodes": [
+            [
+              "svg[height=\"144\"]"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "33-mock-management-after-reload",
+      "axe": [
+        {
+          "id": "svg-img-alt",
+          "impact": "serious",
+          "nodes": [
+            [
+              "svg[height=\"144\"]"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "34-mock-load-error-hidden",
+      "axe": []
+    },
+    {
+      "name": "35-mock-draft-cross-account",
+      "axe": []
+    },
+    {
+      "name": "36-mock-search-invalid-mobile",
+      "axe": []
+    },
+    {
+      "name": "37-mock-search-error-mobile",
+      "axe": []
+    },
+    {
+      "name": "38-mock-no-file-submit",
+      "axe": []
+    },
+    {
+      "name": "39-mock-upload-error-mobile",
+      "axe": []
+    },
+    {
+      "name": "40-mock-upload-retry-complete",
+      "axe": []
+    },
+    {
+      "name": "41-mock-custom-reload-new-token",
+      "axe": []
+    }
+  ],
+  "calls": [
+    {
+      "name": "data-collect-admin",
+      "body": {
+        "action": "get",
+        "id": "10000000-0000-4000-8000-000000000001"
+      }
+    },
+    {
+      "name": "data-collect-admin",
+      "body": {
+        "action": "get",
+        "id": "10000000-0000-4000-8000-000000000001"
+      }
+    },
+    {
+      "name": "data-collect-admin",
+      "body": {
+        "action": "get",
+        "id": "10000000-0000-4000-8000-000000000001"
+      }
+    },
+    {
+      "name": "data-collect-admin",
+      "body": {
+        "action": "get",
+        "id": "10000000-0000-4000-8000-000000000001"
+      }
+    },
+    {
+      "name": "data-collect-admin",
+      "body": {
+        "action": "get",
+        "id": "10000000-0000-4000-8000-000000000001"
+      }
+    },
+    {
+      "name": "data-collect-admin",
+      "body": {
+        "action": "get",
+        "id": "10000000-0000-4000-8000-000000000001"
+      }
+    },
+    {
+      "name": "data-collect-public",
+      "body": {
+        "action": "metadata",
+        "token": "20000000-0000-4000-8000-000000000001"
+      }
+    },
+    {
+      "name": "data-collect-public",
+      "body": {
+        "action": "metadata",
+        "token": "20000000-0000-4000-8000-000000000001"
+      }
+    },
+    {
+      "name": "data-collect-public",
+      "body": {
+        "action": "search",
+        "token": "20000000-0000-4000-8000-000000000001",
+        "query": "",
+        "password": "",
+        "personalToken": ""
+      }
+    },
+    {
+      "name": "data-collect-public",
+      "body": {
+        "action": "search",
+        "token": "20000000-0000-4000-8000-000000000001",
+        "query": "김하늘",
+        "password": "",
+        "personalToken": ""
+      }
+    },
+    {
+      "name": "data-collect-public",
+      "body": {
+        "action": "search",
+        "token": "20000000-0000-4000-8000-000000000001",
+        "query": "김하늘",
+        "password": "",
+        "personalToken": ""
+      }
+    },
+    {
+      "name": "data-collect-public",
+      "body": {
+        "action": "search",
+        "token": "20000000-0000-4000-8000-000000000001",
+        "query": "김하늘",
+        "password": "",
+        "personalToken": ""
+      }
+    },
+    {
+      "name": "data-collect-public",
+      "body": {
+        "action": "submit",
+        "token": "20000000-0000-4000-8000-000000000001",
+        "personalToken": "40000000-0000-4000-8000-000000000001",
+        "password": "",
+        "respondentName": "",
+        "decision": "submitted",
+        "storagePath": "",
+        "fileName": "",
+        "note": "가상 복구 메모"
+      }
+    },
+    {
+      "name": "data-collect-public",
+      "body": {
+        "action": "prepare-upload",
+        "token": "20000000-0000-4000-8000-000000000001",
+        "personalToken": "40000000-0000-4000-8000-000000000001",
+        "password": "",
+        "respondentName": "",
+        "fileName": "virtual.pdf"
+      }
+    },
+    {
+      "name": "data-collect-public",
+      "body": {
+        "action": "prepare-upload",
+        "token": "20000000-0000-4000-8000-000000000001",
+        "personalToken": "40000000-0000-4000-8000-000000000001",
+        "password": "",
+        "respondentName": "",
+        "fileName": "virtual.pdf"
+      }
+    },
+    {
+      "name": "data-collect-public",
+      "body": {
+        "action": "submit",
+        "token": "20000000-0000-4000-8000-000000000001",
+        "personalToken": "40000000-0000-4000-8000-000000000001",
+        "password": "",
+        "respondentName": "",
+        "decision": "submitted",
+        "storagePath": "10000000-0000-4000-8000-000000000001/walk-in/virtual.pdf",
+        "fileName": "virtual.pdf",
+        "note": "가상 복구 메모"
+      }
+    },
+    {
+      "name": "data-collect-public",
+      "body": {
+        "action": "metadata",
+        "token": "20000000-0000-4000-8000-000000000001"
+      }
+    },
+    {
+      "name": "data-collect-public",
+      "body": {
+        "action": "metadata",
+        "token": "20000000-0000-4000-8000-000000000001"
+      }
+    },
+    {
+      "name": "data-collect-public",
+      "body": {
+        "action": "prepare-upload",
+        "token": "20000000-0000-4000-8000-000000000001",
+        "personalToken": "",
+        "password": "",
+        "respondentName": "가상제출자",
+        "fileName": "virtual.pdf"
+      }
+    },
+    {
+      "name": "data-collect-public",
+      "body": {
+        "action": "submit",
+        "token": "20000000-0000-4000-8000-000000000001",
+        "personalToken": "",
+        "password": "",
+        "respondentName": "가상제출자",
+        "decision": "submitted",
+        "storagePath": "10000000-0000-4000-8000-000000000001/walk-in/virtual.pdf",
+        "fileName": "virtual.pdf",
+        "note": ""
+      }
+    },
+    {
+      "name": "data-collect-public",
+      "body": {
+        "action": "metadata",
+        "token": "20000000-0000-4000-8000-000000000001"
+      }
+    },
+    {
+      "name": "data-collect-public",
+      "body": {
+        "action": "metadata",
+        "token": "20000000-0000-4000-8000-000000000001"
+      }
+    },
+    {
+      "name": "data-collect-public",
+      "body": {
+        "action": "prepare-upload",
+        "token": "20000000-0000-4000-8000-000000000001",
+        "personalToken": "",
+        "password": "",
+        "respondentName": "가상제출자",
+        "fileName": "virtual.pdf"
+      }
+    },
+    {
+      "name": "data-collect-public",
+      "body": {
+        "action": "submit",
+        "token": "20000000-0000-4000-8000-000000000001",
+        "personalToken": "",
+        "password": "",
+        "respondentName": "가상제출자",
+        "decision": "submitted",
+        "storagePath": "10000000-0000-4000-8000-000000000001/walk-in/virtual.pdf",
+        "fileName": "virtual.pdf",
+        "note": ""
+      }
+    }
+  ]
+}

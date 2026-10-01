@@ -1,0 +1,108 @@
+{
+  "scenarios": [
+    {
+      "rooms": 1,
+      "oldPublic": 54,
+      "new": 54,
+      "oldOwner": 105,
+      "oldPublicBytes": 11827,
+      "newSnapshotBytes": 12226
+    },
+    {
+      "rooms": 3,
+      "oldPublic": 162,
+      "new": 54,
+      "oldOwner": 315,
+      "oldPublicBytes": 35479,
+      "newSnapshotBytes": 12428
+    },
+    {
+      "rooms": 50,
+      "oldPublic": 2700,
+      "new": 54,
+      "oldOwner": 5250,
+      "oldPublicBytes": 591301,
+      "newSnapshotBytes": 17256
+    }
+  ],
+  "writes": {
+    "singleSave": [
+      {
+        "table_name": "messages",
+        "action": "INSERT",
+        "rows": 1
+      },
+      {
+        "table_name": "special_room_bookings",
+        "action": "INSERT",
+        "rows": 1
+      },
+      {
+        "table_name": "special_room_rate_limits",
+        "action": "INSERT",
+        "rows": 1
+      },
+      {
+        "table_name": "special_room_week_state",
+        "action": "INSERT",
+        "rows": 1
+      }
+    ],
+    "singleResponseReplay": [
+      {
+        "table_name": "special_room_rate_limits",
+        "action": "UPDATE",
+        "rows": 1
+      }
+    ],
+    "noOp": [
+      {
+        "table_name": "special_room_rate_limits",
+        "action": "UPDATE",
+        "rows": 1
+      }
+    ],
+    "repeat52": [
+      {
+        "table_name": "messages",
+        "action": "INSERT",
+        "rows": 52
+      },
+      {
+        "table_name": "special_room_bookings",
+        "action": "INSERT",
+        "rows": 52
+      },
+      {
+        "table_name": "special_room_rate_limits",
+        "action": "UPDATE",
+        "rows": 1
+      },
+      {
+        "table_name": "special_room_repeat_operations",
+        "action": "INSERT",
+        "rows": 1
+      },
+      {
+        "table_name": "special_room_week_state",
+        "action": "INSERT",
+        "rows": 52
+      }
+    ],
+    "repeat52Replay": [
+      {
+        "table_name": "special_room_rate_limits",
+        "action": "UPDATE",
+        "rows": 1
+      }
+    ],
+    "repeatCreated": 52,
+    "repeatScopes": 52
+  },
+  "summaryPagination": {
+    "first": 20,
+    "next": 5,
+    "unique": 25,
+    "detailedBookingLabelsReturned": 0
+  }
+}

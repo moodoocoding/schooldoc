@@ -76,6 +76,29 @@ const decodeFieldValues = async (row: { field_values_ciphertext: string | null; 
   return (row.field_values ?? {}) as RegistryFieldValues;
 };
 
+const listFiles = async (prefix: string): Promise<string[]> => {
+  const paths: string[] = [];
+  for (let offset=0;;offset+=1000) {
+    const {data,error}=await db.storage.from('registry-signatures').list(prefix,{limit:1000,offset});
+    if (error) throw error;
+    for (const file of data ?? []) {
+      const path=`${prefix}/${file.name}`;
+      if (file.id) paths.push(path); else paths.push(...await listFiles(path));
+    }
+    if ((data ?? []).length<1000) break;
+  }
+  return paths;
+};
+const removeFiles = async (paths: string[], prefix: string) => {
+  for (let i=0;i<paths.length;i+=100) {
+    const {error}=await db.storage.from('registry-signatures').remove(paths.slice(i,i+100));
+    if (error) throw error;
+  }
+  const remaining=new Set(await listFiles(prefix));
+  if (paths.some((p)=>remaining.has(p))) throw new HttpError(503,'서명 파일 삭제를 확인하지 못했습니다. 다시 시도해 주세요.');
+};
+
+let nextRatePruneAt = 0;
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (request.method !== 'POST') return json(405, { error: '허용되지 않은 요청입니다.' });
@@ -88,6 +111,20 @@ Deno.serve(async (request) => {
       throw new HttpError(503, '등록부 암호화 키가 설정되지 않아 참석자 명단을 쓸 수 없습니다.');
     }
 
+    if (action === 'snapshot') {
+      const id = typeof body.registryId === 'string' ? body.registryId : '';
+      if (!uuidPattern.test(id)) throw new HttpError(400, '등록부를 확인해 주세요.');
+      const { data, error } = await db.rpc('registry_owner_snapshot', { p_registry_id: id, p_owner_id: userId });
+      if (error) throw error;
+      if (!data) throw new HttpError(404, '등록부를 찾을 수 없습니다.');
+      const participants = await Promise.all(data.participants.map(async (row: { field_values_ciphertext: string | null; field_values: unknown }) => ({ ...row, field_values: await decodeFieldValues(row), field_values_ciphertext: undefined })));
+      if (Date.now() >= nextRatePruneAt) {
+        nextRatePruneAt = Date.now() + 10 * 60 * 1000;
+        const { error: pruneError } = await db.rpc('prune_registry_rate_limits');
+        if (pruneError) console.warn('registry rate limit maintenance failed');
+      }
+      return json(200, { ...data, participants });
+    }
     if (action === 'read') {
       const requested = Array.isArray(body.registryIds)
         ? body.registryIds.filter((value): value is string => typeof value === 'string' && uuidPattern.test(value))
@@ -117,6 +154,61 @@ Deno.serve(async (request) => {
     const registryId = typeof body.registryId === 'string' ? body.registryId : '';
     await requireOwnedRegistry(registryId, userId);
 
+    if (action === 'previewPurge' || action === 'purge' || action === 'cleanupUploads') {
+      const {data:snapshot,error}=await db.rpc('registry_owner_snapshot',{p_registry_id:registryId,p_owner_id:userId});
+      if (error) throw error;
+      if (!snapshot) throw new HttpError(404,'등록부를 찾을 수 없습니다.');
+      const files=await listFiles(registryId);
+      const counts={recordCount:snapshot.participants.length,signatureCount:snapshot.signatures.length,fileCount:files.length};
+      if (action === 'previewPurge') {
+        if (snapshot.registry.status !== 'closed') throw new HttpError(409,'수합을 종료한 뒤 파기해 주세요.');
+        return json(200,counts);
+      }
+      if (action === 'cleanupUploads') {
+        // 응답 유실 등으로 남은 파일만 청소한다. 진행 중 업로드와 경합하지 않게 24시간 유예한다.
+        const referenced=new Set(snapshot.signatures.map((s:{storage_path:string})=>s.storage_path));
+        const candidates: string[]=[];
+        const unreferenced = files.filter((p)=>!referenced.has(p));
+        for (const path of unreferenced) {
+          const {data,error}=await db.storage.from('registry-signatures').info(path);
+          if (error) throw error;
+          if (data && Date.parse(data.createdAt)<Date.now()-24*60*60*1000) candidates.push(path);
+        }
+        await removeFiles(candidates,registryId);
+        if (candidates.length === unreferenced.length) {
+          const {error:clearError}=await db.from('registry_cleanup_attempts').delete().eq('registry_id',registryId).eq('purpose','upload');
+          if (clearError) throw clearError;
+        }
+        return json(200,{removedCount:candidates.length});
+      }
+      if (body.confirmed!==true || counts.recordCount!==body.recordCount || counts.signatureCount!==body.signatureCount || counts.fileCount!==body.fileCount) throw new HttpError(409,'파기 대상과 수량을 다시 확인하고 동의해 주세요.');
+      const {data:prepared,error:prepareError}=await db.rpc('registry_prepare_purge',{p_registry_id:registryId,p_owner_id:userId,p_records:counts.recordCount,p_signatures:counts.signatureCount,p_files:counts.fileCount});
+      if (prepareError) throw prepareError;
+      if (prepared?.error) throw new HttpError(prepared.status,prepared.error);
+      try {
+        await removeFiles(files,registryId);
+        if ((await listFiles(registryId)).length>0) throw new HttpError(503,'남은 서명 파일이 있습니다. 파기를 다시 시도해 주세요.');
+        const {data:finished,error:finishError}=await db.rpc('registry_finish_purge',{p_registry_id:registryId,p_owner_id:userId,p_records:counts.recordCount,p_signatures:counts.signatureCount});
+        if (finishError) throw finishError;
+        if (finished?.error) throw new HttpError(finished.status,finished.error);
+      } catch (error) {
+        const {error:recordError}=await db.from('registry_cleanup_attempts').insert({owner_id:userId,registry_id:registryId,purpose:'purge',file_count:counts.fileCount});
+        if (recordError) throw recordError;
+        throw error;
+      }
+      return json(200,{ok:true});
+    }
+
+    if (action === 'verificationCode') {
+      const participantId = typeof body.participantId === 'string' ? body.participantId : '';
+      if (!uuidPattern.test(participantId)) throw new HttpError(400, '참석자를 확인해 주세요.');
+      const bytes = crypto.getRandomValues(new Uint32Array(1));
+      const code = String(100000 + bytes[0] % 900000);
+      const { data, error } = await db.rpc('registry_set_verification_code', { p_registry_id: registryId, p_participant_id: participantId, p_owner_id: userId, p_code: code });
+      if (error) throw error;
+      if (!data) throw new HttpError(404, '참석자를 찾을 수 없습니다.');
+      return json(200, { code });
+    }
     if (action === 'createMany') {
       const entries = Array.isArray(body.participants) ? body.participants : [];
       if (entries.length > MAX_PARTICIPANTS) throw new HttpError(422, `참석자는 한 번에 ${MAX_PARTICIPANTS}명까지 저장할 수 있습니다.`);
@@ -145,22 +237,13 @@ Deno.serve(async (request) => {
       const name = typeof body.name === 'string' ? body.name.trim() : '';
       if (!name || name.length > 100) throw new HttpError(422, '참석자 이름을 확인해 주세요.');
 
-      // 연번은 현재 최대값 다음으로 정한다. 현장 등록과 같은 규칙이다.
-      const { data: lastRow, error: lastError } = await db.from('registry_participants')
-        .select('row_number').eq('registry_id', registryId)
-        .order('row_number', { ascending: false }).limit(1).maybeSingle();
-      if (lastError) throw lastError;
-
-      const { data, error } = await db.from('registry_participants').insert({
-        registry_id: registryId,
-        row_number: ((lastRow?.row_number as number | undefined) ?? 0) + 1,
-        name,
-        field_values: null,
-        field_values_ciphertext: await registryCrypto.encryptPayload(readFieldValues(body.values)),
-      }).select('id, row_number').single();
+      const ciphertext = await registryCrypto.encryptPayload(readFieldValues(body.values));
+      const { data, error } = await db.rpc('registry_owner_add_participant', {
+        p_registry_id: registryId, p_owner_id: userId, p_name: name, p_ciphertext: ciphertext,
+      });
       if (error) throw error;
-
-      return json(200, { participant: { id: data.id, rowNumber: data.row_number, name } });
+      if (data?.error) throw new HttpError(data.status, data.error);
+      return json(200, data);
     }
 
     throw new HttpError(400, '지원하지 않는 요청입니다.');
@@ -169,10 +252,10 @@ Deno.serve(async (request) => {
     // 함수만 배포하고 마이그레이션을 적용하지 않으면 여기로 온다. 실제로 겪은 일이라,
     // 원인을 모르고 헤매지 않도록 무엇이 빠졌는지 그대로 알린다.
     if ((error as { code?: string }).code === '42703') {
-      console.error('registry-participants: migration not applied', error);
-      return json(503, { error: '등록부 마이그레이션이 아직 적용되지 않았습니다. 202608200001을 적용해 주세요.' });
+      console.error('registry-participants: migration not applied');
+      return json(503, { error: '등록부 마이그레이션이 아직 적용되지 않았습니다. 202610010200까지 적용해 주세요.' });
     }
-    console.error('registry-participants failed', error);
+    console.error('registry-participants failed');
     return json(500, { error: '참석자 명단을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.' });
   }
 });

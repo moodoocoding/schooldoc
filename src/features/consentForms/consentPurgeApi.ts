@@ -10,6 +10,6 @@ export interface ConsentPurgeResult {
   failed: Array<{ id: string; error: string }>;
 }
 
-export const purgeConsentForms = async (formIds: string[]) => (
-  invokeConsentAdmin<ConsentPurgeResult>({ action: 'purge', formIds })
+export const purgeConsentForms = async (formIds: string[], expectedCounts: Record<string,number>) => (
+  invokeConsentAdmin<ConsentPurgeResult>({ action: 'purge', formIds, expectedCounts })
 );

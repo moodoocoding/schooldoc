@@ -203,6 +203,11 @@ test('실수로 만든 수합을 확인창을 거쳐 삭제한다', async ({ pag
   await expect(page.getByRole('heading', { name: '가정통신문 수합' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '잘못 만든 수합' })).toBeVisible();
 
+  await expect(page.getByRole('button', { name: '잘못 만든 수합 삭제' })).toBeDisabled();
+  await page.getByRole('button', { name: '관리·공유' }).click();
+  await page.getByRole('button', { name: '수합 종료', exact: true }).click();
+  await page.getByRole('button', { name: '목록으로' }).click();
+
   // 취소하면 목록에 그대로 남는다.
   await page.getByRole('button', { name: '잘못 만든 수합 삭제' }).click();
   const confirmDialog = page.getByRole('alertdialog');
@@ -227,7 +232,7 @@ test('원본이 준비 중이면 오류 대신 준비 화면을 띄우고 준비
   // 데모 모드가 아닌 원격 경로를 흉내 낸다.
   await page.route('**/functions/v1/consent-forms-public', async (route) => {
     const body = JSON.parse(route.request().postData() ?? '{}');
-    if (body.action === 'metadata') {
+    if (body.action === 'metadata' || body.action === 'open') {
       return route.fulfill({
         status: 200, contentType: 'application/json',
         body: JSON.stringify({ form: { title: '현장체험학습 동의서', description: '', passwordRequired: false, status: 'open', deadline: '' } }),
@@ -266,7 +271,7 @@ test('원본이 늦게 도착해도 오류 화면이 스치지 않는다', async
   }));
   await page.route('**/functions/v1/consent-forms-public', async (route) => {
     const body = JSON.parse(route.request().postData() ?? '{}');
-    if (body.action === 'metadata') {
+    if (body.action === 'metadata' || body.action === 'open') {
       return route.fulfill({
         status: 200, contentType: 'application/json',
         body: JSON.stringify({ form: { title: '느린 동의서', description: '', passwordRequired: false, status: 'open', deadline: '' } }),
@@ -404,7 +409,7 @@ test('개인 링크로 들어오면 누구의 문서인지 알려주고 제출�
   await page.route('**/functions/v1/consent-forms-public', async (route) => {
     const body = JSON.parse(route.request().postData() ?? '{}');
     const base = { title: '현장체험학습 동의서', description: '', passwordRequired: false, status: 'open', deadline: '' };
-    if (body.action === 'metadata') {
+    if (body.action === 'metadata' || body.action === 'open') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ form: { ...base, recipientHint: '김○○', recipientSubmitted: false } }) });
     }
     if (body.action === 'document') {
@@ -548,8 +553,16 @@ test('여러 수합을 선택해 한 번에 지운다', async ({ page }) => {
     await page.getByRole('button', { name: '다음: 공유 설정' }).click();
     await page.getByRole('button', { name: '수합 만들기' }).click();
     await expect(page.getByRole('heading', { name: title })).toBeVisible();
+    if (title !== '남겨둘 수합') {
+      await page.getByRole('heading', { name: title }).locator('..').getByRole('button', { name: '관리·공유' }).click();
+      await expect(page.getByRole('button', { name: '수합 삭제' })).toBeDisabled();
+      await page.getByRole('button', { name: '수합 종료', exact: true }).click();
+      await expect(page.getByRole('button', { name: '수합 재개', exact: true })).toBeVisible();
+      await page.getByRole('button', { name: '목록으로' }).click();
+    }
   }
 
+  await expect(page.getByLabel('남겨둘 수합 선택')).toBeDisabled();
   await page.getByLabel('정리 대상 하나 선택').check();
   await page.getByLabel('정리 대상 둘 선택').check();
   await expect(page.getByText('2개 선택')).toBeVisible();
@@ -612,7 +625,10 @@ test('처리 중인 버튼은 다시 눌리지 않는다', async ({ page }) => {
   await page.getByRole('button', { name: 'QR 이미지 저장' }).click();
   await qrDownload;
 
-  // 삭제 확인창의 확정 버튼은 여는 버튼과 이름이 다르다.
+  // 진행 중에는 삭제할 수 없고, 종료 후 확인창의 확정 버튼은 이름이 다르다.
+  await expect(page.getByRole('button', { name: '수합 삭제' })).toBeDisabled();
+  await page.getByRole('button', { name: '수합 종료', exact: true }).click();
+  await expect(page.getByRole('button', { name: '수합 재개', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '수합 삭제' }).click();
   const dialog = page.getByRole('alertdialog');
   await expect(dialog.getByRole('button', { name: '영구 삭제' })).toBeVisible();

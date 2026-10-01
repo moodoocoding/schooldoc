@@ -1,0 +1,12 @@
+
+> 260725_individual_data@0.0.0 test
+> vitest run
+
+
+ RUN  v4.1.11 C:/Users/panth/.codex/worktrees/review-special-rooms-20261001/260812_schooldoc
+
+
+ Test Files  58 passed (58)
+      Tests  475 passed (475)
+   Start at  01:08:20
+   Duration  2.84s (transform 6.66s, setup 0ms, import 12.06s, tests 1.15s, environment 7ms)

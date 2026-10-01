@@ -1,0 +1,12 @@
+
+> 260725_individual_data@0.0.0 test
+> vitest run
+
+
+ RUN  v4.1.11 C:/Users/panth/.codex/worktrees/review-registry-20261001/260812_schooldoc
+
+
+ Test Files  59 passed (59)
+      Tests  479 passed (479)
+   Start at  23:47:41
+   Duration  4.13s (transform 10.45s, setup 0ms, import 13.80s, tests 1.45s, environment 8ms)

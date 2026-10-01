@@ -1,0 +1,280 @@
+{
+  "mode": "real installed Chrome, local demo, synthetic fixtures only",
+  "checks": [
+    {
+      "name": "create, 9 periods, Saturday, three rooms",
+      "manage": "http://127.0.0.1:4184/tools/special-rooms/827093ad-7b68-4921-a2c8-28528dbddb29",
+      "link": "http://127.0.0.1:4184/s/rooms/aa9e7504-b102-4834-872a-11c234838422",
+      "rows": 9
+    },
+    {
+      "name": "QR PNG download",
+      "file": "가상 새빛학교 2학기 특별실_예약QR.png",
+      "signature": "89504e470d0a1a0a",
+      "bytes": 36732
+    },
+    {
+      "name": "link copy visual feedback",
+      "copied": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucide-check h-4 w-4\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"></path></svg>"
+    },
+    {
+      "name": "wrong public password",
+      "alert": "비밀번호가 맞지 않습니다."
+    },
+    {
+      "name": "existing cell confirmation",
+      "text": "목 10/1 · 1교시\n\n과학실\n\n이미 6학년1반 실험이 잡혀 있습니다. 바꿀까요?\n\n취소\n바꾸기",
+      "focus": "취소"
+    },
+    {
+      "name": "save/reload/modify/delete",
+      "passed": true
+    },
+    {
+      "name": "axe public",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          "nodes": [
+            {
+              "html": "<p class=\"mt-2 max-w-3xl text-sm leading-6 text-[var(--sr-text-muted)]\">가상 검토 자료입니다. 사용 후 정리해 주세요.</p>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.44 (foreground color: #67736e, background color: #f4f3ef, font size: 10.5pt (14px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "html": "<p aria-live=\"polite\" aria-atomic=\"true\" class=\"inline-flex items-center gap-1.5 text-[11px] font-semibold text-[var(--sr-text-subtle)] sm:text-xs\">",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.78 (foreground color: #7b8580, background color: #fffefc, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "html": "<th scope=\"col\" class=\"h-[56px] border-b border-[var(--sr-border-strong)] bg-[var(--sr-surface-muted)] px-1 text-[10px] font-bold text-[var(--sr-text-subtle)] sm:h-[68px] sm:text-[11px]\">교시</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.31 (foreground color: #7b8580, background color: #f0efea, font size: 8.3pt (11px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "html": "<span class=\"text-[10px] font-semibold sm:text-xs text-[var(--sr-text-subtle)]\">9/28</span>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.31 (foreground color: #7b8580, background color: #f0efea, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "html": "<span class=\"text-[10px] font-semibold sm:text-xs text-[var(--sr-text-subtle)]\">9/29</span>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.31 (foreground color: #7b8580, background color: #f0efea, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "html": "<span class=\"text-[10px] font-semibold sm:text-xs text-[var(--sr-text-subtle)]\">9/30</span>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.31 (foreground color: #7b8580, background color: #f0efea, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "html": "<span class=\"text-[10px] font-semibold sm:text-xs text-[var(--sr-text-subtle)]\">10/1</span>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.45 (foreground color: #7b8580, background color: #fff1eb, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "html": "<span class=\"mx-auto mt-1 block w-fit rounded bg-[var(--sr-today)] px-1.5 py-0.5 text-[9px] font-bold text-white sm:text-[10px]\">오늘</span>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.89 (foreground color: #ffffff, background color: #c7654c, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "html": "<span class=\"text-[10px] font-semibold sm:text-xs text-[var(--sr-text-subtle)]\">10/3</span>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.31 (foreground color: #7b8580, background color: #f0efea, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "html": "<th scope=\"row\" class=\"h-[48px] bg-[var(--sr-surface-muted)] px-1 text-[10px] font-bold text-[var(--sr-text-subtle)] sm:h-[64px] sm:text-xs lg:h-[68px] border-b border-b-[var(--sr-grid)] \">1교시</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.31 (foreground color: #7b8580, background color: #f0efea, font size: 9.0pt (12px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "html": "<th scope=\"row\" class=\"h-[48px] bg-[var(--sr-surface-muted)] px-1 text-[10px] font-bold text-[var(--sr-text-subtle)] sm:h-[64px] sm:text-xs lg:h-[68px] border-b border-b-[var(--sr-grid)] \">2교시</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.31 (foreground color: #7b8580, background color: #f0efea, font size: 9.0pt (12px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "html": "<th scope=\"row\" class=\"h-[48px] bg-[var(--sr-surface-muted)] px-1 text-[10px] font-bold text-[var(--sr-text-subtle)] sm:h-[64px] sm:text-xs lg:h-[68px] border-b border-b-[var(--sr-grid)] \">3교시</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.31 (foreground color: #7b8580, background color: #f0efea, font size: 9.0pt (12px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "html": "<th scope=\"row\" class=\"h-[48px] bg-[var(--sr-surface-muted)] px-1 text-[10px] font-bold text-[var(--sr-text-subtle)] sm:h-[64px] sm:text-xs lg:h-[68px] border-b-2 border-b-[var(--sr-border-strong)] \">4교시</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.31 (foreground color: #7b8580, background color: #f0efea, font size: 9.0pt (12px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "html": "<th scope=\"row\" class=\"h-[48px] bg-[var(--sr-surface-muted)] px-1 text-[10px] font-bold text-[var(--sr-text-subtle)] sm:h-[64px] sm:text-xs lg:h-[68px] border-b border-b-[var(--sr-grid)] \">5교시</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.31 (foreground color: #7b8580, background color: #f0efea, font size: 9.0pt (12px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "html": "<th scope=\"row\" class=\"h-[48px] bg-[var(--sr-surface-muted)] px-1 text-[10px] font-bold text-[var(--sr-text-subtle)] sm:h-[64px] sm:text-xs lg:h-[68px] border-b border-b-[var(--sr-grid)] \">6교시</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.31 (foreground color: #7b8580, background color: #f0efea, font size: 9.0pt (12px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "html": "<th scope=\"row\" class=\"h-[48px] bg-[var(--sr-surface-muted)] px-1 text-[10px] font-bold text-[var(--sr-text-subtle)] sm:h-[64px] sm:text-xs lg:h-[68px] border-b border-b-[var(--sr-grid)] \">7교시</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.31 (foreground color: #7b8580, background color: #f0efea, font size: 9.0pt (12px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "html": "<th scope=\"row\" class=\"h-[48px] bg-[var(--sr-surface-muted)] px-1 text-[10px] font-bold text-[var(--sr-text-subtle)] sm:h-[64px] sm:text-xs lg:h-[68px] border-b border-b-[var(--sr-grid)] \">8교시</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.31 (foreground color: #7b8580, background color: #f0efea, font size: 9.0pt (12px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "html": "<th scope=\"row\" class=\"h-[48px] bg-[var(--sr-surface-muted)] px-1 text-[10px] font-bold text-[var(--sr-text-subtle)] sm:h-[64px] sm:text-xs lg:h-[68px] border-b border-b-[var(--sr-grid)] border-b-0\">9교시</th>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.31 (foreground color: #7b8580, background color: #f0efea, font size: 9.0pt (12px), font weight: bold). Expected contrast ratio of 4.5:1"
+            },
+            {
+              "html": "<p class=\"border-t border-[var(--sr-grid)] bg-[var(--sr-surface-muted)] px-3 py-2.5 text-[11px] leading-5 text-[var(--sr-text-muted)] sm:px-4 sm:text-xs\"><span class=\"font-semibold text-[var(--sr-text)]\">빈 칸을 눌러 예약하세요.</span> 누구나 예약을 수정할 수 있으니 기존 내용을 확인해 주세요.</p>",
+              "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.28 (foreground color: #67736e, background color: #f0efea, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "axe teacher",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 16
+        }
+      ]
+    },
+    {
+      "name": "closure blocks and retains",
+      "disabled": true,
+      "stored": 24
+    },
+    {
+      "name": "shape reduced",
+      "teacherRows": 4,
+      "publicRows": 4
+    },
+    {
+      "name": "save failure recovery",
+      "alert": "가상 저장 실패",
+      "draftAfterReopen": ""
+    },
+    {
+      "name": "live concurrent change in open draft",
+      "draft": "다른 교사 예약",
+      "confirmationShown": 0
+    },
+    {
+      "name": "concurrent overwrite",
+      "warningRequired": false,
+      "stored": true
+    },
+    {
+      "name": "past week write",
+      "stored": 1
+    },
+    {
+      "name": "repeat results",
+      "text": "3번 잡았습니다. 휴업일 1번은 건너뛰었습니다."
+    },
+    {
+      "name": "mobile shape",
+      "viewport": {
+        "w": 390,
+        "h": 844
+      },
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "bodyHeight": 924,
+      "dialog": null
+    },
+    {
+      "name": "keyboard dialog",
+      "focusName": "10/1 9교시 사용 내용"
+    },
+    {
+      "name": "escape focus return",
+      "focused": true
+    },
+    {
+      "name": "small mobile repeat dialog",
+      "viewport": {
+        "w": 390,
+        "h": 568
+      },
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "bodyHeight": 924,
+      "dialog": {
+        "top": 90.5,
+        "bottom": 568,
+        "height": 477.5,
+        "overflow": "visible"
+      }
+    },
+    {
+      "name": "CSS200 repeat dialog",
+      "viewport": {
+        "w": 1366,
+        "h": 900
+      },
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "bodyHeight": 1082,
+      "dialog": {
+        "top": -27.5,
+        "bottom": 927.5,
+        "height": 955,
+        "overflow": "visible"
+      }
+    },
+    {
+      "name": "teacher CSS200",
+      "viewport": {
+        "w": 1366,
+        "h": 900
+      },
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "bodyHeight": 1711,
+      "dialog": null
+    },
+    {
+      "name": "print exports",
+      "public": "public-a4.pdf",
+      "teacher": "teacher-a4.pdf",
+      "explicitPrintControls": 0
+    },
+    {
+      "name": "closed cells",
+      "enabled": 0
+    },
+    {
+      "name": "demo closed repeat divergence",
+      "notice": [
+        "예약이 종료되어 보기만 할 수 있습니다",
+        "2번 잡았습니다."
+      ]
+    },
+    {
+      "name": "teacher status failure UI",
+      "alerts": [],
+      "errors": [
+        "가상 상태 저장 실패"
+      ]
+    },
+    {
+      "name": "optional school search failure",
+      "alert": "Supabase 연결 정보가 없습니다."
+    },
+    {
+      "name": "delete confirm",
+      "text": "“가상 새빛학교 2학기 특별실” 예약표를 지울까요?\n\n특별실 3곳과 예약 31건이 함께 사라집니다. 지운 뒤에는 되돌릴 수 없고 배부한 링크도 열리지 않습니다.\n\n취소\n영구 삭제"
+    },
+    {
+      "name": "delete canceled retains",
+      "cards": 1
+    },
+    {
+      "name": "missing public board",
+      "text": "예약표를 찾을 수 없습니다.",
+      "buttons": 0
+    }
+  ],
+  "errors": [
+    "가상 상태 저장 실패"
+  ],
+  "externalRequests": [
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"
+  ]
+}
