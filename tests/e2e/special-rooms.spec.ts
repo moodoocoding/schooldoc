@@ -115,7 +115,7 @@ test('주를 넘기면 다른 주가 나오고 이번 주로 돌아온다', asyn
   await expect(page.getByRole('columnheader', { name: /월/ })).toHaveText(thisWeek!);
 });
 
-test('예약을 종료하면 보기만 되고 칸을 누를 수 없다', async ({ page }) => {
+test('예약을 종료하면 상세는 볼 수 있고 수정은 할 수 없다', async ({ page }) => {
   const link = await createBoard(page, '종료 확인');
   await page.goto(link);
   await page.getByRole('button', { name: /교시 예약하기$/ }).first().click();
@@ -128,7 +128,10 @@ test('예약을 종료하면 보기만 되고 칸을 누를 수 없다', async (
   await page.goto(link);
 
   await expect(page.getByText('예약이 종료되어 보기만 할 수 있습니다')).toBeVisible();
-  await expect(page.getByRole('button', { name: /6-1반 고치기$/ })).toBeDisabled();
+  await page.getByRole('button', { name: /6-1반 상세 보기$/ }).click();
+  await expect(page.getByRole('dialog')).toContainText('6-1반');
+  await expect(page.getByRole('dialog').getByRole('textbox')).toHaveCount(0);
+  await expect(page.getByRole('dialog').getByRole('button', {name:'저장'})).toHaveCount(0);
 });
 
 test('예약 링크 QR을 이미지로 저장한다', async ({ page }) => {

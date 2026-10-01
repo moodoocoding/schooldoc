@@ -280,3 +280,41 @@ ln -s ~/Downloads/vibecoding/schooldoc-docs <새_워크트리>/docs
 3. 실수했을 때 원인을 이해하고 복구할 수 있는가?
 4. 개인정보가 필요한 사람과 화면에만 보이는가?
 5. 모바일, 데스크톱, A4/PDF에서 정보가 잘리거나 겹치지 않는가?
+
+
+## 특별실 예약: 범위 조회·원자 저장·알림
+
+특별실은 요약 목록(20개/페이지), 선택 실/주 스냅샷(월~토 최대 54예약), 관리 영향 집계를 분리한다.
+새 공개 저장 RPC는 기대 예약 ID/revision 및 operationId를 요구한다. 저장 응답으로 셀을 반영하며
+범위 버전 누락 때만 재조회한다. 구버전 읽기 호환 경로는 더 넓은 데이터를 반환할 수 있으므로
+새 프런트엔드 반영 뒤 사용량을 확인해 제거한다. 구버전 무조건 덮어쓰기 저장은 허용하지 않는다.
+
+알림은 `sr:<board>:<accessEpoch>:meta`와 선택 실/주 private 채널을 사용한다. 공개 알림 JWT의
+role은 `special_room_viewer`이고 수명은 15분이다. 직접 예약 조회·쓰기·메시지 발행 권한을 주지 않는다.
+`SPECIAL_ROOMS_NOTIFICATION_JWK`(ES256 private JWK)와 `SPECIAL_ROOMS_NOTIFICATION_KID`는
+Edge secrets에만 둔다. VITE 변수에 넣지 않고 기존 Supabase 서명키·암호화 키를 덮어쓰지 않는다.
+키가 없으면 알림 연결 없이 수동/복귀/보이는 탭의 5분 조건부 확인으로 조회·저장은 작동한다.
+
+새 키는 대상 Supabase가 실제로 신뢰하는 서명키 상태와 KID를 확인해야 한다. 키를 import한 것만으로
+대기 키가 즉시 허용된다고 가정하지 않는다. 실제 시험 프로젝트에서 전용 role의 private 수신,
+타 예약표/과거 권한 세대 거절, 비밀번호 변경·JWT 만료·재연결을 확인한 뒤 알림을 활성화한다.
+[JWT 문서](https://supabase.com/docs/guides/auth/jwts),
+[서명키 상태](https://supabase.com/docs/guides/auth/signing-keys),
+[Realtime 권한](https://supabase.com/docs/guides/realtime/authorization)을 함께 확인한다.
+
+최초 구독 성공 뒤 조건부 확인을 한 번 추가해 snapshot/구독 사이 유실을 복구한다.
+교사 머리글의 모든 실 주간 수량은 선택 실 변경만 즉시 반영하며 다른 실 변경은 수동/복귀/5분
+확인 때 반영한다. 정상 셀 알림은 조회하지 않는다. 숨긴 탭의 조회를 멈추고 JWT는 메모리에 보관한다.
+
+로컬 실제 SQL/Chrome 검사는 `tests/server/specialRoomsLocalServer.ts`를 Deno로 실행하고,
+비데모 Vite의 `VITE_SUPABASE_URL`을 로컬 서버로 지정한다. `SPECIAL_ROOMS_SQL_URL`과
+`PLAYWRIGHT_TEST_PORT`를 명시해 `tests/e2e/special-rooms-server-flow.spec.ts`를 실행한다.
+이 서버는 가상 자료 전용 PGlite이며 crypt/Realtime adapter를 사용한다. 실제 Supabase Auth,
+WebSocket, 다중 PostgreSQL 연결 잠금, 디스크 I/O/WAL 시험으로 보고하지 않는다.
+서버의 control/reset 경로는 제품 함수에 포함하지 않는다.
+
+배포 요청이 있을 때만 원격 이력과 기존 Realtime 정책을 확인하고 필요한 secrets → 새 마이그레이션
+→ `special-rooms-public`·`special-rooms-admin` 지정 배포 → 프런트엔드 순서로 호환성을 확인한다.
+읽기 범위가 줄어도 상태/알림 쓰기가 추가되므로 실제 DB 블록·WAL·요청 제한 테이블의 누적과
+Realtime egress를 함께 측정한다. [구현·검증 기록](design/feature-reviews/2026-10-01-special-rooms/implementation.md)에
+로컬 수치와 원격 미검증 항목을 구분해 기록한다.

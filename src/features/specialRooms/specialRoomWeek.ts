@@ -1,4 +1,15 @@
-import { ALL_PERIODS, DEFAULT_PERIOD_COUNT, type Period, type SchoolDay, type SpecialRoomBooking } from './types';
+import {
+  koreanDate,
+  datePlus,
+  weekStart,
+} from '../../../supabase/functions/_shared/specialRooms';
+import {
+  ALL_PERIODS,
+  DEFAULT_PERIOD_COUNT,
+  type Period,
+  type SchoolDay,
+  type SpecialRoomBooking,
+} from './types';
 
 /**
  * 주간 표의 날짜 계산.
@@ -16,9 +27,8 @@ import { ALL_PERIODS, DEFAULT_PERIOD_COUNT, type Period, type SchoolDay, type Sp
 export const ALL_WEEKDAYS = ['월', '화', '수', '목', '금', '토'] as const;
 
 /** 토요일을 쓰는 예약표면 여섯 요일, 아니면 다섯 요일. */
-export const weekdaysFor = (includeSaturday: boolean | null | undefined) => (
-  ALL_WEEKDAYS.slice(0, includeSaturday === true ? 6 : 5)
-);
+export const weekdaysFor = (includeSaturday: boolean | null | undefined) =>
+  ALL_WEEKDAYS.slice(0, includeSaturday === true ? 6 : 5);
 
 /**
  * 앞에서부터 쓰는 교시만 고른다.
@@ -32,16 +42,14 @@ export const periodsFor = (periodCount: number | null | undefined) => {
   // `Number(null)`은 0이라 유한값으로 통과한다. 타입까지 봐야 값이 없는 경우를 가른다.
   const given = typeof periodCount === 'number' && Number.isFinite(periodCount);
   const wanted = given ? Math.trunc(periodCount) : DEFAULT_PERIOD_COUNT;
-  return ALL_PERIODS.slice(0, Math.min(Math.max(wanted, 1), ALL_PERIODS.length));
+  return ALL_PERIODS.slice(
+    0,
+    Math.min(Math.max(wanted, 1), ALL_PERIODS.length),
+  );
 };
 
 /** 로컬 기준 YYYY-MM-DD. toISOString()은 UTC라 저녁에 하루가 밀린다. */
-export const toDateKey = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+export const toDateKey = koreanDate;
 
 export const parseDateKey = (key: string) => {
   const [year, month, day] = key.split('-').map(Number);
@@ -49,31 +57,23 @@ export const parseDateKey = (key: string) => {
 };
 
 /** 그 날짜가 속한 주의 월요일. 일요일은 지난 주로 보내지 않고 다음 월요일로 붙인다. */
-export const mondayOf = (key: string) => {
-  const date = parseDateKey(key);
-  const weekday = date.getDay(); // 0=일 … 6=토
-  const offset = weekday === 0 ? 1 : 1 - weekday;
-  date.setDate(date.getDate() + offset);
-  return toDateKey(date);
-};
+export const mondayOf = weekStart;
 
-export const addDays = (key: string, days: number) => {
-  const date = parseDateKey(key);
-  date.setDate(date.getDate() + days);
-  return toDateKey(date);
-};
+export const addDays = datePlus;
 
-export const shiftWeek = (mondayKey: string, weeks: number) => addDays(mondayKey, weeks * 7);
+export const shiftWeek = (mondayKey: string, weeks: number) =>
+  addDays(mondayKey, weeks * 7);
 
 /** 월~금 다섯 날. 주말은 학교 수업이 없어 표에 넣지 않는다. */
-export const weekDates = (mondayKey: string, includeSaturday = false) => (
-  weekdaysFor(includeSaturday).map((_, index) => addDays(mondayKey, index))
-);
+export const weekDates = (mondayKey: string, includeSaturday = false) =>
+  weekdaysFor(includeSaturday).map((_, index) => addDays(mondayKey, index));
 
-export const formatWeekRange = (mondayKey: string) => {
+export const formatWeekRange = (mondayKey: string, includeSaturday = false) => {
   const start = parseDateKey(mondayKey);
-  const end = parseDateKey(addDays(mondayKey, 4));
+  const end = parseDateKey(addDays(mondayKey, includeSaturday ? 5 : 4));
   const month = (date: Date) => `${date.getMonth() + 1}월 ${date.getDate()}일`;
+  if (start.getFullYear() !== end.getFullYear())
+    return `${start.getFullYear()}년 ${month(start)} ~ ${end.getFullYear()}년 ${month(end)}`;
   return start.getMonth() === end.getMonth()
     ? `${start.getFullYear()}년 ${start.getMonth() + 1}월 ${start.getDate()}일 ~ ${end.getDate()}일`
     : `${start.getFullYear()}년 ${month(start)} ~ ${month(end)}`;
@@ -87,7 +87,10 @@ export const formatDayLabel = (key: string) => {
 /** 예약을 `날짜|교시`로 꺼내 쓸 수 있게 정리한다. 한 칸을 그릴 때마다 훑지 않기 위해서다. */
 export const bookingKey = (date: string, period: Period) => `${date}|${period}`;
 
-export const indexBookings = (bookings: SpecialRoomBooking[], roomId: string) => {
+export const indexBookings = (
+  bookings: SpecialRoomBooking[],
+  roomId: string,
+) => {
   const map = new Map<string, SpecialRoomBooking>();
   bookings.forEach((booking) => {
     if (booking.roomId !== roomId) return;
@@ -118,9 +121,8 @@ export const indexSchoolDays = (schoolDays: SchoolDay[]) => {
   return map;
 };
 
-export const isPeriod = (value: number): value is Period => (
-  ALL_PERIODS.includes(value as Period)
-);
+export const isPeriod = (value: number): value is Period =>
+  ALL_PERIODS.includes(value as Period);
 
 /**
  * 칸에 적어 넣을 수 있는 길이. 표에서 두 줄로 읽히는 만큼이다.
@@ -133,4 +135,5 @@ export const isPeriod = (value: number): value is Period => (
 export const BOOKING_LABEL_MAX = 24;
 
 /** 칸에 적는 값 정리. 앞뒤 공백과 겹친 공백을 없앤다. */
-export const cleanBookingLabel = (value: string) => value.trim().replace(/\s+/g, ' ').slice(0, 40);
+export const cleanBookingLabel = (value: string) =>
+  value.trim().replace(/\s+/g, ' ').slice(0, 40);

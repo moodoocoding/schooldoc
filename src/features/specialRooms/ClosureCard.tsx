@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, CalendarOff, Plus, Trash2 } from 'lucide-react';
 import {
   CLOSURE_ALL_ROOMS,
@@ -15,6 +15,10 @@ interface ClosureCardProps {
   board: SpecialRoomBoard;
   onAdd: (draft: ClosureDraft) => Promise<void>;
   onRemove: (closureId: string) => Promise<void>;
+  onImpact?: (draft: ClosureDraft) => Promise<number>;
+  onList?: (
+    offset: number,
+  ) => Promise<{ items: SpecialRoomBoard['closures']; count: number }>;
 }
 
 /**
@@ -27,22 +31,136 @@ interface ClosureCardProps {
  * 때문이고, 알리는 이유는 담당자가 그 사람들에게 따로 연락해야 하기 때문이다. 이 앱에는
  * 예약한 사람에게 알릴 수단이 없다.
  */
-export function ClosureCard({ board, onAdd, onRemove }: ClosureCardProps) {
+export function ClosureCard({
+  board,
+  onAdd,
+  onRemove,
+  onImpact,
+  onList,
+}: ClosureCardProps) {
   const [draft, setDraft] = useState<ClosureDraft>({
-    roomId: CLOSURE_ALL_ROOMS, startDate: '', endDate: '', reason: '',
+    roomId: CLOSURE_ALL_ROOMS,
+    startDate: '',
+    endDate: '',
+    reason: '',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [impact, setImpact] = useState<number | null>(null);
+  const [impactError, setImpactError] = useState(false);
+  const [impactRetry, setImpactRetry] = useState(0);
+  const [listRetry, setListRetry] = useState(0);
+  const [listError, setListError] = useState(false);
+  const [listLoading, setListLoading] = useState(Boolean(onList));
+  const [offset, setOffset] = useState(0);
+  const [page, setPage] = useState({
+    items: board.closures,
+    count: board.closureCount ?? board.closures.length,
+  });
+  const listRef = useRef(onList);
+  listRef.current = onList;
+  const closuresRef = useRef(board.closures);
+  closuresRef.current = board.closures;
+  const impactRef = useRef(onImpact);
+  impactRef.current = onImpact;
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  useEffect(() => {
+    const onList = listRef.current;
+    const closures = closuresRef.current;
+    let active = true;
+    setListError(false);
+    setListLoading(Boolean(onList));
+    if (!onList) {
+      setPage({ items: closures, count: closures.length });
+      return;
+    }
+    void onList(offset)
+      .then((next) => {
+        if (active) {
+          setPage(next);
+          if (offset >= next.count && offset > 0)
+            setOffset(Math.max(0, Math.floor((next.count - 1) / 20) * 20));
+        }
+      })
+      .catch(() => {
+        if (active) setListError(true);
+      })
+      .finally(() => {
+        if (active) setListLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [offset, board.metadataRevision, board.updatedAt, listRetry]);
+  useEffect(() => {
+    const onImpact = impactRef.current;
+    const draft = draftRef.current;
+    let active = true;
+    setImpact(null);
+    setImpactError(false);
+    if (!onImpact || !checkClosure(draft).ok) return;
+    const timer = window.setTimeout(() => {
+      void onImpact(draft)
+        .then((count) => {
+          if (active) setImpact(count);
+        })
+        .catch(() => {
+          if (active) setImpactError(true);
+        });
+    }, 400);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [
+    draft.roomId,
+    draft.startDate,
+    draft.endDate,
+    board.metadataRevision,
+    impactRetry,
+  ]);
+  const remove = async (id: string) => {
+    if (saving) return;
+    setSaving(true);
+    setError('');
+    try {
+      await onRemove(id);
+      if (onList) setPage(await onList(offset));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '휴관을 풀지 못했습니다.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  const roomName = (roomId: string) => board.rooms.find((room) => room.id === roomId)?.name ?? '';
+  const roomName = (roomId: string) =>
+    board.rooms.find((room) => room.id === roomId)?.name ?? '';
 
   // 걸기 전에 무엇이 가려지는지 보여 준다. 누른 뒤에 알리면 늦다.
-  const preview = draft.startDate && draft.endDate && draft.endDate >= draft.startDate
-    ? closureNotice(hiddenByClosures(board.bookings, [{ id: 'preview', ...draft }]))
-    : '';
+  const preview =
+    draft.startDate && draft.endDate && draft.endDate >= draft.startDate
+      ? onImpact
+        ? impactError
+          ? '영향받는 예약 수를 확인하지 못했습니다. 다시 확인한 뒤 추가해 주세요.'
+          : impact === null
+            ? '영향받는 예약 수를 확인 중입니다.'
+            : impact > 0
+              ? '이 기간에 이미 예약 ' +
+                impact +
+                '건이 있습니다. 예약한 분들께 따로 알려 주세요. 기록은 보존됩니다.'
+              : ''
+        : closureNotice(
+            hiddenByClosures(board.bookings, [{ id: 'preview', ...draft }]),
+          )
+      : '';
 
+  const impactPending =
+    Boolean(onImpact) &&
+    checkClosure(draft).ok &&
+    (impact === null || impactError);
   const submit = async () => {
-    if (saving) return;
+    if (saving || impactPending) return;
     const checked = checkClosure(draft);
     if (!checked.ok) {
       setError(checked.error);
@@ -53,9 +171,18 @@ export function ClosureCard({ board, onAdd, onRemove }: ClosureCardProps) {
     setError('');
     try {
       await onAdd({ ...draft, reason: draft.reason.trim() });
-      setDraft({ roomId: CLOSURE_ALL_ROOMS, startDate: '', endDate: '', reason: '' });
+      setDraft({
+        roomId: CLOSURE_ALL_ROOMS,
+        startDate: '',
+        endDate: '',
+        reason: '',
+      });
     } catch (thrown) {
-      setError(thrown instanceof Error ? thrown.message : '휴관을 저장하지 못했습니다.');
+      setError(
+        thrown instanceof Error
+          ? thrown.message
+          : '휴관을 저장하지 못했습니다.',
+      );
     } finally {
       setSaving(false);
     }
@@ -64,22 +191,28 @@ export function ClosureCard({ board, onAdd, onRemove }: ClosureCardProps) {
   return (
     <section className="rounded-lg border border-[#DCE3EA] bg-white px-4 py-5 sm:px-5">
       <h2 className="flex items-center gap-2 text-base font-bold text-[#0F172A]">
-        <CalendarOff className="h-4 w-4 text-[#0F6CBD]" />휴관
+        <CalendarOff className="h-4 w-4 text-[#0F6CBD]" />
+        휴관
       </h2>
       <p className="mt-1 text-xs leading-5 text-[#526174]">
-        담당 교사 출장이나 시설 점검처럼 특별실을 쓸 수 없는 날을 막습니다. 그 기간에는 아무도 예약할 수 없습니다.
+        담당 교사 출장이나 시설 점검처럼 특별실을 쓸 수 없는 날을 막습니다. 그
+        기간에는 아무도 예약할 수 없습니다.
       </p>
 
-      {board.closures.length > 0 ? (
+      {page.items.length > 0 ? (
         <ul className="mt-4 divide-y divide-[#EEF1F4] border-y border-[#EEF1F4]">
-          {board.closures.map((closure) => (
-            <li key={closure.id} className="flex items-center justify-between gap-2 py-2">
+          {page.items.map((closure) => (
+            <li
+              key={closure.id}
+              className="flex items-center justify-between gap-2 py-2"
+            >
               <span className="min-w-0 truncate text-xs font-semibold text-[#334155]">
                 {closureLabel(closure, roomName(closure.roomId))}
               </span>
               <button
                 type="button"
-                onClick={() => void onRemove(closure.id)}
+                disabled={saving}
+                onClick={() => void remove(closure.id)}
                 aria-label={`${closureLabel(closure, roomName(closure.roomId))} 휴관 풀기`}
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#94A3B8] hover:text-[#B42318]"
               >
@@ -89,83 +222,176 @@ export function ClosureCard({ board, onAdd, onRemove }: ClosureCardProps) {
           ))}
         </ul>
       ) : (
-        <p className="mt-4 rounded-md bg-[#F6F8FB] px-2.5 py-2 text-xs text-[#64748B]">막아 둔 날이 없습니다.</p>
+        <p className="mt-4 rounded-md bg-[#F6F8FB] px-2.5 py-2 text-xs text-[#526174]">
+          {listLoading
+            ? '휴관 목록을 확인 중입니다.'
+            : listError
+              ? '휴관 목록을 확인하지 못했습니다.'
+              : '막아 둔 날이 없습니다.'}
+        </p>
       )}
 
+      {listError ? (
+        <div role="alert" className="mt-3 text-xs text-[#B42318]">
+          휴관 목록을 확인하지 못했습니다.
+          <button
+            type="button"
+            onClick={() => setListRetry((v) => v + 1)}
+            className="ml-2 min-h-[44px] rounded-lg border px-3 font-bold"
+          >
+            휴관 목록 다시 확인
+          </button>
+        </div>
+      ) : null}
+      {onList && page.count > 20 ? (
+        <div className="mt-3 flex items-center justify-between gap-2 text-xs">
+          <button
+            type="button"
+            disabled={listLoading || offset === 0}
+            onClick={() => setOffset((v) => Math.max(0, v - 20))}
+            className="min-h-[44px] border px-3"
+          >
+            이전 휴관
+          </button>
+          <span>
+            {offset + 1}~{Math.min(offset + 20, page.count)} / {page.count}건
+          </span>
+          <button
+            type="button"
+            disabled={listLoading || offset + 20 >= page.count}
+            onClick={() => setOffset((v) => v + 20)}
+            className="min-h-[44px] border px-3"
+          >
+            다음 휴관
+          </button>
+        </div>
+      ) : null}
       <div className="mt-4 grid gap-3">
-        <label className="grid gap-1.5 text-xs font-bold text-[#334155]" htmlFor="closure-room">
+        <label
+          className="grid gap-1.5 text-xs font-bold text-[#334155]"
+          htmlFor="closure-room"
+        >
           어느 특별실
           <select
             id="closure-room"
             value={draft.roomId}
-            onChange={(event) => setDraft((current) => ({ ...current, roomId: event.target.value }))}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                roomId: event.target.value,
+              }))
+            }
             className="min-h-[44px] w-full rounded-lg border border-[#C8D0DA] bg-white px-3 text-sm font-normal"
           >
             <option value={CLOSURE_ALL_ROOMS}>모든 특별실</option>
-            {board.rooms.map((room) => <option key={room.id} value={room.id}>{room.name}</option>)}
+            {board.rooms.map((room) => (
+              <option key={room.id} value={room.id}>
+                {room.name}
+              </option>
+            ))}
           </select>
         </label>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="grid gap-1.5 text-xs font-bold text-[#334155]" htmlFor="closure-startDate">
+          <label
+            className="grid gap-1.5 text-xs font-bold text-[#334155]"
+            htmlFor="closure-startDate"
+          >
             시작 날짜
             <input
               id="closure-startDate"
               type="date"
               value={draft.startDate}
-              onChange={(event) => setDraft((current) => ({
-                ...current,
-                startDate: event.target.value,
-                // 하루짜리가 흔하므로 마지막 날짜를 같이 채워 준다. 두 번 고르는 수고를 던다.
-                endDate: current.endDate && current.endDate >= event.target.value ? current.endDate : event.target.value,
-              }))}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  startDate: event.target.value,
+                  // 하루짜리가 흔하므로 마지막 날짜를 같이 채워 준다. 두 번 고르는 수고를 던다.
+                  endDate:
+                    current.endDate && current.endDate >= event.target.value
+                      ? current.endDate
+                      : event.target.value,
+                }))
+              }
               className="min-h-[44px] w-full rounded-lg border border-[#C8D0DA] px-3 text-sm font-normal"
             />
           </label>
-          <label className="grid gap-1.5 text-xs font-bold text-[#334155]" htmlFor="closure-endDate">
+          <label
+            className="grid gap-1.5 text-xs font-bold text-[#334155]"
+            htmlFor="closure-endDate"
+          >
             마지막 날짜
             <input
               id="closure-endDate"
               type="date"
               value={draft.endDate}
               min={draft.startDate || undefined}
-              onChange={(event) => setDraft((current) => ({ ...current, endDate: event.target.value }))}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  endDate: event.target.value,
+                }))
+              }
               className="min-h-[44px] w-full rounded-lg border border-[#C8D0DA] px-3 text-sm font-normal"
             />
           </label>
         </div>
 
-        <label className="grid gap-1.5 text-xs font-bold text-[#334155]" htmlFor="closure-reason">
-          사유 <span className="font-normal text-[#64748B]">(비워 둬도 됩니다)</span>
+        <label
+          className="grid gap-1.5 text-xs font-bold text-[#334155]"
+          htmlFor="closure-reason"
+        >
+          사유{' '}
+          <span className="font-normal text-[#64748B]">(비워 둬도 됩니다)</span>
           <input
             id="closure-reason"
             value={draft.reason}
             maxLength={CLOSURE_REASON_MAX}
             placeholder="예: 담당 교사 출장"
-            onChange={(event) => setDraft((current) => ({ ...current, reason: event.target.value }))}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                reason: event.target.value,
+              }))
+            }
             className="min-h-[44px] w-full rounded-lg border border-[#C8D0DA] px-3 text-sm font-normal"
           />
         </label>
 
         {preview ? (
           <p className="flex items-start gap-1.5 rounded-md bg-[#FFF7ED] px-2.5 py-2 text-xs font-semibold leading-5 text-[#9A3412]">
-            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{preview}
+            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            {preview}
           </p>
         ) : null}
 
+        {impactError ? (
+          <button
+            type="button"
+            onClick={() => setImpactRetry((v) => v + 1)}
+            className="min-h-[44px] self-start rounded-lg border px-3 text-xs font-bold"
+          >
+            영향 수 다시 확인
+          </button>
+        ) : null}
         <button
           type="button"
-          disabled={saving}
+          disabled={saving || impactPending}
           onClick={() => void submit()}
           className="inline-flex min-h-[44px] items-center justify-center gap-2 self-start rounded-lg bg-[#0F6CBD] px-4 text-sm font-bold text-white hover:bg-[#0B5B9F] disabled:bg-[#AAB7C4]"
         >
-          <Plus className="h-4 w-4" />{saving ? '저장 중' : '휴관 추가'}
+          <Plus className="h-4 w-4" />
+          {saving ? '저장 중' : '휴관 추가'}
         </button>
       </div>
 
       {error ? (
-        <p role="alert" className="mt-3 flex items-start gap-1.5 rounded-md bg-[#FEF2F2] px-2.5 py-2 text-xs font-semibold leading-5 text-[#B42318]">
-          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{error}
+        <p
+          role="alert"
+          className="mt-3 flex items-start gap-1.5 rounded-md bg-[#FEF2F2] px-2.5 py-2 text-xs font-semibold leading-5 text-[#B42318]"
+        >
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          {error}
         </p>
       ) : null}
     </section>
