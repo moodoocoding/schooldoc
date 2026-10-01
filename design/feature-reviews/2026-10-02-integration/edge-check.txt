@@ -1,0 +1,19 @@
+╭ Warning
+│
+│  Ignored build scripts for packages:
+│  npm:tesseract.js@7.0.0
+│  npm:core-js@3.50.0
+│
+│  Lifecycle scripts are only supported when using a `node_modules` directory.
+│  Enable it in your deno config file:
+│  "nodeModulesDir": "auto"
+╰─
+Check supabase/functions/consent-forms-admin/index.ts
+Check supabase/functions/consent-forms-public/index.ts
+Check supabase/functions/registry-public/index.ts
+Check supabase/functions/registry-participants/index.ts
+Check supabase/functions/registry-pdf/index.ts
+Check supabase/functions/data-collect-admin/index.ts
+Check supabase/functions/data-collect-public/index.ts
+Check supabase/functions/special-rooms-admin/index.ts
+Check supabase/functions/special-rooms-public/index.ts
