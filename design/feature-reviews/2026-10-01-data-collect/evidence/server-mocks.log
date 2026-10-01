@@ -1,0 +1,11 @@
+authentication and owner boundary {"missingAuthStatus":401,"ordinaryTeacherStatus":200,"foreignCollectionStatus":403,"foreignFileSigns":0,"badUploadPathStatus":422}
+password, closure, public minimization {"initialSignedUrlAbsent":true,"wrongPasswordStatus":401,"grantedExpiry":300,"closedSignedUrlAbsent":true,"closedSubmitStatus":410}
+rate-limit failure stops DB reads {"status":500,"dataQueries":0}
+same-school-IP ninth student rejected {"statuses":[200,200,200,200,200,200,200,200,429],"bucketScope":"IP + collection token + action; not participant"}
+required upload can be bypassed with confirmed {"status":200,"noTemplate":true,"createdDecision":"confirmed","fileAbsent":true}
+failed revision leaves no current row {"status":500,"previousFilePresent":true,"currentRows":0,"cleanupAttempted":true}
+target update failure still returns success {"status":200,"fileRows":1,"targetSubmittedAtAbsent":true}
+invalid custom upload creates ghost target and orphan {"status":400,"targetRows":1,"fileRows":0,"storageObjectLeft":true,"cleanupCalls":0}
+custom same-name reload makes a new person {"statuses":[200,200],"targetRows":2,"revisions":[1,1],"resubmitDisabledBypassedAsNewPerson":true}
+custom concurrent row numbering collides {"statuses":[200,500],"targets":1,"modelConstraint":"unique(collection_id,row_number)"}
+search has masked identity but participant credential {"status":200,"targets":[{"token":"40000000-0000-4000-8000-000000000001","label":"가○사","owner":"가○서"}],"identityOnlyMasked":true,"personalTokenReturned":true}

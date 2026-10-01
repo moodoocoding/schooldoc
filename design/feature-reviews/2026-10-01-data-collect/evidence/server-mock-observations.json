@@ -1,0 +1,137 @@
+{
+  "boundary": "actual handler transpiled, in-memory dependencies; not RLS/PostgreSQL/remote verification",
+  "results": [
+    {
+      "name": "authentication and owner boundary",
+      "kind": "admin",
+      "evidence": {
+        "missingAuthStatus": 401,
+        "ordinaryTeacherStatus": 200,
+        "foreignCollectionStatus": 403,
+        "foreignFileSigns": 0,
+        "badUploadPathStatus": 422
+      }
+    },
+    {
+      "name": "password, closure, public minimization",
+      "kind": "public",
+      "evidence": {
+        "initialSignedUrlAbsent": true,
+        "wrongPasswordStatus": 401,
+        "grantedExpiry": 300,
+        "closedSignedUrlAbsent": true,
+        "closedSubmitStatus": 410
+      }
+    },
+    {
+      "name": "rate-limit failure stops DB reads",
+      "kind": "public",
+      "evidence": {
+        "status": 500,
+        "dataQueries": 0
+      }
+    },
+    {
+      "name": "same-school-IP ninth student rejected",
+      "kind": "public",
+      "evidence": {
+        "statuses": [
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          200,
+          429
+        ],
+        "bucketScope": "IP + collection token + action; not participant"
+      }
+    },
+    {
+      "name": "required upload can be bypassed with confirmed",
+      "kind": "public",
+      "evidence": {
+        "status": 200,
+        "noTemplate": true,
+        "createdDecision": "confirmed",
+        "fileAbsent": true
+      }
+    },
+    {
+      "name": "failed revision leaves no current row",
+      "kind": "public",
+      "evidence": {
+        "status": 500,
+        "previousFilePresent": true,
+        "currentRows": 0,
+        "cleanupAttempted": true
+      }
+    },
+    {
+      "name": "target update failure still returns success",
+      "kind": "public",
+      "evidence": {
+        "status": 200,
+        "fileRows": 1,
+        "targetSubmittedAtAbsent": true
+      }
+    },
+    {
+      "name": "invalid custom upload creates ghost target and orphan",
+      "kind": "public",
+      "evidence": {
+        "status": 400,
+        "targetRows": 1,
+        "fileRows": 0,
+        "storageObjectLeft": true,
+        "cleanupCalls": 0
+      }
+    },
+    {
+      "name": "custom same-name reload makes a new person",
+      "kind": "public",
+      "evidence": {
+        "statuses": [
+          200,
+          200
+        ],
+        "targetRows": 2,
+        "revisions": [
+          1,
+          1
+        ],
+        "resubmitDisabledBypassedAsNewPerson": true
+      }
+    },
+    {
+      "name": "custom concurrent row numbering collides",
+      "kind": "public",
+      "evidence": {
+        "statuses": [
+          200,
+          500
+        ],
+        "targets": 1,
+        "modelConstraint": "unique(collection_id,row_number)"
+      }
+    },
+    {
+      "name": "search has masked identity but participant credential",
+      "kind": "public",
+      "evidence": {
+        "status": 200,
+        "targets": [
+          {
+            "token": "40000000-0000-4000-8000-000000000001",
+            "label": "가○사",
+            "owner": "가○서"
+          }
+        ],
+        "identityOnlyMasked": true,
+        "personalTokenReturned": true
+      }
+    }
+  ]
+}
