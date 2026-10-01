@@ -1,4 +1,5 @@
 import { supabase } from '../../utils/supabaseClient';
+import { getPublicAppOrigin } from '../../utils/publicAppOrigin';
 import {
   changeMissionStatus, generateMissionCode, hashMissionCode, missionPurgeCounts, missionToday, resolveMissionStudent,
   parseMissionRoster, publicMissionView, purgeMissionState, setMissionCheck,
@@ -200,4 +201,4 @@ export async function markPublicMission(token: string, nameOrCode: string, missi
   }
   return publicMissionView(board.state, student.id);
 }
-export const missionPublicUrl = (token: string) => `${window.location.origin}/s/missions/${token}`;
+export const missionPublicUrl = (token: string) => `${getPublicAppOrigin()}/s/missions/${token}`;

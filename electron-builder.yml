@@ -1,0 +1,16 @@
+appId: kr.schooldoc.desktop
+productName: SchoolDoc_Portable
+asar: true
+directories:
+  output: release
+files:
+  - electron/**/*
+  - dist-portable/**/*
+  - package.json
+  - '!node_modules/**/*'
+win:
+  target:
+    - target: portable
+      arch: [x64]
+portable:
+  artifactName: SchoolDoc_Portable_${version}.exe
