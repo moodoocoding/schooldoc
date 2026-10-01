@@ -1,0 +1,40 @@
+{
+  "browser": "154.0.8037.58",
+  "headed": true,
+  "reports": [
+    {
+      "state": "empty",
+      "violations": []
+    },
+    {
+      "state": "selected",
+      "violations": [
+        {
+          "id": "nested-interactive",
+          "impact": "serious",
+          "description": "Ensure interactive controls are not nested as they are not always announced by screen readers or can cause focus problems for assistive technologies",
+          "nodes": [
+            [
+              ".min-h-0"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "state": "mobile-selected",
+      "violations": [
+        {
+          "id": "nested-interactive",
+          "impact": "serious",
+          "description": "Ensure interactive controls are not nested as they are not always announced by screen readers or can cause focus problems for assistive technologies",
+          "nodes": [
+            [
+              ".min-h-0"
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

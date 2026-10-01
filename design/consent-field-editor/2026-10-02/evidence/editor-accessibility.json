@@ -1,0 +1,18 @@
+{
+  "browser": "154.0.8037.58",
+  "headed": true,
+  "reports": [
+    {
+      "state": "empty",
+      "violations": []
+    },
+    {
+      "state": "selected",
+      "violations": []
+    },
+    {
+      "state": "mobile-selected",
+      "violations": []
+    }
+  ]
+}
