@@ -130,6 +130,9 @@ test("실제 Chrome: 재제출 금지·동명이인·검색 빈 결과와 오류
   await page.getByLabel("제출자 이름", { exact: true }).fill("가상 동명이인");
   await page.getByLabel("제출 파일 선택").setInputFiles(pdf);
   await page.getByRole("button", { name: "회신 제출", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "회신을 제출했습니다" }),
+  ).toBeVisible();
   await page.reload();
   await expect(page.getByText("제출이 끝나 바꿀 수 없습니다.")).toBeVisible();
   await expect(page.getByRole("button", { name: "다시 회신하기" })).toHaveCount(
