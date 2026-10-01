@@ -1,8 +1,9 @@
+import { registryPrintPlan, wrapRegistryText } from '../_shared/registryPrintLayout.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8';
 import { registryCrypto, type RegistryFieldValues } from '../_shared/registryCrypto.ts';
 import fontkit from 'npm:@pdf-lib/fontkit@1.1.1';
 import { PDFDocument, PDFImage, PDFFont, PDFPage, rgb } from 'npm:pdf-lib@1.17.1';
-import { chunkPdfRows, fitPdfFontSize, getPdfColumnWidths, getPdfPageSettings, paginatePdfRows } from './layout.ts';
+import { chunkPdfRows, getPdfColumnWidths, paginatePdfRows } from './layout.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -32,10 +33,8 @@ const db = createClient(supabaseUrl, serviceRoleKey, {
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
 const PAGE_MARGIN = 40.5;
-const TABLE_TOP = 704;
 const TABLE_BOTTOM = 62;
 const TABLE_GAP = 12;
-const HEADER_HEIGHT = 32;
 const BORDER_COLOR = rgb(0.53, 0.58, 0.65);
 const TEXT_COLOR = rgb(0.06, 0.09, 0.15);
 const MUTED_COLOR = rgb(0.2, 0.25, 0.33);
@@ -85,39 +84,12 @@ const drawCellText = (
   minimumSize: number,
 ) => {
   if (!text) return;
-  const clean = text.replace(/\s+/g, ' ').trim();
-  const size = fitPdfFontSize(font.widthOfTextAtSize(clean, 1), width - 8, preferredSize, minimumSize);
-  page.drawText(clean, {
-    x: centeredX(font, clean, size, x, width),
-    y: y + (height - size) / 2 + 1.5,
-    size,
-    font,
-    color: TEXT_COLOR,
-  });
-};
-
-const drawHeaderText = (
-  page: PDFPage,
-  font: PDFFont,
-  text: string,
-  x: number,
-  y: number,
-  width: number,
-  align: 'left' | 'right',
-) => {
-  const lines = text.split(/\r?\n/).slice(0, 2);
-  lines.forEach((line, index) => {
-    const clean = line.trim();
-    const size = fitPdfFontSize(font.widthOfTextAtSize(clean, 1), width, 9.5, 7);
-    const textWidth = font.widthOfTextAtSize(clean, size);
-    page.drawText(clean, {
-      x: align === 'right' ? x + width - textWidth : x,
-      y: y - index * 12,
-      size,
-      font,
-      color: MUTED_COLOR,
-    });
-  });
+  const size = Math.max(minimumSize, preferredSize);
+  const lines = wrapRegistryText(text, width - 8, size);
+  if (lines.length * (size + 3) + 4 > height) throw new HttpError(422, '긴 항목을 A4에 배치하지 못했습니다. 인쇄 설정을 확인해 주세요.');
+  lines.forEach((line,index) => page.drawText(line, { x: centeredX(font,line,size,x,width),
+    y: y + height / 2 + (lines.length - 1) * (size + 3) / 2 - index * (size + 3) - size / 2,
+    size, font, color: TEXT_COLOR }));
 };
 
 const drawSignature = (
@@ -153,6 +125,8 @@ const drawTable = (
   compact: boolean,
   x: number,
   width: number,
+  TABLE_TOP: number,
+  HEADER_HEIGHT: number,
 ) => {
   const tableHeight = TABLE_TOP - TABLE_BOTTOM;
   const bodyHeight = tableHeight - HEADER_HEIGHT;
@@ -205,7 +179,7 @@ const loadSignatureImages = async (
       return { row, data: error ? null : data };
     }));
     for (const { row, data } of downloads) {
-      if (!data) continue;
+      if (!data) throw new HttpError(503, '완료된 서명 이미지를 불러오지 못했습니다. 파일을 확인한 뒤 다시 시도해 주세요.');
       const bytes = new Uint8Array(await data.arrayBuffer());
       try {
         const image = data.type === 'image/jpeg' || row.storage_path.toLowerCase().endsWith('.jpg')
@@ -213,7 +187,7 @@ const loadSignatureImages = async (
           : await pdf.embedPng(bytes);
         images.set(row.participant_id, image);
       } catch {
-        console.warn('Unsupported registry signature image skipped', row.storage_path);
+        throw new HttpError(422, '읽을 수 없는 서명 이미지가 있습니다. 해당 참석자의 서명을 확인해 주세요.');
       }
     }
   }
@@ -237,7 +211,9 @@ const createPdf = async (
     pdf.embedFont(boldBytes),
   ]);
   const signatures = await loadSignatureImages(pdf, signatureRows);
-  const settings = getPdfPageSettings(registry.layout);
+  const plan = registryPrintPlan({ ...registry, leftHeader: registry.left_header, rightHeader: registry.right_header, columns, participants: participants.map((p) => ({ name: p.name, values: p.field_values ?? {} })) });
+  if (!plan.valid) throw new HttpError(422, '상단 정보가 A4 한 쪽에 들어가지 않습니다. 상단 내용을 확인해 주세요.');
+  const settings = plan;
   const pageSize = settings.tableColumns * settings.rowsPerColumn;
   const pages = paginatePdfRows(participants, pageSize);
 
@@ -245,18 +221,10 @@ const createPdf = async (
     const page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
     page.drawLine({ start: { x: PAGE_MARGIN, y: 796 }, end: { x: PAGE_WIDTH - PAGE_MARGIN, y: 796 }, thickness: 3, color: BLUE });
 
-    const title = registry.title.trim();
-    const titleSize = fitPdfFontSize(boldFont.widthOfTextAtSize(title, 1), PAGE_WIDTH - PAGE_MARGIN * 2, 18, 11);
-    page.drawText(title, {
-      x: centeredX(boldFont, title, titleSize, PAGE_MARGIN, PAGE_WIDTH - PAGE_MARGIN * 2),
-      y: 756,
-      size: titleSize,
-      font: boldFont,
-      color: TEXT_COLOR,
-    });
-    const headerWidth = (PAGE_WIDTH - PAGE_MARGIN * 2 - 18) / 2;
-    drawHeaderText(page, regularFont, registry.left_header, PAGE_MARGIN, 728, headerWidth, 'left');
-    drawHeaderText(page, regularFont, registry.right_header, PAGE_MARGIN + headerWidth + 18, 728, headerWidth, 'right');
+    plan.titleLines.forEach((line,index) => page.drawText(line, { x: centeredX(boldFont,line,18,PAGE_MARGIN,514), y: 756-index*22, size: 18, font: boldFont, color: TEXT_COLOR }));
+    const metaY = 728 - (plan.titleLines.length-1)*22;
+    for (const [lines,right] of [[plan.leftLines,false],[plan.rightLines,true]] as const) lines.forEach((line,index) => page.drawText(line, {
+      x: right ? PAGE_WIDTH-PAGE_MARGIN-regularFont.widthOfTextAtSize(line,9.5) : PAGE_MARGIN, y: metaY-index*14, size: 9.5, font: regularFont, color: MUTED_COLOR }));
 
     const tableWidth = settings.tableColumns === 2
       ? (PAGE_WIDTH - PAGE_MARGIN * 2 - TABLE_GAP) / 2
@@ -276,7 +244,7 @@ const createPdf = async (
         settings.rowsPerColumn,
         settings.tableColumns === 2,
         PAGE_MARGIN + tableIndex * (tableWidth + TABLE_GAP),
-        tableWidth,
+        tableWidth, plan.tableTop, plan.headerHeight,
       );
     }
 
@@ -311,24 +279,15 @@ Deno.serve(async (request) => {
 
     const body = await request.json() as { registryId?: unknown };
     const registryId = typeof body.registryId === 'string' ? body.registryId : '';
-    const { data: registryData, error: registryError } = await db
-      .from('registries')
-      .select('id, owner_id, title, left_header, right_header, layout')
-      .eq('id', registryId)
-      .eq('owner_id', userData.user.id)
-      .maybeSingle();
-    if (registryError) throw registryError;
-    if (!registryData) throw new HttpError(404, '등록부를 찾을 수 없거나 접근 권한이 없습니다.');
-    const registry = registryData as RegistryRow;
-
-    const [columnsResult, participantsResult, signaturesResult] = await Promise.all([
-      db.from('registry_columns').select('id, label, position').eq('registry_id', registry.id).order('position'),
-      db.from('registry_participants').select('id, row_number, name, field_values, field_values_ciphertext').eq('registry_id', registry.id).order('row_number'),
-      db.from('registry_signatures').select('participant_id, storage_path').eq('registry_id', registry.id),
-    ]);
-    if (columnsResult.error) throw columnsResult.error;
-    if (participantsResult.error) throw participantsResult.error;
-    if (signaturesResult.error) throw signaturesResult.error;
+    const { data: snapshot, error: snapshotError } = await db.rpc('registry_owner_snapshot', { p_registry_id: registryId, p_owner_id: userData.user.id });
+    if (snapshotError) throw snapshotError;
+    if (!snapshot) throw new HttpError(404, '등록부를 찾을 수 없거나 접근 권한이 없습니다.');
+    const registry = snapshot.registry as RegistryRow;
+    const columnsResult = { data: snapshot.columns as ColumnRow[] };
+    const participantsResult = { data: snapshot.participants as Record<string,unknown>[] };
+    const signaturesResult = { data: snapshot.signatures as SignatureRow[] };
+    const signedCount = snapshot.participants.filter((p: Record<string,unknown>) => p.status === 'signed').length;
+    if (signedCount !== snapshot.signatures.length) throw new HttpError(422, '서명 상태와 파일 기록이 다릅니다. 완료된 서명을 확인해 주세요.');
 
     // 항목 값은 암호문으로 저장된다. 옛 평문도 남아 있을 수 있어 둘 다 감당한다.
     const participants = await Promise.all((participantsResult.data ?? []).map(async (row) => {
@@ -347,7 +306,7 @@ Deno.serve(async (request) => {
       (signaturesResult.data ?? []) as SignatureRow[],
     );
     const fileName = safeFileName(registry.title);
-    return new Response(pdfBytes, {
+    return new Response(new Uint8Array(pdfBytes).buffer, {
       status: 200,
       headers: {
         ...corsHeaders,
@@ -358,7 +317,7 @@ Deno.serve(async (request) => {
     });
   } catch (error) {
     if (error instanceof HttpError) return jsonResponse(error.status, error.message);
-    console.error('registry-pdf failed', error);
+    console.error('registry-pdf failed');
     return jsonResponse(500, 'PDF를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.');
   }
 });

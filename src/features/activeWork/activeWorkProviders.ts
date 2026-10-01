@@ -4,7 +4,7 @@ import { listRemoteConsentForms } from '../consentForms/consentFormsRepository';
 import { dataCollectOwnerId, isDataCollectDemoMode } from '../dataCollect/dataCollectConfig';
 import { listDataCollections, subscribeDataCollections } from '../dataCollect/dataCollectService';
 import { isRegistryDemoMode } from '../registry/registryConfig';
-import { listRegistries, subscribeRegistries } from '../registry/registryService';
+import { listRegistrySummaries, subscribeRegistries } from '../registry/registryService';
 import { isSpecialRoomsDemoMode } from '../specialRooms/specialRoomsConfig';
 import { isMissionsDemo, listMissionBoards, missionCounts, missionDateLabel, missionToday } from '../classMissions/missionApi';
 import { listBoards, subscribeSpecialRooms } from '../specialRooms/specialRoomsService';
@@ -37,18 +37,18 @@ const registryProvider: ActiveWorkProvider = {
   subscribe: subscribeRegistries,
   load: async ({ userId }) => {
     if (!userId && !isRegistryDemoMode) return [];
-    const registries = await listRegistries();
+    const registries = await listRegistrySummaries();
     return registries
       .filter((registry) => registry.status === 'open')
       .map((registry): ActiveWorkItem => {
-        const signedCount = registry.participants.filter((participant) => participant.signature).length;
+        const signedCount = registry.signedCount;
         return {
           id: registry.id,
           toolId: 'registry-sign',
           toolName: '등록부 서명',
           title: registry.title,
           statusLabel: '수합 중',
-          progressLabel: `${signedCount}/${registry.participants.length}명 서명`,
+          progressLabel: `${signedCount}/${registry.participantCount}명 서명`,
           updatedAt: registry.updatedAt,
           listPath: '/tools/registry-sign',
           detailPath: `/tools/registry-sign/${registry.id}`,

@@ -20,6 +20,23 @@ export interface RegistryParticipant {
   name: string;
   values: Record<string, string>;
   signature?: RegistrySignature;
+  signaturePath?: string;
+  imageError?: boolean;
+  requiresIdentity?: boolean;
+  requiresCode?: boolean;
+  verificationCode?: string;
+}
+
+export interface RegistrySummary {
+  id: string;
+  title: string;
+  leftHeader: string;
+  rightHeader: string;
+  mode: RegistryMode;
+  status: RegistryStatus;
+  participantCount: number;
+  signedCount: number;
+  updatedAt: string;
 }
 
 export interface Registry {
@@ -38,6 +55,9 @@ export interface Registry {
   participants: RegistryParticipant[];
   createdAt: string;
   updatedAt: string;
+  retentionMonths?: number;
+  closedAt?: string;
+  purgeStartedAt?: string;
 }
 
 export interface RegistryDraft {
@@ -50,6 +70,14 @@ export interface RegistryDraft {
   publicPassword?: string;
   columns: RegistryColumn[];
   participants: Array<Pick<RegistryParticipant, 'name' | 'values'>>;
+  retentionMonths?: number;
+}
+
+export interface SignatureVerification {
+  requestId: string;
+  verifyName: string;
+  verificationValues: Record<string, string>;
+  code: string;
 }
 
 export interface SignatureSubmission {
@@ -58,3 +86,5 @@ export interface SignatureSubmission {
   source: SignatureSource;
   values?: Record<string, string>;
 }
+
+export interface RegistryPurgeCounts { recordCount: number; signatureCount: number; fileCount: number; }

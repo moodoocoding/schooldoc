@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, LoaderCircle, LockKeyhole, PenLine, Search, UserPlus } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { RegistryConfirmDialog } from './RegistryConfirmDialog';
@@ -10,7 +10,7 @@ import {
   submitPublicSignature,
   unlockPublicRegistry,
 } from './registryPublicApi';
-import type { Registry, RegistryParticipant, SignatureSource } from './types';
+import type { Registry, RegistryParticipant, SignatureSource, SignatureVerification } from './types';
 
 const inputClass = 'min-h-[52px] w-full rounded-lg border border-[#DCE3EA] bg-white px-4 text-base text-[#0F172A] placeholder:text-[#94A3B8] focus:border-[#0F6CBD] focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]/15';
 
@@ -59,31 +59,25 @@ export function RemotePublicRegistrySignPage() {
     return () => { active = false; };
   }, [token]);
 
-  useEffect(() => {
-    if (!token || !registry || !isUnlocked || registry.mode !== 'fixed' || query.trim().length < 2) {
-      setResults([]);
-      setSearching(false);
-      setSearchError('');
-      return;
-    }
-    let active = true;
-    setSearching(true);
-    const timer = window.setTimeout(() => {
-      void searchPublicParticipants(token, password, query.trim()).then((participants) => {
-        if (!active) return;
-        setResults(participants);
-        setSearchError('');
-      }).catch((error) => {
-        if (active) setSearchError(error instanceof Error ? error.message : '참석자를 검색하지 못했습니다.');
-      }).finally(() => {
-        if (active) setSearching(false);
-      });
-    }, 300);
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-    };
-  }, [isUnlocked, password, query, registry, token]);
+  const [searchedQuery, setSearchedQuery] = useState('');
+  const [searchCode, setSearchCode] = useState('');
+  const [walkInConfirmed, setWalkInConfirmed] = useState(false);
+  const searchVersion = useRef(0);
+  const changeQuery = (value: string) => {
+    searchVersion.current += 1;
+    setQuery(value); setResults([]); setSearchedQuery(''); setSearching(false); setSearchError('');
+  };
+  const search = async () => {
+    if (!token || query.trim().length < 2) return;
+    const version = ++searchVersion.current;
+    setResults([]); setSearching(true); setSearchError(''); setSearchedQuery(query.trim());
+    try {
+      const participants = await searchPublicParticipants(token, password, query.trim(), searchCode);
+      if (version === searchVersion.current) setResults(participants);
+    } catch (error) {
+      if (version === searchVersion.current) setSearchError(error instanceof Error ? error.message : '참석자를 검색하지 못했습니다.');
+    } finally { if (version === searchVersion.current) setSearching(false); }
+  };
 
   const canAddWalkIn = useMemo(() => (
     Boolean(registry && (registry.mode === 'custom' || registry.allowWalkIn))
@@ -141,7 +135,9 @@ export function RemotePublicRegistrySignPage() {
       const result = await createPublicWalkIn(token, password, walkInName.trim(), walkInValues, confirmDuplicate);
       if (result.participant) {
         setDuplicateCount(0);
-        setSelected(result.participant);
+        setWalkInConfirmed(confirmDuplicate);
+        // 공개 응답의 마스킹 값으로 방금 입력한 원문을 덮어쓰지 않는다.
+        setSelected({ ...result.participant, values: { ...walkInValues } });
         return;
       }
       // 같은 이름이 이미 있다. 본인이 맞는지 먼저 묻는다.
@@ -158,12 +154,15 @@ export function RemotePublicRegistrySignPage() {
     dataUrl: string,
     source: SignatureSource,
     values: Record<string, string>,
+    verification: SignatureVerification,
   ) => {
     const { width, height } = await imageDimensions(dataUrl);
-    await submitPublicSignature(token, password, participant.id, dataUrl, source, values, width, height);
+    await submitPublicSignature(token, password, participant.id, dataUrl, source, values, width, height, verification, participant.rowNumber === 0 ? { name: walkInName.trim(), values: walkInValues, confirmDuplicate: walkInConfirmed } : undefined);
     setSuccessName(participant.name);
     setSelected(null);
     setQuery('');
+    setSearchCode('');
+    setSearchedQuery('');
     setResults([]);
     setWalkInName('');
     setWalkInValues({});
@@ -200,16 +199,17 @@ export function RemotePublicRegistrySignPage() {
         {registry.status === 'open' && registry.mode === 'fixed' ? (
           <section>
             <h2 className="text-lg font-extrabold text-[#0F172A]">내 이름 찾기</h2>
-            <p className="mt-1 text-sm text-[#526174]">이름이나 소속을 두 글자 이상 입력해 주세요.</p>
-            <label className="relative mt-5 block"><Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#526174]" /><input className={`${inputClass} pl-12`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="이름 검색" aria-label="이름 검색" autoComplete="off" /></label>
-            {query.trim().length >= 2 ? (
+            <p className="mt-1 text-sm text-[#526174]">이름을 두 글자 이상 입력하고 검색해 주세요.</p>
+            <label className="relative mt-5 block"><Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#526174]" /><input className={`${inputClass} pl-12`} value={query} onChange={(event) => changeQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void search(); }} placeholder="이름 검색" aria-label="이름 검색" autoComplete="off" /></label>
+            <div className="mt-3 flex gap-2"><input className={inputClass} value={searchCode} onChange={(event) => { setSearchCode(event.target.value); changeQuery(query); }} placeholder="확인 코드 (있는 경우)" aria-label="검색 확인 코드" inputMode="numeric" /><button type="button" disabled={searching || query.trim().length < 2} onClick={() => void search()} className="min-h-[52px] shrink-0 rounded-lg bg-[#0F6CBD] px-5 font-bold text-white disabled:bg-[#AAB7C4]">검색</button></div>
+            {searchedQuery ? (
               <div className="mt-4 divide-y divide-[#EEF1F4] border-y border-[#DCE3EA] bg-white">
-                {searching ? <div className="flex items-center justify-center gap-2 px-4 py-7 text-sm text-[#526174]"><LoaderCircle className="h-4 w-4 animate-spin" />검색 중</div> : results.length > 0 ? results.map((participant) => (
+                {searching ? <div className="flex items-center justify-center gap-2 px-4 py-7 text-sm text-[#526174]"><LoaderCircle className="h-4 w-4 animate-spin" />검색 중</div> : !searchError && results.length > 0 ? results.map((participant) => (
                   <button key={participant.id} type="button" disabled={Boolean(participant.signature)} onClick={() => setSelected(participant)} className="flex min-h-[68px] w-full items-center justify-between gap-4 px-4 text-left hover:bg-[#F8FAFC] disabled:cursor-default disabled:bg-[#F8FAFC]">
                     <span><span className="block text-base font-bold text-[#0F172A]">{participant.name}</span><span className="mt-1 block text-xs text-[#526174]">{registry.columns.map((column) => participant.values[column.id] ?? '').filter(Boolean).join(' · ') || '추가 정보 없음'}</span></span>
                     <span className={`shrink-0 text-xs font-bold ${participant.signature ? 'text-[#126B32]' : 'text-[#0F6CBD]'}`}>{participant.signature ? '서명 완료' : '선택'}</span>
                   </button>
-                )) : <div className="px-4 py-7 text-center text-sm text-[#526174]">일치하는 참석자가 없습니다.</div>}
+                )) : <div className="px-4 py-7 text-center text-sm text-[#526174]">{searchError ? '검색을 완료하지 못했습니다. 다시 검색해 주세요.' : '일치하는 참석자가 없습니다.'}</div>}
               </div>
             ) : null}
           </section>
@@ -232,14 +232,14 @@ export function RemotePublicRegistrySignPage() {
       {duplicateCount > 0 ? (
         <RegistryConfirmDialog
           title={`“${walkInName.trim()}” 이름이 이미 명단에 있습니다`}
-          description={`같은 이름으로 ${duplicateCount}명이 등록되어 있습니다. 이미 등록하셨다면 위에서 이름을 검색해 서명해 주세요. 동명이인이라면 그대로 추가할 수 있습니다.`}
+          description={`같은 이름으로 ${duplicateCount}명이 등록되어 있습니다. 이미 서명하셨다면 추가하지 말고 담당자에게 확인해 주세요. 동명이인이라면 그대로 추가할 수 있습니다.`}
           confirmLabel={addingWalkIn ? '추가하는 중' : '동명이인으로 추가'}
           tone="primary"
           onCancel={() => setDuplicateCount(0)}
           onConfirm={() => void handleAddWalkIn(true)}
         />
       ) : null}
-      {selected && !selected.signature ? <SignatureDialog registry={registry} participant={selected} onClose={() => setSelected(null)} onSubmit={(dataUrl, source, values) => handleSubmit(selected, dataUrl, source, values)} /> : null}
+      {selected && !selected.signature ? <SignatureDialog registry={registry} participant={selected} initialCode={searchCode} onClose={() => setSelected(null)} onSubmit={(dataUrl, source, values, verification) => handleSubmit(selected, dataUrl, source, values, verification)} /> : null}
     </main>
   );
 }

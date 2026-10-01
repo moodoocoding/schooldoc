@@ -1,3 +1,5 @@
+import { isRegistryDemoMode } from '../registry/registryConfig';
+import { listRegistries as listLocalRegistries } from '../registry/registryStore';
 import { supabase } from '../../utils/supabaseClient';
 import { isConsentFormsDemoMode } from '../consentForms/consentFormsConfig';
 import { deleteConsentLocalDraft, getConsentLocalDrafts } from '../consentForms/consentFormsLocalStore';
@@ -122,14 +124,16 @@ const listRetainedMissions = async (): Promise<RetainedWorkItem[]> => {
 };
 
 export const listRetainedWorkItems = async (ownerId: string): Promise<RetainedWorkItem[]> => {
-  if (isConsentFormsDemoMode || isDataCollectDemoMode || isMissionsDemo) {
-    return [...listLocalRetainedWork(ownerId), ...(isMissionsDemo ? await listRetainedMissions() : [])];
+  const registries: RetainedWorkItem[] = isRegistryDemoMode ? listLocalRegistries().filter((r) => r.status === 'closed' && r.closedAt && r.retentionMonths).map((r) => ({ id:r.id,kind:'registry',title:r.title,status:'closed',retentionMonths:r.retentionMonths!,closedAt:r.closedAt!,recordCount:r.participants.length,fileCount:r.participants.filter((p)=>p.signature).length })) : [];
+  if (isConsentFormsDemoMode || isDataCollectDemoMode || isMissionsDemo || isRegistryDemoMode) {
+    return [...registries, ...listLocalRetainedWork(ownerId), ...(isMissionsDemo ? await listRetainedMissions() : [])];
   }
   if (!supabase || !ownerId) return [];
-  const [consentResult, dataCollectResult, missions] = await Promise.all([
+  const [consentResult, dataCollectResult, missions, registryResult] = await Promise.all([
     supabase.from('consent_forms').select('id, title, status, retention_months, closed_at, response_count').eq('status', 'closed'),
     supabase.from('data_collections').select('id, title, status, retention_months, closed_at').eq('status', 'closed'),
     listRetainedMissions(),
+    supabase.rpc('registry_retained_work'),
   ]);
   if (consentResult.error) throw new Error(`가정통신문 파기 일정을 불러오지 못했습니다: ${consentResult.error.message}`);
   if (dataCollectResult.error) throw new Error(`자료 수합 파기 일정을 불러오지 못했습니다: ${dataCollectResult.error.message}`);
@@ -153,10 +157,13 @@ export const listRetainedWorkItems = async (ownerId: string): Promise<RetainedWo
     recordCount: 0,
     fileCount: 0,
   }));
-  return [...consent, ...collections, ...missions].filter((item) => item.closedAt);
+  if (registryResult.error) throw new Error('등록부 파기 일정을 불러오지 못했습니다.');
+  registries.push(...(registryResult.data ?? []).map((r: Record<string,unknown>) => ({ id:String(r.id),kind:'registry' as const,title:String(r.title),status:'closed' as const,retentionMonths:Number(r.retention_months),closedAt:String(r.closed_at),recordCount:Number(r.record_count),fileCount:Number(r.file_count) })));
+  return [...registries, ...consent, ...collections, ...missions].filter((item) => item.closedAt);
 };
 
 export const purgeRetainedWorkItem = async (item: RetainedWorkItem) => {
+  if (item.kind === 'registry') throw new Error('등록부 관리 목록에서 파일 수량을 확인한 뒤 파기해 주세요.');
   if (item.kind === 'class-mission') throw new Error('학급 미션 화면에서 파기 대상과 수량을 확인해 주세요.');
   if (item.kind === 'consent-form') {
     if (isConsentFormsDemoMode) {

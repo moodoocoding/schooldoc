@@ -116,6 +116,7 @@ export const createRegistry = (draft: RegistryDraft) => {
     id: makeId(),
     publicToken: makeId().replaceAll('-', ''),
     status: 'open',
+    retentionMonths: draft.retentionMonths ?? 3,
     participants: draft.participants.map((participant, index) => ({
       ...participant,
       id: makeId(),
@@ -129,7 +130,7 @@ export const createRegistry = (draft: RegistryDraft) => {
 };
 
 export const updateRegistry = (id: string, patch: Partial<Registry>) => (
-  updateOne(id, (registry) => ({ ...registry, ...patch, id: registry.id }))
+  updateOne(id, (registry) => ({ ...registry, ...patch, id: registry.id, closedAt: patch.status === 'closed' && registry.status !== 'closed' ? new Date().toISOString() : patch.status === 'open' ? undefined : registry.closedAt }))
 );
 
 export const deleteRegistry = (id: string) => write(read().filter((registry) => registry.id !== id));
@@ -186,7 +187,9 @@ export const submitSignature = (registryId: string, submission: SignatureSubmiss
   }
 
   return updateOne(registryId, (registry) => {
-    if (registry.status !== 'open') return registry;
+    if (registry.status !== 'open') throw new Error('서명 수합이 종료되었습니다.');
+    const target = registry.participants.find((p) => p.id === submission.participantId);
+    if (!target || target.signature) throw new Error('참석자를 확인하거나 이미 제출된 서명을 확인해 주세요.');
     const signature: RegistrySignature = {
       dataUrl: submission.dataUrl,
       source: submission.source,
@@ -229,4 +232,15 @@ export const subscribeRegistries = (listener: () => void) => {
     window.removeEventListener('storage', onStorage);
     window.removeEventListener(CHANGE_EVENT, listener);
   };
+};
+
+export const submitWalkInSignature = (registryId: string, participant: RegistryParticipant, submission: SignatureSubmission) => {
+  if (!isValidSignatureDataUrl(submission.dataUrl)) throw new Error('유효한 서명 이미지가 아닙니다.');
+  return updateOne(registryId, (registry) => {
+    if (registry.status !== 'open') throw new Error('서명 수합이 종료되었습니다.');
+    if (!(registry.mode === 'custom' || registry.allowWalkIn)) throw new Error('현장 등록이 허용되지 않습니다.');
+    if (registry.participants.length >= 2000) throw new Error('명단은 2,000명까지 등록할 수 있습니다.');
+    return { ...registry, participants: [...registry.participants, { ...participant, rowNumber: registry.participants.length + 1,
+      values: mergeSignedFieldValues(participant.values, submission.values), signature: { dataUrl: submission.dataUrl, source: submission.source, signedAt: new Date().toISOString() } }] };
+  });
 };

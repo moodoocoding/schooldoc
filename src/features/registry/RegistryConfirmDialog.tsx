@@ -30,7 +30,7 @@ export function RegistryConfirmDialog({
           <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${tone === 'danger' ? 'bg-[#FEF2F2] text-[#B42318]' : 'bg-[#EFF6FC] text-[#0F6CBD]'}`}>
             {tone === 'danger' ? <AlertTriangle className="h-5 w-5" /> : <ArchiveRestore className="h-5 w-5" />}
           </span>
-          <button type="button" onClick={onCancel} className="flex h-10 w-10 items-center justify-center rounded-lg text-[#526174] hover:bg-[#F6F8FB]" aria-label="확인 창 닫기">
+          <button type="button" onClick={onCancel} className="flex h-11 w-11 items-center justify-center rounded-lg text-[#526174] hover:bg-[#F6F8FB]" aria-label="확인 창 닫기">
             <X className="h-5 w-5" />
           </button>
         </div>
