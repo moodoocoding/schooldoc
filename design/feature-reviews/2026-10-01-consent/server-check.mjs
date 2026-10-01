@@ -1,0 +1,15 @@
+import { chromium } from '@playwright/test';
+import fs from 'node:fs/promises';
+const browser = await chromium.launch({ channel: 'chrome', headless: true });
+const context = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+await context.route('**/*', route => { const u = new URL(route.request().url()); return ['127.0.0.1', 'localhost'].includes(u.hostname) || ['data:', 'blob:'].includes(u.protocol) ? route.continue() : route.abort(); });
+const page = await context.newPage();
+const errors = [];
+page.on('pageerror', e => errors.push(e.message));
+await page.goto('http://127.0.0.1:4181/tools/consent-forms');
+await page.waitForTimeout(800);
+await page.screenshot({ path: 'design/feature-reviews/2026-10-01-consent/evidence/server-check.png', fullPage: true });
+const result = { chrome: browser.version(), url: page.url(), hasContent: (await page.locator('body').innerText()).length > 0, overlay: await page.locator('vite-error-overlay').count(), errors, buttons: await page.getByRole('button').allTextContents() };
+console.log(JSON.stringify(result, null, 2));
+await fs.writeFile('design/feature-reviews/2026-10-01-consent/evidence/server-check.json', JSON.stringify(result, null, 2));
+await browser.close();

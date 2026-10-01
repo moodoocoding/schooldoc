@@ -1,0 +1,19 @@
+{
+  "chrome": "154.0.8037.58",
+  "url": "http://127.0.0.1:4181/tools/consent-forms",
+  "hasContent": true,
+  "overlay": 0,
+  "errors": [],
+  "buttons": [
+    "SD",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "업무 도구로",
+    "새 수합 만들기",
+    "원본 PDF 올리기"
+  ]
+}
