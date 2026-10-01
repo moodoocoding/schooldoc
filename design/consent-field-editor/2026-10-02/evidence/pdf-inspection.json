@@ -1,0 +1,169 @@
+{
+  "documents": [
+    {
+      "file": "final-qr-download.pdf",
+      "pages": 4,
+      "A4": true,
+      "allPagesNonblank": true,
+      "rendered": [
+        {
+          "image": "final-qr-download-1.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.0814
+        },
+        {
+          "image": "final-qr-download-2.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.0696
+        },
+        {
+          "image": "final-qr-download-3.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.0695
+        },
+        {
+          "image": "final-qr-download-4.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.0697
+        }
+      ]
+    },
+    {
+      "file": "final-qr-print.pdf",
+      "pages": 4,
+      "A4": true,
+      "allPagesNonblank": true,
+      "rendered": [
+        {
+          "image": "final-qr-print-1.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.088
+        },
+        {
+          "image": "final-qr-print-2.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.0762
+        },
+        {
+          "image": "final-qr-print-3.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.0762
+        },
+        {
+          "image": "final-qr-print-4.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.0765
+        }
+      ]
+    },
+    {
+      "file": "final-qr-60-print.pdf",
+      "pages": 10,
+      "A4": true,
+      "allPagesNonblank": true,
+      "rendered": [
+        {
+          "image": "final-qr-60-print-01.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.088
+        },
+        {
+          "image": "final-qr-60-print-02.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.0762
+        },
+        {
+          "image": "final-qr-60-print-03.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.0762
+        },
+        {
+          "image": "final-qr-60-print-04.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.0765
+        },
+        {
+          "image": "final-qr-60-print-05.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.0765
+        },
+        {
+          "image": "final-qr-60-print-06.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.0764
+        },
+        {
+          "image": "final-qr-60-print-07.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.0768
+        },
+        {
+          "image": "final-qr-60-print-08.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.0769
+        },
+        {
+          "image": "final-qr-60-print-09.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.0765
+        },
+        {
+          "image": "final-qr-60-print-10.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.0768
+        }
+      ]
+    },
+    {
+      "file": "tablet-qr-768-download.pdf",
+      "pages": 1,
+      "A4": true,
+      "allPagesNonblank": true,
+      "rendered": [
+        {
+          "image": "tablet-qr-768-download-1.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.0813
+        }
+      ]
+    },
+    {
+      "file": "tablet-qr-390-print.pdf",
+      "pages": 1,
+      "A4": true,
+      "allPagesNonblank": true,
+      "rendered": [
+        {
+          "image": "tablet-qr-390-print-1.png",
+          "width": 703,
+          "height": 994,
+          "inkRatio": 0.088
+        }
+      ]
+    }
+  ],
+  "qrPngs": {
+    "count": 2,
+    "width": 1024,
+    "height": 1024
+  }
+}

@@ -1,0 +1,13 @@
+
+> 260725_individual_data@0.0.0 test
+> vitest run tests/unit/consentRecipientSheet.test.ts tests/unit/scrollContainersAreDeliberate.test.ts tests/unit/accessibleNamesDoNotOverlap.test.ts
+
+
+ RUN  v4.1.11 C:/Users/panth/.codex/worktrees/feature-review-integration-20261002/260812_schooldoc
+
+
+ Test Files  3 passed (3)
+      Tests  45 passed (45)
+   Start at  03:43:32
+   Duration  545ms (transform 93ms, setup 0ms, import 639ms, tests 18ms, environment 0ms)
+

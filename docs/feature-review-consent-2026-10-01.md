@@ -71,3 +71,32 @@
 DB 마이그레이션: `supabase/migrations/202610011000_consent_integrity_io.sql`. 관련 Edge Functions: `consent-forms-admin`, `consent-forms-public`. 두 함수가 함께 사용하는 신규 `_shared/consentServer.ts`도 기능 커밋에 포함했다. 신규 SQL은 격리 로컬 DB 적용 확인이며 원격 DB는 미적용, 서버 함수와 프런트도 운영 미적용이다. 구 직접 수정 권한 회수 때문에 호환 전환과 프런트 자동 배포 순서 조정이 필요하다.
 
 GitHub push·PR·main 병합·Supabase DB/함수·프런트 운영 배포는 통합 세션 담당이며 이 세션에서는 실행하지 않았다. hosted Supabase Auth/Storage/Google OAuth·실제 원격 제출/권한 검증은 허용된 가상 자료와 대상으로 배포 이후 수행할 남은 검사다. 실제 기기/프린터/카메라·Chrome UI zoom200%·화면낭독기 전체 흐름·운영 IOPS/과금도 미확인이다. 로컬 DB/HTTP/Chrome 증거와 원격 검사 결과를 구분해 인계한다.
+
+## 원본 중심 필드 편집·공유·QR 개선 완료 (codex)
+
+2026-10-02. 사용자 요청의 왼쪽 설정·오른쪽 큰 원본 구조로 응답 필드 편집기를 수정하고 단축키 안내/숫자 설정을 기본 접힘으로 정리했다. 이전 인계에서 남긴 긴 QR 이름 줄임표와 긴 명단의 공유 접근 문제도 함께 완료했다.
+
+- 기능/검증 커밋: `b0a84d26fe6eb0160675c9c419365e802f1844dd` — `fix(consent): 원본 중심 필드 배치와 공유·QR 표시 개선`.
+- 전용 작업트리 `C:/Users/panth/.codex/worktrees/review-consent-20261001/260812_schooldoc`, 브랜치 `codex/consent-integrity-io-20261001`. 기준 origin/main `fb11a4b82419e773fb470d4a00cd621f17de8a21`을 로컬 병합한 뒤 작업했다. 공유 checkout·영수증 수정은 보존했다. `src/index.css`·DEVELOPMENT.md·진행 업무·DB/함수·배포 설정은 기준 main 그대로다.
+- 필드 추가/드래그/작은 칸 조절/확대50~300%/너비 맞춤·다쪽 이동/복사/되돌리기·이전 단계/새로고침 복구를 유지했다. Enter/Space 선택을 보완하고 실제 axe에서 발견한 필드와 조절점의 중첩 조작, 모바일 설정창/도구막대 겹침을 수정했다.
+- 공유·개인 QR·미제출 재배부는 요약 뒤에 배치했다. 응답/명단 접기·펼치기와 설정 저장 후 접힘 유지, 카운터·검색·커서·캐시·최신/이력 분리를 확인했다. QR 이름60자/식별값60자를 모두 표시하며 QR104px·PNG1024×1024 유지, A4 쪽당6명으로 조정했다.24명4쪽/60명10쪽 및 미제출16명3쪽/52명9쪽을 확인했다.
+- 최종 타입/린트/빌드 통과; 단위63파일501개 통과. 기존 다른 기능/검증 도구 lint6개·대형 번들 경고는 유지했다. 실제 설치 Google Chrome154.0.8037.58을 표시해 데모/부분 모의 API 고유63개(가정통신문45+앱 껍데기18)를 통과했고 구조 보완 후 직접 영향25개·질문/복구13개·Space/저장 후 접힘4개를 재통과했다. 마지막 대표 원본의 빈 칸에 배치한 전체 화면1개도 재확인했다.
+- 실제 Chrome과 격리 로컬 PostgreSQL18.4/PostgREST16.4/Deno의 읽기5흐름 통과, pageerror0.2,000명/응답100건에서 초기bundle1회/명단60·헤더60 유지, 접기·펼치기·복사 추가 요청0, detail1회와 캐시, 명단120→2000명 검색·미제출1900·최신1/이력2를 확인했다. Auth/Storage는 기존 로컬 JWT·디스크 어댑터이며 hosted Supabase 검증이 아니다.
+- 편집기3상태 axe 위반0,0/24/60명 관리 모바일 및 실제 DB 관리 CSS200% 위반0. 새 QR 다운로드4쪽·Chrome 인쇄4/10쪽, 총18쪽을 전부 렌더·시각 확인했다. 세 프로파일와 여섯 독립 AI 모의 관점의 1차→2차 개발·전체 화면 재검토를 기록했다. 실제 전문가·교사 검토를 받은 것은 아니다.
+- [상세 보고서](../design/consent-field-editor/2026-10-02/report.md), [검증 manifest](../design/consent-field-editor/2026-10-02/evidence/verification-manifest.json), [실제 DB·Chrome 결과](../design/consent-field-editor/2026-10-02/evidence/local-db-ui.json), [개선 편집 화면](../design/consent-field-editor/2026-10-02/evidence/final-editor-selected-desktop.png). 커밋 직전 소스8개 해시·PDF5개 staged 원본 바이트 일치, Markdown62링크 누락0·staged diff 통과. 시험 DB/키/JWT/.runtime과 이 일지는 기능 커밋에서 제외했다.
+- 첫 회귀의 옛 `쪽 맞춤` 선택자와 접근 가능한 이름 중복은 수정 후 재통과했다. 초기 JSX 닫힘 누락, agent-browser Windows 타임아웃, axe context와 PDF 재실행 파일 필터 보정도 보고서에 구분했다. 실패 또는 데모 결과를 원격 성공으로 보고하지 않는다.
+
+이번 변경의 DB/Edge Functions 배포는 해당 없음, 신규 UI 프런트엔드 운영 배포는 미적용이다. 기존 DB 최적화 원격 적용은 [통합 세션 운영 기록](../design/feature-reviews/2026-10-02-integration/release.md)을 따른다. 이번 UI의 GitHub push·PR 생성·main 병합·운영 배포는 이 세션에서 미실행이며 통합 세션 담당이다. 이 일지는 별도 로컬 문서 커밋으로 보존한다.
+
+남은 확인은 hosted Supabase/Google OAuth 완료·소유자 간 쓰기·실제 Storage 제출/복구/파기, 실제 학교 기기·프린터/카메라·화면낭독기·Chrome UI zoom200%·운영 IOPS/과금이다.200% 화면 증거는 root CSS 글자 확대다. QR6명/쪽의 종이 증가와 모바일 한 열·긴 목록 펼침의 세로 길이는 설계 제약으로 기록한다. 외부 공용 작업일지와 `pro/ux-ui-expert.md`는 이 환경에 없어 기존 전용 일지를 갱신했으며 없는 자료를 복원하지 않았다.
+## QR 태블릿 잘림 추가 수정·출력 재검증 (codex)
+
+2026-10-02. 첫 UI 인계 커밋 이후 통합 세션이 실제 Chrome640px/768px에서 고정 A4 너비에 따른 오른쪽 카드 잘림을 확인해 추가 보완을 요청했다. 화면은 가용 너비와 좁은 화면 한 열, 인쇄/저장은794×1123px·두 열/세 행·6명/쪽으로 분리해 수정했다. 기존 기능/일지 커밋은 재작성하지 않았다.
+
+- 추가 기능 커밋: `229c019b4f4409f04d069d9fe9338166f1deccfd` — `fix(consent): 태블릿 QR 카드 잘림과 A4 저장 보정`. 같은 워크트리/브랜치이며 공통 CSS·DB/API·다른 기능 변경 없음.
+- `node node_modules/@playwright/test/cli.js test tests/e2e/consent-editor-layout.spec.ts --grep QR --headed --reporter=list` 실제 Chrome3개 통과.390/640/768/1024/1280/1570px 모두 전체6개 카드·QR·60자 이름/식별값·저장 버튼 이탈0/잘림0, pageerror0. 화면6종 전체 캡처를 직접 확인했고 추가 세 프로파일의 판단·근거·남은 위험을 [보고서](../design/consent-field-editor/2026-10-02/report.md)에 기록했다. AI 모의 검토이며 실제 전문가 검토가 아니다.
+- 768px 실제 다운로드 PDF와390px 실제 인쇄 PDF 각1쪽에서6명·긴 이름/식별값·QR·푸터 정상. 기존24명4/4쪽·60명10쪽도 재출력·전체 렌더 확인해 현재 PDF5개20쪽 모두 A4·빈 페이지0. [폭 측정](../design/consent-field-editor/2026-10-02/evidence/tablet-qr-layout.json), [태블릿 A4 다운로드](../design/consent-field-editor/2026-10-02/evidence/tablet-qr-768-download.pdf), [모바일 A4 인쇄](../design/consent-field-editor/2026-10-02/evidence/tablet-qr-390-print.pdf).
+- 추가 타입/린트/빌드 통과, 관련 단위3파일45개 및 전체63파일501개 통과. 기존 lint6개·큰 번들 경고 유지. E2E 중복 제외 누적64개, 실제 로컬 DB5흐름은 별도 결과다. 현재 검증 manifest는 최종 소스8개와 출력5개 해시로 갱신했다. 추가 커밋 직전 전체 staged PDF7개 원본 바이트 일치, 링크78개 누락0·diff 통과.
+- 이 작업의4173/4181·55432~55435 서버를 종료하고 해당 포트의 리스너가 없는 것을 확인했다. 격리 시험 DB/키/.runtime 자료는 삭제하지 않았다. 새 일지는 별도 로컬 문서 커밋으로 보존한다.
+
+첫390/1366px 화면 검사만으로640/768px 구간을 확인하지 못한 검증 한계를 보완했다. 실물 프린터·카메라·화면낭독기·hosted Supabase 쓰기와 운영 OAuth 등 남은 확인은 앞선 항목과 같다. 이번 UI/추가 수정의 push·PR·main 병합·운영 배포는 이 세션에서 미실행이고 통합 세션 담당이다. DB·Edge Functions는 이번 추가 수정에 해당 없음, 프런트 새 UI는 운영 미적용으로 구분한다.

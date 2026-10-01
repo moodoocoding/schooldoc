@@ -66,7 +66,7 @@ test('PDF 가정통신문의 페이지와 원본 미리보기를 표시한다', 
   await expect(page.getByRole('button', { name: '단일 선택', exact: true })).toHaveCount(0);
   const desktopCanvas = await page.getByTestId('consent-field-canvas').boundingBox();
   const desktopSettings = await page.getByTestId('consent-field-settings').boundingBox();
-  expect(desktopSettings?.x).toBeGreaterThan((desktopCanvas?.x ?? 0) + (desktopCanvas?.width ?? 0) - 1);
+  expect((desktopSettings?.x ?? 0) + (desktopSettings?.width ?? 0)).toBeLessThan(desktopCanvas?.x ?? 0);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole('button', { name: '필드 배치 완료' })).toBeVisible();
@@ -526,15 +526,15 @@ test('확대해도 필드의 상대 위치가 유지된다', async ({ page }) =>
   const before = await ratioOf();
   await page.getByRole('button', { name: '확대' }).click();
   await page.getByRole('button', { name: '확대' }).click();
-  await expect(page.getByRole('button', { name: '쪽 맞춤' })).toContainText('150%');
+  await expect(page.getByTestId('consent-editor-document-toolbar').getByText('150%', { exact: true })).toBeVisible();
 
   const after = await ratioOf();
   expect(after.x).toBeCloseTo(before.x, 2);
   expect(after.y).toBeCloseTo(before.y, 2);
   expect(after.width).toBeCloseTo(before.width, 2);
 
-  await page.getByRole('button', { name: '쪽 맞춤' }).click();
-  await expect(page.getByRole('button', { name: '쪽 맞춤' })).toContainText('100%');
+  await page.getByRole('button', { name: '너비 맞춤' }).click();
+  await expect(page.getByTestId('consent-editor-document-toolbar').getByText('100%', { exact: true })).toBeVisible();
 });
 
 test('여러 수합을 선택해 한 번에 지운다', async ({ page }) => {

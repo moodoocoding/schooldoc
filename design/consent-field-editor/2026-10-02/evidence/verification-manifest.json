@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-02",
+  "browser": "Google Chrome 154.0.8037.58",
+  "headed": true,
+  "typecheck": "pass",
+  "lint": {
+    "result": "pass",
+    "existingWarnings": 6
+  },
+  "unit": {
+    "files": 63,
+    "tests": 501,
+    "result": "pass"
+  },
+  "chromeDemo": {
+    "uniqueTests": 64,
+    "result": "pass",
+    "lastQrRegression": 3,
+    "qrWidths": [
+      390,
+      640,
+      768,
+      1024,
+      1280,
+      1570
+    ],
+    "lastDirectRegression": 25,
+    "questionsAndRecovery": 13,
+    "spaceAndFoldSave": 4
+  },
+  "realLocalDb": {
+    "scenarios": 5,
+    "result": "pass",
+    "remote": false,
+    "authStorage": "local adapters"
+  },
+  "editorAxe": {
+    "states": 3,
+    "violations": 0
+  },
+  "qrPdf": {
+    "documents": 5,
+    "pages": 20,
+    "A4": true,
+    "blankPages": 0
+  },
+  "sourceHashEncoding": "UTF8 normalized LF",
+  "sourceHashes": {
+    "src/features/consentForms/ConsentFieldEditor.tsx": "3babb2c67991019712f2c3456a56382b57db317be4133f1c10c4bdcbfb4e487e",
+    "src/features/consentForms/ConsentFormsManagePage.tsx": "188573e4bda7f18c70f91f8295744710b246b93cda97a3cb1a61537e7821ae47",
+    "src/features/consentForms/ConsentQrPrintPage.tsx": "57640bb944d4450aa4aeaedd5fdebcc80798589de90b0b14a6574e6565c2e3ad",
+    "src/features/consentForms/consentRecipientSheet.ts": "92cef8e3eb9c497d619241231bc59c0180063f0b8c36cf7c8f4a313619448e1e",
+    "tests/e2e/consent-editor-layout.spec.ts": "fa6e1704c2bba5c4976eaa4aa26fe81ea23c1fd3f79fee76399b09f4093c3afd",
+    "tests/e2e/consent-forms.spec.ts": "e3988329dbe3e53a0083ec4b1460ad455486de60c2ddbe2986edc0f4aeca92f8",
+    "tests/e2e/consent-questions.spec.ts": "7f4c864cc7bdd5e1e86677912a965adfcf40ca1d36b4f29d11611c9428a0c674",
+    "tests/e2e/consent-small-fields.spec.ts": "65804183e6e63126fe17bac991c8fe37ce4eb5c450441d540ca030b05250b7da"
+  },
+  "pdfHashes": {
+    "final-qr-60-print.pdf": "ddc80809e50997db5657f8d1c8313af408d95db9255fb3d0658a53e51937619f",
+    "final-qr-download.pdf": "92deafd268e43b11542b178006bb352d0a1f618ef21d28fedc130c9315d2f9de",
+    "final-qr-print.pdf": "743dfaa3a757b738af519a1f3666eea3c15a808e8c63070c0dc8e3942b4ea994",
+    "tablet-qr-390-print.pdf": "3d224d9fb5c5fc83d42af69236e69fa2d2b2f0177ec7ccb56110527e1949ac68",
+    "tablet-qr-768-download.pdf": "0f390fc0cbd28e072a69c69ce5890cc80f5314aba632302728dcd9d4d0211cb3"
+  },
+  "markdownLinksChecked": 78,
+  "missingLinks": [],
+  "remoteWrites": false
+}

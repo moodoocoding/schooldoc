@@ -1,7 +1,7 @@
 import type { ConsentRecipientRecord } from './types';
 
-/** A4 한 장에 넣을 인원. 2열 4행 배치와 맞춘 값이다. */
-export const RECIPIENTS_PER_SHEET = 8;
+/** A4 한 장에 넣을 인원. 이름·식별값을 줄바꿈할 공간이 있는 2열 3행 배치다. */
+export const RECIPIENTS_PER_SHEET = 6;
 
 /** 마지막 쪽이 비더라도 최소 한 쪽은 만들어 빈 상태를 그릴 수 있게 한다. */
 export const paginateRecipients = <T,>(items: T[], size = RECIPIENTS_PER_SHEET) => Array.from(

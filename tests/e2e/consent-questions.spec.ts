@@ -160,6 +160,7 @@ test('교사는 기존 체크박스를 질문으로 묶고 새 질문을 작게 
   await page.getByRole('button', { name: '체크박스', exact: true }).click();
   await settings.getByLabel('표시 이름').fill('참가');
   await expect(settings.getByLabel('반드시 체크해야 하는 확인 항목')).not.toBeChecked();
+  await settings.getByText('크기와 위치', { exact: true }).click();
   await settings.getByLabel('너비', { exact: true }).fill('1');
   await settings.getByLabel('높이', { exact: true }).fill('0.7');
   const field = page.getByRole('button', { name: '참가 필드', exact: true });

@@ -15,6 +15,7 @@ for (const width of [1440, 390]) test('좁은 PDF 표에 텍스트 칸 배치·�
   await page.getByRole('button',{name:'확인 후 필드 배치'}).click();
   await page.getByRole('button',{name:'텍스트',exact:true}).click();
   const settings = page.getByTestId('consent-field-settings');
+  await settings.getByText('크기와 위치', {exact:true}).click();
   await settings.getByLabel('높이',{exact:true}).fill('1.8');
   await settings.getByLabel('너비',{exact:true}).fill('50');
   await settings.getByLabel('가로 위치',{exact:true}).fill('35');
@@ -27,10 +28,10 @@ for (const width of [1440, 390]) test('좁은 PDF 표에 텍스트 칸 배치·�
   await field.focus(); await page.keyboard.press('Alt+ArrowUp');
   await expect(settings.getByLabel('높이',{exact:true})).toHaveValue('1.7');
   // 작은 상자의 상하 조절점 클릭 영역이 겹치면 실제 드래그가 불가능해진다.
-  const nw = await field.locator('[data-resize-handle="nw"]').boundingBox();
-  const sw = await field.locator('[data-resize-handle="sw"]').boundingBox();
+  const nw = await canvas.locator('[data-resize-handle="nw"]').boundingBox();
+  const sw = await canvas.locator('[data-resize-handle="sw"]').boundingBox();
   expect(nw!.y + nw!.height).toBeLessThanOrEqual(sw!.y);
-  const se = await field.locator('[data-resize-handle="se"]').boundingBox();
+  const se = await canvas.locator('[data-resize-handle="se"]').boundingBox();
   await page.mouse.move(se!.x + se!.width / 2,se!.y + se!.height / 2); await page.mouse.down();
   await page.mouse.move(se!.x + se!.width / 2,se!.y + se!.height / 2 - 100); await page.mouse.up();
   await expect(settings.getByLabel('높이',{exact:true})).toHaveValue('1');
