@@ -102,6 +102,7 @@ async function setup(page: Page, kind: FixtureKind = 'mixed') {
   }, { book, sources, kind });
   await page.goto('/tools/receipts/' + BOOK_ID);
   await expect(page.getByRole('heading', { name: book.title, exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: /정산내역/ }).click();
   return { imageSource, pageErrors, remoteCalls };
 }
 
@@ -161,17 +162,21 @@ async function renderDownloadedPdf(page: Page, testInfo: TestInfo, path: string)
   return pages;
 }
 
-test('Excel은 반영한 지출만 날짜순으로 내보내고 금액·합계와 수식 모양 문자를 보존한다', async ({ page }, testInfo) => {
+test('Excel은 화면의 5열 정산내역과 반영한 지출만 내보내고 수식 모양 문자를 보존한다', async ({ page }, testInfo) => {
   const { pageErrors, remoteCalls } = await setup(page);
+  await page.getByRole('tab', { name: /정산내역/ }).focus();
+  await page.getByRole('tab', { name: /정산내역/ }).press('ArrowLeft');
+  await expect(page.getByRole('tab', { name: /영수증 등록/ })).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('tab', { name: /영수증 등록/ }).press('ArrowRight');
+  await expect(page.getByRole('tab', { name: /정산내역/ })).toHaveAttribute('aria-selected', 'true');
   const rows = page.getByRole('table').locator('tbody tr');
   await expect(rows).toHaveCount(4);
   await expect(rows.nth(0)).toContainText(FORMULA_MERCHANT);
   await expect(rows.nth(3)).toContainText('-자료상점');
-  const path = await downloadFile(page, testInfo, 'Excel 지출대장', 'xlsx');
+  const path = await downloadFile(page, testInfo, 'Excel 정산내역', 'xlsx');
   const data = await readSheet(path);
   const values = data.flat();
-  expect(values).toContain('학급 운영비 출력 검증 · 지출대장');
-  expect(values).toContain('5학년 2반');
+  expect(data[0]).toEqual(['* 사용일자', '* 사용업체명', '* 사용금액', '* 증빙구분', '사용내역']);
   expect(values).toContain(FORMULA_MERCHANT);
   expect(values).toContain(FORMULA_PURPOSE);
   expect(values).toContain('-자료상점');
@@ -180,14 +185,13 @@ test('Excel은 반영한 지출만 날짜순으로 내보내고 금액·합계�
   expect(values).not.toContain('미반영 사용처');
   expect(values).not.toContain(99999);
   expect(values).not.toContain(123456);
-  for (const value of [500000, 30000, 470000, 2000, 7000, 8000, 13000]) expect(values).toContain(value);
+  for (const value of [2000, 7000, 8000, 13000]) expect(values).toContain(value);
   const exported = data.filter(row => row.includes(FORMULA_MERCHANT) || row.includes('학급 문구점') || row.includes('학급 서점') || row.includes('-자료상점'));
   expect(exported).toHaveLength(4);
-  expect(exported.map(row => row.find(value => typeof value === 'string' && /^2026-09-\d\d$/.test(value)))).toEqual(['2026-09-01', '2026-09-03', '2026-09-04', '2026-09-05']);
-  expect(exported.map(row => row[4])).toEqual([2000, 7000, 8000, 13000]);
-  expect(exported.map(row => row[5])).toEqual(['없음', '1', '2', '2']);
-  expect(data.find(row => row[0] === '합계')?.[4]).toBe(30000);
-  await expect(page.getByRole('button', { name: 'Excel 지출대장', exact: true })).toBeEnabled();
+  expect(exported.map(row => (row[0] as Date).toISOString().slice(0, 10))).toEqual(['2026-09-01', '2026-09-03', '2026-09-04', '2026-09-05']);
+  expect(exported.map(row => row[2])).toEqual([2000, 7000, 8000, 13000]);
+  expect(exported.map(row => row[3])).toEqual(['전산자료', '전산자료', '전산자료', '전산자료']);
+  await expect(page.getByRole('button', { name: 'Excel 정산내역', exact: true })).toBeEnabled();
   expect(pageErrors).toEqual([]); expect(remoteCalls).toEqual([]);
 });
 
@@ -219,6 +223,7 @@ test('결손 원본은 불완전한 PDF를 내려받지 않고 같은 파일을 
   await page.getByRole('button', { name: '학급 문구점 지출 수정', exact: true }).click();
   await page.getByLabel('기존 영수증 원본 다시 연결').setInputFiles({ name: imageSource.name, mimeType: imageSource.mimeType, buffer: Buffer.from(imageSource.base64, 'base64') });
   await expect(page.getByRole('status').filter({ hasText: '원본을 다시 연결했습니다.' })).toBeVisible();
+  await page.getByRole('tab', { name: /정산내역/ }).click();
   const path = await downloadFile(page, testInfo, '영수증 첨부 PDF', 'pdf');
   expect((await renderDownloadedPdf(page, testInfo, path))).toHaveLength(2);
   expect(downloads).toHaveLength(1);
@@ -233,7 +238,7 @@ test('손상된 영수증은 PDF 실패를 안내하고 Excel은 계속 내려�
   await expect(page.getByRole('alert')).toContainText(/원본|영수증|이미지/);
   await expect(page.getByRole('button', { name: '영수증 첨부 PDF', exact: true })).toBeEnabled();
   expect(downloads).toEqual([]);
-  const path = await downloadFile(page, testInfo, 'Excel 지출대장', 'xlsx');
+  const path = await downloadFile(page, testInfo, 'Excel 정산내역', 'xlsx');
   expect((await readSheet(path)).flat()).toContain(7000);
   expect(downloads).toHaveLength(1);
   expect(pageErrors).toEqual([]); expect(remoteCalls).toEqual([]);
@@ -242,7 +247,7 @@ test('손상된 영수증은 PDF 실패를 안내하고 Excel은 계속 내려�
 test('증빙 없는 수기 지출도 PDF로 저장하고 모바일에 가로 넘침이 없다', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const { pageErrors, remoteCalls } = await setup(page, 'manual');
-  await expect(page.getByRole('button', { name: 'Excel 지출대장', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Excel 정산내역', exact: true })).toBeEnabled();
   await expect(page.getByRole('button', { name: '영수증 첨부 PDF', exact: true })).toBeEnabled();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   await page.screenshot({ path: testInfo.outputPath('export-ledger-mobile.png'), fullPage: true });
@@ -254,7 +259,8 @@ test('증빙 없는 수기 지출도 PDF로 저장하고 모바일에 가로 넘
 
 test('반영된 지출이 없으면 미반영 후보·휴지통이 있어도 내보내기를 비활성화한다', async ({ page }) => {
   const { pageErrors, remoteCalls } = await setup(page, 'empty');
-  await expect(page.getByRole('button', { name: 'Excel 지출대장', exact: true })).toBeDisabled();
+  await expect(page.getByRole('table')).toContainText('반영한 지출이 없습니다');
+  await expect(page.getByRole('button', { name: 'Excel 정산내역', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: '영수증 첨부 PDF', exact: true })).toBeDisabled();
   expect(pageErrors).toEqual([]); expect(remoteCalls).toEqual([]);
 });
@@ -271,13 +277,13 @@ test('PDF 생성 중에는 두 내보내기 버튼을 잠그고 완료 후 다�
   try {
     await page.getByRole('button', { name: '영수증 첨부 PDF', exact: true }).click();
     await expect.poll(() => importStarted).toBe(true);
-    await expect(page.getByRole('button', { name: 'Excel 지출대장', exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Excel 정산내역', exact: true })).toBeDisabled();
     await expect(page.getByRole('button', { name: '영수증 첨부 PDF', exact: true })).toBeDisabled();
     await expect(page.getByRole('status')).toBeVisible();
   } finally { releaseImport(); }
   const download = await downloading;
   await download.saveAs(testInfo.outputPath(download.suggestedFilename()));
-  await expect(page.getByRole('button', { name: 'Excel 지출대장', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Excel 정산내역', exact: true })).toBeEnabled();
   await expect(page.getByRole('button', { name: '영수증 첨부 PDF', exact: true })).toBeEnabled();
   expect(pageErrors).toEqual([]); expect(remoteCalls).toEqual([]);
 });
@@ -302,6 +308,7 @@ test('긴 제목·사용처·사용 목적과 40건의 지출을 여러 PDF 페�
     window.dispatchEvent(new Event('schooldoc-class-budget-receipts-change'));
   }, { ownerId: OWNER_ID, longTitle, entries });
   await expect(page.getByRole('table').locator('tbody tr')).toHaveCount(40);
+  await page.screenshot({ path: testInfo.outputPath('settlement-40-rows.png'), fullPage: true });
   await expect(page.getByRole('heading', { name: longTitle, exact: true })).toBeVisible();
   await expect(page.getByRole('region', { name: '예산 현황' })).toContainText('82,000원');
   const path = await downloadFile(page, testInfo, '영수증 첨부 PDF', 'pdf');
@@ -330,7 +337,7 @@ test('PDF 생성을 취소하면 파일을 저장하지 않으며 이어서 다�
     await page.getByRole('button', { name: '내려받기 취소', exact: true }).click();
   } finally { releaseImport(); }
   await expect(page.getByRole('status')).toHaveText('내려받기를 취소했습니다.');
-  await expect(page.getByRole('button', { name: 'Excel 지출대장', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Excel 정산내역', exact: true })).toBeEnabled();
   await expect(page.getByRole('button', { name: '영수증 첨부 PDF', exact: true })).toBeEnabled();
   expect(downloads).toEqual([]);
   await downloadFile(page, testInfo, '영수증 첨부 PDF', 'pdf');
@@ -384,8 +391,8 @@ test('세로로 긴 영수증을 여러 PDF 페이지로 나누어도 처음·�
   expect(evidencePages[0].red).toBeGreaterThan(1000);
   expect(evidencePages.reduce((total, rendered) => total + rendered.blue, 0)).toBeGreaterThan(1000);
   expect(evidencePages[evidencePages.length - 1].green).toBeGreaterThan(1000);
-  const excelPath = await downloadFile(page, testInfo, 'Excel 지출대장', 'xlsx');
+  const excelPath = await downloadFile(page, testInfo, 'Excel 정산내역', 'xlsx');
   const exported = (await readSheet(excelPath)).find(row => row.includes('긴 영수증 상점'));
-  expect(exported?.[5]).toBe('1');
+  expect(exported?.[3]).toBe('전산자료');
   expect(pageErrors).toEqual([]); expect(remoteCalls).toEqual([]);
 });
