@@ -1,6 +1,7 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { loadPdfJs } from '../../utils/pdfjs';
 import { normalizeImportHeader as normalizeHeader, readDelimitedImportFile, readExcelImportFile } from '../../utils/tabularImport';
+import { isTotalResultColumn } from './studentResultsUtils';
 import type { ResultColumn, ResultRecipientDraft } from './types';
 
 type SheetRows = readonly (readonly unknown[])[];
@@ -320,6 +321,7 @@ export const analyzeStudentResultRows = (
       label: parsed.label,
       maxScore: parsed.explicitMax ?? inferredMaxScore(numericValues),
       description: '',
+      kind: isTotalResultColumn({ id: '', label: parsed.label, maxScore: 0, description: '' }) ? 'total' as const : 'score' as const,
       sourceIndex: index,
       inferred: parsed.explicitMax === null,
     }];
@@ -352,6 +354,17 @@ export const analyzeStudentResultRows = (
     ...(columns.some((column) => column.inferred) ? ['머리글에 배점이 없는 결과 항목은 입력된 최고 점수를 기준으로 배점을 추정했습니다.'] : []),
     ...(ignoredHeaders.length > 0 ? [`숫자 값이 없는 열은 결과 항목에서 제외했습니다: ${ignoredHeaders.join(', ')}`] : []),
   ];
+  const totalColumn = columns.find((column) => column.kind === 'total');
+  const scoreColumns = columns.filter((column) => column.kind === 'score');
+  if (totalColumn && scoreColumns.length > 0) {
+    const mismatches = recipients.filter((recipient) => {
+      const total = recipient.values[totalColumn.id];
+      const scores = scoreColumns.map((column) => recipient.values[column.id]);
+      return typeof total === 'number' && scores.every((score) => typeof score === 'number')
+        && Math.abs(total - (scores as number[]).reduce((sum, score) => sum + score, 0)) > 0.001;
+    });
+    if (mismatches.length > 0) warnings.push(`총점과 개별 점수 합계가 다른 학생 ${mismatches.length}명을 확인해 주세요.`);
+  }
 
   return {
     title,

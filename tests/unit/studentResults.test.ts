@@ -9,8 +9,10 @@ import {
   regenerateStudentResultPersonalToken,
   replyToStudentDispute,
   authenticateStudentResultByToken,
+  updateStudentResultRecipient,
+  updateStudentResultSettings,
 } from '../../src/features/studentResults/studentResultsStore';
-import { getStudentResultValidationIssue, paginateStudentResultRecipients, validateStudentResultDraft } from '../../src/features/studentResults/studentResultsUtils';
+import { getStudentResultValidationIssue, paginateStudentResultRecipients, studentResultSummary, validateStudentResultDraft } from '../../src/features/studentResults/studentResultsUtils';
 import type { StudentResultDraft } from '../../src/features/studentResults/types';
 import {
   analyzeStudentResultRows,
@@ -52,6 +54,34 @@ beforeEach(() => {
 });
 
 describe('학생 결과 안내 로컬 흐름', () => {
+  it('총점 열을 개별 과목에 다시 더하지 않고, 명시 종류와 기존 머리글 모두 인식한다', () => {
+    const columns = [
+      { id: 'math', label: '수학', maxScore: 50, description: '', kind: 'score' as const },
+      { id: 'korean', label: '국어', maxScore: 50, description: '', kind: 'score' as const },
+      { id: 'sum', label: '합산 결과', maxScore: 100, description: '', kind: 'total' as const },
+    ];
+    expect(studentResultSummary(columns, { math: 45, korean: 47, sum: 92 })).toMatchObject({ score: 92, maxScore: 100, source: 'total' });
+    expect(studentResultSummary([{ ...columns[2], kind: undefined, label: '총점' }], { sum: 92 })).toMatchObject({ score: 92, source: 'total' });
+  });
+
+  it('교사 점수 정정은 수정 내역을 남기고 기존 확인을 재확인 필요로 바꾼다', () => {
+    const created = createStudentResultEvent('teacher-a', draft);
+    const confirmed = confirmStudentResult(created.id, created.recipients[0].id)!;
+    const current = getStudentResultEvent('teacher-a', created.id)!;
+    const corrected = updateStudentResultRecipient('teacher-a', created.id, created.recipients[0].id, current.updatedAt, confirmed.recipient.updatedAt!, { score: 8 }, '오류 정정', '채점표 재확인');
+    expect(corrected?.recipient.status).toBe('reconfirm');
+    expect(corrected?.recipient.confirmedAt).toBeUndefined();
+    expect(corrected?.recipient.revisions?.[0]).toMatchObject({ reason: '채점표 재확인', before: { values: { score: 9 } }, after: { values: { score: 8 } } });
+  });
+
+  it('확인 받기가 꺼진 결과의 이의 답변은 완료 상태로 마친다', () => {
+    const created = createStudentResultEvent('teacher-a', { ...draft, allowConfirmation: false });
+    disputeStudentResult(created.id, created.recipients[0].id, '확인 부탁드립니다.');
+    const replied = replyToStudentDispute('teacher-a', created.id, created.recipients[0].id, '수정했습니다.');
+    expect(replied?.recipient.status).toBe('replied');
+    const current = getStudentResultEvent('teacher-a', created.id)!;
+    expect(() => updateStudentResultSettings('teacher-a', created.id, 'stale-version', { title: current.title, description: current.description, columns: current.columns, allowConfirmation: false, allowDispute: true })).toThrow('다른 변경');
+  });
   it('교사별 목록과 상세를 격리한다', () => {
     const created = createStudentResultEvent('teacher-a', draft);
 

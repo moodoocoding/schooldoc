@@ -63,9 +63,18 @@ export function StudentResultsQrPrintPage() {
           windowWidth: 794,
           windowHeight: 1123,
           onclone: (clonedDocument) => {
-            clonedDocument.querySelectorAll<HTMLElement>('.student-result-qr-print-page').forEach((page) => {
-              page.style.boxShadow = 'none';
-            });
+            const clonedPages = Array.from(clonedDocument.querySelectorAll<HTMLElement>('.student-result-qr-print-page'));
+            const selectedPage = clonedPages[index];
+            if (!selectedPage) throw new Error('PDF 페이지를 복사하지 못했습니다.');
+            clonedPages.forEach((page) => { if (page !== selectedPage) page.remove(); });
+            clonedDocument.body.appendChild(selectedPage);
+            clonedDocument.body.style.margin = '0';
+            clonedDocument.body.style.padding = '0';
+            selectedPage.style.position = 'absolute';
+            selectedPage.style.left = '0';
+            selectedPage.style.top = '0';
+            selectedPage.style.margin = '0';
+            selectedPage.style.boxShadow = 'none';
           },
         });
         if (index > 0) pdf.addPage('a4', 'portrait');

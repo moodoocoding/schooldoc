@@ -21,7 +21,7 @@ import {
   type FormSnapshot,
   type HistoryEntry,
 } from './studentResultsHistory';
-import { getStudentResultValidationIssue, makeEmptyRecipient } from './studentResultsUtils';
+import { getStudentResultValidationIssue, isTotalResultColumn, makeEmptyRecipient } from './studentResultsUtils';
 import type { ResultRecipientDraft, StudentResultDraft } from './types';
 
 const initialColumns: EditableResultColumn[] = [
@@ -51,6 +51,7 @@ export function StudentResultsCreatePage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [undoNotice, setUndoNotice] = useState('');
   const [saving, setSaving] = useState(false);
+  const [confirmLeaving, setConfirmLeaving] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const snapshotNow = (): FormSnapshot => ({
@@ -58,6 +59,10 @@ export function StudentResultsCreatePage() {
     description,
     columns: structuredClone(columns),
     recipients: structuredClone(recipients),
+    allowConfirmation,
+    allowDispute,
+    importedFileName,
+    importAnalysis: importAnalysis ? structuredClone(importAnalysis) : null,
   });
   /** 되돌릴 수 없는 변경 앞에서 현재 상태를 남긴다. */
   const remember = (label: string) => {
@@ -71,6 +76,10 @@ export function StudentResultsCreatePage() {
     setDescription(entry.snapshot.description);
     setColumns(entry.snapshot.columns);
     setRecipients(entry.snapshot.recipients);
+    setAllowConfirmation(entry.snapshot.allowConfirmation);
+    setAllowDispute(entry.snapshot.allowDispute);
+    setImportedFileName(entry.snapshot.importedFileName);
+    setImportAnalysis(entry.snapshot.importAnalysis);
     setHistory(rest);
     setUndoNotice(`${entry.label}을(를) 되돌렸습니다.`);
     setError('');
@@ -229,8 +238,6 @@ export function StudentResultsCreatePage() {
 
   const undoImport = () => {
     undo();
-    setImportAnalysis(null);
-    setImportedFileName('');
     setFileImportError('');
   };
 
@@ -281,9 +288,17 @@ export function StudentResultsCreatePage() {
   const hasEnteredData = Boolean(
     title.trim()
     || description.trim()
-    || columns.some((column) => column.label !== '평가 점수' || column.maxScore !== 100 || column.description.trim())
-    || recipients.some((recipient) => recipient.name.trim() || recipient.verificationCode.trim() || recipient.feedback.trim()),
+    || columns.some((column) => column.label !== '평가 점수' || column.maxScore !== 100 || column.description.trim() || column.kind === 'total')
+    || recipients.some((recipient) => recipient.name.trim() || recipient.verificationCode.trim() || recipient.feedback.trim() || Object.values(recipient.values).some((value) => value !== ''))
+    || !allowConfirmation || !allowDispute || Boolean(importAnalysis),
   );
+  useEffect(() => {
+    if (!hasEnteredData) return;
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', warnBeforeUnload);
+    return () => window.removeEventListener('beforeunload', warnBeforeUnload);
+  }, [hasEnteredData]);
+  const leave = () => { if (hasEnteredData) setConfirmLeaving(true); else navigate('/tools/student-results'); };
   const fieldError = (fieldId: string) => errorFieldId === fieldId;
   const lastChange = history.length > 0 ? history[history.length - 1].label : '';
 
@@ -292,7 +307,7 @@ export function StudentResultsCreatePage() {
       <div className="flex items-center justify-between border-b border-[#DCE3EA] pb-4">
         <button
           type="button"
-          onClick={() => navigate('/tools/student-results')}
+          onClick={leave}
           className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-2 text-sm font-semibold text-[#334155] hover:bg-white hover:text-[#0F6CBD]"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -410,8 +425,12 @@ export function StudentResultsCreatePage() {
                 ) : null}
               </div>
               </div>
-              {lastChange === '결과 파일 불러오기' ? <button type="button" onClick={undoImport} className="inline-flex min-h-[40px] shrink-0 items-center gap-2 rounded-lg border border-[#16803C] px-3 text-xs font-bold text-[#126B32]"><Undo2 className="h-4 w-4" />가져오기 취소</button> : null}
+              <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                <button type="button" disabled={importing} onClick={() => importInputRef.current?.click()} className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-lg border border-[#16803C] px-3 text-xs font-bold text-[#126B32] disabled:opacity-50"><Upload className="h-4 w-4" />다른 파일 선택</button>
+                {lastChange === '결과 파일 불러오기' ? <button type="button" onClick={undoImport} className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-lg border border-[#16803C] px-3 text-xs font-bold text-[#126B32]"><Undo2 className="h-4 w-4" />가져오기 취소</button> : null}
+              </div>
             </div>
+            <p className="mt-3 border-t border-[#CDE9D4] pt-2 text-xs text-[#526174]">다른 파일을 적용하면 현재 입력 내용을 교체합니다. 적용 전에 분석 결과를 확인할 수 있습니다.</p>
           </div>
         ) : (
           <div className={`rounded-lg border px-4 py-5 sm:px-5 ${fileImportError ? 'border-[#F2B8B5] bg-[#FFF8F8]' : 'border-[#B9D9F2] bg-[#F7FBFE]'}`}>
@@ -494,14 +513,15 @@ export function StudentResultsCreatePage() {
 
       <section className="border-y border-[#DCE3EA] bg-white px-4 py-6 sm:px-6">
         <div className="flex items-center justify-between">
-          <div><h2 className="text-base font-bold">2. 결과 항목</h2><p className="mt-1 text-xs text-[#64748B]">자동 분석한 항목명과 배점을 확인해 주세요.</p></div>
+          <div><h2 className="text-base font-bold">2. 결과 항목</h2><p className="mt-1 text-xs text-[#64748B]">항목명·배점을 확인하고, 합계 열은 ‘총점’으로 지정해 주세요. 총점은 다시 더하지 않습니다.</p></div>
           <button id="student-result-add-column" type="button" onClick={addColumn} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD]"><Plus className="h-4 w-4" />항목 추가</button>
         </div>
         <div className="mt-4 space-y-3">
           {columns.map((column, index) => (
-            <div key={column.id} className="grid gap-3 border-b border-[#EEF1F4] pb-3 md:grid-cols-[1fr_120px_1.3fr_40px]">
+            <div key={column.id} className="grid gap-3 border-b border-[#EEF1F4] pb-3 md:grid-cols-[minmax(0,1fr)_110px_110px_minmax(0,1.2fr)_40px]">
               <div><input id={`student-result-column-label-${index}`} aria-invalid={fieldError(`student-result-column-label-${index}`)} aria-describedby={fieldError(`student-result-column-label-${index}`) ? `student-result-column-label-${index}-error` : undefined} aria-label={`${index + 1}번 항목명`} onKeyDown={onColumnKeyDown(index)} value={column.label} onChange={(event) => setColumns((current) => current.map((item) => item.id === column.id ? { ...item, label: event.target.value } : item))} className={`min-h-[44px] w-full rounded-lg border px-3 text-sm ${fieldError(`student-result-column-label-${index}`) ? 'border-[#B42318] bg-[#FFF8F8]' : 'border-[#C8D0DA]'}`} placeholder="항목명" />{fieldError(`student-result-column-label-${index}`) ? <p id={`student-result-column-label-${index}-error`} className="mt-1 text-xs font-semibold text-[#B42318]">{error}</p> : null}</div>
               <div><input id={`student-result-column-max-${index}`} aria-invalid={fieldError(`student-result-column-max-${index}`)} aria-describedby={fieldError(`student-result-column-max-${index}`) ? `student-result-column-max-${index}-error` : undefined} aria-label={`${column.label || index + 1} 배점`} type="number" min="1" value={column.maxScore} onChange={(event) => setColumns((current) => current.map((item) => item.id === column.id ? { ...item, maxScore: event.target.value === '' ? '' : Number(event.target.value) } : item))} className={`min-h-[44px] w-full rounded-lg border px-3 text-sm ${fieldError(`student-result-column-max-${index}`) ? 'border-[#B42318] bg-[#FFF8F8]' : 'border-[#C8D0DA]'}`} />{fieldError(`student-result-column-max-${index}`) ? <p id={`student-result-column-max-${index}-error`} className="mt-1 text-xs font-semibold text-[#B42318]">{error}</p> : null}</div>
+              <select aria-label={`${column.label || index + 1} 항목 종류`} value={isTotalResultColumn({ ...column, maxScore: Number(column.maxScore) }) ? 'total' : 'score'} onChange={(event) => setColumns((current) => current.map((item) => ({ ...item, kind: item.id === column.id ? event.target.value as 'score' | 'total' : event.target.value === 'total' ? 'score' : item.kind })))} className="min-h-[44px] w-full rounded-lg border border-[#C8D0DA] bg-white px-2 text-sm"><option value="score">개별 점수</option><option value="total">총점</option></select>
               <input aria-label={`${column.label || index + 1} 설명`} value={column.description} onChange={(event) => setColumns((current) => current.map((item) => item.id === column.id ? { ...item, description: event.target.value } : item))} className="min-h-[44px] rounded-lg border border-[#C8D0DA] px-3 text-sm" placeholder="설명 (선택)" />
               <button type="button" disabled={columns.length === 1} onClick={() => removeColumn(column.id)} className="flex h-10 w-10 items-center justify-center rounded-lg text-[#94A3B8] hover:bg-[#FEF3F2] hover:text-[#B42318] disabled:opacity-30" aria-label={`${column.label || index + 1} 항목 삭제`}><Trash2 className="h-4 w-4" /></button>
             </div>
@@ -554,9 +574,10 @@ export function StudentResultsCreatePage() {
       </section>
 
       <div className="flex justify-end gap-3">
-        <button type="button" onClick={() => navigate('/tools/student-results')} className="min-h-[44px] rounded-lg border border-[#C8D0DA] px-5 text-sm font-bold">취소</button>
+        <button type="button" onClick={leave} className="min-h-[44px] rounded-lg border border-[#C8D0DA] px-5 text-sm font-bold">취소</button>
         <button type="submit" disabled={saving} className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[#0F6CBD] px-6 text-sm font-bold text-white hover:bg-[#0B5B9F] disabled:cursor-wait disabled:bg-[#AAB7C4]">{saving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}{saving ? '저장 중' : '결과 안내 만들기'}</button>
       </div>
+      {confirmLeaving ? <StudentResultConfirmDialog title="작성 중인 결과 안내를 나갈까요?" description="저장하지 않은 학생 결과와 파일 분석 내용이 사라집니다." confirmLabel="저장하지 않고 나가기" onCancel={() => setConfirmLeaving(false)} onConfirm={() => navigate('/tools/student-results')} /> : null}
     </form>
   );
 }

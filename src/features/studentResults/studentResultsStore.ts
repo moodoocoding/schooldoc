@@ -3,6 +3,7 @@ import type {
   ResultRecipient,
   StudentResultDraft,
   StudentResultEvent,
+  StudentResultEventSettings,
 } from './types';
 import { cleanText, validateStudentResultDraft } from './studentResultsUtils';
 
@@ -95,6 +96,7 @@ export const createStudentResultEvent = (ownerId: string, draft: StudentResultDr
       values: Object.fromEntries(Object.entries(recipient.values).map(([key, value]) => [key, Number(value)])),
       feedback: recipient.feedback.trim(),
       status: 'unviewed',
+      updatedAt: now,
     })),
     createdAt: now,
     updatedAt: now,
@@ -141,34 +143,95 @@ export const authenticateStudentResultByToken = (publicToken: string, personalTo
   return recipient ? markViewed(event, recipient) : null;
 };
 
-export const confirmStudentResult = (eventId: string, recipientId: string) => (
-  updateRecipient(eventId, recipientId, (recipient) => ({
-    ...recipient,
+export const getStudentResultEventPublicRecipient = (eventId: string, recipientId: string) => {
+  const event = read().find((candidate) => candidate.id === eventId && candidate.status === 'open');
+  const recipient = event?.recipients.find((candidate) => candidate.id === recipientId);
+  return event && recipient ? publicResult(event, recipient) : null;
+};
+
+export const confirmStudentResult = (eventId: string, recipientId: string) => {
+  const event = read().find((candidate) => candidate.id === eventId && candidate.status === 'open');
+  const recipient = event?.recipients.find((candidate) => candidate.id === recipientId);
+  if (!event?.allowConfirmation || !recipient || recipient.status === 'disputed') return null;
+  return updateRecipient(eventId, recipientId, (current) => ({
+    ...current,
     status: 'confirmed',
     confirmedAt: new Date().toISOString(),
-  }))
-);
+    updatedAt: new Date().toISOString(),
+  }));
+};
 
-export const disputeStudentResult = (eventId: string, recipientId: string, message: string) => (
-  updateRecipient(eventId, recipientId, (recipient) => ({
+export const disputeStudentResult = (eventId: string, recipientId: string, message: string) => {
+  const event = read().find((candidate) => candidate.id === eventId && candidate.status === 'open');
+  if (!event?.allowDispute || !message.trim()) return null;
+  return updateRecipient(eventId, recipientId, (recipient) => ({
     ...recipient,
     status: 'disputed',
+    confirmedAt: undefined,
     dispute: { message: message.trim(), submittedAt: new Date().toISOString() },
-  }))
-);
+    updatedAt: new Date().toISOString(),
+  }));
+};
 
 export const replyToStudentDispute = (ownerId: string, eventId: string, recipientId: string, reply: string) => {
   const event = getStudentResultEvent(ownerId, eventId);
-  if (!event) return null;
+  if (!event || !reply.trim() || !event.recipients.some((recipient) => recipient.id === recipientId && recipient.dispute)) return null;
   return updateRecipient(eventId, recipientId, (recipient) => ({
     ...recipient,
-    status: 'reconfirm',
+    status: event.allowConfirmation ? 'reconfirm' : 'replied',
     confirmedAt: undefined,
+    updatedAt: new Date().toISOString(),
     dispute: recipient.dispute ? {
       ...recipient.dispute,
       teacherReply: reply.trim(),
       repliedAt: new Date().toISOString(),
     } : undefined,
+  }));
+};
+
+export const updateStudentResultSettings = (ownerId: string, eventId: string, expectedUpdatedAt: string, settings: StudentResultEventSettings) => {
+  const event = getStudentResultEvent(ownerId, eventId);
+  if (!event) throw new Error('결과 안내를 찾을 수 없습니다.');
+  if (event.updatedAt !== expectedUpdatedAt) throw new Error('다른 변경이 반영되었습니다. 새로고침 후 다시 확인해 주세요.');
+  if (!settings.title.trim() || settings.title.length > 200 || settings.description.length > 4000
+    || settings.columns.length !== event.columns.length
+    || settings.columns.some((column) => !event.columns.some((existing) => existing.id === column.id)
+      || !column.label.trim() || column.maxScore <= 0 || !Number.isFinite(column.maxScore)
+      || event.recipients.some((recipient) => recipient.values[column.id] > column.maxScore))) {
+    throw new Error('안내 정보와 결과 항목을 확인해 주세요.');
+  }
+  const before = { title: event.title, description: event.description, allowConfirmation: event.allowConfirmation, allowDispute: event.allowDispute, columns: event.columns };
+  return updateEvent(eventId, (current) => ({
+    ...current,
+    title: cleanText(settings.title), description: settings.description.trim(),
+    allowConfirmation: settings.allowConfirmation, allowDispute: settings.allowDispute,
+    columns: settings.columns,
+    recipients: settings.allowConfirmation ? current.recipients : current.recipients.map((recipient) => (
+      recipient.status === 'reconfirm' ? { ...recipient, status: 'replied', updatedAt: new Date().toISOString() } : recipient
+    )),
+    revisions: [...(current.revisions ?? []), { changedAt: new Date().toISOString(), before, after: settings }],
+  }));
+};
+
+export const updateStudentResultRecipient = (ownerId: string, eventId: string, recipientId: string, expectedEventUpdatedAt: string, expectedRecipientUpdatedAt: string, values: Record<string, number>, feedback: string, reason: string) => {
+  const event = getStudentResultEvent(ownerId, eventId);
+  const recipient = event?.recipients.find((candidate) => candidate.id === recipientId);
+  if (!event || !recipient) throw new Error('학생 결과를 찾을 수 없습니다.');
+  if (event.updatedAt !== expectedEventUpdatedAt || recipient.updatedAt !== expectedRecipientUpdatedAt) throw new Error('다른 변경이 반영되었습니다. 새로고침 후 다시 확인해 주세요.');
+  if (!reason.trim() || reason.length > 200 || feedback.length > 10000
+    || Object.keys(values).length !== event.columns.length
+    || event.columns.some((column) => !Number.isFinite(values[column.id]) || values[column.id] < 0 || values[column.id] > column.maxScore)) {
+    throw new Error('점수·피드백과 수정 사유를 확인해 주세요.');
+  }
+  const before = { values: recipient.values, feedback: recipient.feedback };
+  const after = { values, feedback: feedback.trim() };
+  return updateRecipient(eventId, recipientId, (current) => ({
+    ...current,
+    ...after,
+    updatedAt: new Date().toISOString(),
+    status: current.status === 'confirmed' && event.allowConfirmation ? 'reconfirm' : current.status,
+    confirmedAt: current.status === 'confirmed' && event.allowConfirmation ? undefined : current.confirmedAt,
+    revisions: [...(current.revisions ?? []), { changedAt: new Date().toISOString(), reason: reason.trim(), before, after }],
   }));
 };
 

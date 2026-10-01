@@ -1,5 +1,5 @@
 import { supabase } from '../../utils/supabaseClient';
-import type { StudentResultDraft, StudentResultEvent } from './types';
+import type { StudentResultDraft, StudentResultEvent, StudentResultEventSettings } from './types';
 import { validateStudentResultDraft } from './studentResultsUtils';
 
 const CHANGE_EVENT = 'schooldoc-student-results-remote-change';
@@ -38,6 +38,14 @@ export const deleteRemoteStudentResultEvent = async (eventId: string) => { await
 export const setRemoteStudentResultEventStatus = async (eventId: string, status: StudentResultEvent['status']) => { await invoke({ action: 'status', eventId, status }); notify(); };
 export const replyToRemoteStudentDispute = async (eventId: string, recipientId: string, reply: string) => { await invoke({ action: 'reply', eventId, recipientId, reply }); notify(); };
 export const regenerateRemoteStudentResultPersonalToken = async (eventId: string, recipientId: string) => { await invoke({ action: 'regenerate', eventId, recipientId }); notify(); };
+export const updateRemoteStudentResultSettings = async (eventId: string, expectedUpdatedAt: string, settings: StudentResultEventSettings) => {
+  await invoke({ action: 'update-settings', eventId, expectedUpdatedAt, settings });
+  notify();
+};
+export const updateRemoteStudentResultRecipient = async (eventId: string, recipientId: string, expectedEventUpdatedAt: string, expectedRecipientUpdatedAt: string, values: Record<string, number>, feedback: string, reason: string) => {
+  await invoke({ action: 'update-recipient', eventId, recipientId, expectedEventUpdatedAt, expectedRecipientUpdatedAt, values, feedback, reason });
+  notify();
+};
 
 export const subscribeRemoteStudentResults = (listener: () => void) => {
   window.addEventListener(CHANGE_EVENT, listener);

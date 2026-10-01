@@ -2,6 +2,22 @@ import type { ResultColumn, ResultRecipient, ResultRecipientDraft, StudentResult
 
 export const cleanText = (value: string) => value.trim().replace(/\s+/g, ' ');
 
+const totalLabels = new Set(['총점', '합계', '종합점수', '전체점수', 'total', 'totalscore']);
+
+/** 배포 전 만들어진 결과에도 총점 열이 있으므로 명시 값이 없을 때만 이름을 해석한다. */
+export const isTotalResultColumn = (column: ResultColumn) => column.kind === 'total'
+  || (column.kind === undefined && totalLabels.has(cleanText(column.label).toLocaleLowerCase('ko-KR').replace(/\s/g, '')));
+
+export const studentResultSummary = (columns: ResultColumn[], values: Record<string, number>) => {
+  const totalColumn = columns.find(isTotalResultColumn);
+  if (totalColumn) return { score: values[totalColumn.id] ?? 0, maxScore: totalColumn.maxScore, source: 'total' as const };
+  return {
+    score: columns.reduce((sum, column) => sum + (values[column.id] ?? 0), 0),
+    maxScore: columns.reduce((sum, column) => sum + column.maxScore, 0),
+    source: 'sum' as const,
+  };
+};
+
 export interface StudentResultValidationIssue {
   message: string;
   fieldId: string;
@@ -14,6 +30,7 @@ export const getStudentResultValidationIssue = (draft: StudentResultDraft): Stud
   if (emptyColumnIndex >= 0) return { message: '결과 항목의 이름을 입력해 주세요.', fieldId: `student-result-column-label-${emptyColumnIndex}` };
   const invalidMaxScoreIndex = draft.columns.findIndex((column) => !Number.isFinite(column.maxScore) || column.maxScore <= 0);
   if (invalidMaxScoreIndex >= 0) return { message: '배점은 0보다 커야 합니다.', fieldId: `student-result-column-max-${invalidMaxScoreIndex}` };
+  if (draft.columns.filter(isTotalResultColumn).length > 1) return { message: '총점 항목은 한 개만 지정해 주세요.', fieldId: 'student-result-add-column' };
   if (draft.recipients.length === 0) return { message: '학생을 한 명 이상 추가해 주세요.', fieldId: 'student-result-add-recipient' };
   const emptyNameIndex = draft.recipients.findIndex((recipient) => !cleanText(recipient.name));
   if (emptyNameIndex >= 0) return { message: `${emptyNameIndex + 1}번 학생의 이름을 입력해 주세요.`, fieldId: `student-result-recipient-name-${emptyNameIndex}` };
@@ -62,6 +79,7 @@ export const resultStatusLabel = (status: string) => ({
   confirmed: '확인',
   disputed: '이의',
   reconfirm: '재확인 필요',
+  replied: '답변 완료',
 }[status] ?? status);
 
 export const paginateStudentResultRecipients = (

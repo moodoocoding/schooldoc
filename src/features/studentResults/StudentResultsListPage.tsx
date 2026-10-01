@@ -16,6 +16,15 @@ interface PendingDelete {
   disputeCount: number;
 }
 
+const latestStudentActivity = (recipients: { status: string; viewedAt?: string; confirmedAt?: string; updatedAt?: string; dispute?: { submittedAt: string; repliedAt?: string } }[]) => recipients
+  .map((recipient) => ({ recipient, at: Math.max(
+    ...[recipient.viewedAt, recipient.confirmedAt, recipient.dispute?.submittedAt, recipient.dispute?.repliedAt]
+      .filter((value): value is string => Boolean(value)).map((value) => Date.parse(value)),
+    0,
+  ) }))
+  .filter(({ at }) => at > 0)
+  .sort((left, right) => right.at - left.at)[0]?.recipient;
+
 /** 지우면 무엇이 함께 사라지는지 숫자로 밝힌다. 되돌릴 수 없는 행동이다. */
 const deleteDescription = ({ recipientCount, disputeCount }: PendingDelete) => [
   `학생 ${recipientCount}명의 점수와 피드백이 함께 지워집니다.`,
@@ -74,13 +83,14 @@ export function StudentResultsListPage() {
           {events.map((event) => {
             const confirmed = event.recipients.filter((recipient) => recipient.status === 'confirmed').length;
             const disputed = event.recipients.filter((recipient) => recipient.status === 'disputed').length;
+            const recentActivity = latestStudentActivity(event.recipients);
             return (
               <article key={event.id} className="relative rounded-lg border border-[#DCE3EA] bg-white p-5 shadow-sm hover:border-[#0F6CBD] hover:shadow-md">
                 <button type="button" onClick={() => navigate(`/tools/student-results/${event.id}`)} className="block w-full text-left">
                   <div className="flex items-center justify-between gap-3 pr-8"><span className={`rounded-md px-2.5 py-1 text-xs font-bold ${event.status === 'open' ? 'bg-[#E6F4EA] text-[#126B32]' : 'bg-[#EEF1F4] text-[#526174]'}`}>{event.status === 'open' ? '안내 중' : '종료'}</span>{disputed > 0 ? <span className="text-xs font-bold text-[#B42318]">이의 {disputed}건</span> : null}</div>
                   <h2 className="mt-4 min-h-12 line-clamp-2 text-lg font-bold text-[#0F172A]">{event.title}</h2>
                   <div className="mt-4 space-y-2 text-sm text-[#526174]"><p className="flex items-center gap-2"><CalendarDays className="h-4 w-4" />{new Date(event.createdAt).toLocaleDateString('ko-KR')}</p><p className="flex items-center gap-2"><Users className="h-4 w-4" />{event.recipients.length}명 · 확인 {confirmed}명</p></div>
-                  <div className="mt-5 flex items-center justify-between border-t border-[#EEF1F4] pt-4"><span className="text-xs font-semibold text-[#526174]">최근 상태: {resultStatusLabel(event.recipients.at(-1)?.status ?? 'unviewed')}</span><span className="text-xs font-bold text-[#0F6CBD]">현황 보기</span></div>
+                  <div className="mt-5 flex items-center justify-between border-t border-[#EEF1F4] pt-4"><span className="text-xs font-semibold text-[#526174]">{recentActivity ? `최근 학생 활동: ${resultStatusLabel(recentActivity.status)}` : '학생 활동 없음'}</span><span className="text-xs font-bold text-[#0F6CBD]">현황 보기</span></div>
                 </button>
                 <button type="button" onClick={() => setPendingDelete({ id: event.id, title: event.title, recipientCount: event.recipients.length, disputeCount: disputed })} className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-lg text-[#94A3B8] hover:bg-[#FEF3F2] hover:text-[#B42318]" aria-label={`${event.title} 삭제`} title="삭제"><Trash2 className="h-4 w-4" /></button>
               </article>

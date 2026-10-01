@@ -1,4 +1,5 @@
 import type { ResultColumn, ResultRecipientDraft } from './types';
+import type { StudentResultImportAnalysis } from './studentResultsImport';
 
 export type EditableResultColumn = Omit<ResultColumn, 'maxScore'> & { maxScore: number | '' };
 
@@ -7,6 +8,10 @@ export interface FormSnapshot {
   description: string;
   columns: EditableResultColumn[];
   recipients: ResultRecipientDraft[];
+  allowConfirmation: boolean;
+  allowDispute: boolean;
+  importedFileName: string;
+  importAnalysis: StudentResultImportAnalysis | null;
 }
 
 export interface HistoryEntry {

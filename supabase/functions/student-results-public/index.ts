@@ -34,6 +34,7 @@ const actionLimits: Record<string, number> = {
   session: 60,
   confirm: 10,
   dispute: 10,
+  logout: 10,
 };
 
 interface EventRow {
@@ -51,7 +52,7 @@ interface RecipientRow {
   event_id: string;
   identity_ciphertext: string;
   result_ciphertext: string;
-  status: 'unviewed' | 'viewed' | 'confirmed' | 'disputed' | 'reconfirm';
+  status: 'unviewed' | 'viewed' | 'confirmed' | 'disputed' | 'reconfirm' | 'replied';
   viewed_at: string | null;
   confirmed_at: string | null;
 }
@@ -116,7 +117,7 @@ const getRecipient = async (eventId: string, recipientId: string) => {
 const getColumns = async (eventId: string) => {
   const { data, error } = await db
     .from('student_result_columns')
-    .select('id, label, max_score, description, position')
+    .select('id, label, max_score, description, kind, position')
     .eq('event_id', eventId)
     .order('position');
   if (error) throw error;
@@ -125,6 +126,7 @@ const getColumns = async (eventId: string) => {
     label: column.label,
     maxScore: Number(column.max_score),
     description: column.description,
+    kind: column.kind ?? undefined,
   }));
 };
 
@@ -297,6 +299,11 @@ Deno.serve(async (request) => {
     }
 
     const session = await resolveSession(sessionToken);
+    if (action === 'logout') {
+      const { error } = await db.from('student_result_public_sessions').delete().eq('token', sessionToken);
+      if (error) throw error;
+      return respond(200, { ok: true });
+    }
     const event = await getEventById(session.eventId);
     if (event.status !== 'open') throw new HttpError(409, '결과 안내가 종료되었습니다.');
     const recipient = await getRecipient(event.id, session.recipientId);
@@ -307,6 +314,7 @@ Deno.serve(async (request) => {
 
     if (action === 'confirm') {
       if (!event.allow_confirmation) throw new HttpError(403, '결과 확인 기능이 열려 있지 않습니다.');
+      if (recipient.status === 'disputed') throw new HttpError(409, '제출한 이의에 대한 답변을 기다려 주세요.');
       const confirmedAt = new Date().toISOString();
       const { error } = await db
         .from('student_result_recipients')
