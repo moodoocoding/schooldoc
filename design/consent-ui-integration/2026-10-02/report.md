@@ -38,3 +38,7 @@ react-best-practices 기준으로 조건부 Hook 추가 없음, 반복 필드/�
 이 변경은 가정통신문 네 제품 파일과 관련 검사·검증 기록·일지다. DB·Edge Functions·의존성·공통 CSS·진행 업무·다른 기능 제품 파일은 추가 변경하지 않는다. GitHub push·PR·main squash 병합·Vercel 프런트 운영 확인은 메인 세션에서 담당한다. 운영 반영을 확인하기 전 성공으로 기록하지 않는다. 실제 OAuth 로그인 후 새 수합 생성/제출·Storage·PDF 다운로드는 원격 시험 계정/자료가 없어 자동 실행하지 않는다. 공유 checkout의 영수증 미커밋 변경은 보존한다.
 
 최종 인계 HEAD는 `7a4424181d10003421067589e1c1aab9085a6b29`이며 작업 세션 완료·clean을 확인했다. UI 기능 `b0a84d2`, 최초 일지 `21a3758`, 태블릿 보완 `229c019`, 최종 일지 `7a44241`을 인계했다. 이미 공유한 이력은 재작성하지 않았다.
+
+## main 병합과 운영 확인 완료
+
+[PR #47](https://github.com/moodoocoding/schooldoc/pull/47)을 squash 병합했고 main `429fae26ec8b1674cb404a766a620ac77b4627e3`의 Vercel `dpl_4pn6Az2Cw1ihGDXGF9MpMycKJeRr` READY·SHA 일치를 확인했다. DB/Edge 추가 배포는 해당 없음. 설치 Chrome의 운영 비로그인 6개 화면과 배포 JS의 새 UI 표식 4개 확인이 통과했다. 로그인 후 생성·제출·출력 전체 흐름은 시험 계정/자료가 없어 미검증이다. [최종 적용 기록과 증거](release.md).
