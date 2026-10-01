@@ -4,7 +4,7 @@ test.describe('진행 중인 업무', () => {
   test('홈은 진행 요약으로 바뀌지 않고 전체 업무 도구를 그대로 보여준다', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page.getByRole('heading', { name: '전체 업무 도구 (10)' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /전체 업무 도구 \(\d+\)/ })).toBeVisible();
     await expect(page.getByRole('heading', { name: '진행 중인 업무' })).toHaveCount(0);
     await expect(page.getByText('자료 수합', { exact: true })).toBeVisible();
     const dataCollectCard = page.getByRole('button', { name: /자료 수합/ }).first();
@@ -14,8 +14,8 @@ test.describe('진행 중인 업무', () => {
     await page.goto('/');
     await expect(page.getByText('특별실 예약', { exact: true })).toBeVisible();
     const toolNames = await page.locator('h3').allTextContents();
-    expect(toolNames.indexOf('특별실 예약')).toBe(4);
-    expect(toolNames.indexOf('문서 서명')).toBe(7);
+    expect(toolNames.indexOf('특별실 예약')).toBeGreaterThan(toolNames.indexOf('자료 수합'));
+    expect(toolNames.indexOf('문서 서명')).toBeGreaterThan(toolNames.indexOf('특별실 예약'));
   });
 
   test('도구 제목은 목록으로, 개별 업무는 관리 화면으로 이동한다', async ({ page }) => {

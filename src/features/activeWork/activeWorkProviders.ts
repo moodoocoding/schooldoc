@@ -7,7 +7,7 @@ import { isRegistryDemoMode } from '../registry/registryConfig';
 import { listRegistries, subscribeRegistries } from '../registry/registryService';
 import { isSpecialRoomsDemoMode } from '../specialRooms/specialRoomsConfig';
 import { isMissionsDemo, listMissionBoards, missionCounts, missionDateLabel, missionToday } from '../classMissions/missionApi';
-import { listBoards, subscribeSpecialRooms } from '../specialRooms/specialRoomsService';
+import { listAllSummaries, subscribeSpecialRooms } from '../specialRooms/specialRoomsService';
 import { isStudentResultsDemoMode, studentResultsOwnerId } from '../studentResults/studentResultsConfig';
 import { listStudentResultEvents, subscribeStudentResults } from '../studentResults/studentResultsService';
 import type {
@@ -157,7 +157,7 @@ const specialRoomsProvider: ActiveWorkProvider = {
   load: async ({ userId }) => {
     const ownerId = userId || (isSpecialRoomsDemoMode ? 'local-demo-teacher' : '');
     if (!ownerId) return [];
-    const boards = await listBoards(ownerId);
+    const boards = await listAllSummaries(ownerId, 'open');
     return boards
       .filter((board) => board.status === 'open')
       .map((board): ActiveWorkItem => ({
@@ -166,7 +166,7 @@ const specialRoomsProvider: ActiveWorkProvider = {
         toolName: '특별실 예약',
         title: board.title,
         statusLabel: '예약 중',
-        progressLabel: `특별실 ${board.rooms.length}곳 · 예약 ${board.bookings.length}건`,
+        progressLabel: `특별실 ${board.roomCount}곳 · 예약 ${board.bookingCount}건`,
         updatedAt: board.updatedAt,
         listPath: '/tools/special-rooms',
         detailPath: `/tools/special-rooms/${board.id}`,
