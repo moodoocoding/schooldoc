@@ -163,7 +163,7 @@ export const purgeRetainedWorkItem = async (item: RetainedWorkItem) => {
       deleteConsentLocalDraft(item.id);
       return;
     }
-    const result = await purgeConsentForms([item.id]);
+    const result = await purgeConsentForms([item.id],{[item.id]:item.recordCount});
     if (result.failed.length) throw new Error(result.failed[0].error);
     return;
   }

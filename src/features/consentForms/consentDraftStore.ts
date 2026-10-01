@@ -17,6 +17,8 @@ export type ConsentDraftStep = 'document' | 'fields' | 'recipients' | 'sharing';
 export interface ConsentDraftSnapshot {
   savedAt: string;
   editId: string;
+  pendingFormId?: string;
+  pendingOwnerId?: string;
   title: string;
   description: string;
   step: ConsentDraftStep;

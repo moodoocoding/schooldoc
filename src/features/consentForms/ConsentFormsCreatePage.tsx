@@ -7,11 +7,11 @@ import { analyzeConsentDocument, consentDocumentAccept } from './consentDocument
 import { ConsentFieldEditor } from './ConsentFieldEditor';
 import { ConsentRecipientsStep } from './ConsentRecipientsStep';
 import { ConsentShareStep } from './ConsentShareStep';
-import { addConsentLocalDraft, getConsentLocalDraft, hashConsentPassword, updateConsentLocalDraft } from './consentFormsLocalStore';
+import { addConsentLocalDraft, saveConsentLocalRecipients, getConsentLocalDraft, hashConsentPassword, updateConsentLocalDraft } from './consentFormsLocalStore';
 import { createRemoteConsentForm, getRemoteConsentForm, getRemoteConsentSourceFile, updateRemoteConsentForm } from './consentFormsRepository';
 import { isConsentFormsDemoMode } from './consentFormsConfig';
 import { clearConsentDraft, loadConsentDraft, restoredStep, saveConsentDraft, savedAtLabel } from './consentDraftStore';
-import { isRecipientsUnavailable, replaceConsentRecipients } from './consentRecipientsApi';
+import { finalizeConsentForm } from './consentRecipientsApi';
 import type { ConsentDocumentAnalysis, ConsentFieldDraft, ConsentLocalDraft, ConsentRecipientDraft, ConsentRecipientMode, ConsentShareSettings } from './types';
 
 const formatBytes = (bytes: number) => bytes < 1024 * 1024
@@ -50,6 +50,7 @@ export function ConsentFormsCreatePage() {
   const [recipients, setRecipients] = useState<ConsentRecipientDraft[]>([]);
   const [shareSettings, setShareSettings] = useState<ConsentShareSettings>({ deadline: editDraft?.deadline ?? '', passwordEnabled: editDraft?.passwordEnabled ?? false, password: '', allowResubmission: editDraft?.allowResubmission ?? false, retentionMonths: editDraft?.retentionMonths ?? getDefaultRetentionMonths(user?.id ?? '') });
   const [restoredAt, setRestoredAt] = useState('');
+  const [pendingFormId,setPendingFormId]=useState('');
   const restoredRef = useRef(false);
 
   useEffect(() => {
@@ -96,6 +97,7 @@ export function ConsentFormsCreatePage() {
       if (!active || !draft || draft.editId !== editId) return;
       const file = new File([draft.file], draft.fileName, { type: 'application/pdf' });
       restoredRef.current = true;
+      if(draft.pendingOwnerId===user?.id) setPendingFormId(draft.pendingFormId ?? '');
       setTitle(draft.title);
       setDescription(draft.description);
       setFields(draft.fields);
@@ -116,13 +118,13 @@ export function ConsentFormsCreatePage() {
     if (!analysis || !sourceFile) return;
     const timer = window.setTimeout(() => {
       void saveConsentDraft({
-        savedAt: new Date().toISOString(), editId, title, description, step, fields, analysis,
+        savedAt: new Date().toISOString(), editId, pendingFormId, pendingOwnerId:user?.id, title, description, step, fields, analysis,
         recipientMode, deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled,
         allowResubmission: shareSettings.allowResubmission, retentionMonths: shareSettings.retentionMonths, fileName: fileName || analysis.fileName, file: sourceFile,
       });
     }, 600);
     return () => window.clearTimeout(timer);
-  }, [analysis, description, editId, fields, fileName, recipientMode, shareSettings, sourceFile, step, title]);
+  }, [analysis, description, editId, fields, fileName, recipientMode, shareSettings, sourceFile, step, title, pendingFormId, user?.id]);
 
   useEffect(() => {
     if (!editId || isConsentFormsDemoMode) return;
@@ -134,6 +136,7 @@ export function ConsentFormsCreatePage() {
       setError('');
       try {
         const form = await getRemoteConsentForm(editId);
+        if (form?.responseCount) throw new Error('응답을 받은 원본과 필드는 수정할 수 없습니다. 관리 화면에서 수합을 복제해 주세요.');
         if (!form) throw new Error('수정할 가정통신문을 찾을 수 없습니다.');
         const file = await getRemoteConsentSourceFile(form);
         const nextAnalysis = await analyzeConsentDocument(file);
@@ -180,7 +183,7 @@ export function ConsentFormsCreatePage() {
 
   if (step === 'recipients') return <ConsentRecipientsStep mode={recipientMode} recipients={recipients} onModeChange={setRecipientMode} onRecipientsChange={setRecipients} onBack={() => setStep('fields')} onNext={() => setStep('sharing')} />;
 
-  if (step === 'sharing' && analysis && sourceFile) return <ConsentShareStep title={title} fileName={analysis.fileName} fieldCount={fields.length} recipientMode={recipientMode} recipientCount={editDraft?.recipientCount ?? recipients.length} settings={shareSettings} hasExistingPassword={Boolean(editDraft?.passwordHash)} saving={saving} error={error} onSettingsChange={setShareSettings} onBack={() => setStep(editDraft ? 'fields' : 'recipients')} onCreate={async () => {
+  if (step === 'sharing' && analysis && sourceFile) return <ConsentShareStep title={title} fileName={analysis.fileName} fieldCount={fields.length} recipientMode={recipientMode} recipientCount={editDraft?.recipientCount ?? recipients.length} settings={shareSettings} hasExistingPassword={Boolean(editDraft?.passwordHash)} saving={saving} error={error} onSettingsChange={setShareSettings} onBack={()=>pendingFormId?setError('준비 중인 수합의 저장을 먼저 완료해 주세요. 이후 관리 화면에서 수정할 수 있습니다.'):setStep(editDraft?'fields':'recipients')} onCreate={async () => {
     if (saving) return;
     setSaving(true);
     setError('');
@@ -191,16 +194,12 @@ export function ConsentFormsCreatePage() {
           await clearConsentDraft();
           navigate(`/tools/consent-forms/${editDraft.id}`);
         } else {
-          const created = await createRemoteConsentForm({ title, description, fields, pageSizes: analysis.pageSizes, recipientMode, recipientCount: recipients.length, settings: shareSettings, sourceFile });
-          if (!created) throw new Error('생성한 가정통신문을 확인하지 못했습니다.');
-          // 명단 저장은 곁들이는 기능이다. 준비가 안 된 환경에서도 수합 자체는 만들어져야 한다.
-          if (recipientMode === 'named' && recipients.length) {
-            try {
-              await replaceConsentRecipients(created.id, recipients.map(({ name, identifier }) => ({ name, studentKey: identifier })));
-            } catch (recipientError) {
-              if (!isRecipientsUnavailable(recipientError)) throw recipientError;
-            }
-          }
+          const created = await createRemoteConsentForm({title,description,fields,pageSizes:analysis.pageSizes,recipientMode,recipientCount:recipients.length,settings:shareSettings,sourceFile,pendingId:pendingFormId || undefined});
+          if(!created) throw new Error('생성한 수합을 확인하지 못했습니다.');
+          setPendingFormId(created.id);
+          await saveConsentDraft({savedAt:new Date().toISOString(),editId:'',pendingFormId:created.id,pendingOwnerId:user?.id,title,description,step:'sharing',fields,analysis,recipientMode,deadline:shareSettings.deadline,passwordEnabled:shareSettings.passwordEnabled,allowResubmission:shareSettings.allowResubmission,retentionMonths:shareSettings.retentionMonths,fileName:sourceFile.name,file:sourceFile});
+          // 명단과 비밀번호를 같은 트랜잭션에 저장한 뒤 공개한다.
+          await finalizeConsentForm(created.id,recipientMode==='named'?recipients.map(({id,name,identifier})=>({id,name,studentKey:identifier})):[],shareSettings.passwordEnabled?shareSettings.password.trim():'');
           await clearConsentDraft();
           navigate(`/tools/consent-forms/${created.id}`);
         }
@@ -212,12 +211,14 @@ export function ConsentFormsCreatePage() {
         await clearConsentDraft();
         navigate(`/tools/consent-forms/${editDraft.id}`);
       } else {
-        addConsentLocalDraft({ id: crypto.randomUUID(), title, fileName: analysis.fileName, fieldCount: fields.length, recipientMode, recipientCount: recipientMode === 'named' ? recipients.length : 0, createdAt: new Date().toISOString(), description, fields, publicToken: crypto.randomUUID(), deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled, passwordHash, allowResubmission: shareSettings.allowResubmission, responseCount: 0, status: 'open', retentionMonths: shareSettings.retentionMonths, pageCount: analysis.pageCount, pageSizes: analysis.pageSizes, sourcePdfDataUrl: await fileToDataUrl(sourceFile) });
+        const localId=crypto.randomUUID();
+        addConsentLocalDraft({ id: localId, title, fileName: analysis.fileName, fieldCount: fields.length, recipientMode, recipientCount: recipientMode === 'named' ? recipients.length : 0, createdAt: new Date().toISOString(), description, fields, publicToken: crypto.randomUUID(), deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled, passwordHash, allowResubmission: shareSettings.allowResubmission, responseCount: 0, status: 'open', retentionMonths: shareSettings.retentionMonths, pageCount: analysis.pageCount, pageSizes: analysis.pageSizes, sourcePdfDataUrl: await fileToDataUrl(sourceFile) });
         await clearConsentDraft();
+        if(recipientMode==='named') saveConsentLocalRecipients(localId,recipients);
         navigate('/tools/consent-forms');
       }
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : '가정통신문 수합을 만들지 못했습니다.');
+      setError(saveError instanceof Error ? saveError.message + (pendingFormId ? ' 입력을 유지했습니다. 다시 시도하면 같은 준비 중 수합을 완료합니다.' : '') : '가정통신문 수합을 만들지 못했습니다.');
     } finally {
       setSaving(false);
     }
@@ -235,7 +236,7 @@ export function ConsentFormsCreatePage() {
           <section>
             <p className="text-xs font-bold text-[#0F6CBD]">{editDraft ? '가정통신문 수합 수정' : '새 가정통신문 수합'}</p>
             <h1 className="mt-1 text-2xl font-extrabold">{editDraft ? '원본 PDF 다시 확인' : '원본 문서 준비'}</h1>
-            <p className="mt-2 text-sm leading-6 text-[#526174]">{editDraft ? '개인정보 보호를 위해 원본 PDF는 로컬에 보관하지 않습니다. 같은 PDF를 다시 올리면 기존 필드 위치를 불러옵니다.' : '한글 문서는 PDF로 저장한 뒤 올리고, 문서가 올바르게 분석됐는지 확인합니다.'}</p>
+            <p className="mt-2 text-sm leading-6 text-[#526174]">{editDraft ? '원본 PDF와 필드를 확인한 뒤 저장해 주세요. 받은 응답이 있으면 관리 화면에서 수합을 복제해 수정합니다.' : '한글 문서는 PDF로 저장한 뒤 올리고, 문서가 올바르게 분석됐는지 확인합니다.'}</p>
           </section>
 
           <section className="border-y border-[#DCE3EA] bg-white px-4 py-5 sm:px-5">

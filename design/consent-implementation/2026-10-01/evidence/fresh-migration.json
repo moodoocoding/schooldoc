@@ -1,0 +1,18 @@
+{
+  "database": "consent_fresh_1790865540600",
+  "result": "pass",
+  "migrationSha256": "c21a4567bc304064b006a6891e1b777b256d4d2bbcef513d80ed78c92681ce00",
+  "permissions": {
+    "anon_password": false,
+    "direct_submit": false
+  },
+  "legacyUpgrade": {
+    "publication_state": "ready",
+    "document_revision": 1,
+    "current_response_count": 1,
+    "response_count": 2,
+    "ciphertextPreserved": true,
+    "snapshotFunction": "s"
+  },
+  "postgres": "PostgreSQL 18.4 on x86_64-windows, compiled by msvc-19.44.35226, 64-bit"
+}

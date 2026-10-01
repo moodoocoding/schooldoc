@@ -1,0 +1,10 @@
+{
+  "result": "pass",
+  "form": {
+    "current_response_count": 100,
+    "response_count": 100,
+    "recipient_count": 2000
+  },
+  "encryptionKeyPreserved": true,
+  "helper": "local-db-server.mjs"
+}

@@ -1,0 +1,387 @@
+{
+  "chrome": "154.0.8037.58",
+  "checks": [
+    {
+      "name": "authoring, roster and demo workflow",
+      "status": "completed"
+    },
+    {
+      "name": "guardian-mobile axe",
+      "violations": []
+    },
+    {
+      "name": "guardian 200%",
+      "overflow": {
+        "scroll": 390,
+        "width": 390
+      }
+    },
+    {
+      "name": "guardian desktop/mobile, review and exports",
+      "status": "completed"
+    },
+    {
+      "name": "manage-24 axe",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "nodes": 1
+        },
+        {
+          "id": "label",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "name": "manage 200%",
+      "overflow": {
+        "scroll": 390,
+        "width": 390
+      }
+    },
+    {
+      "name": "dialog Escape focus",
+      "active": "응답 링크 재발급"
+    },
+    {
+      "name": "remote component fixture: mixed roster and re-submission association",
+      "status": "completed"
+    },
+    {
+      "name": "remote component fixture: settings and close errors",
+      "status": "completed"
+    },
+    {
+      "name": "already submitted personal link",
+      "status": "completed"
+    },
+    {
+      "name": "QR sheets PDF and print",
+      "status": "completed"
+    },
+    {
+      "name": "named create despite roster save failure",
+      "status": "completed"
+    },
+    {
+      "name": "roster 60 and empty remote fixture",
+      "status": "completed"
+    }
+  ],
+  "observations": [
+    {
+      "name": "demo named unsupported",
+      "text": "SD\n목록으로\n수합 중\n\n가정통신문 수합 관리\n\n가상 3학년 현장체험학습 참가 동의서\n\nfictional-notice.pdf\n\n원본·필드 수정\n이 수합 복제\n설정 수정\n수합 종료\n수합 삭제\n응답\n0건\n응답 필드\n2개\n대상\n명단 24명\n응답 기한\n기한 없음\n받은 응답0건\n\n응답을 원본 가정통신문 위에 합성한 PDF로 내려받습니다.\n\n아직 제출된 응답이 없습니다\n\n응답 링크나 QR을 배부하면 여기에 쌓입니다.\n\n응답 링크\n\n보호자에게 링크를 보내거나 오른쪽 QR을 배부하세요.\n\n현재 로컬 모드에서는 공용 링크만 제공합니다. 대상별 제출 매칭은 서버 저장 연결 후 사용할 수 있습니다.\n\n응답 QR 코드\n\n응답 링크만 포함합니다.\n\nQR 이미지 저장"
+    },
+    {
+      "name": "resubmission association",
+      "responseText": "받은 응답9건\n\n응답을 원본 가정통신문 위에 합성한 PDF로 내려받습니다.\n\n결과 표(xlsx)\n전체 PDF 내려받기\n1\n\n2026. 10. 1. 오전 10:00\n\n참가 동의 여부: 예 · 보호자 성명: 가상보호자\n\nPDF\n2\n\n가상학생1\n2026. 10. 1. 오전 10:00\n\n참가 동의 여부: 아니오 · 보호자 성명: 가상보호자\n\nPDF\n3\n\n가상학생2\n2026. 10. 1. 오전 10:00\n\n참가 동의 여부: 아니오 · 보호자 성명: 가상보호자\n\nPDF\n4\n\n가상학생3\n2026. 10. 1. 오전 10:00\n\n참가 동의 여부: 아니오 · 보호자 성명: 가상보호자\n\nPDF\n5\n\n가상학생4\n2026. 10. 1. 오전 10:00\n\n참가 동의 여부: 아니오 · 보호자 성명: 가상보호자\n\nPDF\n6\n\n가상학생5\n2026. 10. 1. 오전 10:00\n\n참가 동의 여부: 아니오 · 보호자 성명: 가상보호자\n\nPDF\n7\n\n가상학생6\n2026. 10. 1. 오전 10:00\n\n참가 동의 여부: 아니오 · 보호자 성명: 가상보호자\n\nPDF\n8\n\n가상학생7\n2026. 10. 1. 오전 10:00\n\n참가 동의 여부: 아니오 · 보호자 성명: 가상보호자\n\nPDF\n9\n\n가상학생8\n2026. 10. 1. 오전 10:00\n\n참가 동의 여부: 아니오 · 보호자 성명: 가상보호자\n\nPDF",
+      "firstResponse": {
+        "id": "response-0",
+        "recipientId": "student-0",
+        "submittedAt": "2026-10-01T01:00:00Z",
+        "values": {
+          "name": "가상보호자",
+          "yes": "true",
+          "no": ""
+        }
+      },
+      "currentRecipient": {
+        "id": "student-0",
+        "name": "가상학생1",
+        "studentKey": "3학년 2반 1번",
+        "token": "33333333-3333-4333-8333-333333333333",
+        "responseId": "response-1",
+        "submittedAt": "2026-10-01T01:00:00Z"
+      }
+    },
+    {
+      "name": "200% clipped controls",
+      "elements": [
+        {
+          "name": "전체 PDF 내려받기",
+          "box": {
+            "x": 310,
+            "y": 607,
+            "width": 292.796875,
+            "height": 40,
+            "top": 607,
+            "right": 602.796875,
+            "bottom": 647,
+            "left": 310
+          }
+        },
+        {
+          "name": "미제출자 16명 재배부",
+          "box": {
+            "x": 352.3125,
+            "y": 4371,
+            "width": 301.671875,
+            "height": 40,
+            "top": 4371,
+            "right": 653.984375,
+            "bottom": 4411,
+            "left": 352.3125
+          }
+        },
+        {
+          "name": "http://127.0.0.1:4181/s/consent/22222222-2222-4222-8222-222222222222",
+          "box": {
+            "x": 64,
+            "y": 12966,
+            "width": 365,
+            "height": 42,
+            "top": 12966,
+            "right": 429,
+            "bottom": 13008,
+            "left": 64
+          }
+        },
+        {
+          "name": "응답 링크 복사",
+          "box": {
+            "x": 445,
+            "y": 12966,
+            "width": 42,
+            "height": 42,
+            "top": 12966,
+            "right": 487,
+            "bottom": 13008,
+            "left": 445
+          }
+        },
+        {
+          "name": "응답 링크 재발급",
+          "box": {
+            "x": 561,
+            "y": 12966,
+            "width": 42,
+            "height": 42,
+            "top": 12966,
+            "right": 603,
+            "bottom": 13008,
+            "left": 561
+          }
+        },
+        {
+          "name": "QR 이미지 저장",
+          "box": {
+            "x": 210.484375,
+            "y": 13649,
+            "width": 246.03125,
+            "height": 40,
+            "top": 13649,
+            "right": 456.515625,
+            "bottom": 13689,
+            "left": 210.484375
+          }
+        }
+      ]
+    },
+    {
+      "name": "pageerror",
+      "message": "수합 설정을 저장하지 못했습니다: 가상 저장 오류"
+    },
+    {
+      "name": "pageerror",
+      "message": "수합 설정을 저장하지 못했습니다: 가상 저장 오류"
+    },
+    {
+      "name": "unhandled setting/status errors",
+      "errors": [
+        "수합 설정을 저장하지 못했습니다: 가상 저장 오류",
+        "수합 설정을 저장하지 못했습니다: 가상 저장 오류"
+      ],
+      "alerts": [],
+      "calls": [
+        {
+          "path": "/rest/v1/consent_forms",
+          "method": "PATCH",
+          "body": {
+            "title": "저장 실패 후 남은 제목",
+            "deadline": null,
+            "allow_resubmission": true,
+            "retention_months": 12
+          }
+        },
+        {
+          "path": "/rest/v1/consent_forms",
+          "method": "PATCH",
+          "body": {
+            "status": "closed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "already submitted fields enabled",
+      "text": "가상학생1 학생 보호자용\n\n가상 3학년 현장체험학습 참가 동의서\n\n필수 질문 0/3\n\n가상 자료로 검토하는 동의서입니다.\n\n문서를 읽고 회색 입력칸을 눌러 작성해 주세요. 어느 칸이든 다시 수정할 수 있습니다.\n\n서명하기\n\n회색 칸을 누르거나 입력 시작을 선택하세요.\n\n이전\n입력 시작\n응답 확인",
+      "inputStartDisabled": false,
+      "guardianValue": "",
+      "calls": [
+        {
+          "path": "/functions/v1/consent-forms-public",
+          "method": "POST",
+          "body": {
+            "action": "metadata",
+            "token": "22222222-2222-4222-8222-222222222222",
+            "recipientToken": "33333333-3333-4333-8333-333333333333"
+          }
+        },
+        {
+          "path": "/functions/v1/consent-forms-public",
+          "method": "POST",
+          "body": {
+            "action": "metadata",
+            "token": "22222222-2222-4222-8222-222222222222",
+            "recipientToken": "33333333-3333-4333-8333-333333333333"
+          }
+        },
+        {
+          "path": "/functions/v1/consent-forms-public",
+          "method": "POST",
+          "body": {
+            "action": "document",
+            "token": "22222222-2222-4222-8222-222222222222",
+            "password": "",
+            "recipientToken": "33333333-3333-4333-8333-333333333333"
+          }
+        }
+      ]
+    },
+    {
+      "name": "browser print",
+      "visibility": "hidden"
+    },
+    {
+      "name": "named roster failure silently continues",
+      "url": "http://127.0.0.1:4181/tools/consent-forms/11111111-1111-4111-8111-111111111111",
+      "alerts": [],
+      "calls": [
+        {
+          "path": "/storage/v1/object/consent-documents/55555555-5555-4555-8555-555555555555/f34379fe-33ba-4cfb-a4d9-ec027b8b5be2/source.pdf",
+          "method": "POST",
+          "body": {}
+        },
+        {
+          "path": "/rest/v1/consent_forms",
+          "method": "POST",
+          "body": {
+            "id": "f34379fe-33ba-4cfb-a4d9-ec027b8b5be2",
+            "owner_id": "55555555-5555-4555-8555-555555555555",
+            "title": "명단 저장 실패 시험",
+            "file_name": "fixture.pdf",
+            "source_path": "55555555-5555-4555-8555-555555555555/f34379fe-33ba-4cfb-a4d9-ec027b8b5be2/source.pdf",
+            "description": "",
+            "fields": [
+              {
+                "id": "7378a3fb-748c-4a08-bf36-2c8ea4074e59",
+                "kind": "text",
+                "label": "텍스트",
+                "required": true,
+                "pageIndex": 0,
+                "x": 10,
+                "y": 12,
+                "width": 30,
+                "height": 7
+              }
+            ],
+            "page_count": 2,
+            "page_sizes": [
+              {
+                "width": 595.28,
+                "height": 841.89
+              },
+              {
+                "width": 595.28,
+                "height": 841.89
+              }
+            ],
+            "recipient_mode": "named",
+            "recipient_count": 1,
+            "deadline": null,
+            "allow_resubmission": false,
+            "retention_months": 3
+          }
+        },
+        {
+          "path": "/functions/v1/consent-forms-admin",
+          "method": "POST",
+          "body": {
+            "action": "replace",
+            "formId": "11111111-1111-4111-8111-111111111111",
+            "recipients": [
+              {
+                "name": "가상학생",
+                "studentKey": ""
+              }
+            ]
+          }
+        },
+        {
+          "path": "/functions/v1/consent-forms-admin",
+          "method": "POST",
+          "body": {
+            "action": "list",
+            "formId": "11111111-1111-4111-8111-111111111111"
+          }
+        },
+        {
+          "path": "/functions/v1/consent-forms-admin",
+          "method": "POST",
+          "body": {
+            "action": "responses",
+            "formId": "11111111-1111-4111-8111-111111111111"
+          }
+        },
+        {
+          "path": "/functions/v1/consent-forms-admin",
+          "method": "POST",
+          "body": {
+            "action": "list",
+            "formId": "11111111-1111-4111-8111-111111111111"
+          }
+        },
+        {
+          "path": "/functions/v1/consent-forms-admin",
+          "method": "POST",
+          "body": {
+            "action": "responses",
+            "formId": "11111111-1111-4111-8111-111111111111"
+          }
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "blocked": [
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "null/pdf_embedder.css",
+    "null/css/text_defaults_md.css",
+    "null/index.css",
+    "null/main.js",
+    "null/pdf_viewer_wrapper.js",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "null/pdf_embedder.css",
+    "null/pdf_embedder.css",
+    "null/css/text_defaults_md.css",
+    "null/index.css",
+    "null/main.js",
+    "null/pdf_viewer_wrapper.js",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css",
+    "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"
+  ]
+}

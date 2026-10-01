@@ -4,7 +4,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { qrImageFileName, saveQrImage } from '../../utils/qrImage';
 import { getConsentPublicOrigin, isConsentFormsDemoMode } from './consentFormsConfig';
-import { getConsentLocalDraft } from './consentFormsLocalStore';
+import { getConsentLocalDraft, listConsentLocalRecipients } from './consentFormsLocalStore';
 import { getRemoteConsentForm } from './consentFormsRepository';
 import { isRecipientsUnavailable, listConsentRecipients } from './consentRecipientsApi';
 import { RECIPIENTS_PER_SHEET, consentPersonalLink, consentQrSheetFileName, paginateRecipients, sheetRecipients, sheetTitle } from './consentRecipientSheet';
@@ -30,6 +30,7 @@ export function ConsentQrPrintPage() {
     let active = true;
     void (async () => {
       try {
+        if(isConsentFormsDemoMode) setRecipients(listConsentLocalRecipients(id));
         if (!isConsentFormsDemoMode) {
           const form = await getRemoteConsentForm(id);
           if (!active) return;
@@ -125,7 +126,7 @@ export function ConsentQrPrintPage() {
       {printable.length === 0
         ? <section className="border-y border-[#DCE3EA] bg-white py-20 text-center print:hidden"><QrCode className="mx-auto h-9 w-9 text-[#94A3B8]" /><h2 className="mt-4 text-lg font-bold">{target === 'pending' ? '미제출자가 없습니다' : '배부할 명단이 없습니다'}</h2><p className="mt-2 text-sm text-[#526174]">{target === 'pending' ? '명단의 보호자가 모두 제출했습니다.' : '명단 있는 수합으로 만들면 보호자별 QR을 만들 수 있습니다.'}</p></section>
         : <div className="-mx-4 overflow-x-auto bg-[#E9EDF2] px-4 py-6 sm:mx-0 print:m-0 print:overflow-visible print:bg-white print:p-0">
-          <div ref={pagesRef} className="mx-auto w-fit space-y-6 print:space-y-0">
+          <div ref={pagesRef} className="consent-qr-print-root mx-auto w-fit space-y-6 print:space-y-0">
             {pages.map((pageRecipients, pageIndex) => (
               <section key={pageIndex} data-testid="consent-qr-page" className="consent-qr-print-page flex h-[1123px] w-[794px] shrink-0 flex-col bg-white px-[48px] py-[42px] shadow-[0_8px_28px_rgba(15,23,42,0.16)]">
                 <header className="mb-5 border-b-2 border-[#334155] pb-4">

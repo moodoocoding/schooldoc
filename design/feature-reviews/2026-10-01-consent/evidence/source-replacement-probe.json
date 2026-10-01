@@ -1,0 +1,76 @@
+{
+  "method": "actual repository TypeScript, mocked Supabase, zero network",
+  "error": "원본 PDF를 갱신하지 못했습니다: mock upload failure",
+  "calls": [
+    {
+      "operation": "DB metadata update",
+      "values": {
+        "fields": [
+          {
+            "id": "new",
+            "kind": "text",
+            "label": "바뀐 질문",
+            "required": true,
+            "pageIndex": 0,
+            "x": 50,
+            "y": 50,
+            "width": 30,
+            "height": 7
+          }
+        ],
+        "page_count": 1,
+        "page_sizes": [
+          {
+            "width": 210,
+            "height": 297
+          }
+        ],
+        "file_name": "replacement.pdf"
+      }
+    },
+    {
+      "operation": "Storage source PDF update",
+      "error": "mock upload failure"
+    }
+  ],
+  "rowAfterFailure": {
+    "id": "form",
+    "public_token": "token",
+    "title": "원본 제목",
+    "file_name": "replacement.pdf",
+    "source_path": "owner/form/source.pdf",
+    "description": "",
+    "fields": [
+      {
+        "id": "new",
+        "kind": "text",
+        "label": "바뀐 질문",
+        "required": true,
+        "pageIndex": 0,
+        "x": 50,
+        "y": 50,
+        "width": 30,
+        "height": 7
+      }
+    ],
+    "page_count": 1,
+    "page_sizes": [
+      {
+        "width": 210,
+        "height": 297
+      }
+    ],
+    "recipient_mode": "named",
+    "recipient_count": 24,
+    "deadline": null,
+    "password_digest": null,
+    "allow_resubmission": false,
+    "response_count": 24,
+    "status": "open",
+    "created_at": "2026-10-01T00:00:00Z",
+    "closed_at": null,
+    "retention_months": 12
+  },
+  "sourceAfterFailure": "original 2-page PDF",
+  "note": "layout validation stub passes a valid field; no product file edited"
+}

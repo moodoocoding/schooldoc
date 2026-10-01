@@ -1,0 +1,43 @@
+{
+  "at": "2026-10-01T14:59:19.549Z",
+  "branch": "codex/consent-integrity-io-20261001",
+  "node": "v22.15.1",
+  "hashes": {
+    "supabase/migrations/202610011000_consent_integrity_io.sql": "c21a4567bc304064b006a6891e1b777b256d4d2bbcef513d80ed78c92681ce00",
+    "supabase/functions/consent-forms-public/index.ts": "47328d016cb809413a051f241473084646700106c2b6c2447f400a3e6319d692",
+    "supabase/functions/consent-forms-admin/index.ts": "043e71e2192b8ce6c3a16befd4a7568bda7ffbfbc484f1de4aef9d6cb1e4e4c2",
+    "supabase/functions/_shared/consentServer.ts": "c5067eeaa2c72b6bf74df6bdaa1744b9dceb82930f30536779c2c870175323bd",
+    "src/features/consentForms/ConsentFormsManagePage.tsx": "98a982469e12e64567b24086ef7a0d5a33b61c9a750f03e644435d7d331ea056",
+    "src/index.css": "20ba005e6c5a0edd8165a97d9b6c504981dc911489f817dc9723b47c0a51e4db"
+  },
+  "validation": {
+    "unit": {
+      "files": 58,
+      "tests": 473,
+      "result": "pass"
+    },
+    "demoE2E": {
+      "tests": 56,
+      "result": "pass"
+    },
+    "latestConsentE2E": {
+      "tests": 16,
+      "result": "pass"
+    },
+    "typecheck": "pass",
+    "lint": "pass (8 pre-existing warnings)",
+    "build": "pass (existing chunk warning)",
+    "denoCheck": "pass",
+    "actualDb": 9,
+    "actualChrome": 15,
+    "axeStates": 7,
+    "axeViolations": 0
+  },
+  "remoteApplied": {
+    "database": false,
+    "functions": false,
+    "frontend": false,
+    "push": false,
+    "mainMerge": false
+  }
+}
