@@ -1,0 +1,65 @@
+[
+  {
+    "slug": "registry-public",
+    "version": 16,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "updated_at": 1790873368581
+  },
+  {
+    "slug": "registry-pdf",
+    "version": 19,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "updated_at": 1790873381756
+  },
+  {
+    "slug": "consent-forms-public",
+    "version": 20,
+    "status": "ACTIVE",
+    "verify_jwt": false,
+    "updated_at": 1790873358972
+  },
+  {
+    "slug": "consent-forms-admin",
+    "version": 18,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "updated_at": 1790873363901
+  },
+  {
+    "slug": "registry-participants",
+    "version": 9,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "updated_at": 1790873373294
+  },
+  {
+    "slug": "data-collect-admin",
+    "version": 9,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "updated_at": 1790873392635
+  },
+  {
+    "slug": "data-collect-public",
+    "version": 9,
+    "status": "ACTIVE",
+    "verify_jwt": false,
+    "updated_at": 1790873386350
+  },
+  {
+    "slug": "special-rooms-admin",
+    "version": 10,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "updated_at": 1790873401742
+  },
+  {
+    "slug": "special-rooms-public",
+    "version": 14,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "updated_at": 1790873397243
+  }
+]

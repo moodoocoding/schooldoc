@@ -50,3 +50,11 @@ DEVELOPMENT.md와 src/index.css의 추가 부분 충돌은 양쪽 기능 규칙�
 - 타입·lint·전체 단위 501개·빌드를 변경 후 다시 통과했다.
 - 웹 관점: 기존 정보 위계를 유지하면서 응답 수의 의미를 바로잡음. UX 관점: 재제출로 응답 인원이 부풀지 않고 아직 공유할 수 없는 수합이 진행 목록에 나타나지 않음. UI 관점: 기존 상태·접근 가능한 이름·배치를 유지함. 별도 화면 설계나 실제 전문가 평가를 실시하지 않았다. 기존 4개 기능의 모의 디자인 검토 기록은 유지한다.
 - 배포된 API/익명 RLS의 읽기·거부 경로 17개 통과. 실제 제출·파기·인증된 교사 자료는 자동 시험하지 않았다. [재현 도구](remote-api.mjs), [결과](remote-api.json).
+
+## 운영 DB·서버 적용 확인
+
+- 대상 Supabase: jhystopaacyfvjxhnpyd. 최초 4개와 공통 집계 보완 202610020100까지 신규 5개 적용 확인. 전체 33개 local/remote 이력 일치. [이력](remote-migrations.txt).
+- 원격 실제 함수 정의에서 현재 가정통신문 응답 수·ready 필터·현재 자료 수합 집계와 직접 제출 RPC 거절 권한을 확인했다. [메타데이터](remote-summary.txt).
+- 지정 Edge Functions 아홉 개 배포 성공, ACTIVE 및 기존 verify_jwt 설정 유지 확인. [배포 로그](edge-deploy.txt), [버전](edge-versions.json). 가정통신문 공개는 false, 자료 수합 공개도 false이며 다른 7개 대상은 true다. 데이터 수합 공개의 기존 false 설정을 supabase/config.toml에 명시해 CLI 기본값으로 바뀌지 않게 했다.
+- [원격 API 결과](remote-api.json)의 17개 읽기/거부/익명 RLS 검사 통과. 업무 자료 생성·제출·파일 삭제·파기는 하지 않았다. 기존 키도 교체하지 않았다. 실제 로그인·소유자 간 쓰기·Storage 제출·서버 PDF·Realtime·부하 한계는 계속 남는다.
+- [통합 PR #45](https://github.com/moodoocoding/schooldoc/pull/45)를 첨부했다. DB·서버 적용 완료 후 main squash 병합과 Vercel 자동 운영 배포를 진행한다. 프런트엔드는 이 기록 시점에서 미적용이며 최종 운영 URL/배포 식별자는 PR 배포 표와 후속 일지에 기록한다.
