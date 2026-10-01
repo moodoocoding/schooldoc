@@ -273,6 +273,9 @@ export function RolePracticePage({ board }: RolePageProps) {
 export function RoleHistoryPage({ board }: RolePageProps) {
   const [month, setMonth] = useState(roleToday().slice(0, 7));
   const [selected, setSelected] = useState("");
+  const [savingDate, setSavingDate] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [saveMessage, setSaveMessage] = useState("");
   const range = roleMonthRange(month);
   const { records, error, loading, refresh } = useRoleRecords(
     range.start,
@@ -304,8 +307,33 @@ export function RoleHistoryPage({ board }: RolePageProps) {
       })
       .sort((a, b) => a.date.localeCompare(b.date));
   const student = students.find((s) => s.id === selected);
+  const change = async (period: RolePeriod, date: string, status: string) => {
+    if (!student || savingDate) return;
+    setSavingDate(date);
+    setSaveError("");
+    setSaveMessage("");
+    try {
+      await writeRoleRecord({
+        periodId: period.id,
+        studentId: student.id,
+        date,
+        status,
+        version: board.version,
+      });
+      refresh();
+      setSaveMessage(`${student.number}번 ${student.name}의 ${date} 기록을 저장했습니다.`);
+    } catch (cause) {
+      setSaveError((cause as Error).message);
+    } finally {
+      setSavingDate("");
+    }
+  };
   return (
     <div className="space-y-5">
+      <nav className={`${rolePanel} flex flex-wrap gap-2`} aria-label="실천 현황 보기">
+        <Link to="/tools/classroom-roles/board" className={roleSecondary}>오늘·주간</Link>
+        <span aria-current="page" className="inline-flex min-h-11 items-center rounded-lg bg-[#182B40] px-4 text-sm font-bold text-white">지난 기록</span>
+      </nav>
       <section
         className={`${rolePanel} flex flex-wrap items-end justify-between gap-4`}
       >
@@ -318,6 +346,8 @@ export function RoleHistoryPage({ board }: RolePageProps) {
               if (/^20\d{2}-\d{2}$/.test(e.target.value)) {
                 setMonth(e.target.value);
                 setSelected("");
+                setSaveError("");
+                setSaveMessage("");
               }
             }}
           />
@@ -328,6 +358,8 @@ export function RoleHistoryPage({ board }: RolePageProps) {
         </p>
       </section>
       <RoleError message={error} />
+      <RoleError message={saveError} />
+      {saveMessage && <p role="status" className="text-sm font-semibold text-[#117447]">{saveMessage}</p>}
       {error && (
         <button className={roleSecondary} onClick={refresh}>
           다시 불러오기
@@ -426,17 +458,18 @@ export function RoleHistoryPage({ board }: RolePageProps) {
                         : "제출 기록 없음"}
                     </p>
                   </div>
-                  <StatusBadge
-                    status={record?.status ?? (eligible ? "missing" : "exempt")}
-                  />
+                  <div className="flex flex-wrap items-center gap-3">
+                    <StatusBadge status={record?.status ?? (eligible ? "missing" : "exempt")} />
+                    <RecordSelect
+                      label={`${student.number}번 ${student.name} ${date} 기록 정정`}
+                      value={record?.status ?? "missing"}
+                      disabled={Boolean(savingDate) || loading}
+                      onChange={(status) => void change(period, date, status)}
+                    />
+                  </div>
                 </div>
               ))}
-              <Link
-                className="inline-block text-sm font-bold text-[#0F6CBD]"
-                to="/tools/classroom-roles/board"
-              >
-                실천판에서 기록 정정 →
-              </Link>
+              <p className="text-xs text-[#526174]">날짜별 상태를 이 자리에서 정정할 수 있습니다. 미기록을 선택하면 저장된 기록을 지웁니다.</p>
             </section>
           )}
         </>

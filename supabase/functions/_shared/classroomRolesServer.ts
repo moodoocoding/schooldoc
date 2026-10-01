@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.110.8";
 import { createPayloadCrypto } from "./payloadCrypto.ts";
 import {
+  changedRolePeriod,
   defaultRoleState,
   publicRoleProjection,
   roleToday,
@@ -180,7 +181,8 @@ export async function handleClassroomRoles(
         });
         if (saved.error)
           fail("기록을 저장하지 못했습니다. 다시 시도해 주세요.", 503);
-        if (!saved.data) fail("배정이 변경되었습니다. 새로고침해 주세요.", 409);
+        if (!saved.data)
+          fail("선생님이 확인한 기록이거나 배정이 변경되었습니다. 새로고침해 주세요.", 409);
         return json({ ok: true });
       }
       const selectedId = body.studentId ? id(body.studentId) : undefined;
@@ -217,6 +219,27 @@ export async function handleClassroomRoles(
         body.action === "rotateToken"
           ? crypto.randomUUID()
           : board.public_token;
+      const changedPeriod = body.action === "save" ? changedRolePeriod(state, next) : undefined;
+      if (changedPeriod) {
+        const updated = await db.rpc("update_classroom_role_period", {
+          p_board_id: board.id,
+          p_owner_id: ownerId,
+          p_version: board.version,
+          p_encrypted_payload: await seal.encryptPayload(next),
+          p_period_id: changedPeriod.before.id,
+          p_start: changedPeriod.after?.start ?? null,
+          p_end: changedPeriod.after?.end ?? null,
+        });
+        if (updated.error)
+          fail("운영 기간을 저장하지 못했습니다. 다시 시도해 주세요.", 503);
+        if (updated.data === "record_conflict")
+          fail("해당 기간에 이미 기록된 날짜가 있습니다. 기록이 포함되도록 기간을 조정하거나 삭제하지 마세요.", 409);
+        if (updated.data === "conflict")
+          fail("다른 화면에서 변경되었습니다. 새로고침해 주세요.", 409);
+        if (updated.data !== "updated")
+          fail("운영 기간을 확인해 주세요.");
+        return json({ id: board.id, version: board.version + 1, public_token: board.public_token, state: next });
+      }
       const updated = await db
         .from("classroom_role_boards")
         .update({

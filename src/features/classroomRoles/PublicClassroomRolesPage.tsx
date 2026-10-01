@@ -44,9 +44,25 @@ export function PublicClassroomRolesPage() {
   const [message, setMessage] = useState("");
   const [retry, setRetry] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [displayPage, setDisplayPage] = useState(0);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const tileRefs = useRef(new Map<string, HTMLButtonElement>());
   const student = board?.students.find((item) => item.id === selectedId);
+  const search = query.trim();
+  const matchedStudents = board?.students.filter((item) =>
+    /^\d+$/.test(search)
+      ? item.number === Number(search)
+      : `${item.number} ${item.name}`.includes(search),
+  ) ?? [];
+  const displayPageCount = Math.max(1, Math.ceil((board?.students.length ?? 0) / 25));
+  const visibleStudents = display
+    ? board?.students.slice(displayPage * 25, displayPage * 25 + 25) ?? []
+    : matchedStudents;
+
+  useEffect(() => {
+    if (displayPage >= displayPageCount) setDisplayPage(displayPageCount - 1);
+  }, [displayPage, displayPageCount]);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,7 +109,7 @@ export function PublicClassroomRolesPage() {
   };
 
   const submit = async (status: "done" | "not_done") => {
-    if (!student || !board?.periodId || busy || loading || error || !student.eligible) return;
+    if (!student || !board?.periodId || busy || loading || error || !student.eligible || student.teacherConfirmed || loadedSelectedId !== selectedId) return;
     setBusy(true);
     setError("");
     setMessage("");
@@ -126,7 +142,7 @@ export function PublicClassroomRolesPage() {
           : "bg-[#EDF3F8] text-[#36576E]";
   const tileClass =
     "flex min-h-32 min-w-0 flex-col gap-3 rounded-xl border border-[#DCE3EA] bg-white p-4 text-left" +
-    (display ? " justify-center sm:min-h-[18dvh]" : " justify-between");
+    (display ? " justify-center sm:min-h-[14dvh]" : " justify-between");
   const tileContents = (item: Student) => (
     <>
       <span className={"block break-words font-bold leading-snug text-[#152336] " +
@@ -195,13 +211,38 @@ export function PublicClassroomRolesPage() {
           </section>
         ) : (
           <section aria-label="학생 역할과 오늘 상태">
+            {!display && board.students.length > 12 && (
+              <div className="mb-4 max-w-md">
+                <label htmlFor="role-student-search" className="block text-sm font-semibold text-[#526174]">내 번호 또는 이름 찾기</label>
+                <input
+                  id="role-student-search"
+                  type="search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="번호 또는 이름"
+                  className="mt-2 min-h-11 w-full rounded-lg border border-[#CAD4DD] bg-white px-3 text-base focus-visible:outline-2 focus-visible:outline-[#0F6CBD]"
+                />
+              </div>
+            )}
+            {display && displayPageCount > 1 && (
+              <nav className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white px-4 py-2" aria-label="교실 표시 페이지">
+                <span className="text-sm font-bold">{displayPage + 1}/{displayPageCount}쪽 · {board.students.length}명</span>
+                <div className="flex gap-2">
+                  <button type="button" className={roleSecondary} disabled={displayPage === 0} onClick={() => setDisplayPage((page) => page - 1)}>이전</button>
+                  <button type="button" className={roleSecondary} disabled={displayPage >= displayPageCount - 1} onClick={() => setDisplayPage((page) => page + 1)}>다음</button>
+                </div>
+              </nav>
+            )}
             {board.students.length === 0 && (
               <p className="rounded-xl border border-[#DCE3EA] bg-white p-5 text-[#526174]">
                 아직 배정된 학생이 없어요.
               </p>
             )}
+            {!display && board.students.length > 0 && matchedStudents.length === 0 && (
+              <p role="status" className="rounded-xl border border-[#DCE3EA] bg-white p-5 text-sm text-[#526174]">찾는 학생이 없어요. 번호나 이름을 다시 입력해 주세요.</p>
+            )}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-              {board.students.map((item) => display ? (
+              {visibleStudents.map((item) => display ? (
                 <article key={item.id} className={tileClass}>
                   {tileContents(item)}
                 </article>
@@ -258,6 +299,12 @@ export function PublicClassroomRolesPage() {
                 ×
               </button>
             </div>
+            {student.role.description.trim() && (
+              <p className="rounded-xl bg-[#EFF6FC] px-4 py-3 text-base leading-7 text-[#173A52]">
+                <span className="block text-sm font-bold">내가 할 일</span>
+                {student.role.description}
+              </p>
+            )}
             <div className="border-t border-[#E2E8F0] pt-4">
               <p className="text-sm font-semibold">
                 이번 주 <strong className="ml-1 text-base">{weekDone}/{weekEligible}일</strong>
@@ -283,7 +330,11 @@ export function PublicClassroomRolesPage() {
               )}
             </div>
             <div className="border-t border-[#E2E8F0] pt-4">
-              {student.eligible ? (
+              {student.teacherConfirmed ? (
+                <p className="text-sm font-semibold text-[#36576E]">
+                  선생님이 오늘 기록을 확인했어요. 수정이 필요하면 선생님께 알려 주세요.
+                </p>
+              ) : student.eligible ? (
                 <>
                   <p className="mb-3 text-sm font-semibold">
                     오늘 <span className="ml-1 text-[#526174]">{ROLE_STATUS_LABELS[student.status ?? "missing"]}</span>
@@ -294,7 +345,7 @@ export function PublicClassroomRolesPage() {
                       aria-pressed={student.status === "done"}
                       className={"min-h-14 rounded-xl border-2 px-3 text-lg font-bold disabled:opacity-50 " +
                         (student.status === "done" ? "border-[#0F6CBD] bg-[#0F6CBD] text-white" : "border-[#B9CBD9] bg-white text-[#173A52]")}
-                      disabled={busy || Boolean(error)}
+                      disabled={busy || Boolean(error) || loadedSelectedId !== selectedId}
                       onClick={() => void submit("done")}
                     >
                       {busy ? "저장 중…" : "했어요"}
@@ -304,7 +355,7 @@ export function PublicClassroomRolesPage() {
                       aria-pressed={student.status === "not_done"}
                       className={"min-h-14 rounded-xl border-2 px-3 text-lg font-bold disabled:opacity-50 " +
                         (student.status === "not_done" ? "border-[#A84B2E] bg-[#A84B2E] text-white" : "border-[#D2C3BC] bg-white text-[#5D4036]")}
-                      disabled={busy || Boolean(error)}
+                      disabled={busy || Boolean(error) || loadedSelectedId !== selectedId}
                       onClick={() => void submit("not_done")}
                     >
                       {busy ? "저장 중…" : "못했어요"}

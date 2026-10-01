@@ -111,35 +111,39 @@ export function RolePracticeBoardPage({ board }: RolePageProps) {
   };
   return (
     <div className="space-y-5">
-      <section className={`${rolePanel} grid gap-5 lg:grid-cols-[minmax(0,1fr)_118px]`} aria-label="학생 화면 공유">
-        <div className="min-w-0 space-y-4">
-          <nav className="flex flex-wrap gap-2" aria-label="실천판 메뉴">
-            <button type="button" onClick={() => setParams({ view: "all" })} aria-current={view === "all" ? "page" : undefined} className={`min-h-11 rounded-lg px-4 text-sm font-bold ${view === "all" ? "bg-[#182B40] text-white" : "border border-[#CAD4DD] text-[#253B4D]"}`}>전체보기</button>
-            <button type="button" onClick={() => setParams({ view: "students" })} aria-current={view === "students" ? "page" : undefined} className={`min-h-11 rounded-lg px-4 text-sm font-bold ${view === "students" ? "bg-[#182B40] text-white" : "border border-[#CAD4DD] text-[#253B4D]"}`}>학생화면</button>
-            <Link to="/tools/classroom-roles/assign?step=roles" className="inline-flex min-h-11 items-center rounded-lg border border-[#CAD4DD] px-4 text-sm font-bold text-[#253B4D]">역할설정</Link>
-            <Link to="/tools/classroom-roles/print" className="inline-flex min-h-11 items-center rounded-lg border border-[#CAD4DD] px-4 text-sm font-bold text-[#253B4D]">게시판 안내문 인쇄</Link>
-          </nav>
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-            <label htmlFor="role-public-url" className="shrink-0 text-sm font-semibold text-[#526174]">학생화면 URL</label>
-            <input id="role-public-url" aria-label="학생 공용 주소" className={`${roleInput} min-w-0 flex-1 text-sm`} readOnly value={url} onFocus={(event) => event.target.select()} />
-            <button type="button" className={`${roleSecondary} shrink-0`} onClick={() => void copy()}>{copied ? "복사됨" : "주소 복사"}</button>
-            <a href={url} target="_blank" rel="noopener noreferrer" className={`${roleSecondary} shrink-0`}>학생 화면 열기</a>
+      <section className={`${rolePanel} space-y-3`} aria-label="실천 현황 메뉴">
+        <nav className="flex flex-wrap gap-2" aria-label="실천 현황 보기">
+          <button type="button" onClick={() => setParams({ view: "all" })} aria-current={view === "all" ? "page" : undefined} className={`min-h-11 rounded-lg px-4 text-sm font-bold ${view === "all" ? "bg-[#182B40] text-white" : "border border-[#CAD4DD] text-[#253B4D]"}`}>주간 표</button>
+          <button type="button" onClick={() => setParams({ view: "students" })} aria-current={view === "students" ? "page" : undefined} className={`min-h-11 rounded-lg px-4 text-sm font-bold ${view === "students" ? "bg-[#182B40] text-white" : "border border-[#CAD4DD] text-[#253B4D]"}`}>학생별</button>
+          <Link to="/tools/classroom-roles/records" className="inline-flex min-h-11 items-center rounded-lg border border-[#CAD4DD] px-4 text-sm font-bold text-[#253B4D]">지난 기록</Link>
+          <Link to="/tools/classroom-roles/manage" className="inline-flex min-h-11 items-center rounded-lg border border-[#CAD4DD] px-4 text-sm font-bold text-[#253B4D]">배정 관리</Link>
+        </nav>
+        <details className="rounded-lg border border-[#DCE3EA] bg-[#F8FAFC] px-4 py-2">
+          <summary className="min-h-11 cursor-pointer py-2 text-sm font-bold text-[#0F6CBD]">학생용 링크 · 교실 표시 · 게시판 안내문</summary>
+          <div className="space-y-3 border-t border-[#DCE3EA] pt-3">
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+              <label htmlFor="role-public-url" className="shrink-0 text-sm font-semibold text-[#526174]">학생용 주소</label>
+              <input id="role-public-url" aria-label="학생 공용 주소" className={`${roleInput} min-w-0 flex-1 text-sm`} readOnly value={url} onFocus={(event) => event.target.select()} />
+              <button type="button" className={`${roleSecondary} shrink-0`} onClick={() => void copy()}>{copied ? "복사됨" : "주소 복사"}</button>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <a href={url} target="_blank" rel="noopener noreferrer" className={roleSecondary}>학생 화면 열기</a>
+              <a href={`${url}?view=display`} target="_blank" rel="noopener noreferrer" className={roleSecondary}>교실 표시 열기</a>
+              <Link to="/tools/classroom-roles/print" className={roleSecondary}>게시판 안내문 인쇄</Link>
+              <div ref={qrRef} className="rounded-md bg-white p-1"><QRCodeSVG value={url} size={88} level="M" aria-label="학생화면 URL QR 코드" /></div>
+              <button type="button" disabled={savingQr} onClick={() => void downloadQr()} className="min-h-11 text-sm font-bold text-[#0F6CBD] disabled:opacity-50">{savingQr ? "저장 중…" : "QR 이미지 저장"}</button>
+            </div>
+            {!board.state.settings.publicEnabled && <p className="text-sm text-[#9A5610]">학생 화면과 입력이 중지되어 있습니다.</p>}
           </div>
-          {!board.state.settings.publicEnabled && <p className="text-sm text-[#9A5610]">학생 화면과 입력이 중지되어 있습니다.</p>}
-          {view === "students" && !board.state.settings.showPublicStatus && <p className="text-sm text-[#526174]">공용 학생 카드의 오늘 상태는 운영 설정에서 공개할 수 있습니다.</p>}
-        </div>
-        <div className="flex items-center gap-3 lg:flex-col lg:justify-center">
-          <div ref={qrRef} className="shrink-0 rounded-md bg-white p-1"><QRCodeSVG value={url} size={88} level="M" aria-label="학생화면 URL QR 코드" /></div>
-          <button type="button" disabled={savingQr} onClick={() => void downloadQr()} className="min-h-11 text-sm font-bold text-[#0F6CBD] disabled:opacity-50">{savingQr ? "저장 중…" : "QR 이미지 저장"}</button>
-        </div>
+        </details>
       </section>
       <RoleError message={error || loadError} />
       {message && <p role="status" className="text-sm font-semibold text-[#117447]">{message}</p>}
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-bold">{view === "all" ? "이번 주 실천 기록" : "학생화면"}</h2>
+        <h2 className="text-lg font-bold">{view === "all" ? "이번 주 실천 기록" : "학생별 오늘 기록"}</h2>
         <button type="button" className="min-h-11 text-sm font-semibold text-[#0F6CBD]" onClick={refresh}>기록 새로고침</button>
       </div>
-      {loading ? <p role="status">기록을 불러오는 중…</p> : loadError ? <p>기록을 다시 불러와 주세요.</p> : !period ? <section className={rolePanel}>오늘 배정된 역할이 없습니다. <Link className="font-bold text-[#0F6CBD] underline" to="/tools/classroom-roles/assign?step=roles">역할설정</Link></section> : view === "all" ? (
+      {loading ? <p role="status">기록을 불러오는 중…</p> : loadError ? <p>기록을 다시 불러와 주세요.</p> : !period ? <section className={rolePanel}>오늘 배정된 역할이 없습니다. <Link className="font-bold text-[#0F6CBD] underline" to="/tools/classroom-roles/manage">배정 관리</Link></section> : view === "all" ? (
         <section className={`${rolePanel} p-0 sm:p-0`} aria-label="학생별 이번 주 실천과 이번 달 횟수">
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[820px] border-collapse text-left text-sm">

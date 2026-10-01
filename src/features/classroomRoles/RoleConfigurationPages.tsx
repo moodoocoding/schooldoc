@@ -10,6 +10,7 @@ import {
 } from "./roleApi";
 import type { RolePageProps } from "./ClassroomRolesWorkspace";
 import { RoleExcludedDatesCalendar } from "./RoleExcludedDatesCalendar";
+import { useUnsavedRoleChanges } from "./useUnsavedRoleChanges";
 import {
   RoleDays,
   RoleError,
@@ -24,6 +25,8 @@ export function RoleCatalogPage({ board, save, busy }: RolePageProps) {
   const [roles, setRoles] = useState(structuredClone(board.state.roles));
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const dirty = JSON.stringify(roles) !== JSON.stringify(board.state.roles);
+  useUnsavedRoleChanges(dirty);
   const change = (id: string, patch: Partial<ClassroomRole>) => {
     setRoles(roles.map((r) => (r.id === id ? { ...r, ...patch } : r)));
     setSaved(false);
@@ -154,6 +157,7 @@ export function RoleCatalogPage({ board, save, busy }: RolePageProps) {
       >
         {busy ? "저장 중…" : "역할 목록 저장"}
       </button>
+      {dirty && <p role="status" className="text-sm text-amber-800">저장하지 않은 역할 변경이 있습니다.</p>}
       {saved && (
         <p role="status">역할 목록을 저장했습니다. 다음 배정부터 적용됩니다.</p>
       )}
@@ -163,9 +167,9 @@ export function RoleCatalogPage({ board, save, busy }: RolePageProps) {
 
 export function RoleSettingsPage({ board, save, busy }: RolePageProps) {
   const today = roleToday();
-  const editablePeriods = board.state.periods
-    .filter((period) => period.end >= today)
-    .sort((a, b) => a.start.localeCompare(b.start));
+  const editablePeriods = [...board.state.periods].sort((a, b) =>
+    b.start.localeCompare(a.start),
+  );
   const initialPeriod =
     activeRolePeriod(board.state, today) ?? editablePeriods[0];
   const [periodId, setPeriodId] = useState(initialPeriod?.id ?? "");
@@ -180,6 +184,11 @@ export function RoleSettingsPage({ board, save, busy }: RolePageProps) {
   );
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const dirty =
+    JSON.stringify(settings) !== JSON.stringify(board.state.settings) ||
+    JSON.stringify(excludedDates) !== JSON.stringify([...new Set(board.state.settings.excludedDates)].sort()) ||
+    Boolean(selectedPeriod && (periodStart !== selectedPeriod.start || periodEnd !== selectedPeriod.end));
+  useUnsavedRoleChanges(dirty);
   const change = (patch: Partial<typeof settings>) => {
     setSettings({ ...settings, ...patch });
     setSaved(false);
@@ -202,7 +211,9 @@ export function RoleSettingsPage({ board, save, busy }: RolePageProps) {
     setError("");
     try {
       validateRoleStateChange(board.state, state);
-      setSaved(await save(state));
+      const ok = await save(state);
+      if (ok) setSettings(state.settings);
+      setSaved(ok);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -221,6 +232,7 @@ export function RoleSettingsPage({ board, save, busy }: RolePageProps) {
                     className={roleInput}
                     value={periodId}
                     onChange={(event) => {
+                      if (dirty && !window.confirm("현재 기간의 변경을 저장하지 않았습니다. 다른 기간을 볼까요?")) return;
                       const period = editablePeriods.find(
                         (candidate) => candidate.id === event.target.value,
                       );
@@ -243,10 +255,9 @@ export function RoleSettingsPage({ board, save, busy }: RolePageProps) {
                 <RoleField label="운영 시작일">
                   <input
                     type="date"
-                    className={`${roleInput} disabled:cursor-not-allowed disabled:bg-[#F8FAFC] disabled:text-[#64748B]`}
+                    className={roleInput}
                     value={periodStart}
-                    min={selectedPeriod.start > today ? today : undefined}
-                    disabled={busy || selectedPeriod.start <= today}
+                    disabled={busy}
                     onChange={(event) => {
                       setPeriodStart(event.target.value);
                       setSaved(false);
@@ -258,7 +269,6 @@ export function RoleSettingsPage({ board, save, busy }: RolePageProps) {
                     type="date"
                     className={roleInput}
                     value={periodEnd}
-                    min={today}
                     disabled={busy}
                     onChange={(event) => {
                       setPeriodEnd(event.target.value);
@@ -267,11 +277,38 @@ export function RoleSettingsPage({ board, save, busy }: RolePageProps) {
                   />
                 </RoleField>
               </div>
-              {selectedPeriod.start <= today && (
-                <p className="text-xs text-[#526174]">
-                  시작한 기간의 시작일과 지난 날짜는 변경할 수 없습니다.
-                </p>
-              )}
+              <p className="text-xs leading-5 text-[#526174]">
+                지난 날짜도 선택할 수 있습니다. 이미 제출된 기록의 날짜는
+                운영 기간에서 제외할 수 없습니다.
+              </p>
+              <button
+                type="button"
+                className="min-h-11 rounded-xl border border-red-200 px-4 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                disabled={busy}
+                onClick={async () => {
+                  if (
+                    !window.confirm(
+                      "운영 기간과 이 기간의 역할 배정을 삭제할까요? 제출 기록이 있는 기간은 삭제할 수 없습니다.",
+                    )
+                  )
+                    return;
+                  setError("");
+                  const remaining = board.state.periods.filter(
+                    (period) => period.id !== selectedPeriod.id,
+                  );
+                  const ok = await save({ ...board.state, periods: remaining });
+                  if (!ok) return;
+                  const next = [...remaining].sort((a, b) =>
+                    b.start.localeCompare(a.start),
+                  )[0];
+                  setPeriodId(next?.id ?? "");
+                  setPeriodStart(next?.start ?? "");
+                  setPeriodEnd(next?.end ?? "");
+                  setSaved(false);
+                }}
+              >
+                이 운영 기간 삭제
+              </button>
             </div>
           ) : (
             <p className="mt-2 text-sm text-[#526174]">
@@ -304,7 +341,9 @@ export function RoleSettingsPage({ board, save, busy }: RolePageProps) {
             initialMonth={
               selectedPeriod?.start && selectedPeriod.start > today
                 ? selectedPeriod.start.slice(0, 7)
-                : today.slice(0, 7)
+                : selectedPeriod?.end && selectedPeriod.end < today
+                  ? selectedPeriod.end.slice(0, 7)
+                  : today.slice(0, 7)
             }
             busy={busy}
           />
@@ -353,6 +392,7 @@ export function RoleSettingsPage({ board, save, busy }: RolePageProps) {
       >
         {busy ? "저장 중…" : "운영 설정 저장"}
       </button>
+      {dirty && <p role="status" className="text-sm text-amber-800">저장하지 않은 운영 설정 변경이 있습니다.</p>}
       {saved && <p role="status">운영 설정을 저장했습니다.</p>}
       <section className={`${rolePanel} space-y-3`}>
         <h2 className="font-bold">공용 링크 재발급</h2>

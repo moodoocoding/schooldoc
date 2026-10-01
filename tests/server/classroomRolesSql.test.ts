@@ -38,6 +38,22 @@ Deno.test(
             ),
           ),
         );
+        await db.exec(
+          await Deno.readTextFile(
+            new URL(
+              "../../supabase/migrations/202609280200_classroom_role_period_edits.sql",
+              import.meta.url,
+            ),
+          ),
+        );
+        await db.exec(
+          await Deno.readTextFile(
+            new URL(
+              "../../supabase/migrations/202610010001_classroom_role_teacher_record_priority.sql",
+              import.meta.url,
+            ),
+          ),
+        );
       });
       await db.exec(
         `insert into public.classroom_role_boards(id, owner_id, encrypted_payload) values ('${board}', '${owner}', 'encrypted-test-only'), (gen_random_uuid(), '${other}', 'encrypted-other-test-only');`,
@@ -59,6 +75,9 @@ Deno.test(
           );
           await denied(
             `select public.write_classroom_role_record('${board}', 1, '${period}', '${student}', '2026-09-27', 'done', 'student')`,
+          );
+          await denied(
+            `select public.update_classroom_role_period('${board}', '${owner}', 1, 'tampered', '${period}', null, null)`,
           );
         },
       );
@@ -97,6 +116,30 @@ Deno.test(
           ).rows[0].status === "not_done",
         );
       });
+      await t.step("period changes protect recorded days and board ownership", async () => {
+        const change = async (
+          ownerId: string,
+          version: number,
+          start: string | null,
+          end: string | null,
+        ) => {
+          const result = await db.query<{ result: string }>(
+            "select public.update_classroom_role_period($1, $2, $3, 'encrypted-next', $4, $5, $6) as result",
+            [board, ownerId, version, period, start, end],
+          );
+          return result.rows[0].result;
+        };
+        assert(await change(other, 1, null, null) === "conflict");
+        assert(await change(owner, 0, null, null) === "conflict");
+        assert(await change(owner, 1, null, null) === "record_conflict");
+        assert(await change(owner, 1, "2026-09-01", "2026-09-26") === "record_conflict");
+        assert(await change(owner, 1, "2026-08-01", "2026-09-30") === "updated");
+        const after = await db.query<{ version: number; encrypted_payload: string }>(
+          `select version, encrypted_payload from public.classroom_role_boards where id = '${board}'`,
+        );
+        assert(after.rows[0].version === 2 && after.rows[0].encrypted_payload === "encrypted-next");
+        assert(await change(owner, 1, "2026-08-01", "2026-09-30") === "conflict");
+      });
       await t.step(
         "other teacher cannot see another teacher records",
         async () => {
@@ -115,17 +158,42 @@ Deno.test(
         },
       );
       await t.step(
+        "teacher correction cannot be overwritten by a student",
+        async () => {
+          await db.exec("reset role; set role service_role;");
+          const correct = await db.query<{ ok: boolean }>(
+            `select public.write_classroom_role_record($1, 2, $2, $3, '2026-09-27', 'exempt', 'teacher') as ok`,
+            [board, period, student],
+          );
+          assert(correct.rows[0].ok);
+          const rejected = await db.query<{ ok: boolean }>(
+            `select public.write_classroom_role_record($1, 2, $2, $3, '2026-09-27', 'done', 'student') as ok`,
+            [board, period, student],
+          );
+          assert(rejected.rows[0].ok === false);
+          const rows = await db.query<{ status: string; source: string }>(
+            "select status, source from public.classroom_role_records",
+          );
+          assert(rows.rows.length === 1 && rows.rows[0].status === "exempt" && rows.rows[0].source === "teacher");
+        },
+      );
+      await t.step(
         "teacher reset removes only the requested record",
         async () => {
           await db.exec("reset role; set role service_role;");
           await db.query(
-            `select public.write_classroom_role_record($1, 1, $2, $3, '2026-09-27', 'missing', 'teacher')`,
+            `select public.write_classroom_role_record($1, 2, $2, $3, '2026-09-27', 'missing', 'teacher')`,
             [board, period, student],
           );
           assert(
             (await db.query("select * from public.classroom_role_records")).rows
               .length === 0,
           );
+          const deleted = await db.query<{ result: string }>(
+            "select public.update_classroom_role_period($1, $2, 2, 'encrypted-without-period', $3, null, null) as result",
+            [board, owner, period],
+          );
+          assert(deleted.rows[0].result === "updated");
         },
       );
     } finally {

@@ -53,6 +53,7 @@ export type PublicRoleBoard = {
     role: ClassroomRole;
     eligible: boolean;
     status?: RoleStatus;
+    teacherConfirmed?: boolean;
   })[];
   maskDisplayNames: boolean;
   showStatus: boolean;
@@ -275,39 +276,51 @@ export function validateRoleState(value: unknown): asserts value is RoleState {
 export function validateRoleStateChange(
   previous: RoleState,
   next: RoleState,
-  today = roleToday(),
+  _today = roleToday(),
 ) {
   validateRoleState(next);
   let editedPeriods = 0;
+  let splitPeriod: { before: RolePeriod; after: RolePeriod } | undefined;
   for (const p of previous.periods) {
     const updated = next.periods.find((n) => n.id === p.id);
+    if (!updated) {
+      editedPeriods += 1;
+      continue;
+    }
     ensure(
-      updated &&
-        JSON.stringify(updated.students) === JSON.stringify(p.students) &&
+      JSON.stringify(updated.students) === JSON.stringify(p.students) &&
         JSON.stringify(updated.roles) === JSON.stringify(p.roles) &&
         JSON.stringify(updated.assignments) === JSON.stringify(p.assignments),
       "이미 확정한 학생·역할 배정은 보존됩니다. 새 기간을 만들어 교체해 주세요.",
     );
     if (updated.start === p.start && updated.end === p.end) continue;
     editedPeriods += 1;
+    splitPeriod = { before: p, after: updated };
+  }
+  const added = next.periods.filter((period) => !previous.periods.some((old) => old.id === period.id));
+  ensure(
+    editedPeriods <= 1 && added.length <= 1,
+    "운영 기간은 한 번에 하나씩 수정하거나 삭제해 주세요.",
+  );
+  if (editedPeriods && added.length) {
     ensure(
-      p.end >= today &&
-        (p.start <= today
-          ? updated.start === p.start
-          : updated.start >= today) &&
-        updated.end >= today,
-      "이미 지난 운영 날짜는 변경할 수 없습니다.",
+      splitPeriod &&
+        splitPeriod.after.start === splitPeriod.before.start &&
+        splitPeriod.after.end < splitPeriod.before.end &&
+        added[0].start === new Date(Date.parse(`${splitPeriod.after.end}T00:00:00Z`) + 86400000).toISOString().slice(0, 10) &&
+        added[0].end === splitPeriod.before.end,
+      "기존 기간을 나누어 새 배정을 시작해 주세요.",
     );
   }
-  ensure(
-    editedPeriods <= 1 &&
-      (editedPeriods === 0 || next.periods.length === previous.periods.length),
-    "운영 기간은 한 번에 하나씩 수정해 주세요.",
-  );
-  ensure(
-    next.periods.length <= previous.periods.length + 1,
-    "한 번에 한 기간씩 확정해 주세요.",
-  );
+}
+
+export function changedRolePeriod(previous: RoleState, next: RoleState) {
+  for (const before of previous.periods) {
+    const after = next.periods.find((period) => period.id === before.id);
+    if (!after || before.start !== after.start || before.end !== after.end)
+      return { before, after };
+  }
+  return undefined;
 }
 export function validateRoleRecord(
   state: RoleState,
@@ -397,6 +410,12 @@ export function publicRoleProjection(
                 weekdays: role.weekdays,
               },
               eligible: isRoleDay(state, period, s.id, today),
+              ...(selectedId === s.id && records.some((record) =>
+                record.period_id === period.id &&
+                record.student_id === s.id &&
+                record.record_date === today &&
+                record.source === "teacher"
+              ) ? { teacherConfirmed: true } : {}),
               ...(state.settings.showPublicStatus || selectedId === s.id
                 ? {
                     status: records.find(

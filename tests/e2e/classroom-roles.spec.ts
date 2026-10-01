@@ -10,12 +10,10 @@ import {
 const root = "/tools/classroom-roles";
 const demoKey = "schooldoc_classroom_roles_demo_v1";
 const expectedTileOrder = [
-  "학생 역할 배정",
+  "실천 현황",
+  "배정 관리",
+  "역할 관리",
   "운영 설정",
-  "역할 목록",
-  "오늘의 실천판",
-  "실천 기록",
-  "역할 교체",
 ];
 async function seed(
   page: Page,
@@ -61,7 +59,7 @@ async function confirmAssignment(page: Page) {
   await expect(review).toBeVisible();
   await review.getByRole("button", { name: "확정하기" }).click();
 }
-test("홈은 오늘 현황과 6개 기능이며 학생 타일이 아니다", async ({ page }) => {
+test("홈은 오늘 현황과 4개 주요 기능이며 학생 타일이 아니다", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await seed(page);
@@ -70,7 +68,7 @@ test("홈은 오늘 현황과 6개 기능이며 학생 타일이 아니다", asy
   ).toBeVisible();
   await expect(
     page.getByRole("region", { name: "1인 1역 기능" }).getByRole("link"),
-  ).toHaveCount(6);
+  ).toHaveCount(4);
   await expect(
     page
       .getByRole("region", { name: "1인 1역 기능" })
@@ -82,7 +80,7 @@ test("홈은 오늘 현황과 6개 기능이며 학생 타일이 아니다", asy
   await expect(page.getByRole("button", { name: /가상하늘/ })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
-test("모바일에서도 배정·운영 설정·역할 목록이 먼저 나오고 각 화면으로 이동한다", async ({
+test("모바일에서도 주요 기능으로 이동한다", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -91,7 +89,7 @@ test("모바일에서도 배정·운영 설정·역할 목록이 먼저 나오�
   await expect(menu.getByRole("heading", { level: 3 })).toHaveText(
     expectedTileOrder,
   );
-  const paths = ["assign", "settings", "roles", "board", "records", "rotate"];
+  const paths = ["board", "manage", "roles", "settings"];
   for (const [index, title] of expectedTileOrder.entries()) {
     const link = menu.getByRole("link").filter({
       has: page.getByRole("heading", { name: title, exact: true }),
@@ -587,7 +585,8 @@ test("자동 명단 → 2단계 배정 → 공용 제출·재제출 → 월간 �
   context,
 }) => {
   const board = await seed(page);
-  await page.getByRole("link", { name: /학생 역할 배정/ }).click();
+  await page.getByRole("link", { name: /배정 관리/ }).click();
+  await page.getByRole("link", { name: "첫 배정 만들기" }).click();
   await expect(
     page.getByText("설정 명단을 불러왔습니다."),
   ).toBeVisible();
@@ -607,8 +606,9 @@ test("자동 명단 → 2단계 배정 → 공용 제출·재제출 → 월간 �
   await expect(page.getByRole("button", { name: "배정 확인", exact: true })).toHaveAttribute("aria-disabled", "false");
   await confirmAssignment(page);
   await expect(page).toHaveURL(`${root}/board`);
-  await expect(page.getByRole("button", { name: "전체보기" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("button", { name: "주간 표" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("table")).toBeVisible();
+  await page.getByText("학생용 링크 · 교실 표시 · 게시판 안내문").click();
   const url = await page.getByLabel("학생 공용 주소").inputValue();
   await expect(page.getByLabel("학생화면 URL QR 코드")).toBeVisible();
   await expect(page.getByRole("link", { name: "학생 화면 열기" })).toHaveAttribute("href", url);
@@ -653,7 +653,7 @@ test("자동 명단 → 2단계 배정 → 공용 제출·재제출 → 월간 �
     ),
   ).toBe(true);
   await page.getByRole("button", { name: "기록 새로고침" }).click();
-  await page.getByRole("button", { name: "학생화면", exact: true }).click();
+  await page.getByRole("button", { name: "학생별", exact: true }).click();
   await page.getByRole("button", { name: /1번 가상하늘/ }).first().click();
   await expect(page.getByLabel("1번 가상하늘 기록 정정")).toHaveValue(
     "not_done",
@@ -681,6 +681,7 @@ test("자동 명단 → 2단계 배정 → 공용 제출·재제출 → 월간 �
 test("실천판에서 20칸 게시판 안내문을 열고 역할 수에 따라 빈칸을 남긴다", async ({ page }) => {
   await seed(page, true);
   await page.goto(`${root}/board`);
+  await page.getByText("학생용 링크 · 교실 표시 · 게시판 안내문").click();
   await page.getByRole("link", { name: "게시판 안내문 인쇄" }).click();
   await expect(page).toHaveURL(`${root}/print`);
   const poster = page.getByRole("region", { name: "1인 1역 게시판 안내문 미리보기" });
@@ -797,7 +798,7 @@ test("안내문은 배정 기간을 전환하고 20개가 넘는 역할은 다�
   await expect(poster.locator(".role-poster-slot")).toHaveCount(40);
   await expect(poster.locator(".role-poster-print-page").last()).toContainText("추가 역할 21");
 });
-test("실천판은 주간 O/X와 월간 횟수를 합쳐 보여주고 역할설정은 2단계로 연다", async ({ page }) => {
+test("실천판은 주간 O/X와 월간 횟수를 합쳐 보여주고 배정 관리로 이동한다", async ({ page }) => {
   const board = await seed(page, true);
   const today = roleToday();
   const week = roleWeekDates(today);
@@ -815,12 +816,93 @@ test("실천판은 주간 O/X와 월간 횟수를 합쳐 보여주고 역할설�
   await expect(row.getByRole("cell", { name: `${selectedDates[0]} 했어요` })).toHaveText("O");
   if (selectedDates.length > 1) await expect(row.getByRole("cell", { name: `${selectedDates[1]} 못했어요` })).toHaveText("X");
   await expect(row.getByRole("cell", { name: String(selectedDates.length - Number(selectedDates.length > 1)), exact: true }).last()).toBeVisible();
-  await page.getByRole("button", { name: "학생화면", exact: true }).click();
+  await page.getByRole("button", { name: "학생별", exact: true }).click();
   await expect(page.getByRole("button", { name: /1번 가상하늘/ }).first()).toContainText(`오늘 ${selectedDates.indexOf(today) === 1 ? "못했어요" : "했어요"}`);
   await page.getByRole("button", { name: /1번 가상하늘/ }).first().click();
   await expect(page.getByRole("region", { name: /1번 가상하늘 실천 상세/ })).toContainText("이번 주");
-  await page.getByRole("link", { name: "역할설정" }).click();
-  await expect(page.locator("[data-role-assignment-step]")) .toHaveAttribute("data-role-assignment-step", "2");
+  await page.getByRole("link", { name: "배정 관리" }).click();
+  await expect(page.getByRole("heading", { name: "배정 관리" })).toBeVisible();
+});
+
+test("현재 배정 변경은 내일부터 적용하고 기존 기간과 기록을 보존한다", async ({ page }) => {
+  const board = await seed(page, true);
+  const oldPeriod = board.state.periods[0];
+  await page.goto(`${root}/manage`);
+  await page.getByRole("link", { name: "현재 배정 변경" }).click();
+  await expect(page).toHaveURL(`${root}/assign?mode=current`);
+  await expect(page.getByText("오늘까지의 배정과 기록은 유지합니다.", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "다음: 역할 배정" }).click();
+  await page.getByRole("button", { name: "배정 확인", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("변경한 명단·역할·배정이 없습니다");
+  await page.getByRole("button", { name: `${board.state.roles[2].name} 학생 선택`, exact: true }).click();
+  await page.getByRole("button", { name: "1번 가상하늘 역할 이동" }).click();
+  await page.getByRole("dialog", { name: "역할 이동" }).getByRole("button", { name: "옮기기" }).click();
+  await expect(page.getByRole("button", { name: "배정 확인", exact: true })).toHaveAttribute("aria-disabled", "false");
+  await confirmAssignment(page);
+  const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), demoKey);
+  expect(saved.state.periods).toHaveLength(2);
+  expect(saved.state.periods[0].id).toBe(oldPeriod.id);
+  expect(saved.state.periods[0].end).toBe(roleToday());
+  expect(saved.state.periods[0].assignments[board.state.roster[0].id]).toBe(board.state.roles[0].id);
+  expect(saved.state.periods[1].start).toBe(new Date(Date.parse(`${roleToday()}T00:00:00Z`) + 86400000).toISOString().slice(0, 10));
+  expect(saved.state.periods[1].end).toBe(oldPeriod.end);
+  expect(saved.state.periods[1].assignments[board.state.roster[0].id]).toBe(board.state.roles[2].id);
+});
+
+test("지난 기록에서 교사 정정한 날짜는 학생이 다시 덮어쓰지 못한다", async ({ page, context }) => {
+  const board = await seed(page, true);
+  const today = roleToday();
+  await page.goto(`${root}/records`);
+  await page.getByRole("button", { name: /1번 가상하늘.*날짜별 기록 보기/ }).click();
+  await page.getByLabel(`1번 가상하늘 ${today} 기록 정정`).selectOption("exempt");
+  await expect(page.getByRole("status")).toContainText(`${today} 기록을 저장했습니다`);
+  const publicPage = await context.newPage();
+  await publicPage.goto(`/s/roles/${board.public_token}`);
+  await publicPage.getByRole("button", { name: "1번 가상하늘", exact: true }).click();
+  await expect(publicPage.getByText("선생님이 오늘 기록을 확인했어요.", { exact: false })).toBeVisible();
+  await expect(publicPage.getByRole("button", { name: "했어요", exact: true })).toHaveCount(0);
+  await publicPage.close();
+  await page.getByLabel(`1번 가상하늘 ${today} 기록 정정`).selectOption("missing");
+  await expect(page.getByRole("status")).toContainText(`${today} 기록을 저장했습니다`);
+});
+
+test("학생은 번호로 정확히 찾고 전자칠판은 많은 인원을 쪽별로 표시한다", async ({ page, context }) => {
+  const roster = Array.from({ length: 60 }, (_, index) => `${index + 1} 가상학생${index + 1}`).join("\n");
+  const board = await seed(page, true, roster);
+  const studentPage = await context.newPage();
+  await studentPage.setViewportSize({ width: 390, height: 844 });
+  await studentPage.goto(`/s/roles/${board.public_token}`);
+  await studentPage.getByRole("searchbox", { name: "내 번호 또는 이름 찾기" }).fill("1");
+  await expect(studentPage.getByRole("button", { name: "1번 가상학생1", exact: true })).toBeVisible();
+  await expect(studentPage.getByRole("button", { name: "11번 가상학생11", exact: true })).toHaveCount(0);
+  await studentPage.screenshot({ path: test.info().outputPath("student-search-mobile.png"), fullPage: true });
+  await studentPage.close();
+  const displayPage = await context.newPage();
+  await displayPage.setViewportSize({ width: 1366, height: 900 });
+  await displayPage.goto(`/s/roles/${board.public_token}?view=display`);
+  await expect(displayPage.getByRole("article")).toHaveCount(25);
+  await expect(displayPage.getByRole("navigation", { name: "교실 표시 페이지" })).toContainText("1/3쪽 · 60명");
+  await displayPage.screenshot({ path: test.info().outputPath("classroom-display-page-one.png"), fullPage: true });
+  await displayPage.getByRole("button", { name: "다음", exact: true }).click();
+  await expect(displayPage.getByRole("navigation", { name: "교실 표시 페이지" })).toContainText("2/3쪽 · 60명");
+  await expect(displayPage.getByRole("article")).toHaveCount(25);
+  await displayPage.getByRole("button", { name: "다음", exact: true }).click();
+  await expect(displayPage.getByRole("article")).toHaveCount(10);
+  await displayPage.screenshot({ path: test.info().outputPath("classroom-display-page-three.png"), fullPage: true });
+  await displayPage.close();
+});
+
+test("역할 관리의 미저장 변경은 화면 이동 전에 확인한다", async ({ page }) => {
+  await seed(page, true);
+  await page.goto(`${root}/roles`);
+  await page.getByRole("textbox", { name: "역할 1 이름" }).fill("바꾼 역할");
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page.getByRole("link", { name: "1인 1역 홈" }).click();
+  await expect(page).toHaveURL(`${root}/roles`);
+  await expect(page.getByRole("textbox", { name: "역할 1 이름" })).toHaveValue("바꾼 역할");
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("link", { name: "1인 1역 홈" }).click();
+  await expect(page).toHaveURL(root);
 });
 test("실천판은 23명 데스크톱·모바일과 확대 화면에서 읽을 수 있다", async ({ page }) => {
   const roster = Array.from({ length: 23 }, (_, index) => `${index + 1} 가상학생${index + 1}${index === 14 ? "긴이름확인" : ""}`).join("\n");
@@ -829,11 +911,11 @@ test("실천판은 23명 데스크톱·모바일과 확대 화면에서 읽을 �
   await page.goto(`${root}/board`);
   await expect(page.getByRole("row")).toHaveCount(24);
   await page.screenshot({ path: test.info().outputPath("role-board-desktop-23.png"), fullPage: true });
-  await page.getByRole("button", { name: "학생화면", exact: true }).click();
+  await page.getByRole("button", { name: "학생별", exact: true }).click();
   await page.screenshot({ path: test.info().outputPath("role-students-desktop-23.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: test.info().outputPath("role-students-mobile-23.png"), fullPage: true });
-  await page.getByRole("button", { name: "전체보기", exact: true }).click();
+  await page.getByRole("button", { name: "주간 표", exact: true }).click();
   await page.screenshot({ path: test.info().outputPath("role-board-mobile-23.png"), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.evaluate(() => { document.body.style.zoom = "2"; });
@@ -862,7 +944,7 @@ test("결석 정정, 공유 중지, 링크 재발급, 읽기 전용 전자칠판
 }) => {
   const board = await seed(page, true);
   await page.goto(`${root}/board`);
-  await page.getByRole("button", { name: "학생화면", exact: true }).click();
+  await page.getByRole("button", { name: "학생별", exact: true }).click();
   await page.getByRole("button", { name: /2번 가상바다/ }).click();
   await page.getByLabel("2번 가상바다 기록 정정").selectOption("exempt");
   await expect(page.getByRole("status")).toContainText("교사 정정");
@@ -1031,7 +1113,7 @@ test("설정에서 저장한 명단을 배정에 자동 적용하고 역할 수�
   expect(current.state.roles[0].name).toBe("변경한 역할 이름");
 });
 
-test("데스크톱 6개 기능은 3열이고 기록은 선택한 월만 표시한다", async ({
+test("데스크톱 4개 기능은 2열이고 기록은 선택한 월만 표시한다", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1366, height: 900 });
@@ -1048,9 +1130,9 @@ test("데스크톱 6개 기능은 3열이고 기록은 선택한 월만 표시�
       left: el.getBoundingClientRect().left,
     })),
   );
-  expect(boxes).toHaveLength(6);
-  expect(boxes[0].top).toBe(boxes[2].top);
-  expect(boxes[3].top).toBeGreaterThan(boxes[0].top);
+  expect(boxes).toHaveLength(4);
+  expect(boxes[0].top).toBe(boxes[1].top);
+  expect(boxes[2].top).toBeGreaterThan(boxes[0].top);
   await page.screenshot({
     path: test.info().outputPath("teacher-home.png"),
     fullPage: true,
