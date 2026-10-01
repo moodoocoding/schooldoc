@@ -89,7 +89,7 @@ test.describe('환경 설정', () => {
     await confirm.getByRole('button', { name: '영구 파기' }).click();
 
     await expect(page.getByText('지난 동의서')).toHaveCount(0);
-    await expect(page.getByRole('status')).toContainText('영구 파기했습니다');
+    await expect(page.getByRole('status').filter({ hasText: '영구 파기했습니다' })).toBeVisible();
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('schooldoc:consent-forms:drafts') ?? '[]').length)).toBe(0);
   });
 
