@@ -1,0 +1,109 @@
+{
+  "browser": "154.0.8037.58",
+  "scope": "Local demo with synthetic students only",
+  "observations": {
+    "desktopStatus": {
+      "width": {
+        "viewport": 1440,
+        "document": 1440
+      },
+      "violations": []
+    },
+    "mobileStatus": {
+      "width": {
+        "viewport": 390,
+        "document": 390
+      },
+      "violations": []
+    },
+    "mobileAccess": {
+      "width": {
+        "viewport": 390,
+        "document": 390
+      },
+      "violations": [
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": [
+            {
+              "target": [
+                "input[readonly=\"\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element has no placeholder attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+            }
+          ]
+        }
+      ]
+    },
+    "desktopAccess": {
+      "width": {
+        "viewport": 1440,
+        "document": 1440
+      },
+      "violations": [
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": [
+            {
+              "target": [
+                "input[readonly=\"\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element has no placeholder attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+            }
+          ]
+        }
+      ]
+    },
+    "publicResult": {
+      "width": {
+        "viewport": 390,
+        "document": 390
+      },
+      "violations": []
+    },
+    "publicExpired": {
+      "width": {
+        "viewport": 390,
+        "document": 390
+      },
+      "violations": []
+    },
+    "longMobileStatus": {
+      "width": {
+        "viewport": 390,
+        "document": 390
+      },
+      "violations": []
+    },
+    "longMobileAccess": {
+      "width": {
+        "viewport": 390,
+        "document": 390
+      },
+      "violations": [
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": [
+            {
+              "target": [
+                "input[readonly=\"\"]"
+              ],
+              "summary": "Fix any of the following:\n  Element does not have an implicit (wrapped) <label>\n  Element does not have an explicit <label>\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute\n  Element has no placeholder attribute\n  Element's default semantics were not overridden with role=\"none\" or role=\"presentation\""
+            }
+          ]
+        }
+      ]
+    },
+    "longPublicResult": {
+      "width": {
+        "viewport": 390,
+        "document": 3172
+      },
+      "violations": []
+    }
+  },
+  "pageErrors": []
+}

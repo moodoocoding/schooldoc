@@ -1,0 +1,72 @@
+{
+  "date": "2026-10-01",
+  "branch": "codex/fix-student-results-review",
+  "deno": {
+    "runtime": "cached Deno executable",
+    "commands": [
+      "deno check --no-config --cached-only --node-modules-dir=manual supabase/functions/student-results-admin/index.ts supabase/functions/student-results-public/index.ts",
+      "deno test --no-config --cached-only --node-modules-dir=manual --allow-env tests/server/studentResults.test.ts"
+    ],
+    "typecheck": "passed",
+    "httpContractTests": {
+      "passed": 18,
+      "failed": 0,
+      "network": "mocked"
+    }
+  },
+  "sql": {
+    "engine": "PGlite 0.5.8 with pgcrypto",
+    "command": "node tests/server/studentResults.sql.mjs",
+    "passed": 15,
+    "failed": 0,
+    "migrations": [
+      "202608130002_student_results.sql",
+      "202608130003_student_results_deidentification.sql",
+      "202608130004_student_results_protected_disputes.sql",
+      "202610010100_student_result_corrections.sql",
+      "202610010200_student_result_public_safety.sql"
+    ],
+    "checks": [
+      "60 common authentications do not consume failure quota",
+      "60 personal sessions",
+      "10 credential failures then deny next 5",
+      "quota window reset and identity separation",
+      "ambiguous authentication rejected",
+      "atomic token regeneration and all sessions revocation",
+      "regeneration rollback on session delete failure",
+      "required recipient confirmation version",
+      "meaning change versions and reconfirm",
+      "confirmation disabled version reset",
+      "dispute write rollback",
+      "teacher reply rollback",
+      "flag-only version unchanged",
+      "function grants and actual RLS",
+      "closed or expired mutation rejected"
+    ],
+    "limitations": [
+      "single database connection; actual multi-connection lock waits are untested",
+      "virtual encrypted payload placeholders, not production cryptographic data"
+    ]
+  },
+  "sr2": {
+    "status": "partially implemented; school IP quota change blocked by automatic approval review",
+    "retainedLimits": {
+      "commonAuthenticationPerMinute": 10,
+      "personalAuthenticationPerMinute": 20,
+      "metadataPerMinute": 60
+    },
+    "proposalOnly": {
+      "commonAuthenticationPerMinute": 60,
+      "personalAuthenticationPerMinute": 60,
+      "metadataPerMinute": 120,
+      "allIpRequestsPerMinute": 1200,
+      "allTokenRequestsPerMinute": 600
+    },
+    "credentialFailuresPerEventNamePerMinute": 10
+  },
+  "remote": {
+    "database": "not applied",
+    "edgeFunctions": "not deployed",
+    "frontend": "not deployed"
+  }
+}

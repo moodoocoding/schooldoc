@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent } from 'react';
+import { useRef, useState, useSyncExternalStore, type KeyboardEvent } from 'react';
 import {
   ArrowLeft,
   Check,
@@ -26,22 +26,14 @@ import {
   updateStudentResultRecipient,
   updateStudentResultSettings,
 } from './studentResultsService';
-import { resultStatusLabel } from './studentResultsUtils';
 import { StudentResultConfirmDialog } from './StudentResultConfirmDialog';
 import { StudentResultRecipientDialog, StudentResultSettingsDialog } from './StudentResultsEditDialogs';
 import { useStudentResultEvent } from './useStudentResults';
+import { StudentResultsAccessCards, StudentResultsStatusCards, StudentResultsStatusBadge } from './StudentResultsRecipientCards';
 import type { ResultRecipient, StudentResultEvent, StudentResultEventSettings } from './types';
 
 type ManageView = 'status' | 'access';
 type StatusFilter = 'all' | 'unviewed' | 'viewed' | 'confirmed' | 'disputed' | 'reconfirm' | 'replied';
-
-const statusStyle = (status: string) => ({
-  confirmed: 'bg-[#E6F4EA] text-[#126B32]',
-  disputed: 'bg-[#FEF3F2] text-[#B42318]',
-  reconfirm: 'bg-[#FFF7E6] text-[#8A4B08]',
-  replied: 'bg-[#E6F4EA] text-[#126B32]',
-  viewed: 'bg-[#EFF6FC] text-[#0F6CBD]',
-}[status] ?? 'bg-[#EEF1F4] text-[#526174]');
 
 const activityAt = (recipient: {
   viewedAt?: string;
@@ -56,8 +48,18 @@ const formatActivityAt = (value?: string) => value
   ? new Intl.DateTimeFormat('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value))
   : '활동 없음';
 
+const compactQuery = '(max-width: 1023px)';
+const subscribeCompactLayout = (onChange: () => void) => {
+  const media = window.matchMedia(compactQuery);
+  media.addEventListener('change', onChange);
+  return () => media.removeEventListener('change', onChange);
+};
+const getCompactLayout = () => window.matchMedia(compactQuery).matches;
+const getServerCompactLayout = () => false;
+
 export function StudentResultsManagePage() {
   const navigate = useNavigate();
+  const compact = useSyncExternalStore(subscribeCompactLayout, getCompactLayout, getServerCompactLayout);
   const { resultId } = useParams();
   const { user } = useTeacherAuth();
   const ownerId = studentResultsOwnerId(user?.id);
@@ -216,7 +218,7 @@ export function StudentResultsManagePage() {
         <div className="mt-4 max-w-5xl">
           <div className="flex flex-wrap items-center gap-2">
             <span className={`rounded-md px-2.5 py-1 text-xs font-bold ${event.status === 'open' ? 'bg-[#E6F4EA] text-[#126B32]' : 'bg-[#EEF1F4] text-[#526174]'}`}>{event.status === 'open' ? '안내 중' : '종료'}</span>
-            <span className="text-xs text-[#64748B]">보호된 학생 데이터</span>
+            <span className="text-xs text-[#526174]">보호된 학생 데이터</span>
             {/* 갱신 중에는 표를 그대로 두고 여기서만 알린다. 화면이 사라지면 안 된다. */}
             {refreshing ? <span role="status" aria-live="polite" className="text-xs font-semibold text-[#0F6CBD]">새 활동 반영 중</span> : null}
           </div>
@@ -235,7 +237,7 @@ export function StudentResultsManagePage() {
 
       {view === 'status' ? (
         <div id="student-results-status-panel" role="tabpanel" aria-labelledby="student-results-status-tab" className="space-y-6">
-          <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+          <section className="grid grid-cols-4 gap-2 sm:gap-3 lg:grid-cols-4 xl:grid-cols-7">
             {[
               ['all', '전체', event.recipients.length],
               ['unviewed', '미조회', counts.unviewed],
@@ -245,8 +247,8 @@ export function StudentResultsManagePage() {
               ['reconfirm', '재확인 필요', counts.reconfirm],
               ['replied', '답변 완료', counts.replied],
             ].map(([key, label, count]) => (
-              <button key={String(key)} type="button" aria-pressed={statusFilter === key} onClick={() => setStatusFilter(key as StatusFilter)} className={`min-h-[84px] border p-3 text-left ${statusFilter === key ? 'border-[#0F6CBD] bg-[#EFF6FC]' : 'border-[#DCE3EA] bg-white hover:border-[#8ABBE0]'}`}>
-                <span className="text-xs font-semibold text-[#526174]">{label}</span><span className="mt-2 block text-2xl font-extrabold">{count}</span>
+              <button key={String(key)} type="button" aria-pressed={statusFilter === key} onClick={() => setStatusFilter(key as StatusFilter)} className={`min-h-[64px] border p-2 text-left sm:min-h-[84px] sm:p-3 ${statusFilter === key ? 'border-[#0F6CBD] bg-[#EFF6FC]' : 'border-[#DCE3EA] bg-white hover:border-[#8ABBE0]'}`}>
+                <span className="text-xs font-semibold text-[#526174]">{label}</span><span className="mt-1 block text-xl font-extrabold sm:mt-2 sm:text-2xl">{count}</span>
               </button>
             ))}
           </section>
@@ -256,14 +258,32 @@ export function StudentResultsManagePage() {
               <div><div className="flex items-center gap-2"><Users className="h-5 w-5 text-[#0F6CBD]" /><h2 className="font-bold">학생 현황 ({visibleStatusRecipients.length}명)</h2></div><p className="mt-1 text-xs text-[#64748B]">조회 상태와 이의 처리에 필요한 정보만 표시합니다.</p></div>
               <label className="relative block sm:w-72"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#94A3B8]" /><span className="sr-only">학생 검색</span><input value={query} onChange={(changeEvent) => setQuery(changeEvent.target.value)} className="min-h-[40px] w-full rounded-lg border border-[#C8D0DA] pl-9 pr-3 text-sm" placeholder="성명 또는 식별값 검색" /></label>
             </div>
-            <div className="overflow-x-auto">
+            {compact ? <StudentResultsStatusCards
+              event={event}
+              recipients={visibleStatusRecipients}
+              reply={reply}
+              editingReplyId={editingReplyId}
+              pending={pending}
+              formatActivity={(recipient) => formatActivityAt(activityAt(recipient))}
+              onCorrect={(recipient) => setRecipientSnapshot({ event, recipient })}
+              onReplyChange={(recipientId, value) => setReply((current) => ({ ...current, [recipientId]: value }))}
+              onReplySave={(recipient) => void (async () => {
+                const done = await run(`reply:${recipient.id}`, () => replyToStudentDispute(ownerId, event.id, recipient.id, reply[recipient.id]), '답변을 저장하지 못했습니다.');
+                if (done) setEditingReplyId(null);
+              })()}
+              onReplyEdit={(recipient) => {
+                setReply((current) => ({ ...current, [recipient.id]: recipient.dispute?.teacherReply ?? '' }));
+                setEditingReplyId(recipient.id);
+              }}
+              onReplyCancel={() => setEditingReplyId(null)}
+            /> : <div className="overflow-x-auto">
               <table className="min-w-[900px] w-full border-collapse text-sm">
                 <thead><tr className="bg-[#F6F8FB] text-left text-xs text-[#526174]"><th className="border-b border-[#DCE3EA] p-3">학생</th>{event.columns.map((column) => <th key={column.id} className="border-b border-[#DCE3EA] p-3">{column.label}</th>)}<th className="border-b border-[#DCE3EA] p-3">상태</th><th className="border-b border-[#DCE3EA] p-3">마지막 활동</th><th className="border-b border-[#DCE3EA] p-3">결과 정정</th><th className="border-b border-[#DCE3EA] p-3">이의 처리</th></tr></thead>
                 <tbody>{visibleStatusRecipients.map((recipient) => (
                   <tr key={recipient.id} className="align-top">
                     <td className="border-b border-[#EEF1F4] p-3"><strong className="block">{recipient.name}</strong><span className="mt-1 block text-xs text-[#64748B]">{recipient.studentKey}</span></td>
                     {event.columns.map((column) => <td key={column.id} className="border-b border-[#EEF1F4] p-3">{recipient.values[column.id]} / {column.maxScore}</td>)}
-                    <td className="border-b border-[#EEF1F4] p-3"><span className={`inline-flex rounded-md px-2 py-1 text-xs font-bold ${statusStyle(recipient.status)}`}>{resultStatusLabel(recipient.status)}</span></td>
+                    <td className="border-b border-[#EEF1F4] p-3"><StudentResultsStatusBadge status={recipient.status} /></td>
                     <td className="border-b border-[#EEF1F4] p-3 text-xs text-[#526174]"><Clock3 className="mr-1 inline h-3.5 w-3.5" />{formatActivityAt(activityAt(recipient))}</td>
                     <td className="border-b border-[#EEF1F4] p-3"><button type="button" onClick={() => setRecipientSnapshot({ event, recipient })} className="min-h-[40px] rounded-lg border border-[#C8D0DA] px-3 text-xs font-bold text-[#0F6CBD] hover:bg-[#EFF6FC]" aria-label={`${recipient.name} 학생 결과 정정`}>점수·피드백 수정</button></td>
                     <td className="border-b border-[#EEF1F4] p-3">
@@ -272,8 +292,8 @@ export function StudentResultsManagePage() {
                   </tr>
                 ))}</tbody>
               </table>
-              {visibleStatusRecipients.length === 0 ? <div className="px-4 py-12 text-center text-sm text-[#64748B]">조건에 맞는 학생이 없습니다. 검색어나 상태 필터를 변경해 주세요.</div> : null}
-            </div>
+            </div>}
+            {visibleStatusRecipients.length === 0 ? <div className="px-4 py-12 text-center text-sm text-[#526174]">조건에 맞는 학생이 없습니다. 검색어나 상태 필터를 변경해 주세요.</div> : null}
           </section>
         </div>
       ) : (
@@ -285,7 +305,7 @@ export function StudentResultsManagePage() {
           <section className="border-y border-[#DCE3EA] bg-white px-4 py-5 sm:px-6">
             <div className="flex items-center gap-2"><Link2 className="h-5 w-5 text-[#0F6CBD]" /><h2 className="font-bold">공용 조회 링크</h2></div>
             <p className="mt-2 text-xs leading-5 text-[#64748B]">공용 링크에서는 학생이 성명과 확인번호를 입력합니다.</p>
-            <div className="mt-4 flex gap-2"><input readOnly value={publicLink} className="min-h-[44px] min-w-0 flex-1 rounded-lg border border-[#C8D0DA] bg-[#F6F8FB] px-3 text-xs text-[#334155]" /><button type="button" onClick={() => void copy(publicLink, 'public', '공용 조회 링크를 복사했습니다.')} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#C8D0DA] text-[#0F6CBD]" aria-label="공용 링크 복사" title="링크 복사">{copied === 'public' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}</button><a href={publicLink} target="_blank" rel="noreferrer" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#C8D0DA] text-[#0F6CBD]" aria-label="학생 화면 열기" title="새 창에서 열기"><ExternalLink className="h-4 w-4" /></a></div>
+            <div className="mt-4 flex gap-2"><input readOnly aria-label="공용 조회 링크" value={publicLink} className="min-h-[44px] min-w-0 flex-1 rounded-lg border border-[#C8D0DA] bg-[#F6F8FB] px-3 text-xs text-[#334155]" /><button type="button" onClick={() => void copy(publicLink, 'public', '공용 조회 링크를 복사했습니다.')} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#C8D0DA] text-[#0F6CBD]" aria-label="공용 링크 복사" title="링크 복사">{copied === 'public' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}</button><a href={publicLink} target="_blank" rel="noreferrer" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#C8D0DA] text-[#0F6CBD]" aria-label="학생 화면 열기" title="새 창에서 열기"><ExternalLink className="h-4 w-4" /></a></div>
           </section>
 
           <section className="border-y border-[#DCE3EA] bg-white">
@@ -293,7 +313,20 @@ export function StudentResultsManagePage() {
               <div><h2 className="font-bold">학생별 접속 정보</h2><p className="mt-1 text-xs text-[#64748B]">{selectedRecipientIds.size}명 선택 · 확인번호는 기본으로 가려집니다.</p></div>
               <div className="flex flex-col gap-2 sm:flex-row"><label className="relative block sm:w-64"><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#94A3B8]" /><span className="sr-only">접속 정보 학생 검색</span><input value={query} onChange={(changeEvent) => setQuery(changeEvent.target.value)} className="min-h-[40px] w-full rounded-lg border border-[#C8D0DA] pl-9 pr-3 text-sm" placeholder="성명 또는 식별값 검색" /></label><button type="button" disabled={selectedRecipientIds.size === 0} onClick={openSelectedPdf} className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-lg bg-[#0F6CBD] px-4 text-xs font-bold text-white disabled:bg-[#AAB7C4]"><QrCode className="h-4 w-4" />선택 QR PDF ({selectedRecipientIds.size}명)</button></div>
             </div>
-            <div className="overflow-x-auto">
+            {compact ? <StudentResultsAccessCards
+              recipients={visibleAccessRecipients}
+              selectedRecipientIds={selectedRecipientIds}
+              visibleCodes={visibleCodes}
+              allVisibleSelected={allVisibleSelected}
+              copied={copied}
+              pending={pending}
+              onSelect={toggleRecipient}
+              onSelectAll={toggleAllVisible}
+              onToggleCode={toggleVisibleCode}
+              onCopyCode={(recipient) => void copy(recipient.verificationCode, `code:${recipient.id}`, `${recipient.name} 학생의 확인번호를 복사했습니다.`)}
+              onCopyLink={(recipient) => void copy(`${publicLink}?recipient=${recipient.personalToken}`, `link:${recipient.id}`, `${recipient.name} 학생의 개인 링크를 복사했습니다.`)}
+              onResetLink={(recipient) => setPendingTokenReset({ id: recipient.id, name: recipient.name })}
+            /> : <div className="overflow-x-auto">
               <table className="min-w-[880px] w-full border-collapse text-sm">
                 <thead><tr className="bg-[#F6F8FB] text-left text-xs text-[#526174]"><th className="border-b border-[#DCE3EA] p-3"><input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible} className="h-4 w-4" aria-label="검색 결과 학생 전체 선택" /></th><th className="border-b border-[#DCE3EA] p-3">학생</th><th className="border-b border-[#DCE3EA] p-3">확인번호</th><th className="border-b border-[#DCE3EA] p-3">개인 링크</th><th className="border-b border-[#DCE3EA] p-3">링크 재발급</th></tr></thead>
                 <tbody>{visibleAccessRecipients.map((recipient) => {
@@ -304,7 +337,8 @@ export function StudentResultsManagePage() {
                   return <tr key={recipient.id}><td className="border-b border-[#EEF1F4] p-3"><input type="checkbox" checked={selectedRecipientIds.has(recipient.id)} onChange={() => toggleRecipient(recipient.id)} className="h-4 w-4" aria-label={`${recipient.name} 선택`} /></td><td className="border-b border-[#EEF1F4] p-3"><strong className="block">{recipient.name}</strong><span className="mt-1 block text-xs text-[#64748B]">{recipient.studentKey}</span></td><td className="border-b border-[#EEF1F4] p-3"><div className="flex items-center gap-1"><span className="min-w-14 font-mono font-bold tabular-nums">{isCodeVisible ? recipient.verificationCode : '••••'}</span><button type="button" onClick={() => toggleVisibleCode(recipient.id)} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-[#64748B] hover:bg-[#EFF6FC] hover:text-[#0F6CBD]" aria-label={`${recipient.name} 확인번호 ${isCodeVisible ? '숨기기' : '보기'}`} title={isCodeVisible ? '확인번호 숨기기' : '확인번호 보기'}>{isCodeVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button><button type="button" onClick={() => void copy(recipient.verificationCode, codeCopyKey, `${recipient.name} 학생의 확인번호를 복사했습니다.`)} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-[#64748B] hover:bg-[#EFF6FC] hover:text-[#0F6CBD]" aria-label={`${recipient.name} 확인번호 복사`} title="확인번호 복사">{copied === codeCopyKey ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}</button></div></td><td className="border-b border-[#EEF1F4] p-3"><button type="button" onClick={() => void copy(personalLink, linkCopyKey, `${recipient.name} 학생의 개인 링크를 복사했습니다.`)} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-[#C8D0DA] px-3 text-xs font-bold text-[#0F6CBD]">{copied === linkCopyKey ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}{recipient.name} 개인 링크 복사</button></td><td className="border-b border-[#EEF1F4] p-3"><button type="button" onClick={() => setPendingTokenReset({ id: recipient.id, name: recipient.name })} aria-label={`${recipient.name} 학생의 개인 링크 재발급`} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg px-3 text-xs font-bold text-[#B42318] hover:bg-[#FEF2F2]"><RefreshCw className="h-4 w-4" />재발급</button></td></tr>;
                 })}</tbody>
               </table>
-            </div>
+            </div>}
+            {visibleAccessRecipients.length === 0 ? <div className="px-4 py-12 text-center text-sm text-[#526174]">조건에 맞는 학생이 없습니다. 검색어를 변경해 주세요.</div> : null}
           </section>
         </div>
       )}

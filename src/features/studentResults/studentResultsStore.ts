@@ -11,6 +11,7 @@ const STORAGE_KEY = 'schooldoc_student_results_v1';
 const CHANGE_EVENT = 'schooldoc-student-results-change';
 const makeId = () => crypto.randomUUID();
 const makeToken = () => makeId().replaceAll('-', '');
+const nextUpdatedAt = (previous?: string) => new Date(Math.max(Date.now(), (Date.parse(previous ?? '') || 0) + 1)).toISOString();
 
 const read = (): StudentResultEvent[] => {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -45,7 +46,7 @@ const updateEvent = (eventId: string, updater: (event: StudentResultEvent) => St
   let updated: StudentResultEvent | null = null;
   const events = read().map((event) => {
     if (event.id !== eventId) return event;
-    updated = { ...updater(event), updatedAt: new Date().toISOString() };
+    updated = { ...updater(event), updatedAt: nextUpdatedAt(event.updatedAt) };
     return updated;
   });
   write(events);
@@ -113,6 +114,11 @@ export const setStudentResultEventStatus = (ownerId: string, eventId: string, st
   updateEvent(eventId, (event) => event.ownerId === ownerId ? { ...event, status } : event)
 );
 
+export const getPublicResultEventById = (eventId: string) => {
+  const event = read().find((candidate) => candidate.id === eventId);
+  return event ? { status: event.status } : null;
+};
+
 export const getPublicResultEvent = (publicToken: string) => {
   const event = read().find((candidate) => candidate.publicToken === publicToken);
   return event ? { title: event.title, description: event.description, status: event.status } : null;
@@ -158,7 +164,7 @@ export const confirmStudentResult = (eventId: string, recipientId: string, expec
     ...current,
     status: 'confirmed',
     confirmedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    updatedAt: nextUpdatedAt(current.updatedAt),
   }));
 };
 
@@ -170,7 +176,7 @@ export const disputeStudentResult = (eventId: string, recipientId: string, messa
     status: 'disputed',
     confirmedAt: undefined,
     dispute: { message: message.trim(), submittedAt: new Date().toISOString() },
-    updatedAt: new Date().toISOString(),
+    updatedAt: nextUpdatedAt(recipient.updatedAt),
   }));
 };
 
@@ -181,7 +187,7 @@ export const replyToStudentDispute = (ownerId: string, eventId: string, recipien
     ...recipient,
     status: event.allowConfirmation ? 'reconfirm' : 'replied',
     confirmedAt: undefined,
-    updatedAt: new Date().toISOString(),
+    updatedAt: nextUpdatedAt(recipient.updatedAt),
     dispute: recipient.dispute ? {
       ...recipient.dispute,
       teacherReply: reply.trim(),
@@ -202,14 +208,23 @@ export const updateStudentResultSettings = (ownerId: string, eventId: string, ex
     throw new Error('안내 정보와 결과 항목을 확인해 주세요.');
   }
   const before = { title: event.title, description: event.description, allowConfirmation: event.allowConfirmation, allowDispute: event.allowDispute, columns: event.columns };
+  const contentChanged = event.title !== cleanText(settings.title) || event.description !== settings.description.trim()
+    || JSON.stringify(event.columns) !== JSON.stringify(settings.columns);
   return updateEvent(eventId, (current) => ({
     ...current,
     title: cleanText(settings.title), description: settings.description.trim(),
     allowConfirmation: settings.allowConfirmation, allowDispute: settings.allowDispute,
     columns: settings.columns,
-    recipients: settings.allowConfirmation ? current.recipients : current.recipients.map((recipient) => (
-      recipient.status === 'reconfirm' ? { ...recipient, status: 'replied', updatedAt: new Date().toISOString() } : recipient
-    )),
+    recipients: current.recipients.map((recipient) => {
+      if (contentChanged) return {
+        ...recipient,
+        updatedAt: nextUpdatedAt(recipient.updatedAt),
+        status: recipient.status === 'confirmed' ? (settings.allowConfirmation ? 'reconfirm' : 'viewed') : (!settings.allowConfirmation && recipient.status === 'reconfirm' ? 'replied' : recipient.status),
+        confirmedAt: recipient.status === 'confirmed' ? undefined : recipient.confirmedAt,
+      };
+      return !settings.allowConfirmation && recipient.status === 'reconfirm'
+        ? { ...recipient, status: 'replied', updatedAt: nextUpdatedAt(recipient.updatedAt) } : recipient;
+    }),
     revisions: [...(current.revisions ?? []), { changedAt: new Date().toISOString(), before, after: settings }],
   }));
 };
@@ -229,7 +244,7 @@ export const updateStudentResultRecipient = (ownerId: string, eventId: string, r
   return updateRecipient(eventId, recipientId, (current) => ({
     ...current,
     ...after,
-    updatedAt: new Date().toISOString(),
+    updatedAt: nextUpdatedAt(current.updatedAt),
     status: current.status === 'confirmed' && event.allowConfirmation ? 'reconfirm' : current.status,
     confirmedAt: current.status === 'confirmed' && event.allowConfirmation ? undefined : current.confirmedAt,
     revisions: [...(current.revisions ?? []), { changedAt: new Date().toISOString(), reason: reason.trim(), before, after }],
@@ -244,7 +259,7 @@ export const regenerateStudentResultPersonalToken = (ownerId: string, eventId: s
     ...current,
     recipients: current.recipients.map((recipient) => {
       if (recipient.id !== recipientId) return recipient;
-      updatedRecipient = { ...recipient, personalToken: makeToken() };
+      updatedRecipient = { ...recipient, personalToken: makeToken(), updatedAt: nextUpdatedAt(recipient.updatedAt) };
       return updatedRecipient;
     }),
   }));

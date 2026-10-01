@@ -1,0 +1,70 @@
+{
+  "browser": "154.0.8037.58",
+  "scope": "Local demo with synthetic students only",
+  "observations": {
+    "desktopStatus": {
+      "width": {
+        "viewport": 1440,
+        "document": 1440
+      },
+      "violations": []
+    },
+    "mobileStatus": {
+      "width": {
+        "viewport": 390,
+        "document": 390
+      },
+      "violations": []
+    },
+    "mobileAccess": {
+      "width": {
+        "viewport": 390,
+        "document": 390
+      },
+      "violations": []
+    },
+    "desktopAccess": {
+      "width": {
+        "viewport": 1440,
+        "document": 1440
+      },
+      "violations": []
+    },
+    "publicResult": {
+      "width": {
+        "viewport": 390,
+        "document": 390
+      },
+      "violations": []
+    },
+    "publicExpired": {
+      "width": {
+        "viewport": 390,
+        "document": 390
+      },
+      "violations": []
+    },
+    "longMobileStatus": {
+      "width": {
+        "viewport": 390,
+        "document": 390
+      },
+      "violations": []
+    },
+    "longMobileAccess": {
+      "width": {
+        "viewport": 390,
+        "document": 390
+      },
+      "violations": []
+    },
+    "longPublicResult": {
+      "width": {
+        "viewport": 390,
+        "document": 390
+      },
+      "violations": []
+    }
+  },
+  "pageErrors": []
+}

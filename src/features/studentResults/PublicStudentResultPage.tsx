@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, FileCheck2, LockKeyhole, RefreshCw, Send } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
@@ -9,6 +9,7 @@ import {
   endPublicStudentResultSession,
   loadPublicStudentResultMetadata,
   refreshPublicStudentResult,
+  studentResultAccessFailure,
   type StudentResultMetadata,
 } from './studentResultsPublicApi';
 import type { PublicStudentResult } from './types';
@@ -32,126 +33,164 @@ export function PublicStudentResultPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [confirmWarning, setConfirmWarning] = useState(false);
 
+  const generation = useRef(0);
+  const recoveryNotice = useRef('');
+  const currentRequest = (request: number) => generation.current === request;
+  const clearPrivateResult = () => {
+    generation.current += 1;
+    setResult(null);
+    setSessionToken('');
+    setName('');
+    setCode('');
+    setDispute('');
+    setConfirmWarning(false);
+    setSubmitting(false);
+    setRefreshing(false);
+  };
+  const recoverAccess = (failure: unknown) => {
+    const reason = studentResultAccessFailure(failure);
+    if (!reason) return false;
+    clearPrivateResult();
+    const message = reason === 'closed' ? '종료된 결과 안내입니다.' : '조회가 만료되었습니다. 이름과 확인번호로 다시 조회해 주세요.';
+    setError(message);
+    if (reason === 'closed') setMetadata((current) => current ? { ...current, status: 'closed' } : current);
+    else if (personalToken) {
+      recoveryNotice.current = message;
+      navigate('/s/results/' + token, { replace: true });
+    }
+    return true;
+  };
+
   useEffect(() => {
-    let active = true;
+    const request = ++generation.current;
+    setResult(null);
+    setSessionToken('');
+    setName('');
+    setCode('');
+    setDispute('');
+    setMetadata(null);
+    setConfirmWarning(false);
+    setSubmitting(false);
+    setRefreshing(false);
+    setError(recoveryNotice.current);
+    recoveryNotice.current = '';
+    setLoading(true);
     const load = async () => {
-      setLoading(true);
       try {
         const loaded = await loadPublicStudentResultMetadata(token);
-        if (!active) return;
+        if (!currentRequest(request)) return;
         setMetadata(loaded);
         if (personalToken && loaded?.status === 'open') {
           const authenticated = await authenticatePublicStudentResultByToken(token, personalToken);
-          if (!active) return;
-          if (!authenticated) throw new Error('조회 링크가 만료되었거나 올바르지 않습니다.');
+          if (!currentRequest(request)) {
+            if (authenticated) void endPublicStudentResultSession(authenticated.sessionToken).catch(() => undefined);
+            return;
+          }
+          if (!authenticated) throw new Error('조회 링크가 만료되었거나 올바르지 않습니다. 이름과 확인번호로 다시 조회해 주세요.');
           setResult(authenticated.result);
           setSessionToken(authenticated.sessionToken);
         }
       } catch (loadError) {
-        if (active) setError(loadError instanceof Error ? loadError.message : '결과 안내를 불러오지 못했습니다.');
+        if (currentRequest(request)) setError(loadError instanceof Error ? loadError.message : '결과 안내를 불러오지 못했습니다.');
       } finally {
-        if (active) setLoading(false);
+        if (currentRequest(request)) setLoading(false);
       }
     };
     void load();
-    return () => { active = false; };
+    return () => { generation.current += 1; };
   }, [personalToken, token]);
 
   const login = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (submitting) return;
+    const request = generation.current;
     setSubmitting(true);
     try {
       const authenticated = await authenticatePublicStudentResult(token, name, code);
+      if (!currentRequest(request)) {
+        if (authenticated) void endPublicStudentResultSession(authenticated.sessionToken).catch(() => undefined);
+        return;
+      }
       if (!authenticated) throw new Error('입력한 정보를 확인해 주세요. 이름 또는 확인번호가 일치하지 않습니다.');
       setError('');
       setResult(authenticated.result);
       setSessionToken(authenticated.sessionToken);
+      setCode('');
     } catch (loginError) {
-      setError(loginError instanceof Error ? loginError.message : '학생 정보를 확인하지 못했습니다.');
+      if (currentRequest(request) && !recoverAccess(loginError)) setError(loginError instanceof Error ? loginError.message : '학생 정보를 확인하지 못했습니다.');
     } finally {
-      setSubmitting(false);
+      if (currentRequest(request)) setSubmitting(false);
     }
   };
-
   const confirm = async () => {
-    if (!result || !sessionToken) return;
-    if (dispute.trim()) {
-      setConfirmWarning(true);
-      return;
-    }
+    if (!result || !sessionToken || submitting || refreshing) return;
+    if (dispute.trim()) { setConfirmWarning(true); return; }
     await confirmNow();
   };
-
   const confirmNow = async () => {
-    if (!result || !sessionToken) return;
+    if (!result || !sessionToken || submitting || refreshing) return;
+    const request = generation.current;
     setSubmitting(true);
     try {
       const updated = await confirmPublicStudentResult(sessionToken, result.event.id, result.recipient.id, result.recipient.updatedAt);
+      if (!currentRequest(request)) return;
       if (!updated) throw new Error('결과가 변경되었습니다. 최신 결과를 확인한 뒤 다시 진행해 주세요.');
       setResult(updated.result);
       setConfirmWarning(false);
       setDispute('');
       setError('');
     } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : '결과 확인을 처리하지 못했습니다.');
+      if (currentRequest(request) && !recoverAccess(actionError)) setError(actionError instanceof Error ? actionError.message : '결과 확인을 처리하지 못했습니다.');
     } finally {
-      setSubmitting(false);
+      if (currentRequest(request)) setSubmitting(false);
     }
   };
-
   const refresh = async () => {
-    if (!result || !sessionToken || refreshing) return;
+    if (!result || !sessionToken || refreshing || submitting) return;
+    const request = generation.current;
     setRefreshing(true);
     try {
       const updated = await refreshPublicStudentResult(sessionToken, result.event.id, result.recipient.id, token, personalToken);
+      if (!currentRequest(request)) return;
       if (!updated) {
         const latestMetadata = await loadPublicStudentResultMetadata(token);
+        if (!currentRequest(request)) return;
         if (latestMetadata) setMetadata(latestMetadata);
-        setResult(null);
-        setSessionToken('');
         throw new Error(latestMetadata?.status === 'closed' ? '종료된 결과 안내입니다.' : '조회가 만료되었습니다. 다시 조회해 주세요.');
       }
       setResult(updated.result);
       setError('');
     } catch (refreshError) {
-      const message = refreshError instanceof Error ? refreshError.message : '결과를 다시 불러오지 못했습니다.';
-      if (message.includes('종료')) {
-        setMetadata((current) => current ? { ...current, status: 'closed' } : current);
-        setResult(null);
-      }
-      setError(message);
+      if (currentRequest(request) && !recoverAccess(refreshError)) setError(refreshError instanceof Error ? refreshError.message : '결과를 다시 불러오지 못했습니다.');
     } finally {
-      setRefreshing(false);
+      if (currentRequest(request)) setRefreshing(false);
     }
   };
-
   const endSession = async () => {
     const oldSession = sessionToken;
-    setResult(null);
-    setSessionToken('');
-    setName('');
-    setCode('');
-    setDispute('');
+    clearPrivateResult();
     setError('');
-    navigate(`/s/results/${token}`, { replace: true });
+    navigate('/s/results/' + token, { replace: true });
     if (oldSession) {
-      try { await endPublicStudentResultSession(oldSession); } catch { /* The screen and in-memory token have already been cleared. */ }
+      try { await endPublicStudentResultSession(oldSession); } catch { /* Private UI and token are already cleared. */ }
     }
   };
-
   const submitDispute = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!result || !sessionToken || !dispute.trim()) return;
+    if (!result || !sessionToken || !dispute.trim() || submitting || refreshing) return;
+    const request = generation.current;
     setSubmitting(true);
     try {
       const updated = await disputePublicStudentResult(sessionToken, result.event.id, result.recipient.id, dispute);
-      if (updated) setResult(updated.result);
+      if (!currentRequest(request)) return;
+      if (!updated) throw new Error('이의 내용을 제출하지 못했습니다. 최신 결과를 확인한 뒤 다시 시도해 주세요.');
+      setResult(updated.result);
       setDispute('');
       setError('');
     } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : '이의 내용을 제출하지 못했습니다.');
+      if (currentRequest(request) && !recoverAccess(actionError)) setError(actionError instanceof Error ? actionError.message : '이의 내용을 제출하지 못했습니다.');
     } finally {
-      setSubmitting(false);
+      if (currentRequest(request)) setSubmitting(false);
     }
   };
 
@@ -160,7 +199,7 @@ export function PublicStudentResultPage() {
   if (metadata.status === 'closed') return <main className="grid min-h-screen place-items-center bg-[#F6F8FB] px-4"><div className="w-full max-w-md border-y border-[#DCE3EA] bg-white px-6 py-12 text-center"><LockKeyhole className="mx-auto h-8 w-8 text-[#64748B]" /><h1 className="mt-4 text-xl font-extrabold">종료된 결과 안내입니다</h1><p className="mt-2 text-sm text-[#526174]">추가 확인이 필요하면 선생님에게 문의해 주세요.</p></div></main>;
 
   if (!result) return (
-    <main className="min-h-screen bg-[#F6F8FB] px-4 py-10 sm:py-16">
+    <main className="min-h-screen [overflow-wrap:anywhere] bg-[#F6F8FB] px-4 py-10 sm:py-16">
       <section className="mx-auto w-full max-w-md border-y border-[#DCE3EA] bg-white px-5 py-8 sm:px-7">
         <LockKeyhole className="h-9 w-9 text-[#0F6CBD]" />
         <p className="mt-5 text-xs font-bold text-[#0F6CBD]">학생 개별 조회</p>
@@ -168,7 +207,7 @@ export function PublicStudentResultPage() {
         {metadata.description ? <p className="mt-3 text-sm leading-6 text-[#526174]">{metadata.description}</p> : null}
         <form onSubmit={(event) => void login(event)} className="mt-7 space-y-4">
           <label className="block text-sm font-bold">성명<input autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} className="mt-2 min-h-[48px] w-full rounded-lg border border-[#C8D0DA] px-3 font-normal" /></label>
-          <label className="block text-sm font-bold">확인번호<input type="password" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(event) => setCode(event.target.value)} className="mt-2 min-h-[48px] w-full rounded-lg border border-[#C8D0DA] px-3 font-normal" /></label>
+          <label className="block text-sm font-bold">확인번호<input type="password" autoComplete="one-time-code" value={code} onChange={(event) => setCode(event.target.value)} className="mt-2 min-h-[48px] w-full rounded-lg border border-[#C8D0DA] px-3 font-normal" /></label>
           {error ? <p role="alert" className="text-sm font-semibold text-[#B42318]">{error}</p> : null}
           <button type="submit" disabled={submitting} className="min-h-[48px] w-full rounded-lg bg-[#0F6CBD] text-sm font-bold text-white hover:bg-[#0B5B9F] disabled:bg-[#AAB7C4]">{submitting ? '확인 중' : '내 결과 조회'}</button>
         </form>
@@ -181,17 +220,17 @@ export function PublicStudentResultPage() {
   const hasPendingDispute = result.recipient.status === 'disputed';
   const canDispute = result.event.allowDispute && !hasPendingDispute;
   return (
-    <main className="min-h-screen bg-[#F6F8FB] px-4 py-8">
+    <main className="min-h-screen [overflow-wrap:anywhere] bg-[#F6F8FB] px-4 py-8">
       <div className="mx-auto w-full max-w-2xl space-y-5">
         <header className="border-y border-[#DCE3EA] bg-white px-5 py-6 sm:px-7">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div><p className="text-xs font-bold text-[#0F6CBD]">개별 결과 안내</p><h1 className="mt-2 text-2xl font-extrabold">{result.event.title}</h1><p className="mt-2 text-sm text-[#526174]">{result.recipient.name} · {result.recipient.studentKey}</p></div>
-            <button type="button" onClick={() => void endSession()} className="min-h-[44px] rounded-lg border border-[#C8D0DA] px-3 text-sm font-bold text-[#334155]">조회 종료</button>
+            <div className="min-w-0 flex-1"><p className="text-xs font-bold text-[#0F6CBD]">개별 결과 안내</p><h1 className="mt-2 text-2xl font-extrabold">{result.event.title}</h1><p className="mt-2 text-sm text-[#526174]">{result.recipient.name} · {result.recipient.studentKey}</p></div>
+            <button type="button" onClick={() => void endSession()} className="min-h-[44px] shrink-0 rounded-lg border border-[#C8D0DA] px-3 text-sm font-bold text-[#334155]">조회 종료</button>
           </div>
           {result.event.description ? <p className="mt-5 whitespace-pre-wrap border-t border-[#EEF1F4] pt-4 text-sm leading-6 text-[#334155]">{result.event.description}</p> : null}
         </header>
         <div className="flex justify-end"><button type="button" disabled={refreshing || submitting} onClick={() => void refresh()} className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-[#C8D0DA] bg-white px-4 text-sm font-bold text-[#0F6CBD] disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />{refreshing ? '새로고침 중' : '최신 결과 확인'}</button></div>
-        <section className="border-y border-[#DCE3EA] bg-white"><div className="flex items-center justify-between border-b border-[#DCE3EA] px-5 py-4"><h2 className="font-bold">{summary.source === 'total' ? '총점' : '결과 합계'}</h2><span className="text-lg font-extrabold text-[#0F6CBD]">{summary.score} / {summary.maxScore}</span></div>{result.event.columns.map((column) => <div key={column.id} className="border-b border-[#EEF1F4] px-5 py-4 last:border-0"><div className="flex items-start justify-between gap-4"><div><h3 className="text-sm font-bold">{column.label}</h3>{column.description ? <p className="mt-1 text-xs text-[#64748B]">{column.description}</p> : null}</div><strong className="shrink-0 text-sm">{result.recipient.values[column.id]} / {column.maxScore}</strong></div></div>)}</section>
+        <section className="border-y border-[#DCE3EA] bg-white"><div className="flex items-center justify-between border-b border-[#DCE3EA] px-5 py-4"><h2 className="font-bold">{summary.source === 'total' ? '총점' : '결과 합계'}</h2><span className="text-lg font-extrabold text-[#0F6CBD]">{summary.score} / {summary.maxScore}</span></div>{result.event.columns.map((column) => <div key={column.id} className="border-b border-[#EEF1F4] px-5 py-4 last:border-0"><div className="flex items-start justify-between gap-4"><div className="min-w-0 flex-1"><h3 className="text-sm font-bold">{column.label}</h3>{column.description ? <p className="mt-1 text-xs text-[#64748B]">{column.description}</p> : null}</div><strong className="shrink-0 text-sm">{result.recipient.values[column.id]} / {column.maxScore}</strong></div></div>)}</section>
         {result.recipient.feedback ? <section className="border-y border-[#DCE3EA] bg-white px-5 py-5"><h2 className="text-sm font-bold">교사 의견</h2><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#334155]">{result.recipient.feedback}</p></section> : null}
         {result.recipient.dispute ? <section className="border-y border-[#DCE3EA] bg-white px-5 py-5"><h2 className="text-sm font-bold">내가 보낸 이의</h2><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#334155]">{result.recipient.dispute.message}</p></section> : null}
         {result.recipient.dispute?.teacherReply ? <section className="border-y border-[#B9D9F2] bg-[#EFF6FC] px-5 py-5"><h2 className="text-sm font-bold text-[#0F6CBD]">이의 제기 답변</h2><p className="mt-2 text-sm leading-6">{result.recipient.dispute.teacherReply}</p></section> : null}
@@ -200,9 +239,9 @@ export function PublicStudentResultPage() {
         {result.recipient.status === 'replied' ? <div className="flex items-center gap-2 border-y border-[#A9D8B8] bg-[#E6F4EA] px-5 py-4 text-sm font-bold text-[#126B32]"><CheckCircle2 className="h-5 w-5" />선생님 답변이 완료됐습니다.</div> : null}
         {hasPendingDispute ? <div className="border-y border-[#FECACA] bg-[#FEF2F2] px-5 py-4 text-sm font-semibold text-[#B42318]">이의 내용을 제출했습니다. 교사 답변을 기다려 주세요. 답변을 확인하려면 ‘최신 결과 확인’을 눌러 주세요.</div> : null}
         {result.recipient.status === 'reconfirm' && result.event.allowConfirmation ? <p className="border-y border-[#F5D08A] bg-[#FFF9ED] px-5 py-4 text-sm font-semibold text-[#76520E]">수정된 결과나 선생님 답변을 확인한 뒤 결과를 다시 확인해 주세요.</p> : null}
-        {(!hasPendingDispute && (result.event.allowConfirmation && result.recipient.status !== 'confirmed' || canDispute)) ? <section className="border-y border-[#DCE3EA] bg-white px-5 py-5"><div className="grid gap-3 sm:grid-cols-2">{result.event.allowConfirmation && result.recipient.status !== 'confirmed' ? <button type="button" disabled={submitting} onClick={() => void confirm()} className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg bg-[#0F6CBD] text-sm font-bold text-white disabled:bg-[#AAB7C4]"><FileCheck2 className="h-5 w-5" />내용 확인 완료</button> : null}{canDispute ? <form onSubmit={(event) => void submitDispute(event)} className="sm:col-span-2"><label className="text-sm font-bold">이의 내용<textarea value={dispute} onChange={(event) => setDispute(event.target.value)} className="mt-2 min-h-24 w-full rounded-lg border border-[#C8D0DA] p-3 font-normal" placeholder="확인이 필요한 내용을 구체적으로 적어 주세요." /></label><button type="submit" disabled={submitting || !dispute.trim()} className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-[#0F6CBD] px-4 text-sm font-bold text-[#0F6CBD] disabled:opacity-40"><Send className="h-4 w-4" />이의 제출</button></form> : null}</div></section> : null}
+        {(!hasPendingDispute && (result.event.allowConfirmation && result.recipient.status !== 'confirmed' || canDispute)) ? <section className="border-y border-[#DCE3EA] bg-white px-5 py-5"><div className="grid gap-3 sm:grid-cols-2">{result.event.allowConfirmation && result.recipient.status !== 'confirmed' ? <button type="button" disabled={submitting || refreshing} onClick={() => void confirm()} className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg bg-[#0F6CBD] text-sm font-bold text-white disabled:bg-[#AAB7C4]"><FileCheck2 className="h-5 w-5" />내용 확인 완료</button> : null}{canDispute ? <form onSubmit={(event) => void submitDispute(event)} className="sm:col-span-2"><label className="text-sm font-bold">이의 내용<textarea maxLength={1000} value={dispute} onChange={(event) => setDispute(event.target.value)} className="mt-2 min-h-24 w-full rounded-lg border border-[#C8D0DA] p-3 font-normal" placeholder="확인이 필요한 내용을 구체적으로 적어 주세요." /></label><button type="submit" disabled={submitting || refreshing || !dispute.trim()} className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-[#0F6CBD] px-4 text-sm font-bold text-[#0F6CBD] disabled:opacity-40"><Send className="h-4 w-4" />이의 제출</button></form> : null}</div></section> : null}
       </div>
-      {confirmWarning ? <StudentResultConfirmDialog title="작성 중인 이의가 있습니다" description="확인 완료를 선택하면 작성 중인 이의 내용은 제출되지 않습니다. 먼저 이의를 제출할 수도 있습니다." cancelLabel="이의 계속 작성" confirmLabel="이의 버리고 확인" onCancel={() => setConfirmWarning(false)} onConfirm={() => void confirmNow()} /> : null}
+      {confirmWarning ? <StudentResultConfirmDialog title="작성 중인 이의가 있습니다" description="확인 완료를 선택하면 작성 중인 이의 내용은 제출되지 않습니다. 먼저 이의를 제출할 수도 있습니다." cancelLabel="이의 계속 작성" confirmLabel={submitting ? "확인 중" : "이의 버리고 확인"} pending={submitting} onCancel={() => setConfirmWarning(false)} onConfirm={() => void confirmNow()} /> : null}
     </main>
   );
 }
