@@ -1,0 +1,231 @@
+{
+  "browser": "154.0.8037.58",
+  "headed": true,
+  "mode": "real-local-PostgreSQL-PostgREST-Deno, Auth/Storage local adapters",
+  "checks": [
+    {
+      "name": "2,000명·응답100건 실제 DB 초기 bundle 1회와 각60개·전체 제출 건수",
+      "result": "pass"
+    },
+    {
+      "name": "접기·펼치기와 공용 링크 복사는 DB 업무 요청을 추가하지 않는다",
+      "result": "pass"
+    },
+    {
+      "name": "본문은 내용 보기에서만 조회하고 다시 보기에는 상세 캐시를 쓴다",
+      "result": "pass"
+    },
+    {
+      "name": "응답 커서 조회100건과 명단 추가60, 전체2,000명 검색·미제출1900 유지",
+      "result": "pass"
+    },
+    {
+      "name": "기존 실제 DB 재제출 이력과 최신 응답 수를 별도로 표시한다",
+      "result": "pass"
+    }
+  ],
+  "initialActions": [
+    "bundle"
+  ],
+  "initialRecipients": 60,
+  "initialResponseHeaders": 60,
+  "totalRecipients": 2000,
+  "currentResponses": 100,
+  "pending": 1900,
+  "actions": [
+    "bundle",
+    "detail",
+    "headers",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "list",
+    "bundle",
+    "history"
+  ],
+  "responses": [
+    {
+      "action": "bundle",
+      "recipients": 60,
+      "responses": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 60
+    },
+    {
+      "action": "list",
+      "recipients": 20
+    },
+    {
+      "action": "bundle",
+      "recipients": 24,
+      "responses": 1
+    }
+  ],
+  "pageErrors": [],
+  "remote": false
+}

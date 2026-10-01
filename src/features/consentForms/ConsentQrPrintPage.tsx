@@ -116,7 +116,7 @@ export function ConsentQrPrintPage() {
         <p className="mt-1 text-xs text-[#64748B]">각 QR은 해당 보호자의 응답 화면으로 바로 연결됩니다. 잘라서 개별로 전달해 주세요.</p>
         <div className="mt-4 flex flex-wrap items-center gap-2" role="group" aria-label="배부 대상">
           {([['all', `전체 ${recipients.length}명`], ['pending', `미제출자 ${pendingCount}명`]] as const).map(([value, label]) => (
-            <button key={value} type="button" aria-pressed={target === value} onClick={() => setSearchParams(value === 'pending' ? { target: 'pending' } : {})} className={`min-h-[40px] rounded-lg border px-3 text-xs font-bold ${target === value ? 'border-[#0F6CBD] bg-[#EFF6FC] text-[#0F6CBD]' : 'border-[#C8D0DA] text-[#334155]'}`}>{label}</button>
+            <button key={value} type="button" aria-pressed={target === value} onClick={() => setSearchParams(value === 'pending' ? { target: 'pending' } : {})} className={`min-h-[44px] rounded-lg border px-3 text-xs font-bold ${target === value ? 'border-[#0F6CBD] bg-[#EFF6FC] text-[#0F6CBD]' : 'border-[#C8D0DA] text-[#334155]'}`}>{label}</button>
           ))}
         </div>
       </div>
@@ -125,32 +125,32 @@ export function ConsentQrPrintPage() {
 
       {printable.length === 0
         ? <section className="border-y border-[#DCE3EA] bg-white py-20 text-center print:hidden"><QrCode className="mx-auto h-9 w-9 text-[#94A3B8]" /><h2 className="mt-4 text-lg font-bold">{target === 'pending' ? '미제출자가 없습니다' : '배부할 명단이 없습니다'}</h2><p className="mt-2 text-sm text-[#526174]">{target === 'pending' ? '명단의 보호자가 모두 제출했습니다.' : '명단 있는 수합으로 만들면 보호자별 QR을 만들 수 있습니다.'}</p></section>
-        : <div className="-mx-4 overflow-x-auto bg-[#E9EDF2] px-4 py-6 sm:mx-0 print:m-0 print:overflow-visible print:bg-white print:p-0">
-          <div ref={pagesRef} className="consent-qr-print-root mx-auto w-fit space-y-6 print:space-y-0">
+        : <div className="bg-[#E9EDF2] px-3 py-6 sm:px-4 print:m-0 print:overflow-visible print:bg-white print:p-0">
+          <div ref={pagesRef} className="consent-qr-print-root mx-auto w-full max-w-[794px] space-y-6 print:space-y-0">
             {pages.map((pageRecipients, pageIndex) => (
-              <section key={pageIndex} data-testid="consent-qr-page" className="consent-qr-print-page flex h-[1123px] w-[794px] shrink-0 flex-col bg-white px-[48px] py-[42px] shadow-[0_8px_28px_rgba(15,23,42,0.16)]">
+              <section key={pageIndex} data-testid="consent-qr-page" className="consent-qr-print-page flex min-h-[1123px] w-full shrink-0 flex-col bg-white px-5 py-6 sm:h-[1123px] sm:w-[794px] sm:px-[48px] sm:py-[42px] print:h-[1123px] print:w-[794px] print:px-[48px] print:py-[42px] shadow-[0_8px_28px_rgba(15,23,42,0.16)]">
                 <header className="mb-5 border-b-2 border-[#334155] pb-4">
                   <div className="flex items-center justify-between gap-5">
                     <div className="min-w-0"><p className="text-[12px] font-bold text-[#334155]">가정통신문 수합{target === 'pending' ? ' · 미제출자 재배부' : ''}</p><h2 className="mt-1 truncate text-[21px] font-extrabold text-[#0F172A]">{draft.title}</h2></div>
                     <div className="flex shrink-0 items-center gap-2 text-[12px] font-bold text-[#526174]"><QrCode className="h-4 w-4" />개인 응답 QR</div>
                   </div>
                 </header>
-                <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-4 gap-3">
+                <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2 sm:grid-rows-3 print:grid-cols-2 print:grid-rows-3">
                   {Array.from({ length: RECIPIENTS_PER_SHEET }, (_, slot) => {
                     const recipient = pageRecipients[slot];
-                    if (!recipient) return <div key={`empty-${slot}`} aria-hidden="true" />;
+                    if (!recipient) return <div key={`empty-${slot}`} aria-hidden="true" className="hidden sm:block print:block" />;
                     return (
-                      <div key={recipient.id} className="flex items-center gap-3 border border-dashed border-[#94A3B8] px-3 py-2">
+                      <div key={recipient.id} data-testid="consent-qr-card" className="flex min-w-0 items-center gap-3 border border-dashed border-[#94A3B8] px-3 py-3">
                         <div className="flex shrink-0 flex-col items-center gap-1">
                           <div id={`consent-qr-${recipient.id}`} className="border border-[#DCE3EA] bg-white p-1"><QRCodeSVG value={personalLink(recipient.token)} size={104} level="M" includeMargin={false} aria-label={`${recipient.name} 응답 QR 코드`} /></div>
-                          <button type="button" disabled={savingQrId !== ''} onClick={() => void downloadQrImage(recipient.id, recipient.name)} aria-label={`${recipient.name} QR 이미지 저장`} className="qr-save-button inline-flex min-h-[24px] items-center gap-1 rounded-md px-1.5 text-[10px] font-bold text-[#0F6CBD] hover:bg-[#EFF6FC] disabled:text-[#94A3B8] print:hidden">
+                          <button type="button" disabled={savingQrId !== ''} onClick={() => void downloadQrImage(recipient.id, recipient.name)} aria-label={`${recipient.name} QR 이미지 저장`} className="qr-save-button inline-flex min-h-[44px] items-center gap-1 rounded-md px-1.5 text-[10px] font-bold text-[#0F6CBD] hover:bg-[#EFF6FC] disabled:text-[#94A3B8] print:hidden">
                             {savingQrId === recipient.id ? <LoaderCircle className="h-3 w-3 animate-spin" /> : <ImageDown className="h-3 w-3" />}
                             {savingQrId === recipient.id ? '저장 중' : '이미지 저장'}
                           </button>
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate text-[15px] font-extrabold text-[#0F172A]">{recipient.name}</p>
-                          {recipient.studentKey ? <p className="mt-0.5 truncate text-[12px] font-semibold text-[#526174]">{recipient.studentKey}</p> : null}
+                          <p data-testid="consent-qr-name" className="break-words text-[15px] font-extrabold leading-[21px] text-[#0F172A] [overflow-wrap:anywhere]">{recipient.name}</p>
+                          {recipient.studentKey ? <p data-testid="consent-qr-identity" className="mt-1 break-words text-[12px] font-semibold leading-[18px] text-[#526174] [overflow-wrap:anywhere]">{recipient.studentKey}</p> : null}
                           <p className="mt-2 text-[11px] leading-4 text-[#64748B]">QR을 찍어 가정통신문을 작성해 주세요.</p>
                         </div>
                       </div>

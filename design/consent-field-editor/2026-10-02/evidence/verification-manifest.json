@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-02",
+  "browser": "Google Chrome 154.0.8037.58",
+  "headed": true,
+  "typecheck": "pass",
+  "lint": {
+    "result": "pass",
+    "existingWarnings": 6
+  },
+  "unit": {
+    "files": 63,
+    "tests": 501,
+    "result": "pass"
+  },
+  "chromeDemo": {
+    "uniqueTests": 63,
+    "result": "pass",
+    "lastDirectRegression": 25,
+    "questionsAndRecovery": 13,
+    "spaceAndFoldSave": 4
+  },
+  "realLocalDb": {
+    "scenarios": 5,
+    "result": "pass",
+    "remote": false,
+    "authStorage": "local adapters"
+  },
+  "editorAxe": {
+    "states": 3,
+    "violations": 0
+  },
+  "qrPdf": {
+    "documents": 3,
+    "pages": 18,
+    "A4": true,
+    "blankPages": 0
+  },
+  "sourceHashEncoding": "UTF8 normalized LF",
+  "sourceHashes": {
+    "src/features/consentForms/ConsentFieldEditor.tsx": "3babb2c67991019712f2c3456a56382b57db317be4133f1c10c4bdcbfb4e487e",
+    "src/features/consentForms/ConsentFormsManagePage.tsx": "188573e4bda7f18c70f91f8295744710b246b93cda97a3cb1a61537e7821ae47",
+    "src/features/consentForms/ConsentQrPrintPage.tsx": "59f33e535fbc5e5cdad692f3576820e54a0b14a9f4c8f022c4612be16c68d0fb",
+    "src/features/consentForms/consentRecipientSheet.ts": "92cef8e3eb9c497d619241231bc59c0180063f0b8c36cf7c8f4a313619448e1e",
+    "tests/e2e/consent-editor-layout.spec.ts": "c2ce850dcc5c923c7e6e9eb0a012f23a38c5b043026c361428edbab44f0659b8",
+    "tests/e2e/consent-forms.spec.ts": "e3988329dbe3e53a0083ec4b1460ad455486de60c2ddbe2986edc0f4aeca92f8",
+    "tests/e2e/consent-questions.spec.ts": "7f4c864cc7bdd5e1e86677912a965adfcf40ca1d36b4f29d11611c9428a0c674",
+    "tests/e2e/consent-small-fields.spec.ts": "65804183e6e63126fe17bac991c8fe37ce4eb5c450441d540ca030b05250b7da"
+  },
+  "pdfHashes": {
+    "final-qr-60-print.pdf": "f454ff9e13ce18d1b8c3522b7bcb8c475d716a10cad6cd1e0acd0a8a39f71399",
+    "final-qr-download.pdf": "523ecf92efc14beedb3fe5ca66baa2d2db31bbad93f0ef43754a3a73089e5750",
+    "final-qr-print.pdf": "bff0add6a38539102d950b49133beb14c214c6ae3db74fc5f1f5da5d9731b09a"
+  },
+  "markdownLinksChecked": 62,
+  "missingLinks": [],
+  "remoteWrites": false
+}

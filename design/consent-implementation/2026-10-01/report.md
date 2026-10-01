@@ -142,3 +142,9 @@ DB 변경: 신규 마이그레이션을 **격리 로컬 DB에 적용 확인**, �
 공통 파일 변경은 `DEVELOPMENT.md`의 가정통신문 DB 저장·조회/배포 규칙, `src/index.css`의 가정통신문 인쇄·관리 화면에 한정한 규칙, `src/features/settings/privacyRetentionSettings.ts`의 가정통신문 파기 확인 수량 전달이다. 다른 기능의 로직은 변경하지 않았다.
 
 통합 대상 DB 마이그레이션은 `supabase/migrations/202610011000_consent_integrity_io.sql` 하나다. 관련 Edge Functions는 `consent-forms-admin`, `consent-forms-public`이며 새 공통 구현 `supabase/functions/_shared/consentServer.ts`가 함께 필요하다. 원격 권한 회수와 구 클라이언트 호환 전환을 조정하고 secrets 확인→이력 비교→DB→두 함수→프런트→실제 원격 검증 순서를 따른다.
+
+## 후속 UI 개선 완료 (codex)
+
+2026-10-02. 앞서 후속 항목으로 남겼던 긴 개인 QR 이름/식별값의 줄임표와 긴 명단에서 공유 영역이 아래에 놓이는 문제를 해결했다. 사용자 요청의 왼쪽 설정·오른쪽 큰 원본 구조도 응답 필드 편집기에 적용했다. [후속 UI 검증 보고서](../../consent-field-editor/2026-10-02/report.md)에 구현, 실제 headed Chrome/로컬 DB/다쪽 PDF 증거, 세 프로파일·여섯 AI 모의 관점의 2차 검토와 이번 변경의 인계·배포 한계를 기록했다.
+
+이 문서의 이전 미배포 표기는 당시 상태다. 기존 DB 최적화의 원격 적용은 통합 세션의 [운영 적용 기록](../../feature-reviews/2026-10-02-integration/release.md)을 따른다. 후속 UI는 이 세션의 로컬 검증이며 원격 Google OAuth·Storage 쓰기 성공을 뜻하지 않는다. 새 UI push/PR/main 병합/운영 배포는 이 세션에서 실행하지 않았다.
