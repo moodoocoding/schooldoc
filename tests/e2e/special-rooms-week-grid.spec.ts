@@ -107,8 +107,11 @@ test('데스크톱에서는 폭을 제한하고 행 높이를 넉넉하게 쓴�
 test('공개 예약표는 웜 그레이·포레스트·테라코타의 주간 플래너 배색을 쓴다', async ({
   page,
 }) => {
+  // 한국 시간의 평일로 고정한다. 실제 주말에는 월~금 표에 오늘 칸이 없다.
+  await page.clock.setFixedTime(new Date('2026-10-01T03:00:00Z'));
   await page.setViewportSize({ width: 1280, height: 900 });
   await openBoard(page);
+  await expect(page.locator('th[aria-current="date"]')).toHaveText(/목.*10\/1.*오늘/s);
 
   const palette = await page.evaluate(() => {
     const main = document.querySelector('main.special-room-planner');
@@ -126,6 +129,17 @@ test('공개 예약표는 웜 그레이·포레스트·테라코타의 주간 �
     accent: '#315f50',
     today: 'rgb(164, 65, 45)',
   });
+});
+
+test('한국 시간 토요일에는 월~금 표의 다른 날짜를 오늘로 표시하지 않는다', async ({ page }) => {
+  // CI의 UTC 날짜는 금요일이어도 한국 학교의 날짜는 이미 토요일이다.
+  await page.clock.setFixedTime(new Date('2026-10-02T15:30:00Z'));
+  await openBoard(page);
+
+  await expect(page.getByRole('columnheader')).toHaveCount(6);
+  await expect(page.getByRole('columnheader', { name: '금 10/2' })).toBeVisible();
+  await expect(page.locator('th[aria-current="date"]')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '10/2 1교시 예약하기', exact: true })).toBeEnabled();
 });
 
 test('칸을 누르면 시트가 열려 어디를 잡는지 알려 준다', async ({ page }) => {
