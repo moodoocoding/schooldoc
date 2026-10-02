@@ -289,3 +289,14 @@
 - secrets·DB 마이그레이션은 해당 없음이다. 서버 변경은 미사용 별칭·타입·인터페이스 삭제이며 실행 경로·API 계약 변경이 없어 운영 Edge Functions 재배포는 필요하지 않다. 해당 원격 함수에는 이번 소스 정리를 적용하지 않으며 이를 적용 확인으로 보고하지 않는다.
 - 진행 상태: 브랜치 push·PR 생성·필수 CI 확인·squash 병합·main 자동 EXE 릴리즈·Vercel 운영 배포 식별자 확인 대기. 실제 Chrome/EXE 조작 및 운영 시험 자료 생성·제출은 이번 단계에서 실행하지 않는다.
 - 후속 검증 대기: 게시된 EXE 다운로드와 SHA-256 대조 및 Windows 실행, 실제 Google 로그인·세션·로그아웃, Supabase 업무별 정상 흐름·오류 복구, EXE와 공개 Chrome의 링크/QR 제출 및 교사 반영, PDF·업로드·다운로드·인쇄, 한글/공백 경로·저장값 유지·재시작. 데모·모의 서버 CI 통과를 이 항목들의 성공으로 대체하지 않는다.
+
+### main 통합과 웹 배포 확인
+
+- PR: https://github.com/moodoocoding/schooldoc/pull/54 — 2026-10-03 07:45:39 KST squash 병합 완료.
+- main: 9c03e05bcc4ff2e8c84949ab2c91f18d616110b5, 제목은 refactor(shared): 미사용 화면과 중복 서비스 코드 제거. PR head c6e2c4c53c039a9f4fb68f99e36368adad471c1d와 병합 main의 파일 내용 차이는 없다.
+- PR CI: https://github.com/moodoocoding/schooldoc/actions/runs/37071591362 — verify·package 통과, PR에서 정식 게시 단계는 의도적으로 생략. 타입·린트·단위 547개·desktop 15개·Deno 서버 70개/20단계·SQL 안전 검사·웹 빌드·Chrome 306통과/5조건부 생략·별도 서버 흐름 5개·Windows EXE 빌드와 모의 실행을 완료했다. Chrome 검사는 21.6분, verify 전체 24분7초, package 4분이었다.
+- 진행 중 CI 상태에서의 초기 병합 시도는 자동 승인 검토가 필수 검사 미완료를 이유로 거절했으며 실행되지 않았다. CI를 우회하지 않고 verify와 package가 모두 성공한 후 같은 head와 최신 main을 확인해 병합했다.
+- Vercel 프런트엔드: 적용 확인. GitHub Production deployment 6819833934가 위 main SHA와 일치하고 success다. 배포 URL은 https://schooldoc-2v8qefcw1-panthea0-9353s-projects.vercel.app, GitHub 상태가 연결한 Vercel 배포 페이지는 https://vercel.com/panthea0-9353s-projects/schooldoc/849T8a4jGaSDRxCE22kEXErPeW6F이다. 운영 주소는 https://schooldoc-nine.vercel.app. 현재 연결 앱의 Vercel scope 권한 제한으로 직접 상세 조회는 실패했으며, GitHub의 Vercel commit status와 Production 배포 상태를 근거로 확인했다. 운영 사용자 흐름을 시험했다는 뜻은 아니다.
+- GitHub Pages 보조 배포: https://github.com/moodoocoding/schooldoc/actions/runs/37074197102 — success. 포터블 CI와 구분한다.
+- 정식 포터블: https://github.com/moodoocoding/schooldoc/actions/runs/37074197649 — 위 main의 verify·package·publish 진행 중. PR EXE를 이름만 바꾸어 정식 자산으로 게시하지 않는다.
+- 후속 배포 결과는 main 9c03e05를 기준으로 만든 codex/unused-code-deployment-report-20261003의 별도 문서 커밋에 보관한다. 이미 배포한 소스 SHA와 결과 기록을 구분하고, 기록만을 위해 정식 EXE를 반복 생성하지 않는다. 기존 원본 checkout의 사용자 변경 4개는 보존한다.
