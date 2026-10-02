@@ -31,12 +31,9 @@ async function setup(page: Page, rows = [receipt]) {
   await page.getByLabel('학급', {exact:true}).fill('5학년 2반');
   await page.getByLabel('전체 예산').fill('500000');
   await page.getByRole('button', { name: '장부 만들기', exact:true }).click();
-  expect(await page.getByRole('button', {name:'영수증 등록',exact:true}).evaluate(el => {
-    const css = getComputedStyle(el); return css.color !== css.backgroundColor && css.backgroundColor !== 'rgb(255, 255, 255)';
-  })).toBe(true);
+  await expect(page.getByRole('tab', {name:/영수증 등록/})).toHaveAttribute('aria-selected','true');
 }
 async function startUpload(page: Page) {
-  await page.getByRole('button', { name: '영수증 등록', exact:true }).click();
   await page.getByRole('checkbox', { name: /OpenAI/ }).check();
   await page.getByLabel('영수증 증빙 파일').setInputFiles(file());
   await expect(page.getByLabel('사용처', {exact:true})).toHaveValue(receipt.merchant);
@@ -44,21 +41,22 @@ async function startUpload(page: Page) {
 test('동의 후 업로드 → 분석 → 원본·수정 → 표·잔액 → 새로고침 후 원본', async ({ page }) => {
   await setup(page);
   await expect(page.getByLabel('사용 날짜')).toHaveCount(0);
-  await page.getByRole('button', { name:'영수증 등록', exact:true }).click();
-  await expect(page.getByRole('button', {name:'영수증 파일 선택'})).toBeDisabled();
+  await expect(page.getByRole('button', {name:'영수증 파일 올리기'})).toBeDisabled();
   await page.getByRole('checkbox', {name:/OpenAI/}).check();
   await page.getByLabel('영수증 증빙 파일').setInputFiles(file());
   await expect(page.getByLabel('사용처', {exact:true})).toHaveValue(receipt.merchant);
   await expect(page.getByLabel('금액', {exact:true})).toHaveValue('32500');
   await expect(page.getByLabel('사용 목적', {exact:true})).toHaveValue('');
   await expect(page.getByText('신뢰도', {exact:false})).toHaveCount(0);
-  await expect(page.getByRole('button', {name:'영수증 파일 선택'})).toHaveCount(0);
+  await expect(page.getByRole('button', {name:'영수증 파일 올리기'})).toHaveCount(0);
   await expect(page.getByTitle('영수증 PDF 원본')).toHaveAttribute('src', /blob:.*#page=1/);
   await page.getByLabel('사용 목적').fill('학급 미술 재료');
   await page.getByRole('button', {name:'이 지출을 장부에 반영'}).click();
+  await page.getByRole('tab', {name:/정산내역/}).click();
   await expect(page.getByRole('table')).toContainText('학급 미술 재료');
   await expect(page.getByRole('region', {name:'예산 현황'})).toContainText('467,500원');
   await page.reload();
+  await page.getByRole('tab', {name:/정산내역/}).click();
   await page.getByRole('button', {name:'테스트 문구점 영수증 미리보기'}).click();
   await expect(page.getByRole('dialog').getByTitle('영수증 PDF 원본')).toHaveAttribute('src', /blob:/);
   await expect(page.getByRole('dialog').getByRole('checkbox')).toHaveCount(0);
@@ -67,17 +65,20 @@ test('동의 후 업로드 → 분석 → 원본·수정 → 표·잔액 → 새
   await page.getByLabel('금액', {exact:true}).fill('30000');
   await page.getByRole('button', {name:'수정 저장'}).click();
   await expect(page.getByRole('region', {name:'예산 현황'})).toContainText('470,000원');
+  await page.getByRole('tab', {name:/정산내역/}).click();
   await page.getByRole('button', {name:'테스트 문구점 지출 수정'}).click();
   await page.getByRole('button', {name:'휴지통으로 이동'}).click();
+  await page.getByRole('tab', {name:/정산내역/}).click();
   await expect(page.getByRole('table')).not.toContainText('학급 미술 재료');
+  await page.getByRole('tab', {name:/영수증 등록/}).click();
   await page.getByText('휴지통 1건', {exact:true}).click();
   await page.getByRole('button', {name:'복원', exact:true}).click();
+  await page.getByRole('tab', {name:/정산내역/}).click();
   await expect(page.getByRole('table')).toContainText('학급 미술 재료');
 });
 for (const width of [1440,390]) test('배양토 구매 내용과 사용 목적을 분리하고 교사 선택만 반영 ' + width, async ({page}) => {
   await page.setViewportSize({width,height:900});
   await setup(page, [{...receipt, merchant:'테스트 온라인몰', description:'고급혼합 배양토'}]);
-  await page.getByRole('button', {name:'영수증 등록',exact:true}).click();
   await page.getByRole('checkbox', {name:/OpenAI/}).check();
   await page.getByLabel('영수증 증빙 파일').setInputFiles(file('배양토 시험 영수증.pdf'));
   await expect(page.getByText('구매 내용: 고급혼합 배양토', {exact:true})).toBeVisible();
@@ -86,7 +87,9 @@ for (const width of [1440,390]) test('배양토 구매 내용과 사용 목적�
   await expect(purpose).toHaveAccessibleDescription(/실제 용도를 직접 입력/);
   await page.getByRole('button', {name:'이 지출을 장부에 반영'}).click();
   await expect(purpose).toBeFocused();
+  await page.getByRole('tab', {name:/정산내역/}).click();
   await expect(page.getByRole('table')).not.toContainText('테스트 온라인몰');
+  await page.getByRole('tab', {name:/영수증 등록/}).click();
   await expect(page.getByRole('region', {name:'예산 현황'})).toContainText('500,000원');
   await page.screenshot({path:'test-results/receipt-purpose-empty-' + width + '.png',fullPage:true});
   await page.getByRole('button', {name:'학급 특색 활동',exact:true}).click();
@@ -94,10 +97,10 @@ for (const width of [1440,390]) test('배양토 구매 내용과 사용 목적�
   await purpose.fill('식물 관찰 활동용 배양토 구입');
   await page.getByRole('button', {name:'나중에 확인',exact:true}).click();
   await page.reload();
-  await page.getByRole('button', {name:'영수증 등록',exact:true}).click();
   await page.getByRole('button', {name:'결과 확인·수정',exact:true}).click();
   await expect(purpose).toHaveValue('식물 관찰 활동용 배양토 구입');
   await page.getByRole('button', {name:'이 지출을 장부에 반영'}).click();
+  await page.getByRole('tab', {name:/정산내역/}).click();
   await expect(page.getByRole('table')).toContainText('식물 관찰 활동용 배양토 구입');
   await expect(page.getByRole('table')).not.toContainText('다과');
   await page.getByRole('button', {name:'테스트 온라인몰 지출 수정'}).click();
@@ -106,7 +109,6 @@ for (const width of [1440,390]) test('배양토 구매 내용과 사용 목적�
 });
 test('간식 품목이나 마트 상호도 실제 사용 목적을 자동으로 채우지 않는다', async ({page}) => {
   await setup(page, [{...receipt, merchant:'테스트 마트', description:'과자·음료'}]);
-  await page.getByRole('button', {name:'영수증 등록',exact:true}).click();
   await page.getByRole('checkbox', {name:/OpenAI/}).check();
   await page.getByLabel('영수증 증빙 파일').setInputFiles(file());
   await expect(page.getByText('구매 내용: 과자·음료', {exact:true})).toBeVisible();
@@ -128,7 +130,6 @@ for (const width of [1440, 390]) test('영수증 모아 보기·사진/PDF 넘�
     ['테스트 문구점', '2026-09-08', '색연필 · 종이', '합계 32,500원'].forEach((line, i) => context.fillText(line, 50, 160 + i * 90));
     return canvas.toDataURL('image/png').split(',')[1];
   });
-  await page.getByRole('button', {name:'영수증 등록',exact:true}).click();
   await page.getByRole('checkbox', {name:/OpenAI/}).check();
   await page.getByLabel('영수증 증빙 파일').setInputFiles([
     {name:'사진 영수증.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')}, file('영수증.pdf'),
@@ -167,7 +168,6 @@ test('실패 이유를 보여주고 저장한 원본으로 재분석한다', asy
   await setup(page);
   let calls = 0;
   await page.route('**/__test_receipt_ai', route => { calls++; return calls === 1 ? route.fulfill({status:429,json:{error:'AI 사용 한도 또는 결제 설정을 확인해 주세요.'}}) : route.fulfill({json:{receipts:[receipt]}}); });
-  await page.getByRole('button', {name:'영수증 등록',exact:true}).click();
   await page.getByRole('checkbox', {name:/OpenAI/}).check();
   await page.getByLabel('영수증 증빙 파일').setInputFiles(file());
   await expect(page.getByRole('alert')).toContainText('AI 사용 한도');
@@ -187,8 +187,9 @@ test('수정 초안을 새로고침 후 복원하고 복수 후보를 중복 없
   await expect(page.getByLabel('사용처', {exact:true})).toHaveValue('테스트 서점');
   await page.getByLabel('사용 목적').fill('학급 도서');
   await page.getByRole('button', {name:'이 지출을 장부에 반영'}).click();
+  await page.getByRole('tab', {name:/정산내역/}).click();
   await expect(page.getByRole('region', {name:'예산 현황'})).toContainText('449,500원');
-  await expect(page.getByRole('table').getByRole('row')).toHaveCount(4);
+  await expect(page.getByRole('table').getByRole('row')).toHaveCount(3);
 });
 for (const width of [1440,390]) test('장부·검토 화면 접근성 및 가로 넘침 ' + width, async ({page}) => {
   await page.setViewportSize({width,height:900});
@@ -201,6 +202,7 @@ for (const width of [1440,390]) test('장부·검토 화면 접근성 및 가로
   await page.screenshot({path:'test-results/receipt-review-' + width + '.png',fullPage:true});
   await page.getByLabel('사용 목적').fill('학급 미술 재료');
   await page.getByRole('button', {name:'이 지출을 장부에 반영'}).click();
+  await page.getByRole('tab', {name:/정산내역/}).click();
   await page.screenshot({path:'test-results/receipt-ledger-' + width + '.png',fullPage:true});
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   expect(await page.evaluate(() => { scrollTo(0,document.documentElement.scrollHeight); return innerHeight - document.getElementById('root')!.firstElementChild!.getBoundingClientRect().bottom; })).toBeLessThanOrEqual(1);
