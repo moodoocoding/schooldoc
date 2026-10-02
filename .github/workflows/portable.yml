@@ -1,0 +1,117 @@
+name: Windows portable
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portable-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run test:desktop
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: '2.9.6'
+      - run: deno test --no-lock --allow-env --allow-read --node-modules-dir=none tests/server/classMissions.test.ts tests/server/classMissionsRegression.test.ts tests/server/classroomRoles.test.ts tests/server/classroomRolesSql.test.ts tests/server/registryPublic.test.ts tests/server/specialRooms.test.ts tests/server/specialRoomsSql.test.ts
+      - run: npm run build
+      - run: npx playwright install --with-deps chrome
+      - run: npm run test:e2e
+        env:
+          CI: 'true'
+          PLAYWRIGHT_TEST_PORT: '4173'
+      - run: npm run test:server-flow
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-verification
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+  package:
+    needs: verify
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+      VITE_PUBLIC_APP_URL: ${{ vars.VITE_PUBLIC_APP_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run electron:build:portable
+      - run: npm run test:portable
+      - name: Stage verified release assets
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force test-results/portable-publish | Out-Null
+          $manifest = Get-Content release/portable-manifest.json -Raw | ConvertFrom-Json
+          Copy-Item -LiteralPath "release/$($manifest.artifactName)", 'release/SHA256SUMS.txt', 'release/portable-manifest.json', 'test-results/portable/portable-smoke.json' -Destination test-results/portable-publish
+      - uses: actions/upload-artifact@v4
+        with:
+          name: portable-${{ github.event.pull_request.head.sha || github.sha }}
+          path: test-results/portable-publish/*
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: packaged-verification
+          path: |
+            test-results/portable/*.json
+            test-results/portable/*.png
+            test-results/portable/*.pdf
+          retention-days: 14
+
+  publish:
+    needs: [verify, package]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GITHUB_REPOSITORY: ${{ github.repository }}
+      PORTABLE_SMOKE_REPORT: release/portable-smoke.json
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: portable-${{ github.sha }}
+          path: release/
+      - run: node scripts/publish-portable.mjs

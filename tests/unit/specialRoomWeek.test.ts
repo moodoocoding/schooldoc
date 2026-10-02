@@ -67,9 +67,14 @@ describe('주 범위 문구', () => {
 
 describe('시간대 때문에 하루가 밀리지 않는다', () => {
   test('밤 11시에 만든 날짜도 그날로 남는다', () => {
-    // toISOString()을 쓰면 UTC로 바뀌어 저녁에 하루가 밀린다. 실제로 흔한 사고다.
-    expect(toDateKey(new Date(2026, 7, 19, 23, 30))).toBe('2026-08-19');
-    expect(toDateKey(new Date(2026, 7, 19, 0, 5))).toBe('2026-08-19');
+    // 제품은 한국 날짜를 쓴다. 실행 호스트의 시간대로 Date를 만들면 CI에서 다른 순간이 된다.
+    expect(toDateKey(new Date('2026-08-19T23:30:00+09:00'))).toBe('2026-08-19');
+    expect(toDateKey(new Date('2026-08-19T00:05:00+09:00'))).toBe('2026-08-19');
+  });
+
+  test('UTC로 받은 시각도 한국 자정의 앞뒤를 구분한다', () => {
+    expect(toDateKey(new Date('2026-08-19T14:59:59Z'))).toBe('2026-08-19');
+    expect(toDateKey(new Date('2026-08-19T15:00:00Z'))).toBe('2026-08-20');
   });
 });
 

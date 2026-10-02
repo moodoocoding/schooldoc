@@ -13,6 +13,6 @@ export const getPublicAppOrigin = (
 ) => {
   const configuredOrigin = import.meta.env.VITE_PUBLIC_APP_URL?.trim().replace(/\/+$/, '');
   if (configuredOrigin) return configuredOrigin;
-  if (hostname === 'localhost' || hostname === '127.0.0.1') return DEFAULT_PUBLIC_APP_ORIGIN;
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || !/^https?:\/\//i.test(origin)) return DEFAULT_PUBLIC_APP_ORIGIN;
   return origin.replace(/\/+$/, '');
 };

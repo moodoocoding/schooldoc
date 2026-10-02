@@ -22,6 +22,7 @@ import { qrImageFileName, saveQrImage } from '../../utils/qrImage';
 import { useNavigate, useParams } from 'react-router-dom';
 import { RegistryConfirmDialog } from './RegistryConfirmDialog';
 import { isRegistryDemoMode } from './registryConfig';
+import { getPublicAppOrigin } from '../../utils/publicAppOrigin';
 import { RegistryPrintSheet } from './RegistryPrintSheet';
 import { RegistryBrowserPrint } from './RegistryBrowserPrint';
 import { RegistryPagination } from './RegistryPagination';
@@ -153,7 +154,7 @@ export function RegistryManagePage() {
   }
 
   const signedCount = registry.participants.filter((participant) => participant.signature).length;
-  const publicUrl = `${window.location.origin}/s/registry/${registry.publicToken}`;
+  const publicUrl = `${getPublicAppOrigin()}/s/registry/${registry.publicToken}`;
   const participantPageCount = Math.max(1, Math.ceil(filteredParticipants.length / PARTICIPANTS_PER_PAGE));
   const safeParticipantPage = Math.min(participantPage, participantPageCount);
   const visibleParticipants = filteredParticipants.slice(

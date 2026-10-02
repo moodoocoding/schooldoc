@@ -84,6 +84,12 @@ npm run test:e2e   # 브라우저 E2E 테스트
 npm run build      # 프로덕션 빌드
 ```
 
+## Windows 포터블
+
+Windows x64에서 `npm run electron:build:portable`로 무설치 EXE를 만들고
+`npm run test:portable`로 실제 패키지를 검사할 수 있습니다. 공개 Supabase 연결 설정과
+Google 로그인 콜백 설정이 필요합니다. [빌드·검증·릴리즈 절차](docs/portable-release.md)를 참고하세요.
+
 ## 프로젝트 구조
 
 ```text

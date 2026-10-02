@@ -1,4 +1,5 @@
 import { supabase } from "../../utils/supabaseClient";
+import { getPublicAppOrigin } from "../../utils/publicAppOrigin";
 import {
   changedRolePeriod,
   defaultRoleState,
@@ -186,4 +187,4 @@ export async function loadPublicRoleBoard(
   );
 }
 export const rolePublicUrl = (token: string) =>
-  `${window.location.origin}/s/roles/${token}`;
+  `${getPublicAppOrigin()}/s/roles/${token}`;

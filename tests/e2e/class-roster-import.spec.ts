@@ -44,7 +44,7 @@ test('CSV 분석 → 미리보기 → 적용 → 저장하며 기존 학생 식�
   const beforeSave = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).state, demoKey);
   expect(beforeSave.roster).toEqual(state.roster);
   await page.getByRole('button', { name: '학생 명단 저장', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('학생 명단을 저장했습니다.');
+  await expect(page.getByRole('status').filter({ hasText: '학생 명단을 저장했습니다.' })).toBeVisible();
   await expect(editor(page)).toHaveCount(0);
   await expect(page.getByRole('region', { name: '명단 가져오기', exact: true })).toHaveCount(0);
   await expect(page.getByRole('table', { name: '저장된 학급 명단' })).toContainText('가상새봄');

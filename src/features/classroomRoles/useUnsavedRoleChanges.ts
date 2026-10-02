@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { appRoute } from "../../utils/desktop";
 
 export function useUnsavedRoleChanges(dirty: boolean) {
   useEffect(() => {
@@ -11,7 +12,8 @@ export function useUnsavedRoleChanges(dirty: boolean) {
       const link = target.closest<HTMLAnchorElement>("a[href]");
       if (!link || link.target === "_blank") return;
       const destination = new URL(link.href, window.location.href);
-      if (destination.origin !== window.location.origin || destination.pathname === window.location.pathname) return;
+      const current = new URL(window.location.href);
+      if (destination.origin !== current.origin || appRoute(destination).pathname === appRoute(current).pathname) return;
       if (!window.confirm("저장하지 않은 변경이 있습니다. 이동할까요?")) {
         event.preventDefault();
         event.stopPropagation();

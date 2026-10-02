@@ -1,7 +1,7 @@
 {
-  "name": "260725_individual_data",
+  "name": "schooldoc",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,7 +15,13 @@
     "test:integration:registry-owner": "vitest run --config vitest.registry-owner.config.ts",
     "test:integration:consent": "vitest run --config vitest.consent-integration.config.ts",
     "test:e2e": "playwright test",
-    "test:all": "npm run test && npm run test:e2e"
+    "test:all": "npm run test && npm run test:e2e",
+    "electron:start": "node node_modules/electron/install.js && electron .",
+    "electron:build:portable": "node scripts/build-portable.mjs",
+    "test:desktop": "node --test tests/desktop/*.test.cjs",
+    "test:portable": "node scripts/verify-portable.mjs",
+    "test:server-flow": "node scripts/verify-special-room-server.mjs",
+    "release:portable": "node scripts/publish-portable.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.8",
@@ -41,11 +47,19 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
     "autoprefixer": "^10.5.4",
+    "electron": "44.4.5",
+    "electron-builder": "26.15.3",
     "oxlint": "^1.71.0",
     "postcss": "^8.5.23",
     "tailwindcss": "^3.4.17",
     "typescript": "~6.0.2",
     "vite": "^8.1.1",
     "vitest": "^4.1.11"
-  }
+  },
+  "main": "electron/main.cjs",
+  "overrides": {
+    "dompurify": "3.4.16"
+  },
+  "author": "SchoolDoc",
+  "description": "SchoolDoc Windows portable"
 }

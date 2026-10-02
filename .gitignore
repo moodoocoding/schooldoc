@@ -10,6 +10,8 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dist-portable
+release
 *.local
 coverage
 playwright-report

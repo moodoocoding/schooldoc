@@ -43,6 +43,28 @@ export function TeacherAuthProvider({ children }: { children: ReactNode }) {
         setError('로그인 서버 연결 정보가 없습니다.');
         return;
       }
+      if (window.electronAPI?.isElectron) {
+        const desktop = window.electronAPI;
+        let attemptId: string | undefined;
+        try {
+          const attempt = await desktop.prepareGoogleOAuth();
+          attemptId = attempt.id;
+          const { data, error: loginError } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: attempt.redirectUrl, skipBrowserRedirect: true,
+              queryParams: { prompt: 'select_account' } },
+          });
+          if (loginError || !data.url) throw new Error('LOGIN_FAILED');
+          const code = await desktop.completeGoogleOAuth(attempt.id, data.url);
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) throw new Error('LOGIN_FAILED');
+        } catch {
+          setError('Google 로그인을 완료하지 못했습니다. 브라우저와 인터넷 연결을 확인하고 다시 시도해 주세요.');
+        } finally {
+          if (attemptId) await desktop.cancelGoogleOAuth(attemptId).catch(() => {});
+        }
+        return;
+      }
       const { error: loginError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { Check, ClipboardCopy, Copy, Download, FileSpreadsheet, Plus, RefreshCw, ShieldCheck, Trash2, Users } from 'lucide-react';
 import { useTeacherAuth } from '../../auth/teacherAuth';
@@ -97,8 +98,9 @@ export function ClassMissionsWorkspace() {
   const [boardsOwner, setBoardsOwner] = useState<string | null>(null);
   const refreshGeneration = useRef(0);
   const [boards, setBoards] = useState<MissionBoard[]>([]);
-  const [selectedBoardId, setSelectedBoardId] = useState(() => new URLSearchParams(window.location.search).get('board') ?? '');
-  const [selectedMissionId, setSelectedMissionId] = useState(() => new URLSearchParams(window.location.search).get('mission') ?? '');
+  const [searchParams] = useSearchParams();
+  const [selectedBoardId, setSelectedBoardId] = useState(() => searchParams.get('board') ?? '');
+  const [selectedMissionId, setSelectedMissionId] = useState(() => searchParams.get('mission') ?? '');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState(false);

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { isDesktop } from './desktop';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -12,7 +13,9 @@ export const isSupabaseConfigured = Boolean(
 
 // Supabase client instance (or null if not configured)
 export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, isDesktop() ? {
+      auth: { flowType: 'pkce', detectSessionInUrl: false },
+    } : undefined)
   : null;
 
 if (!isSupabaseConfigured) {
