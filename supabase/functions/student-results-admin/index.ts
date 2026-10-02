@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8';
 import { decryptStudentPayload, encryptStudentPayload, studentNameLookup } from '../_shared/studentResultsCrypto.ts';
+import { studentResultColumnKind } from '../_shared/studentResultColumns.ts';
 
 const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
 const respond = (status: number, body: Record<string, unknown>) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json; charset=utf-8' } });
@@ -66,7 +67,7 @@ const loadEvents = async (rows: Array<Record<string, unknown>>, includeHistory =
     columns: (columnsResult.data ?? []).filter((column) => column.event_id === row.id).sort((a, b) => a.position - b.position).map((column) => ({ id: column.id, label: column.label, maxScore: Number(column.max_score), description: column.description, kind: column.kind ?? undefined })),
     recipients: recipients.filter((recipient) => recipient.eventId === row.id).sort((a, b) => a.studentKey.localeCompare(b.studentKey, 'ko-KR', { numeric: true })).map(({ eventId: _eventId, ...recipient }) => recipient),
     createdAt: row.created_at, updatedAt: row.updated_at,
-    revisions: includeHistory && row.revision_ciphertext
+    revisions: includeHistory && typeof row.revision_ciphertext === 'string'
       ? await decryptStudentPayload<unknown[]>(row.revision_ciphertext) : undefined,
   })));
 };
@@ -95,7 +96,7 @@ Deno.serve(async (request) => {
       const columnIds = new Set(columns.map((column) => String(column.id ?? '')));
       if (!title || title.length > 200 || description.length > 4000 || !columns.length || !recipients.length
         || columnIds.size !== columns.length
-        || columns.filter((column) => column.kind === 'total').length > 1
+        || columns.filter((column) => studentResultColumnKind({ label: String(column.label ?? ''), kind: column.kind }) === 'total').length > 1
         || columns.some((column) => !String(column.id ?? '').trim() || String(column.id).length > 100
           || !String(column.label ?? '').trim() || String(column.label).length > 100
           || typeof column.maxScore !== 'number' || !Number.isFinite(column.maxScore as number)
@@ -117,7 +118,7 @@ Deno.serve(async (request) => {
       const { data: created, error } = await db.from('student_result_events').insert({ owner_id: ownerId, title: String(draft.title).trim(), description: String(draft.description ?? '').trim(), status: 'open', allow_confirmation: Boolean(draft.allowConfirmation), allow_dispute: Boolean(draft.allowDispute) }).select('id').single();
       if (error) throw error;
       try {
-        const { error: columnError } = await db.from('student_result_columns').insert(columns.map((column, position) => ({ event_id: created.id, id: String(column.id), position, label: String(column.label).trim(), max_score: Number(column.maxScore), description: String(column.description ?? '').trim(), kind: column.kind === 'total' ? 'total' : 'score' })));
+        const { error: columnError } = await db.from('student_result_columns').insert(columns.map((column, position) => ({ event_id: created.id, id: String(column.id), position, label: String(column.label).trim(), max_score: Number(column.maxScore), description: String(column.description ?? '').trim(), kind: studentResultColumnKind({ label: String(column.label), kind: column.kind }) })));
         if (columnError) throw columnError;
         // 이름과 확인번호가 겹치면 조회할 때 누가 누구인지 가릴 수 없다. 확인번호는 임의
         // 솔트를 쓰는 bcrypt라 저장한 뒤에는 대조할 수 없으므로, 평문이 있는 지금 막는다.
@@ -171,7 +172,7 @@ Deno.serve(async (request) => {
           || (column.kind !== 'score' && column.kind !== 'total' && column.kind !== undefined))) {
         throw new HttpError(400, '안내 정보와 결과 항목을 확인해 주세요.');
       }
-      if (incomingColumns.filter((column) => column.kind === 'total').length > 1) throw new HttpError(400, '총점 항목은 하나만 지정할 수 있습니다.');
+      if (incomingColumns.filter((column) => studentResultColumnKind({ label: String(column.label), kind: column.kind }) === 'total').length > 1) throw new HttpError(400, '총점 항목은 하나만 지정할 수 있습니다.');
       for (const recipient of current.recipients) {
         for (const column of incomingColumns) {
           const score = recipient.values[String(column.id)];
@@ -186,7 +187,7 @@ Deno.serve(async (request) => {
         allowDispute: Boolean(settings?.allowDispute),
         columns: current.columns.map((column) => {
           const edited = incomingColumns.find((candidate) => candidate.id === column.id)!;
-          return { id: column.id, label: String(edited.label).trim(), maxScore: Number(edited.maxScore), description: String(edited.description ?? '').trim(), kind: edited.kind ?? column.kind };
+          return { id: column.id, label: String(edited.label).trim(), maxScore: Number(edited.maxScore), description: String(edited.description ?? '').trim(), kind: studentResultColumnKind({ label: String(edited.label), kind: edited.kind }) };
         }),
       };
       const before = {

@@ -1,6 +1,6 @@
 import { supabase } from '../../utils/supabaseClient';
 import type { StudentResultDraft, StudentResultEvent, StudentResultEventSettings } from './types';
-import { validateStudentResultDraft } from './studentResultsUtils';
+import { normalizeStudentResultColumn, validateStudentResultDraft } from './studentResultsUtils';
 
 const CHANGE_EVENT = 'schooldoc-student-results-remote-change';
 const client = () => {
@@ -30,7 +30,7 @@ export const getRemoteStudentResultEvent = async (eventId: string) => (await inv
 export const createRemoteStudentResultEvent = async (draft: StudentResultDraft) => {
   const validationError = validateStudentResultDraft(draft);
   if (validationError) throw new Error(validationError);
-  const { event } = await invoke<{ event: StudentResultEvent }>({ action: 'create', draft });
+  const { event } = await invoke<{ event: StudentResultEvent }>({ action: 'create', draft: { ...draft, columns: draft.columns.map(normalizeStudentResultColumn) } });
   notify();
   return event;
 };
@@ -39,7 +39,7 @@ export const setRemoteStudentResultEventStatus = async (eventId: string, status:
 export const replyToRemoteStudentDispute = async (eventId: string, recipientId: string, reply: string) => { await invoke({ action: 'reply', eventId, recipientId, reply }); notify(); };
 export const regenerateRemoteStudentResultPersonalToken = async (eventId: string, recipientId: string) => { await invoke({ action: 'regenerate', eventId, recipientId }); notify(); };
 export const updateRemoteStudentResultSettings = async (eventId: string, expectedUpdatedAt: string, settings: StudentResultEventSettings) => {
-  await invoke({ action: 'update-settings', eventId, expectedUpdatedAt, settings });
+  await invoke({ action: 'update-settings', eventId, expectedUpdatedAt, settings: { ...settings, columns: settings.columns.map(normalizeStudentResultColumn) } });
   notify();
 };
 export const updateRemoteStudentResultRecipient = async (eventId: string, recipientId: string, expectedEventUpdatedAt: string, expectedRecipientUpdatedAt: string, values: Record<string, number>, feedback: string, reason: string) => {

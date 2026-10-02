@@ -1,12 +1,11 @@
-import type { ResultColumn, ResultRecipient, ResultRecipientDraft, StudentResultDraft } from './types';
+import type { ResultColumn, ResultRecipient, ResultRecipientDraft, StudentResultDraft } from './types.ts';
+import { studentResultColumnKind } from '../../../supabase/functions/_shared/studentResultColumns.ts';
+export { normalizeStudentResultColumn } from '../../../supabase/functions/_shared/studentResultColumns.ts';
 
 export const cleanText = (value: string) => value.trim().replace(/\s+/g, ' ');
 
-const totalLabels = new Set(['총점', '합계', '종합점수', '전체점수', 'total', 'totalscore']);
-
 /** 배포 전 만들어진 결과에도 총점 열이 있으므로 명시 값이 없을 때만 이름을 해석한다. */
-export const isTotalResultColumn = (column: ResultColumn) => column.kind === 'total'
-  || (column.kind === undefined && totalLabels.has(cleanText(column.label).toLocaleLowerCase('ko-KR').replace(/\s/g, '')));
+export const isTotalResultColumn = (column: ResultColumn) => studentResultColumnKind(column) === 'total';
 
 export const studentResultSummary = (columns: ResultColumn[], values: Record<string, number>) => {
   const totalColumn = columns.find(isTotalResultColumn);

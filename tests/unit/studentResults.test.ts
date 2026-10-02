@@ -54,6 +54,87 @@ beforeEach(() => {
 });
 
 describe('학생 결과 안내 로컬 흐름', () => {
+  it.each(['총점', '합계', ' Total Score '])('수동 %s 열을 명시 종류로 저장하고 재조회해도 세부 점수를 중복 합산하지 않는다', (label) => {
+    const created = createStudentResultEvent('teacher-a', {
+      ...draft,
+      columns: [...draft.columns, { id: 'total', label, maxScore: 10, description: '' }],
+      recipients: [{ ...draft.recipients[0], values: { score: 9, total: 9 } }],
+    });
+    const loaded = getStudentResultEvent('teacher-a', created.id)!;
+    expect(loaded.columns.map((column) => column.kind)).toEqual(['score', 'total']);
+    expect(studentResultSummary(loaded.columns, loaded.recipients[0].values)).toEqual({ score: 9, maxScore: 10, source: 'total' });
+  });
+
+  it('명시적으로 개별 점수를 선택한 총점 이름은 저장 후에도 합산한다', () => {
+    const created = createStudentResultEvent('teacher-a', {
+      ...draft, columns: [{ ...draft.columns[0], label: '총점', kind: 'score' }],
+    });
+    expect(studentResultSummary(created.columns, created.recipients[0].values).source).toBe('sum');
+  });
+
+  it.each(['label', 'kind', 'maxScore', 'description', 'title', 'allowDispute'] as const)('%s 설정 변경은 확인을 무효화하고 오래 열린 미확인 화면도 거부한다', (field) => {
+    const created = createStudentResultEvent('teacher-a', {
+      ...draft, recipients: [...draft.recipients, { ...draft.recipients[0], studentKey: '2', name: '가상바다', verificationCode: '5732' }],
+    });
+    const confirmed = confirmStudentResult(created.id, created.recipients[0].id)!;
+    const current = getStudentResultEvent('teacher-a', created.id)!;
+    const settings = { title: current.title, description: current.description, allowConfirmation: true, allowDispute: true, columns: current.columns };
+    if (field === 'title') settings.title = '수정 안내';
+    else if (field === 'allowDispute') settings.allowDispute = false;
+    else settings.columns = settings.columns.map((column) => ({ ...column, [field]: field === 'maxScore' ? 20 : field === 'kind' ? 'total' : '변경 항목' }));
+    updateStudentResultSettings('teacher-a', created.id, current.updatedAt, settings);
+    const loaded = getStudentResultEvent('teacher-a', created.id)!;
+    expect(loaded.recipients[0]).toMatchObject({ status: 'reconfirm', values: { score: 9 } });
+    expect(loaded.recipients[0].confirmedAt).toBeUndefined();
+    for (const recipient of loaded.recipients) expect(recipient.updatedAt).not.toBe(current.recipients.find((old) => old.id === recipient.id)!.updatedAt);
+    expect(confirmStudentResult(created.id, confirmed.recipient.id, confirmed.recipient.updatedAt)).toBeNull();
+    expect(confirmStudentResult(created.id, current.recipients[1].id, current.recipients[1].updatedAt)).toBeNull();
+    const refreshed = authenticateStudentResult(created.publicToken, '김하늘', '4821')!;
+    expect(confirmStudentResult(created.id, refreshed.recipient.id, refreshed.recipient.updatedAt)?.recipient.status).toBe('confirmed');
+  });
+
+  it('동일 설정 저장은 확인과 버전을 유지하며 확인 해제는 답변 없는 학생을 조회 상태로 돌린다', () => {
+    const created = createStudentResultEvent('teacher-a', draft);
+    confirmStudentResult(created.id, created.recipients[0].id);
+    const current = getStudentResultEvent('teacher-a', created.id)!;
+    const settings = { title: current.title, description: current.description, allowConfirmation: true, allowDispute: true, columns: current.columns };
+    updateStudentResultSettings('teacher-a', created.id, current.updatedAt, settings);
+    expect(getStudentResultEvent('teacher-a', created.id)).toEqual(current);
+    updateStudentResultSettings('teacher-a', created.id, current.updatedAt, { ...settings, allowConfirmation: false });
+    expect(getStudentResultEvent('teacher-a', created.id)?.recipients[0]).toMatchObject({ status: 'viewed' });
+    expect(getStudentResultEvent('teacher-a', created.id)?.recipients[0].confirmedAt).toBeUndefined();
+  });
+
+  it('시계가 같은 밀리초에 머물러도 설정 정정은 이전 확인 버전과 겹치지 않는다', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-02T00:00:00Z'));
+    try {
+      const created = createStudentResultEvent('teacher-a', draft);
+      const viewed = authenticateStudentResult(created.publicToken, '김하늘', '4821')!;
+      const current = getStudentResultEvent('teacher-a', created.id)!;
+      updateStudentResultSettings('teacher-a', current.id, current.updatedAt, { ...current, title: '정정 안내' });
+      expect(confirmStudentResult(created.id, viewed.recipient.id, viewed.recipient.updatedAt)).toBeNull();
+      expect(getStudentResultEvent('teacher-a', current.id)!.recipients[0].updatedAt! > viewed.recipient.updatedAt!).toBe(true);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('종류가 없는 이전 안내의 무변경 저장은 확인·버전·이력을 유지한다', () => {
+    const created = createStudentResultEvent('teacher-a', {
+      ...draft,
+      columns: [...draft.columns, { id: 'total', label: '합계', maxScore: 10, description: '' }],
+      recipients: [{ ...draft.recipients[0], values: { score: 9, total: 9 } }],
+    });
+    confirmStudentResult(created.id, created.recipients[0].id);
+    const legacy = JSON.parse(memory.get('schooldoc_student_results_v1')!);
+    legacy[0].columns.forEach((column: { kind?: string }) => { delete column.kind; });
+    memory.set('schooldoc_student_results_v1', JSON.stringify(legacy));
+    const current = getStudentResultEvent('teacher-a', created.id)!;
+    updateStudentResultSettings('teacher-a', current.id, current.updatedAt, current);
+    expect(getStudentResultEvent('teacher-a', current.id)).toEqual(current);
+    updateStudentResultSettings('teacher-a', current.id, current.updatedAt, { ...current, columns: current.columns.map((column) => ({ ...column, maxScore: 20 })) });
+    expect(getStudentResultEvent('teacher-a', current.id)?.recipients[0].status).toBe('reconfirm');
+  });
+
   it('총점 열을 개별 과목에 다시 더하지 않고, 명시 종류와 기존 머리글 모두 인식한다', () => {
     const columns = [
       { id: 'math', label: '수학', maxScore: 50, description: '', kind: 'score' as const },

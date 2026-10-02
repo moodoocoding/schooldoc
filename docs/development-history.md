@@ -116,3 +116,51 @@
 - 설치된 실제 Chrome에서 데스크톱·모바일 홈/관리 로그인 안내/가상 공개 링크 총 6개 화면 통과. 실제 운영 Supabase 404·사용자 오류 표시·page error 0, 배포 JS의 새 UI 코드 표식 4개를 확인했다. 개발 세션 단위 501개·Chrome 데모/일부 모의 API 64개·로컬 DB 읽기 5개·PDF 20쪽, 통합 관련 단위 45개·여섯 QR 너비 확인과 구분한다.
 - 운영 로그인 후 편집·생성·제출·Storage·PDF 및 실물 장비는 시험 계정/자료가 없어 미검증이다. UI 코드 배포 포함 확인을 전체 운영 사용성·제출 검사로 보고하지 않는다. 실제 전문가·교사 검토를 받은 것이 아니다.
 - 기능 코드를 바꾸지 않는 최종 문서·증거 PR로 완료 기록을 게시한다. 기록의 배포 ID는 위 기능 커밋의 확인된 배포이며 후속 일지 병합 배포와 구분한다. 내용·링크·비밀값 패턴·공백 검사를 수행하고 문서만 변경하는 단계에서 코드 검사를 반복하지 않는다. 원래 checkout의 영수증 변경은 보존했으며 외부 공유 일지는 확인되지 않아 기존 저장소 일지를 사용했다.
+
+## 2026-10-02 학생 결과 총점·설정 재확인 수정과 작업 중단 인계 (codex)
+
+- 최신 main `22fa46f39ff8e8c544bbd25381d80370dadc0ea5`와 관련 원격 브랜치·열린 PR을 확인한 뒤 별도 checkout의 `codex/student-result-total-settings-fix-20261002`에서 작업했다. 두 오류가 main에 남아 있고 진행 중인 작업에 같은 수정이 없는 것을 확인했다. 기존 사용자 작업은 변경하지 않았다. 외부 공유 일지 `../schooldoc-docs/development-history.md`는 없어 Git에 추적 중인 이 일지에 추가한다. 로컬 Codex 메모리에는 참고할 최근 기록이 없었으며 저장소 지침·현재 코드·CI를 직접 확인했다.
+- 해결 대상: PR #44의 [총점 종류 저장 오류](https://github.com/moodoocoding/schooldoc/pull/44#discussion_r4152129952), [설정 변경 후 확인 무효화 오류](https://github.com/moodoocoding/schooldoc/pull/44#discussion_r4152129957). [PR #50](https://github.com/moodoocoding/schooldoc/pull/50)을 draft로 생성하고 검증 후 ready로 전환했다.
+- 코드 커밋: `4bf07e4824cc6529e68ae3d8e9c2c7d93b034e8d` (`fix(student-results): 총점 저장과 설정 변경 후 재확인 보장`), 최종 검증 코드 head `28afa9d127d4a1f30414af0910f6fc8af5f834c5` (`fix(student-results): 기존 안내 무변경 저장의 확인 유지`). 이 항목을 추가하는 후속 커밋은 문서만 변경하며 최종 브랜치 head는 push 후 원격 SHA로 대조한다.
+- 사용자 최신 요청은 “지금작업까지만 작업일지에 기록해줘, 앞으로 해야 할 일도 남겨 놓고, 그리고 깃과 깃허브에 푸시해줘.”이다. 이전 병합 요청을 중단하고 **수정 브랜치까지만 push한 뒤 멈춘다. main 병합과 운영 DB/함수 적용은 수행하지 않는다.** 재개에는 새로운 사용자 요청이 필요하다.
+
+### 완료한 수정·검토
+
+- 입력·표시·저장·재조회에서 공통 총점 판별을 사용한다. `총점`·`합계` 등 이름으로 추론한 종류를 생성/설정 저장 전에 명시하며, 명시적인 개별 점수 선택은 유지한다. 추론 총점이 두 개인 입력은 서버에서도 거부한다. 저장·재조회 후 총점과 세부 점수를 중복 합산하지 않는다.
+- 새 migration [202610020200_student_result_settings_versions.sql](../supabase/migrations/202610020200_student_result_settings_versions.sql)은 기존 적용 이력을 수정하지 않고 설정 저장 RPC의 이벤트→수신자 잠금·버전 확인·확인 무효화를 구현한다. 실제 설정 변경은 모든 수신자 버전을 갱신하며, 동일 설정 저장은 버전·확인·이력을 유지한다. 같은 시각·transaction에서도 버전이 증가한다.
+- 학생 확인은 버전 누락·불일치와 읽기/쓰기 사이의 정정을 409로 거부한다. 조회 도중 설정이 바뀌어 이전 안내와 새 수신자 버전이 섞이는 응답도 거부한다. 오래 열린 화면은 최신 결과를 읽고 재확인해야 한다. 확인 옵션 해제·답변 완료·미처리 이의 상태는 회귀 검사로 구분했다.
+- 자동 Codex 리뷰가 이전 NULL 종류의 무변경 저장도 재확인시키는 문제를 추가로 지적했다. 추론된 의미로 비교하도록 수정하고 로컬/SQL 회귀를 추가했다. 해당 스레드는 해결 처리했고 최종 코드 head 재리뷰는 추가 지적 없이 👍로 완료했다. 실제 전문가·교사 승인이나 별도 사람의 코드 리뷰를 받은 것은 아니다.
+- AI 자체 웹디자인·UX·UI 검토와 실제 Chrome 교사 1366px/학생 390px 전체 화면 캡처로 재확인 경고→최신 조회→확인 완료, 키보드 Enter 갱신, 합계/배점 변화와 가로 넘침 없음을 확인했다. 실제 운영 사용성·200% 확대는 미검증이다. 실제 학생 자료 대신 합성 자료를 사용했다.
+
+### 검증 상태
+
+| 구분 | 결과와 근거 |
+| --- | --- |
+| 통과 — 설치·타입·lint·빌드 | `npm ci`, `npm run typecheck`, `npm run lint`, `npm run build` 성공. 기존 lint 경고 6개와 번들 크기 경고 유지. |
+| 통과 — 단위·desktop | `npm test`: 64파일 517개. `npm run test:desktop`: 12개. 최종 코드 head의 CI에서도 통과. |
+| 통과 — 서버·SQL | Deno 2.9.6 서버 CI 44개·20단계, 학생 결과 6개 포함. 실제 Edge handler·AES-GCM·PGlite SQL을 사용하며 Auth/PostgREST/pgcrypto/Realtime는 대역 또는 제외. Deno 타입 검사를 포함한다. |
+| 통과 — 학생 결과 Chrome | 관련 E2E 13개: 총점 저장·재조회, 세부/총점 혼합, 항목명·배점·종류 변경, 오래 열린 화면 거부·갱신·재확인, 확인 전 학생의 오래된 버전 거부. |
+| 예상 실패 재현 | 원본 main `22fa46f`에 추가 서버 회귀를 이식하면 5개 실패. 원본의 기존 Deno 타입 오류 때문에 이 재현에만 `--no-check`를 사용했다. 수정본 실패와 구분한다. |
+| 실패 — CI 첫 실행 | [Actions 36958020023 attempt 1](https://github.com/moodoocoding/schooldoc/actions/runs/36958020023/attempts/1): E2E 282개 통과·5개 예정된 제외·기존 가정통신문 PDF 호환성 390px 1개 실패. `route.fetch: read ECONNRESET`로 로컬 PDF Worker 요청이 끊겼다. 이후 server-flow/package는 실행되지 않았다. PDF 코드·의존성·브라우저 설정 diff는 없다. 실패 trace를 보존했다. |
+| 통과 — PDF 반복 재검증 | 같은 PDF 검사 4개를 로컬에서 세 차례 반복하여 12개 모두 통과, 최종 exit 0·HTML 보고서 확인. Windows 종료 대기 중인 해당 시험용 Vite 프로세스만 정리했다. 최초 CI 실패를 숨기거나 제품 코드를 우회하지 않았다. |
+| 통과 — CI 재실행 | 같은 코드 head의 [Actions 36958020023 attempt 2](https://github.com/moodoocoding/schooldoc/actions/runs/36958020023/attempts/2) 최종 success. verify/package 성공. 전체 E2E 283개 통과·5개 예정된 제외, 별도 `test:server-flow`에서 그 HTTP·SQL Chrome 5개 모두 통과. |
+| 통과 — Windows 패키지 | 위 CI의 실제 산출 EXE 실행 검사 15개 성공: 격리된 가상 교사, 화면 이동·PDF·다운로드·저장·재시작 등. 서버는 모의 환경이며 실제 Google/Supabase 통합 검증과 구분한다. PR 실행의 publish job은 예정대로 skipped여서 새 정식 Release는 게시하지 않았다. |
+| 실행 중/후속 확인 | 문서 기록 직전 코드 CI는 완료됐다. 이 일지 push가 새 문서 head의 CI/Preview를 시작하면 그 상태를 완료 보고에 남기고, 사용자 중단 지시에 따라 추가 완료 대기·병합을 진행하지 않는다. 문서만 바뀌므로 로컬 제품 검사를 반복하지 않고 내용·상대 링크·비밀값 패턴·`git diff --check`를 확인한다. |
+| 미실행 | 운영 Supabase 로그인/쓰기·실제 Realtime·다중 PostgreSQL 연결 잠금·실물 장비·프린터·운영 학생 자료 시험. 원격 통합 검증을 로컬 fixture 통과로 보고하지 않는다. |
+
+### GitHub·배포·연결 상태
+
+- 기록 시점 PR #50은 OPEN·미병합이며 main은 `22fa46f39ff8e8c544bbd25381d80370dadc0ea5` 그대로다. 운영 main push·자동 프런트 배포·main 포터블 릴리즈는 이번 작업에서 실행하지 않았다. 코드 브랜치 push와 PR 게시는 완료했고, 이 일지는 별도 `docs(student-results)` 커밋으로 같은 브랜치에 push한다. force push/amend/rebase를 하지 않는다.
+- 프런트: 코드 head `28afa9d`의 Vercel Preview deployment `6800221843` 성공. [미리보기](https://schooldoc-m9fi5nho6-panthea0-9353s-projects.vercel.app). 운영 프런트는 미적용이다. 문서 push의 새 Preview와 위 코드 Preview를 구분한다.
+- DB: `202610020200_student_result_settings_versions.sql` **준비 완료·운영 미적용·추가 승인 대기**. Edge Functions: `student-results-admin`, `student-results-public` **수정 완료·운영 미적용·추가 승인 대기**. 현재 프런트는 이미 버전을 전송하므로 코드 통합과 실제 서버 적용을 구분할 수 있다. 운영 기능 해결 완료로 보고하지 않는다.
+- 최근 저장소 운영 기록의 프로젝트는 `jhystopaacyfvjxhnpyd`, 웹은 `https://schooldoc-nine.vercel.app`이다. 실제 현재 연결·migration 이력·운영 함수 정의는 아직 재검증하지 않았다. 운영 DB에 접속/변경하거나 실제 학생 자료를 조작하지 않았다.
+- 실행 환경 websocket 연결에서 일시적인 HTTP 503/transport disconnect가 발생했지만 재연결하여 Git 상태와 CI 완료를 확인했다. 인증·자격 증명 변경이나 예상치 못한 권한 승인은 발생하지 않았다. 연결이 다시 끊겨 push/원격 확인이 막히면 완료로 기록하지 않고 블로커로 보고한다.
+
+### 앞으로 해야 할 일과 운영 승인 범위
+
+1. 사용자 새 요청이 있을 때 최신 main·PR head·미해결 리뷰·새 문서 head CI를 다시 확인한다. 필요 시 관련 변경을 재검증하고 승인된 경우에만 PR #50을 squash 병합한다. main 자동 프런트 배포와 같은 main SHA의 포터블 CI/정식 Release/게시 EXE 다운로드·체크섬·Windows 실행은 각각 확인해야 한다.
+2. **운영 적용은 아직 승인되지 않았다.** 별도 승인 후 실제 Supabase 프로젝트·기존 암호화 secret의 존재·migration 이력·dry-run을 확인한다. 다른 기능의 미적용 migration을 함께 적용하지 않고, 준비한 `202610020200`만 적용한 다음 위 두 Edge Functions만 이름 지정 배포한다. 기존 JWT 설정·암호화 키·권한 범위를 유지한다.
+3. migration은 `touch_student_result_updated_at()`와 `update_student_result_event_settings(...)` 두 기존 함수를 교체한다. 적용 순간 기존 성적·개인정보·확인 상태를 바꾸는 UPDATE는 없고 테이블/컬럼/접근 권한을 추가하지 않는다. 적용 후 실제 항목·배점·종류·안내 설정 변경부터 모든 수신자 버전과 확인 상태를 갱신한다. 확인 기능이 켜져 있으면 완료 상태는 재확인 필요로, 꺼져 있으면 실제 답변 유무에 따라 답변 완료/조회로 전환한다. 미처리 이의·점수·피드백·개인 링크는 유지하며 무변경 저장은 기존 확인을 유지한다.
+4. 실제 안내 전체 수신자 잠금으로 큰 안내/동시 확인에 잠금 대기가 생길 수 있고, 오래 열린 화면/버전 없는 구버전 확인은 409와 새로고침이 필요하다. 승인된 합성 원격 자료로 생성→저장 후 재조회→확인→설정 정정→오래된 화면 거부→갱신→재확인과 실제 Auth/Realtime/다중 연결 경로를 검증해야 한다.
+5. 되돌리기 준비: 적용 직전 두 DB 함수 정의·migration 이력·두 Edge 배포 버전과 소스를 보존한다. 문제 시 이전 확인된 Edge 소스로 이름 지정 재배포하고, 새 전진 migration으로 이전 DB 함수 정의를 복구한다. 기존 migration/이력 삭제나 테이블 DROP을 하지 않는다. 이후 변경으로 이미 무효화된 확인 시각은 코드 롤백으로 복원되지 않으므로 재확인을 유지한다. 상태/성적 일괄 복원은 별도 승인·정확한 복원 자료가 필요하다. 롤백하면 이번 오류가 재발할 수 있다.
+6. 과거 잘못 `score`로 저장된 총점은 교사의 의도적인 개별 점수 선택과 구분할 수 없어 자동 일괄 보정하지 않았다. 필요한 안내는 교사가 종류를 확인하여 정정해야 하며 과거 실제 학생 자료 소급 변경은 이번 범위에 없다.

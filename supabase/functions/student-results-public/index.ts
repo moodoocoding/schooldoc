@@ -45,6 +45,7 @@ interface EventRow {
   status: 'open' | 'closed';
   allow_confirmation: boolean;
   allow_dispute: boolean;
+  updated_at: string;
 }
 
 interface RecipientRow {
@@ -84,7 +85,7 @@ const consumeRateLimit = async (request: Request, action: string, scope: string)
 const getEvent = async (publicToken: string) => {
   const { data, error } = await db
     .from('student_result_events')
-    .select('id, public_token, title, description, status, allow_confirmation, allow_dispute')
+    .select('id, public_token, title, description, status, allow_confirmation, allow_dispute, updated_at')
     .eq('public_token', publicToken)
     .maybeSingle();
   if (error) throw error;
@@ -95,7 +96,7 @@ const getEvent = async (publicToken: string) => {
 const getEventById = async (eventId: string) => {
   const { data, error } = await db
     .from('student_result_events')
-    .select('id, public_token, title, description, status, allow_confirmation, allow_dispute')
+    .select('id, public_token, title, description, status, allow_confirmation, allow_dispute, updated_at')
     .eq('id', eventId)
     .maybeSingle();
   if (error) throw error;
@@ -169,6 +170,11 @@ const buildResult = async (event: EventRow, rawRecipient: RecipientRow) => {
     decryptStudentPayload<IdentityPayload>(recipient.identity_ciphertext),
     decryptStudentPayload<ResultPayload>(recipient.result_ciphertext),
   ]);
+  // A settings save can run between these reads. Never pair old event text or
+  // columns with a newer recipient token that would permit confirmation.
+  if ((await getEventById(event.id)).updated_at !== event.updated_at) {
+    throw new HttpError(409, '결과가 변경되었습니다. 최신 결과를 확인한 뒤 다시 진행해 주세요.');
+  }
   return {
     event: {
       id: event.id,
@@ -318,17 +324,16 @@ Deno.serve(async (request) => {
       if (!event.allow_confirmation) throw new HttpError(403, '결과 확인 기능이 열려 있지 않습니다.');
       if (recipient.status === 'disputed') throw new HttpError(409, '제출한 이의에 대한 답변을 기다려 주세요.');
       const expectedUpdatedAt = typeof body.expectedUpdatedAt === 'string' ? body.expectedUpdatedAt : '';
-      if (expectedUpdatedAt && recipient.updated_at !== expectedUpdatedAt) {
+      if (!expectedUpdatedAt || recipient.updated_at !== expectedUpdatedAt) {
         throw new HttpError(409, '결과가 변경되었습니다. 최신 결과를 확인한 뒤 다시 진행해 주세요.');
       }
       const confirmedAt = new Date().toISOString();
-      let update = db
+      const update = db
         .from('student_result_recipients')
         .update({ status: 'confirmed', confirmed_at: confirmedAt })
         .eq('id', recipient.id)
-        .eq('event_id', event.id);
-      // Older deployed clients omit this field during the function-first rollout.
-      if (expectedUpdatedAt) update = update.eq('updated_at', expectedUpdatedAt);
+        .eq('event_id', event.id)
+        .eq('updated_at', expectedUpdatedAt);
       const { data: confirmed, error } = await update.select('id').maybeSingle();
       if (error) throw error;
       if (!confirmed) throw new HttpError(409, '결과가 변경되었습니다. 최신 결과를 확인한 뒤 다시 진행해 주세요.');

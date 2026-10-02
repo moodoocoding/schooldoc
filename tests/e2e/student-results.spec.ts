@@ -2,6 +2,76 @@ import { expect, test } from '@playwright/test';
 import { jsPDF } from 'jspdf';
 import writeXlsxFile from 'write-excel-file/node';
 
+test('수동 총점 저장·재조회와 안내 설정 정정 뒤 오래 열린 화면의 재확인을 보장한다', async ({ context, page }, testInfo) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await page.goto('/tools/student-results/new');
+  await page.getByPlaceholder('예: 2학기 수행평가 결과').fill('가상 설정 정정 검사');
+  await page.getByLabel('1번 항목명').fill('세부 점수');
+  await page.getByLabel('세부 점수 배점').fill('50');
+  await page.getByRole('button', { name: '항목 추가' }).click();
+  await page.getByLabel('2번 항목명').fill('총점');
+  await page.getByLabel('총점 배점').fill('100');
+  await expect(page.getByLabel('총점 항목 종류')).toHaveValue('total');
+  // Do not select the kind: renaming the manual column is the regression trigger.
+  await page.getByLabel('1번 학생 성명').fill('가상하늘');
+  await page.getByLabel('1번 학생 확인번호').fill('4821');
+  await page.getByLabel('1번 학생 세부 점수 점수').fill('45');
+  await page.getByLabel('1번 학생 총점 점수').fill('92');
+  await page.getByRole('button', { name: '학생 추가' }).click();
+  await page.getByLabel('2번 학생 성명').fill('가상바다');
+  await page.getByLabel('2번 학생 확인번호').fill('5732');
+  await page.getByLabel('2번 학생 세부 점수 점수').fill('40');
+  await page.getByLabel('2번 학생 총점 점수').fill('87');
+  await page.getByRole('button', { name: '결과 안내 만들기' }).click();
+  await expect(page).toHaveURL(/\/tools\/student-results\/[0-9a-f-]+$/);
+  await page.reload();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('schooldoc_student_results_v1')!)[0].columns[1].kind)).toBe('total');
+  await page.getByRole('tab', { name: '접속 정보' }).click();
+  const publicLink = await page.getByRole('link', { name: '학생 화면 열기' }).getAttribute('href');
+  await page.getByRole('tab', { name: '현황' }).click();
+  const student = await context.newPage();
+  await student.setViewportSize({ width: 390, height: 844 });
+  const staleStudent = await context.newPage();
+  for (const [index, studentPage] of [student, staleStudent].entries()) {
+    await studentPage.goto(publicLink!);
+    await studentPage.getByLabel('성명').fill(index === 0 ? '가상하늘' : '가상바다');
+    await studentPage.getByLabel('확인번호').fill(index === 0 ? '4821' : '5732');
+    await studentPage.getByRole('button', { name: '내 결과 조회' }).click();
+  }
+  await expect(student.getByText('92 / 100').first()).toBeVisible();
+  await student.getByRole('button', { name: '내용 확인 완료' }).click();
+  const row = page.getByRole('row', { name: /가상하늘/ });
+  await expect(row.getByText('확인', { exact: true })).toBeVisible();
+
+  for (const field of ['label', 'maxScore', 'kind']) {
+    await page.getByRole('button', { name: '안내 정보 수정' }).click();
+    const dialog = page.getByRole('dialog');
+    if (field === 'label') await dialog.getByLabel('2번 항목명').fill('정정 총점');
+    if (field === 'maxScore') await dialog.getByLabel('배점', { exact: true }).nth(1).fill('200');
+    if (field === 'kind') await dialog.getByRole('combobox').nth(1).selectOption('score');
+    await dialog.getByRole('button', { name: '변경 저장' }).click();
+    await expect(row).toContainText('재확인 필요');
+    await staleStudent.getByRole('button', { name: '내용 확인 완료' }).click();
+    await expect(staleStudent.getByRole('alert')).toContainText('최신 결과를 확인');
+    await staleStudent.getByRole('button', { name: '최신 결과 확인' }).click();
+    await student.getByRole('button', { name: '최신 결과 확인' }).focus();
+    await student.getByRole('button', { name: '최신 결과 확인' }).press('Enter');
+    await expect(student.getByText('수정된 결과나 선생님 답변을 확인한 뒤')).toBeVisible();
+    await expect(student.getByText('정정 총점', { exact: true })).toBeVisible();
+    if (field === 'maxScore') await expect(student.getByText('92 / 200').first()).toBeVisible();
+    if (field === 'kind') await expect(student.getByText('137 / 250')).toBeVisible();
+    if (field === 'kind') {
+      await page.screenshot({ path: testInfo.outputPath('teacher-reconfirm-desktop.png'), fullPage: true });
+      await student.screenshot({ path: testInfo.outputPath('student-reconfirm-mobile.png'), fullPage: true });
+    }
+    await student.getByRole('button', { name: '내용 확인 완료' }).click();
+    await expect(student.getByText('결과 확인을 완료했습니다.')).toBeVisible();
+    await expect(row.getByText('확인', { exact: true })).toBeVisible();
+  }
+  await student.screenshot({ path: testInfo.outputPath('student-confirmed-mobile.png'), fullPage: true });
+  expect(await student.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test('교사 생성부터 학생 이의와 재확인까지 로컬 흐름이 이어진다', async ({ context, page }) => {
   await page.goto('/tools/student-results');
   await page.getByRole('button', { name: '새 결과 안내' }).click();

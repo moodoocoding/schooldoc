@@ -5,12 +5,14 @@ import type {
   StudentResultEvent,
   StudentResultEventSettings,
 } from './types';
-import { cleanText, validateStudentResultDraft } from './studentResultsUtils';
+import { cleanText, isTotalResultColumn, normalizeStudentResultColumn, validateStudentResultDraft } from './studentResultsUtils';
 
 const STORAGE_KEY = 'schooldoc_student_results_v1';
 const CHANGE_EVENT = 'schooldoc-student-results-change';
 const makeId = () => crypto.randomUUID();
 const makeToken = () => makeId().replaceAll('-', '');
+// Rapid edits in the same millisecond must still invalidate an older screen.
+const nextVersion = (previous?: string) => new Date(Math.max(Date.now(), previous ? Date.parse(previous) + 1 : 0)).toISOString();
 
 const read = (): StudentResultEvent[] => {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -45,7 +47,7 @@ const updateEvent = (eventId: string, updater: (event: StudentResultEvent) => St
   let updated: StudentResultEvent | null = null;
   const events = read().map((event) => {
     if (event.id !== eventId) return event;
-    updated = { ...updater(event), updatedAt: new Date().toISOString() };
+    updated = { ...updater(event), updatedAt: nextVersion(event.updatedAt) };
     return updated;
   });
   write(events);
@@ -58,7 +60,7 @@ const updateRecipient = (eventId: string, recipientId: string, updater: (recipie
     ...current,
     recipients: current.recipients.map((recipient) => {
       if (recipient.id !== recipientId) return recipient;
-      updatedRecipient = updater(recipient);
+      updatedRecipient = { ...updater(recipient), updatedAt: nextVersion(recipient.updatedAt) };
       return updatedRecipient;
     }),
   }));
@@ -86,7 +88,7 @@ export const createStudentResultEvent = (ownerId: string, draft: StudentResultDr
     status: 'open',
     allowConfirmation: draft.allowConfirmation,
     allowDispute: draft.allowDispute,
-    columns: draft.columns.map((column) => ({ ...column, label: cleanText(column.label) })),
+    columns: draft.columns.map((column) => normalizeStudentResultColumn({ ...column, label: cleanText(column.label) })),
     recipients: draft.recipients.map((recipient) => ({
       id: makeId(),
       studentKey: cleanText(recipient.studentKey),
@@ -196,21 +198,35 @@ export const updateStudentResultSettings = (ownerId: string, eventId: string, ex
   if (event.updatedAt !== expectedUpdatedAt) throw new Error('다른 변경이 반영되었습니다. 새로고침 후 다시 확인해 주세요.');
   if (!settings.title.trim() || settings.title.length > 200 || settings.description.length > 4000
     || settings.columns.length !== event.columns.length
+    || new Set(settings.columns.map((column) => column.id)).size !== event.columns.length
+    || settings.columns.filter(isTotalResultColumn).length > 1
     || settings.columns.some((column) => !event.columns.some((existing) => existing.id === column.id)
       || !column.label.trim() || column.maxScore <= 0 || !Number.isFinite(column.maxScore)
       || event.recipients.some((recipient) => recipient.values[column.id] > column.maxScore))) {
     throw new Error('안내 정보와 결과 항목을 확인해 주세요.');
   }
   const before = { title: event.title, description: event.description, allowConfirmation: event.allowConfirmation, allowDispute: event.allowDispute, columns: event.columns };
-  return updateEvent(eventId, (current) => ({
-    ...current,
+  const after = {
     title: cleanText(settings.title), description: settings.description.trim(),
     allowConfirmation: settings.allowConfirmation, allowDispute: settings.allowDispute,
-    columns: settings.columns,
-    recipients: settings.allowConfirmation ? current.recipients : current.recipients.map((recipient) => (
-      recipient.status === 'reconfirm' ? { ...recipient, status: 'replied', updatedAt: new Date().toISOString() } : recipient
-    )),
-    revisions: [...(current.revisions ?? []), { changedAt: new Date().toISOString(), before, after: settings }],
+    columns: event.columns.map((column) => {
+      const edited = settings.columns.find((candidate) => candidate.id === column.id)!;
+      return normalizeStudentResultColumn({ ...edited, label: cleanText(edited.label), description: edited.description.trim() });
+    }),
+  };
+  if (JSON.stringify({ ...before, columns: before.columns.map(normalizeStudentResultColumn) }) === JSON.stringify(after)) return event;
+  return updateEvent(eventId, (current) => ({
+    ...current,
+    ...after,
+    recipients: current.recipients.map((recipient) => ({
+      ...recipient,
+      status: ['confirmed', 'reconfirm', 'replied'].includes(recipient.status)
+        ? after.allowConfirmation ? 'reconfirm' : recipient.dispute?.teacherReply ? 'replied' : 'viewed'
+        : recipient.status,
+      confirmedAt: undefined,
+      updatedAt: nextVersion(recipient.updatedAt),
+    })),
+    revisions: [...(current.revisions ?? []), { changedAt: new Date().toISOString(), before, after }],
   }));
 };
 
