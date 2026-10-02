@@ -225,3 +225,15 @@
 - [CI 37025330119](https://github.com/moodoocoding/schooldoc/actions/runs/37025330119)는 Chrome 304통과·1실패·5별도 서버 생략으로 verify 실패, package/publish 미실행이었다. 한국 시간 토요일에 월~금 예약표의 오늘 칸이 없는데 배색 검사가 이를 요구하는 날짜 준비 오류다. 실패 전체 화면·DOM과 한국 날짜 공통 함수를 대조해 확인했다. 실패한 CI를 통과로 보고하거나 main을 병합하지 않았다.
 - 검사 커밋 3a6d03d에서 평일 시계만 고정하고 기존 배색 3개 기대값을 그대로 유지했다. UTC 금요일·한국 토요일 경계에서는 오늘 표시가 없고 예약 칸이 활성화되는 별도 검사를 추가했다. 제품 소스는 변경하지 않았다. `node node_modules/@playwright/test/cli.js test tests/e2e/special-rooms-week-grid.spec.ts` 11개, `npm run typecheck`, `npm run lint` 통과(기존 경고6).
 - 이 기록 시점에는 최신 전체 CI·새 후보·main squash·자동 정식 릴리즈·정식 다운로드 실제 검증은 대기다. 최신 main 변경 여부와 필수 결과를 확인한 뒤 이어간다. 기존 사용자 미커밋4개와 실제 자료·키·secrets는 보존했다. 시험 자료의 정리 대기 ID·이유와 실물 프린터/AI 인식 정확도 한계는 앞 절을 따른다.
+
+## 2026-10-03 최신 후보 통과와 main 통합 (codex)
+
+최신 ea8b 후보 CI verify/package, 전체306 Chrome+별도 서버5, 타입/린트/548단위/15desktop/서버/SQL/빌드가 통과했다. 게시·재다운로드 후보 SHA-256과 Windows 실제 Google 로그아웃/재로그인·가상 장부/IndexedDB·학생 결과·가상 특별실 실시간·가상 등록부 서명 반영을 확인했다. 저장 QR 실제 해독·Chrome 접속도 확인했다.
+
+PR53을 head 고정 후 main7cc1680ee30d3416154c9473fe7fa741fbedc444에 squash 병합했고 포함된 PR52는 닫았다. 후보와 main 파일 내용이 같으며 같은 main 운영 웹 Production6812954201 success와 공개 통신문 아니오 응답 제출을 확인했다. 기록 시점 main 자동 정식 CI37032935003은 진행 중으로 정식 게시/다운로드/실행은 미완료다. 상세 후보 SHA·각 실제 범위·정리할 시험 ID와 이후 결과: [통합 검증 기록](../design/student-results-integration/2026-10-02/report.md). 원본 사용자 변경4개와 실제 업무·키·secrets는 보존했다.
+
+## 2026-10-03 정식 릴리즈 게시·실제 검증 중단과 재개 (codex)
+
+main7cc1680 자동 verify/package/publish 성공으로 정식 릴리즈가 최신으로 게시됐다. 다운로드 EXE101078798바이트와 SHA-256 `3b2b77b3cd2cd9116cf9709fa7609c051125c2a4d5fd6e41dd6fe9da11d4056c`/manifest/SUMS/main/패키지15검사 일치. 저장소 밖 한글·공백 경로 Windows x64 10.0.26200 실제 실행, 저장 Google 인증·가상 장부·IndexedDB PDF1/11쪽, 같은 EXE 정상 로그아웃→Chrome Google 재로그인→장부 복구 성공.
+
+공개 가상 파일 선택 창에서 컴퓨터 조작 도구가 현재 Chrome URL 확인 불가로 이 턴의 조작을 중단했다. 이후 UI 우회 없음. 정식 자체 재시작·제출/교사 반영/다운로드/인쇄·각 업무 정식 재조회·시험 자료 정리는 미완료이며 전체 실제 검증 완료로 보고하지 않는다. 후보와 정식 결과, 시험 업무 ID·미정리 상태·재개 기준은 [상세 정식 기록](../design/student-results-integration/2026-10-02/2026-10-03-stable-verification.md)에 저장했다. 후속 일지는 문서 전용 codex/stable-release-verification-20261003 브랜치에 push해 보존하며 main7cc에 추가 병합하지 않는다. 원본 사용자 변경4개와 실제 업무·키·secrets는 보존했다.

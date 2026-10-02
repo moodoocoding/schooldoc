@@ -299,3 +299,26 @@ Excel 첫 일회성 진단은 네 번째 열을 응답이라고 잘못 가정해
 - [CI 37025330119](https://github.com/moodoocoding/schooldoc/actions/runs/37025330119)는 Chrome 304통과·1실패·5별도 서버 생략으로 verify 실패, package/publish 미실행이었다. 한국 시간 토요일에 월~금 예약표의 오늘 칸이 없는데 배색 검사가 이를 요구하는 날짜 준비 오류다. 실패 전체 화면·DOM과 한국 날짜 공통 함수를 대조해 확인했다. 실패한 CI를 통과로 보고하거나 main을 병합하지 않았다.
 - 검사 커밋 3a6d03d에서 평일 시계만 고정하고 기존 배색 3개 기대값을 그대로 유지했다. UTC 금요일·한국 토요일 경계에서는 오늘 표시가 없고 예약 칸이 활성화되는 별도 검사를 추가했다. 제품 소스는 변경하지 않았다. `node node_modules/@playwright/test/cli.js test tests/e2e/special-rooms-week-grid.spec.ts` 11개, `npm run typecheck`, `npm run lint` 통과(기존 경고6).
 - 이 기록 시점에는 최신 전체 CI·새 후보·main squash·자동 정식 릴리즈·정식 다운로드 실제 검증은 대기다. 최신 main 변경 여부와 필수 결과를 확인한 뒤 이어간다. 기존 사용자 미커밋4개와 실제 자료·키·secrets는 보존했다. 시험 자료의 정리 대기 ID·이유와 실물 프린터/AI 인식 정확도 한계는 앞 절을 따른다.
+
+## 2026-10-03 main 통합과 최신 후보 결과 (codex)
+
+- 최신 검증 head `ea8b1aa72f171ca1e04447321c895e9e37a7abfb`의 [CI 37029346114](https://github.com/moodoocoding/schooldoc/actions/runs/37029346114) verify/package 성공. 타입·린트(기존6경고)·69파일/548단위·15desktop·Deno70/20하위 단계·학생SQL18·마감SQL5·웹빌드 통과. 전체 Chrome306통과/별도 서버5생략, 전용 HTTP/SQL Chrome5통과. 데모·로컬 대역을 원격 결과로 보고하지 않는다. d057의 주말 검사 준비 오류는 기존 기대값을 유지한 3a6d03d에서 고쳐졌다.
+- [최신 후보](https://github.com/moodoocoding/schooldoc/releases/tag/portable-rc-v1.0.1-ea8b1aa72f17)를 게시·재다운로드했다. `SchoolDoc_Portable_1.0.1_ea8b1aa72f17.exe`, 101077789바이트, SHA-256 `c5342266fc83ee4878b31a44c80c82f29fbf73a7817b657db5b41df5e8ab992f`가 일치했다. 동일 PC Windows x64 10.0.26200에서 정상 Google 로그아웃/현재 Chrome 계정 선택/재로그인, 가상 장부12,340원·잔액37,660원·저장PDF1/11쪽과 가상 학생82점/확인1을 실제 확인했다.
+- 실제 특별실 가상 예약표 `94567046-530f-4404-8c92-a71ef7ad4bbe`만 만들었다. 가상과학실1곳/토요일 포함/8교시, 공개 비밀번호1111 거절→4821 정상 접속→10월3일1교시 `가상반 후보 시험` 예약→EXE 실시간1건 반영. 기존 실제 예약표는 열거나 변경하지 않았다.
+- 실제 등록부 `c1c879fc-c8ee-4c4e-a316-e6de641d2820`, 가상서명자/가상학교1명만 생성했다. 공개 Chrome 이름 검색의 마스킹, 빈 서명 제출 비활성, 가상 선 서명 제출 성공→EXE 재조회 완료1/미서명0/서명그림 반영을 확인했다. 실제 인물 서명을 모사하지 않았다.
+- 저장한 가상 자료 수합 QR PNG1024×1024를 zxing-cpp3.1.1로 읽어 EXE의 같은 공개 URL과 일치함을 확인하고 실제 Chrome에서 열었다. SHA-256 `7c50b3790be8d17e51c5d337fd0ddd1e4c642719ebf16e29dd4b6c2496ec27a3`. 시험 폴더의 reader만 설치했으며 제품 의존성은 변경하지 않았다. 앞 절의 자료 수합 QR 해독 미검증 한계는 이번 확인으로 해소됐다.
+- 01:17 KST [PR53](https://github.com/moodoocoding/schooldoc/pull/53)을 최신 head 고정과 모든 후보 기준 충족 후 squash 병합했다. main `7cc1680ee30d3416154c9473fe7fa741fbedc444`, 부모23d4d1f. 최신 main 변경 없음과 후보/main 전체 파일 diff 없음을 확인했다. 포함한 [PR52](https://github.com/moodoocoding/schooldoc/pull/52)는 별도 중복 병합 없이 닫았다. 강제 push/이력 재작성/검사 bypass는 하지 않았다.
+- 운영 웹 Production deployment6812954201은 같은 main SHA success. 새 main 운영 공개 통신문에서 원본 PDF 표시→아니오→제출 전 확인 아니오→작성 완료→Supabase 응답 제출 성공을 확인했다. 이번 가상 통신문 응답은 기존1개에 운영 재확인1개를 더했다.
+- [main 자동 CI37032935003](https://github.com/moodoocoding/schooldoc/actions/runs/37032935003)는 이 절 기록 시점 Chrome 전체 검사가 진행 중이다. 정식 게시·다운로드·실제 실행은 아직 대기이며 성공으로 선기록하지 않는다. 자체 개발 서버를 종료하고 저장소 밖 한글·공백 경로에서 정식 다운로드 EXE를 실행할 준비를 마쳤다.
+- 후속 정식 실제 결과와 이번 가상 업무 정리를 아래 절에 기록한다. 원본 사용자 checkout의 미커밋4개·기존 실제 업무/개인정보·암호화키·secrets는 보존했다.
+
+## 2026-10-03 정식 게시와 실제 검증 중단 (codex)
+
+- [main CI37032935003](https://github.com/moodoocoding/schooldoc/actions/runs/37032935003) verify/package/publish 모두 성공. 타입·린트(기존6경고)·548단위·306 Chrome/별도 서버5·15desktop·Deno70/20하위 단계·학생SQL18·마감SQL5·빌드·패키지 실제 실행15 통과. [정식 portable-v1.0.1-7cc1680ee30d](https://github.com/moodoocoding/schooldoc/releases/tag/portable-v1.0.1-7cc1680ee30d)가 최신 정식으로 게시됐고 draft=false/prerelease=false를 확인했다.
+- 정식 `SchoolDoc_Portable_1.0.1_7cc1680ee30d.exe`를 GitHub에서 다시 다운로드했다. 101078798바이트, SHA-256 `3b2b77b3cd2cd9116cf9709fa7609c051125c2a4d5fd6e41dd6fe9da11d4056c`, main SHA7cc1680/dirty=false/manifest/체크섬 목록/패키지15검사 모두 일치했다.
+- Windows x64 10.0.26200의 저장소 밖 CreatorTemp 한글·공백 경로에서 해당 다운로드 파일을 실제 실행했다. 자체 개발 서버는 종료했고 소스 디렉터리를 작업 디렉터리로 사용하지 않았다. 후보 정상 종료·프로세스0 후 정식에서 저장 인증·가상 장부50000/12340/37660·원본1개를 확인했다. 재업로드 없이 저장 PDF1쪽과11쪽 실제 표시 성공.
+- 같은 정식 EXE 정상 로그아웃→영수증 관리 접근 차단→일반 Chrome의 정상 Google 지정 계정 선택→같은 EXE 재로그인→가상 장부·금액·원본 복원 성공. 인증 토큰/코드/프로필을 추출하지 않았다. [저장 PDF 전체 화면](screens/final-7cc/actual-stable-persisted-pdf.jpg), [계정 메뉴를 닫은 재로그인 가상 장부](screens/final-7cc/actual-stable-after-relogin.jpg).
+- 자료 수합 Chrome에서 이번 가상나 이름 검색·대상 선택·전달사항 입력까지 확인했다. PDF 파일 선택 창을 연 뒤 Windows 컴퓨터 조작 도구가 현재 Chrome URL을 충분히 확인할 수 없어 안전 정책 적용을 보장할 수 없다는 이유로 이 턴의 조작을 중단했다. 이후 UI를 재시도하거나 우회하지 않았다. 파일은 아직 선택·업로드·제출하지 않았으며 제품의 제출 오류로 단정하지 않는다.
+- **정식 게시·다운로드·일부 실제 검증은 완료했지만 정식 EXE 필수 사용 흐름 전체 검증은 미완료**다. 정식 자체 종료/재실행, 공개 파일 제출→정식 교사 반영→다운로드, 실제 Windows 인쇄, 학생/통신문/특별실/등록부의 정식 재조회와 이번 가상 자료 정리는 미실행으로 남긴다. 동일 소스 후보의 성공을 정식 실제 성공으로 확대하지 않는다.
+- [정식 검증·미완료·시험 ID 상세 기록](2026-10-03-stable-verification.md)에 재개 절차와 접근 범위를 남겼다. 새 도구 접근이 가능해지면 같은 정식 SHA/체크섬부터 확인하고 표의 미완료 흐름과 가상 자료 정리를 이어간다. 보관 기간 이전 자료 수합 파기나 기존 실제 자료 삭제·DB/auth 우회는 하지 않는다.
+- 이 후속 작업일지는 `codex/stable-release-verification-20261003` 문서 전용 브랜치로 커밋·push하고 PR53/정식 릴리즈에도 최신 결과를 보존한다. 이미 배포한 main7cc에 추가 문서 커밋을 자동으로 병합하거나 새 정식 릴리즈를 만들지 않는다. 제품 통합은 main에 완료됐고 이 후속 기록의 main 반영은 별도 미완료다. 사용자 원본 checkout의 미커밋4개와 기존 업무/키/secrets는 보존했다.
