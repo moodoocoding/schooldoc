@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { jsPDF } from 'jspdf';
 import AxeBuilder from '@axe-core/playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { finishConsentFieldPlacement } from './consentFieldPlacement';
 
 const evidence = 'design/consent-field-editor/2026-10-02/evidence';
 const phase = process.env.CONSENT_UI_PHASE ?? 'final';
@@ -71,7 +72,7 @@ test('큰 원본 옆의 왼쪽 도구에서 다쪽 필드를 이동·확대·복
   await page.getByText('단축키 안내',{exact:true}).click(); expect(await help.evaluate(el=>(el as HTMLDetailsElement).open)).toBe(true); await page.getByText('단축키 안내',{exact:true}).click();
   await page.getByLabel('쪽 번호').fill('1'); await field.click(); await expect(page.getByRole('status').filter({hasText:'다시 실행했습니다.'})).toBeHidden(); await page.evaluate(()=>scrollTo(0,0)); await capture(page,'editor-selected-desktop');
   await page.evaluate(()=>document.documentElement.style.fontSize='200%'); await noOverflow(page); await capture(page,'editor-desktop-css200'); await page.evaluate(()=>document.documentElement.style.fontSize='');
-  await page.getByRole('button',{name:'필드 배치 완료'}).click(); await expect(page.getByRole('heading',{name:'누가 응답할지 정하기'})).toBeVisible(); await page.getByRole('button',{name:'필드 배치로'}).click();
+  await finishConsentFieldPlacement(page); await expect(page.getByRole('heading',{name:'누가 응답할지 정하기'})).toBeVisible(); await page.getByRole('button',{name:'필드 배치로'}).click();
   await expect(placed.getByRole('button',{name:/보호자 성명/})).toHaveCount(2); expect(errors).toEqual([]);
 });
 

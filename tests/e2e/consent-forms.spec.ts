@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { jsPDF } from 'jspdf';
 import writeXlsxFile from 'write-excel-file/node';
+import { confirmConsentPlacementPreview, finishConsentFieldPlacement } from './consentFieldPlacement';
 
 test('지원하지 않는 문서 형식은 분석하지 않는다', async ({ page }) => {
   await page.goto('/tools/consent-forms/new');
@@ -72,7 +73,9 @@ test('PDF 가정통신문의 페이지와 원본 미리보기를 표시한다', 
   await expect(page.getByRole('button', { name: '필드 배치 완료' })).toBeVisible();
   await expect(page.getByTestId('consent-field-settings')).toBeVisible();
   expect(await page.getByTestId('consent-field-settings').evaluate((element) => getComputedStyle(element).position)).toBe('fixed');
-  await page.getByRole('button', { name: '필드 배치 완료' }).click();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await finishConsentFieldPlacement(page);
+  await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole('heading', { name: '누가 응답할지 정하기' })).toBeVisible();
   const rosterWorkbook = await writeXlsxFile([
     ['Class roster'],
@@ -109,6 +112,7 @@ test('PDF 가정통신문의 페이지와 원본 미리보기를 표시한다', 
   await page.getByLabel('명단 없이 받기').check();
   await page.getByRole('button', { name: '다음: 공유 설정' }).click();
   await expect(page.getByRole('heading', { name: '공유 조건 확인' })).toBeVisible();
+  await confirmConsentPlacementPreview(page);
   await page.getByRole('button', { name: '수합 만들기' }).click();
   await expect(page.getByRole('heading', { name: '가정통신문 수합' })).toBeVisible();
   await expect(page.getByText('Field Trip Consent')).toBeVisible();
@@ -127,15 +131,17 @@ test('PDF 가정통신문의 페이지와 원본 미리보기를 표시한다', 
   });
   await page.getByRole('button', { name: '확인 후 필드 배치' }).click();
   await expect(page.getByRole('button', { name: '텍스트 필드', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '텍스트 필드', exact: true }).click();
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole('textbox', { name: '표시 이름' }).fill('참가 의견');
-  await page.getByRole('button', { name: '필드 배치 완료' }).click();
+  await finishConsentFieldPlacement(page);
+  await confirmConsentPlacementPreview(page);
   await page.getByRole('button', { name: '수합 만들기' }).click();
   await expect(page.getByRole('heading', { name: '수정된 현장체험학습 동의서' })).toBeVisible();
   await expect(page.getByLabel('가정통신문 응답 링크 QR 코드')).toBeVisible();
   const responseLink = await page.getByLabel('응답 화면 열기').getAttribute('href');
   expect(responseLink).toContain('/s/consent/');
   const managePageUrl = page.url();
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(responseLink!);
   await expect(page.getByRole('heading', { name: '수정된 현장체험학습 동의서' })).toBeVisible();
   await expect(page.locator('section[aria-label="1쪽"] canvas')).toBeVisible();
@@ -196,9 +202,10 @@ test('실수로 만든 수합을 확인창을 거쳐 삭제한다', async ({ pag
   await page.getByRole('textbox', { name: '제목' }).fill('잘못 만든 수합');
   await page.getByRole('button', { name: '확인 후 필드 배치' }).click();
   await page.getByRole('button', { name: '텍스트', exact: true }).click();
-  await page.getByRole('button', { name: '필드 배치 완료' }).click();
+  await finishConsentFieldPlacement(page);
   await page.getByLabel('명단 없이 받기').check();
   await page.getByRole('button', { name: '다음: 공유 설정' }).click();
+  await confirmConsentPlacementPreview(page);
   await page.getByRole('button', { name: '수합 만들기' }).click();
   await expect(page.getByRole('heading', { name: '가정통신문 수합' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '잘못 만든 수합' })).toBeVisible();
@@ -446,9 +453,10 @@ test('명단 없는 수합의 개인 QR 화면은 배부할 명단이 없다고 
   await page.getByRole('textbox', { name: '제목' }).fill('공개 수합 동의서');
   await page.getByRole('button', { name: '확인 후 필드 배치' }).click();
   await page.getByRole('button', { name: '텍스트', exact: true }).click();
-  await page.getByRole('button', { name: '필드 배치 완료' }).click();
+  await finishConsentFieldPlacement(page);
   await page.getByLabel('명단 없이 받기').check();
   await page.getByRole('button', { name: '다음: 공유 설정' }).click();
+  await confirmConsentPlacementPreview(page);
   await page.getByRole('button', { name: '수합 만들기' }).click();
   await page.getByRole('button', { name: '관리·공유' }).click();
 
@@ -469,9 +477,10 @@ test('결과 표 내려받기와 응답 링크 재발급을 제공한다', async
   await page.getByRole('button', { name: '확인 후 필드 배치' }).click();
   await page.getByRole('button', { name: '텍스트', exact: true }).click();
   await page.getByRole('textbox', { name: '표시 이름' }).fill('보호자 의견');
-  await page.getByRole('button', { name: '필드 배치 완료' }).click();
+  await finishConsentFieldPlacement(page);
   await page.getByLabel('명단 없이 받기').check();
   await page.getByRole('button', { name: '다음: 공유 설정' }).click();
+  await confirmConsentPlacementPreview(page);
   await page.getByRole('button', { name: '수합 만들기' }).click();
   await page.getByRole('button', { name: '관리·공유' }).click();
   const manageUrl = page.url();
@@ -548,9 +557,10 @@ test('여러 수합을 선택해 한 번에 지운다', async ({ page }) => {
     await page.getByRole('textbox', { name: '제목' }).fill(title);
     await page.getByRole('button', { name: '확인 후 필드 배치' }).click();
     await page.getByRole('button', { name: '텍스트', exact: true }).click();
-    await page.getByRole('button', { name: '필드 배치 완료' }).click();
+    await finishConsentFieldPlacement(page);
     await page.getByLabel('명단 없이 받기').check();
     await page.getByRole('button', { name: '다음: 공유 설정' }).click();
+    await confirmConsentPlacementPreview(page);
     await page.getByRole('button', { name: '수합 만들기' }).click();
     await expect(page.getByRole('heading', { name: title })).toBeVisible();
     if (title !== '남겨둘 수합') {
@@ -594,9 +604,10 @@ test('처리 중인 버튼은 다시 눌리지 않는다', async ({ page }) => {
   await page.getByRole('button', { name: '확인 후 필드 배치' }).click();
   await page.getByRole('button', { name: '텍스트', exact: true }).click();
   await page.getByRole('textbox', { name: '표시 이름' }).fill('보호자 의견');
-  await page.getByRole('button', { name: '필드 배치 완료' }).click();
+  await finishConsentFieldPlacement(page);
   await page.getByLabel('명단 없이 받기').check();
   await page.getByRole('button', { name: '다음: 공유 설정' }).click();
+  await confirmConsentPlacementPreview(page);
   await page.getByRole('button', { name: '수합 만들기' }).click();
   await page.getByRole('button', { name: '관리·공유' }).click();
   const manageUrl = page.url();
@@ -647,9 +658,10 @@ test('기존 수합을 원본 PDF까지 그대로 복제한다', async ({ page }
   await page.getByRole('button', { name: '텍스트', exact: true }).click();
   await page.getByRole('textbox', { name: '표시 이름' }).fill('보호자 의견');
   await page.getByRole('button', { name: '서명', exact: true }).click();
-  await page.getByRole('button', { name: '필드 배치 완료' }).click();
+  await finishConsentFieldPlacement(page);
   await page.getByLabel('명단 없이 받기').check();
   await page.getByRole('button', { name: '다음: 공유 설정' }).click();
+  await confirmConsentPlacementPreview(page);
   await page.getByRole('button', { name: '수합 만들기' }).click();
   await page.getByRole('button', { name: '관리·공유' }).click();
   const originUrl = page.url();

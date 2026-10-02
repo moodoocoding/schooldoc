@@ -19,6 +19,8 @@ export interface ConsentFieldDraft {
   kind: ConsentFieldKind;
   label: string;
   required: boolean;
+  /** 새 필드의 임시 위치를 원본에서 확인하기 전까지 발행을 막는다. 기존 필드는 배치된 것으로 취급한다. */
+  placementPending?: boolean;
   choice?: ConsentChoice;
   pageIndex: number;
   x: number;

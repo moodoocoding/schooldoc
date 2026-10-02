@@ -11,6 +11,7 @@ import {
   type StudentResultImportAnalysis,
 } from './studentResultsImport';
 import { StudentResultConfirmDialog } from './StudentResultConfirmDialog';
+import { readStudentResultTabDraft, saveStudentResultTabDraft, clearStudentResultTabDraft } from './studentResultsDraft';
 import { createStudentResultEvent } from './studentResultsService';
 import {
   isTextEntryTarget,
@@ -31,24 +32,25 @@ const initialColumns: EditableResultColumn[] = [
 export function StudentResultsCreatePage() {
   const navigate = useNavigate();
   const { user } = useTeacherAuth();
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [columns, setColumns] = useState<EditableResultColumn[]>(initialColumns);
-  const [recipients, setRecipients] = useState<ResultRecipientDraft[]>([
-    makeEmptyRecipient(0, initialColumns),
-  ]);
-  const [allowConfirmation, setAllowConfirmation] = useState(true);
-  const [allowDispute, setAllowDispute] = useState(true);
+  const ownerId = studentResultsOwnerId(user?.id) ?? '';
+  const [restoredDraft] = useState(() => readStudentResultTabDraft(ownerId));
+  const discardDraft = useRef(false);
+  const [title, setTitle] = useState(restoredDraft?.form.title ?? '');
+  const [description, setDescription] = useState(restoredDraft?.form.description ?? '');
+  const [columns, setColumns] = useState<EditableResultColumn[]>(restoredDraft?.form.columns ?? initialColumns);
+  const [recipients, setRecipients] = useState<ResultRecipientDraft[]>(restoredDraft?.form.recipients ?? [makeEmptyRecipient(0, initialColumns)]);
+  const [allowConfirmation, setAllowConfirmation] = useState(restoredDraft?.form.allowConfirmation ?? true);
+  const [allowDispute, setAllowDispute] = useState(restoredDraft?.form.allowDispute ?? true);
   const [error, setError] = useState('');
   const [errorFieldId, setErrorFieldId] = useState('');
   const [fileImportError, setFileImportError] = useState('');
   const [importing, setImporting] = useState(false);
-  const [importedFileName, setImportedFileName] = useState('');
-  const [importAnalysis, setImportAnalysis] = useState<StudentResultImportAnalysis | null>(null);
-  const [pendingImportFileName, setPendingImportFileName] = useState('');
-  const [pendingImport, setPendingImport] = useState<StudentResultImportAnalysis | null>(null);
+  const [importedFileName, setImportedFileName] = useState(restoredDraft?.form.importedFileName ?? '');
+  const [importAnalysis, setImportAnalysis] = useState<StudentResultImportAnalysis | null>(restoredDraft?.form.importAnalysis ?? null);
+  const [pendingImportFileName, setPendingImportFileName] = useState(restoredDraft?.pendingImportFileName ?? '');
+  const [pendingImport, setPendingImport] = useState<StudentResultImportAnalysis | null>(restoredDraft?.pendingImport ?? null);
   const [nonParticipantDialogOpen, setNonParticipantDialogOpen] = useState(false);
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>(restoredDraft?.history ?? []);
   const [undoNotice, setUndoNotice] = useState('');
   const [saving, setSaving] = useState(false);
   const [confirmLeaving, setConfirmLeaving] = useState(false);
@@ -252,7 +254,6 @@ export function StudentResultsCreatePage() {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const ownerId = studentResultsOwnerId(user?.id);
     if (!ownerId) return;
     const emptyMaxScoreIndex = columns.findIndex((column) => column.maxScore === '');
     if (emptyMaxScoreIndex >= 0) {
@@ -277,6 +278,8 @@ export function StudentResultsCreatePage() {
       setError('');
       setErrorFieldId('');
       const created = await createStudentResultEvent(ownerId, draft);
+      discardDraft.current = true;
+      clearStudentResultTabDraft(ownerId);
       navigate(`/tools/student-results/${created.id}`);
     } catch (creationError) {
       setError(creationError instanceof Error ? creationError.message : '결과 안내를 만들지 못했습니다.');
@@ -289,15 +292,25 @@ export function StudentResultsCreatePage() {
     title.trim()
     || description.trim()
     || columns.some((column) => column.label !== '평가 점수' || column.maxScore !== 100 || column.description.trim() || column.kind === 'total')
-    || recipients.some((recipient) => recipient.name.trim() || recipient.verificationCode.trim() || recipient.feedback.trim() || Object.values(recipient.values).some((value) => value !== ''))
-    || !allowConfirmation || !allowDispute || Boolean(importAnalysis),
+    || recipients.length !== 1
+    || recipients.some((recipient, index) => recipient.studentKey !== String(index + 1) || recipient.name.trim() || recipient.verificationCode.trim() || recipient.feedback.trim() || Object.values(recipient.values).some((value) => value !== ''))
+    || !allowConfirmation || !allowDispute || Boolean(importAnalysis) || Boolean(pendingImport),
   );
   useEffect(() => {
-    if (!hasEnteredData) return;
+    if (discardDraft.current) return;
+    if (!hasEnteredData) { clearStudentResultTabDraft(ownerId); return; }
+    saveStudentResultTabDraft(ownerId, {
+      form: { title, description, columns, recipients, allowConfirmation, allowDispute, importedFileName, importAnalysis },
+      history, pendingImport, pendingImportFileName,
+    });
+  }, [ownerId, hasEnteredData, title, description, columns, recipients, allowConfirmation, allowDispute, importedFileName, importAnalysis, history, pendingImport, pendingImportFileName]);
+
+  useEffect(() => {
+    if (!hasEnteredData && !importing) return;
     const warnBeforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
     window.addEventListener('beforeunload', warnBeforeUnload);
     return () => window.removeEventListener('beforeunload', warnBeforeUnload);
-  }, [hasEnteredData]);
+  }, [hasEnteredData, importing]);
   const leave = () => { if (hasEnteredData) setConfirmLeaving(true); else navigate('/tools/student-results'); };
   const fieldError = (fieldId: string) => errorFieldId === fieldId;
   const lastChange = history.length > 0 ? history[history.length - 1].label : '';
@@ -334,6 +347,9 @@ export function StudentResultsCreatePage() {
           파일을 불러오면 아래 입력란을 자동으로 채웁니다. 파일이 없으면 바로 직접 입력할 수 있습니다.
         </p>
       </div>
+
+      {restoredDraft ? <p role="status" className="border-y border-[#B9D9F2] bg-[#EFF6FC] px-4 py-3 text-sm font-semibold text-[#0F6CBD]">이 탭에서 작성하던 내용을 복원했습니다.</p> : null}
+      <p className="text-xs leading-5 text-[#526174]">다른 화면으로 이동해도 이 탭에서는 작성 내용을 임시 보관합니다. 탭을 닫거나 새로고침하면 사라집니다.</p>
 
       {error ? (
         <div role="alert" className="flex items-start gap-2 border-y border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm font-semibold text-[#B42318]">
@@ -577,7 +593,7 @@ export function StudentResultsCreatePage() {
         <button type="button" onClick={leave} className="min-h-[44px] rounded-lg border border-[#C8D0DA] px-5 text-sm font-bold">취소</button>
         <button type="submit" disabled={saving} className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[#0F6CBD] px-6 text-sm font-bold text-white hover:bg-[#0B5B9F] disabled:cursor-wait disabled:bg-[#AAB7C4]">{saving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}{saving ? '저장 중' : '결과 안내 만들기'}</button>
       </div>
-      {confirmLeaving ? <StudentResultConfirmDialog title="작성 중인 결과 안내를 나갈까요?" description="저장하지 않은 학생 결과와 파일 분석 내용이 사라집니다." confirmLabel="저장하지 않고 나가기" onCancel={() => setConfirmLeaving(false)} onConfirm={() => navigate('/tools/student-results')} /> : null}
+      {confirmLeaving ? <StudentResultConfirmDialog title="작성 중인 결과 안내를 나갈까요?" description="나가기를 선택하면 임시 보관한 학생 결과와 파일 분석 내용도 버립니다." confirmLabel="저장하지 않고 나가기" onCancel={() => setConfirmLeaving(false)} onConfirm={() => { discardDraft.current = true; clearStudentResultTabDraft(ownerId); navigate('/tools/student-results'); }} /> : null}
     </form>
   );
 }

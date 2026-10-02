@@ -115,6 +115,11 @@ export const setStudentResultEventStatus = (ownerId: string, eventId: string, st
   updateEvent(eventId, (event) => event.ownerId === ownerId ? { ...event, status } : event)
 );
 
+export const getPublicResultEventById = (eventId: string) => {
+  const event = read().find((candidate) => candidate.id === eventId);
+  return event ? { status: event.status } : null;
+};
+
 export const getPublicResultEvent = (publicToken: string) => {
   const event = read().find((candidate) => candidate.publicToken === publicToken);
   return event ? { title: event.title, description: event.description, status: event.status } : null;
@@ -160,7 +165,7 @@ export const confirmStudentResult = (eventId: string, recipientId: string, expec
     ...current,
     status: 'confirmed',
     confirmedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    updatedAt: nextVersion(current.updatedAt),
   }));
 };
 
@@ -172,7 +177,7 @@ export const disputeStudentResult = (eventId: string, recipientId: string, messa
     status: 'disputed',
     confirmedAt: undefined,
     dispute: { message: message.trim(), submittedAt: new Date().toISOString() },
-    updatedAt: new Date().toISOString(),
+    updatedAt: nextVersion(recipient.updatedAt),
   }));
 };
 
@@ -183,7 +188,7 @@ export const replyToStudentDispute = (ownerId: string, eventId: string, recipien
     ...recipient,
     status: event.allowConfirmation ? 'reconfirm' : 'replied',
     confirmedAt: undefined,
-    updatedAt: new Date().toISOString(),
+    updatedAt: nextVersion(recipient.updatedAt),
     dispute: recipient.dispute ? {
       ...recipient.dispute,
       teacherReply: reply.trim(),
@@ -245,7 +250,7 @@ export const updateStudentResultRecipient = (ownerId: string, eventId: string, r
   return updateRecipient(eventId, recipientId, (current) => ({
     ...current,
     ...after,
-    updatedAt: new Date().toISOString(),
+    updatedAt: nextVersion(current.updatedAt),
     status: current.status === 'confirmed' && event.allowConfirmation ? 'reconfirm' : current.status,
     confirmedAt: current.status === 'confirmed' && event.allowConfirmation ? undefined : current.confirmedAt,
     revisions: [...(current.revisions ?? []), { changedAt: new Date().toISOString(), reason: reason.trim(), before, after }],
@@ -260,7 +265,7 @@ export const regenerateStudentResultPersonalToken = (ownerId: string, eventId: s
     ...current,
     recipients: current.recipients.map((recipient) => {
       if (recipient.id !== recipientId) return recipient;
-      updatedRecipient = { ...recipient, personalToken: makeToken() };
+      updatedRecipient = { ...recipient, personalToken: makeToken(), updatedAt: nextVersion(recipient.updatedAt) };
       return updatedRecipient;
     }),
   }));

@@ -1,0 +1,83 @@
+{
+  "environment": "Installed Chrome, local demo only; 683px simulates CSS viewport at 200% on 1366px. Not native browser zoom.",
+  "findings": [
+    {
+      "name": "desktop-status-24",
+      "width": 1366,
+      "document": 1366,
+      "height": 2849,
+      "violations": []
+    },
+    {
+      "name": "desktop-access-24",
+      "width": 1366,
+      "document": 1366,
+      "height": 2547,
+      "violations": []
+    },
+    {
+      "name": "mobile-access-24",
+      "width": 390,
+      "document": 390,
+      "height": 7754,
+      "violations": []
+    },
+    {
+      "name": "mobile-status-24",
+      "width": 390,
+      "document": 390,
+      "height": 10854,
+      "violations": []
+    },
+    {
+      "name": "zoom-equivalent-status-24",
+      "width": 683,
+      "document": 683,
+      "height": 10802,
+      "violations": []
+    },
+    {
+      "name": "desktop-status-60",
+      "width": 1366,
+      "document": 1366,
+      "height": 6053,
+      "violations": []
+    },
+    {
+      "name": "desktop-empty",
+      "width": 1366,
+      "document": 1366,
+      "height": 900,
+      "violations": []
+    },
+    {
+      "name": "mobile-empty",
+      "width": 390,
+      "document": 390,
+      "height": 844,
+      "violations": []
+    },
+    {
+      "name": "mobile-student-result",
+      "width": 390,
+      "document": 390,
+      "height": 974,
+      "violations": []
+    },
+    {
+      "name": "mobile-student-exited",
+      "width": 390,
+      "document": 390,
+      "height": 844,
+      "violations": []
+    },
+    {
+      "name": "desktop-qr-24",
+      "width": 1366,
+      "document": 1366,
+      "height": 7223,
+      "violations": []
+    }
+  ],
+  "pageErrors": []
+}

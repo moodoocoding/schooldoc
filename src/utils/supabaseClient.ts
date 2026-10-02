@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { teacherAuthRecovery } from "../auth/teacherAuthRecovery";
 import { isDesktop } from './desktop';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -13,9 +14,10 @@ export const isSupabaseConfigured = Boolean(
 
 // Supabase client instance (or null if not configured)
 export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey, isDesktop() ? {
-      auth: { flowType: 'pkce', detectSessionInUrl: false },
-    } : undefined)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      global: { fetch: teacherAuthRecovery.fetch },
+      ...(isDesktop() ? { auth: { flowType: "pkce", detectSessionInUrl: false } } : {}),
+    })
   : null;
 
 if (!isSupabaseConfigured) {

@@ -9,7 +9,8 @@ const runGh = args => execFileSync('gh', args, { encoding: 'utf8', stdio: ['igno
 
 // gh를 주입할 수 있어 게시 방지·재실행 검사를 원격 변경 없이 수행한다.
 export async function publishPortable({ directory = 'release', smokePath = process.env.PORTABLE_SMOKE_REPORT || 'test-results/portable/portable-smoke.json',
-  candidate = false, repo = process.env.GITHUB_REPOSITORY || 'moodoocoding/schooldoc', gh = runGh } = {}) {
+  candidate = false, repo = process.env.GITHUB_REPOSITORY || 'moodoocoding/schooldoc', gh = runGh,
+  wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)) } = {}) {
   const manifestPath = path.resolve(directory, 'portable-manifest.json');
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
   if (!/^SchoolDoc_Portable_[\w.-]+\.exe$/.test(manifest.artifactName) || !/^\d+\.\d+\.\d+$/.test(manifest.version))
@@ -82,10 +83,19 @@ export async function publishPortable({ directory = 'release', smokePath = proce
   if (!existing) {
     gh(['release', 'create', tag, '--repo', repo, '--draft', '--target', manifest.commit,
       '--title', `스쿨독 포터블 v${manifest.version}${candidate ? ' 검증 후보' : ''} (${manifest.commit.slice(0, 12)})`, '--notes-file', notesPath]);
-    existing = findRelease();
+    // 생성 직후 목록에 아직 나타나지 않을 수 있다. 같은 초안을 다시 만들지 않고 조회만 재시도한다.
+    for (const delay of [0, 250, 1000, 3000]) {
+      if (delay) await wait(delay);
+      existing = findRelease();
+      if (existing) break;
+    }
   }
   if (!existing?.draft || existing.target_commitish !== manifest.commit || existing.tag_name !== tag
-    || !Number.isSafeInteger(existing.id) || existing.id < 1) throw new Error('Draft release metadata mismatch');
+    || !Number.isSafeInteger(existing.id) || existing.id < 1) {
+    const observed = existing ? { id: existing.id, draft: existing.draft, tag: existing.tag_name,
+      target: existing.target_commitish } : 'not visible after retries';
+    throw new Error(`Draft release metadata mismatch: ${JSON.stringify(observed)}`);
+  }
   checkAssets(existing, true);
   for (const asset of expected) {
     if (!existing?.assets.some(saved => saved.name === asset.name)) gh(['release', 'upload', tag, asset.file, '--repo', repo]);

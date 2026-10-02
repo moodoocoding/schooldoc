@@ -10,7 +10,7 @@ const supportedKinds = new Set<ConsentFieldKind>(['text', 'checkbox', 'date', 's
 const finite = (value: number) => Number.isFinite(value);
 
 export interface ConsentFieldLayoutIssue {
-  type: 'duplicate-id' | 'kind' | 'label' | 'page' | 'bounds' | 'overlap' | 'choice';
+  type: 'duplicate-id' | 'kind' | 'label' | 'page' | 'bounds' | 'overlap' | 'choice' | 'placement';
   fieldIds: string[];
   message: string;
 }
@@ -30,6 +30,7 @@ export const getConsentFieldLayoutIssues = (fields: ConsentFieldDraft[], pageCou
   if (choiceError) issues.push({ type: 'choice', fieldIds: fields.filter(field => field.choice).map(field => field.id), message: choiceError });
 
   fields.forEach((field) => {
+    if (field.placementPending) issues.push({ type: 'placement', fieldIds: [field.id], message: '추가한 필드를 원본의 입력 위치에 놓아 주세요.' });
     if (!field.id || ids.has(field.id)) issues.push({ type: 'duplicate-id', fieldIds: [field.id], message: '중복된 필드가 있습니다.' });
     ids.add(field.id);
     if (!supportedKinds.has(field.kind)) issues.push({ type: 'kind', fieldIds: [field.id], message: '지원하지 않는 필드 종류입니다.' });

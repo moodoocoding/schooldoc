@@ -61,6 +61,7 @@ async function createFixture(db: PGlite) {
     '202608130002_student_results.sql', '202608130003_student_results_deidentification.sql',
     '202608130004_student_results_protected_disputes.sql', '202610010100_student_result_corrections.sql',
     '202610020200_student_result_settings_versions.sql',
+    '202610021000_student_result_public_safety.sql',
   ]) {
     let sql = await Deno.readTextFile(new URL('../../supabase/migrations/' + file, import.meta.url));
     if (file === '202608130002_student_results.sql') {
@@ -86,6 +87,9 @@ async function createFixture(db: PGlite) {
     const name = url.pathname.split('/').at(-1)!;
     const body = request.method === 'GET' || request.method === 'DELETE' ? undefined : await request.json();
     if (url.pathname.includes('/rpc/')) {
+      if (name === 'confirm_student_result' && raceBeforeConfirm) {
+        const race = raceBeforeConfirm; raceBeforeConfirm = undefined; await race();
+      }
       const args = Object.keys(body);
       const result = await db.query<{ value: unknown }>(`select ${quote(name)}(${args.map((arg, i) => `${quote(arg)} := $${i + 1}`).join(',')}) as value`, args.map((arg) => body[arg]));
       return json(result.rows[0].value);

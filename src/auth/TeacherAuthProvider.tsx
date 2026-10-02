@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { teacherAuthRecovery } from './teacherAuthRecovery';
 import type { User } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from '../utils/supabaseClient';
 import {
@@ -19,16 +20,37 @@ export function TeacherAuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    let active = true;
+    let revision = 0;
+    const applySession = (session: { access_token?: string; user: User } | null) => {
+      const accepted = teacherAuthRecovery.trackSession(session?.access_token ?? null);
+      setUser(accepted ? session?.user ?? null : null);
+      if (accepted && session?.user) setError('');
+      setLoading(false);
+    };
+    const stopRecovery = teacherAuthRecovery.subscribe(() => {
+      if (!active) return;
+      revision++;
+      setUser(null);
+      setLoading(false);
+      setError('로그인 연결이 만료되었습니다. Google로 다시 로그인해 주세요.');
+    });
+    const initialRevision = revision;
     void supabase.auth.getSession().then(({ data, error: sessionError }) => {
+      if (!active || revision !== initialRevision) return;
+      applySession(data.session);
       if (sessionError) setError('로그인 상태를 확인하지 못했습니다.');
-      setUser(data.session?.user ?? null);
+    }).catch(() => {
+      if (!active || revision !== initialRevision) return;
+      setError('로그인 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.');
       setLoading(false);
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
+      if (!active) return;
+      revision++;
+      applySession(session);
     });
-    return () => listener.subscription.unsubscribe();
+    return () => { active = false; stopRecovery(); listener.subscription.unsubscribe(); };
   }, []);
 
   const value = useMemo<TeacherAuthValue>(() => ({
