@@ -1,3 +1,4 @@
+import { normalizeDataCollectDeadline } from "../../../supabase/functions/_shared/dataCollectDeadline";
 import { validateCollectionFile } from "./dataCollectUtils";
 import { supabase } from "../../utils/supabaseClient";
 import type { DataCollection, DataCollectionDraft } from "./types";
@@ -77,6 +78,7 @@ export const createRemoteDataCollection = async (
     throw new DataCollectAdminUnavailableError(
       "자료 수합 서버 연결 정보가 없습니다.",
     );
+  const dueAt = normalizeDataCollectDeadline(draft.dueAt);
   const auth = await supabase.auth.getUser();
   if (auth.error || !auth.data.user)
     throw new Error("Google 로그인이 필요합니다.");
@@ -114,7 +116,7 @@ export const createRemoteDataCollection = async (
     kind: draft.kind,
     mode: draft.mode,
     allowWalkIn: draft.mode === "custom",
-    dueAt: draft.dueAt,
+    dueAt,
     password: draft.password,
     allowResubmit: draft.allowResubmit,
     retentionMonths: draft.retentionMonths,
@@ -185,7 +187,7 @@ export const updateRemoteDataCollectionDue = (id: string, dueAt: string) =>
   invoke<import("./types").DataCollectionOverview>({
     action: "due",
     id,
-    dueAt,
+    dueAt: normalizeDataCollectDeadline(dueAt),
   });
 
 export const setRemoteDataCollectionStatus = (

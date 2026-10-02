@@ -3,6 +3,7 @@ import {
   dataCollectCrypto,
   type DataCollectIdentity,
 } from "../_shared/dataCollectCrypto.ts";
+import { normalizeDataCollectDeadline } from "../_shared/dataCollectDeadline.ts";
 import { dataCollectFileError } from "../_shared/dataCollectRules.ts";
 import {
   dataCollectSubmissionPrefix,
@@ -84,6 +85,10 @@ const mask = (value: string) => {
   if (trimmed.length <= 1) return trimmed;
   if (trimmed.length === 2) return trimmed[0] + "○";
   return `${trimmed[0]}${"○".repeat(Math.min(2, trimmed.length - 2))}${trimmed.at(-1)}`;
+};
+const readDeadline = (value: unknown) => {
+  try { return normalizeDataCollectDeadline(value, "+09:00"); }
+  catch (error) { throw new HttpError(422, (error as Error).message); }
 };
 const readString = (value: unknown, max: number) =>
   typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -668,12 +673,7 @@ Deno.serve(async (request) => {
         return json(200, await overview(c.id, userId));
       }
       if (action === "due") {
-        const dueAt = readString(body.dueAt, 80);
-        if (
-          dueAt &&
-          (Number.isNaN(Date.parse(dueAt)) || Date.parse(dueAt) <= Date.now())
-        )
-          throw new HttpError(422, "마감 시각은 현재보다 뒤로 설정해 주세요.");
+        const dueAt = readDeadline(body.dueAt);
         const changed = await db
           .from("data_collections")
           .update({ due_at: dueAt || null })
@@ -813,6 +813,7 @@ Deno.serve(async (request) => {
         !["fixed", "custom"].includes(mode)
       )
         throw new HttpError(422, "자료 수합 기본 정보를 확인해 주세요.");
+      const dueAt = readDeadline(body.dueAt);
       const id =
         typeof body.id === "string" && uuidPattern.test(body.id)
           ? body.id
@@ -874,7 +875,7 @@ Deno.serve(async (request) => {
           template_mime: templatePath
             ? readString(body.templateMime, 200)
             : null,
-          due_at: readString(body.dueAt, 80) || null,
+          due_at: dueAt || null,
           allow_resubmit: body.allowResubmit !== false,
           retention_months: Math.max(
             1,
