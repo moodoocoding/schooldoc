@@ -34,7 +34,7 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: '2.9.6'
-      - run: deno test --no-lock --allow-env --allow-read --node-modules-dir=none tests/server/classMissions.test.ts tests/server/classMissionsRegression.test.ts tests/server/classroomRoles.test.ts tests/server/classroomRolesSql.test.ts tests/server/registryPublic.test.ts tests/server/specialRooms.test.ts tests/server/specialRoomsSql.test.ts
+      - run: deno test --no-lock --allow-env --allow-read --node-modules-dir=none tests/server/classMissions.test.ts tests/server/classMissionsRegression.test.ts tests/server/classroomRoles.test.ts tests/server/classroomRolesSql.test.ts tests/server/registryPublic.test.ts tests/server/specialRooms.test.ts tests/server/specialRoomsSql.test.ts tests/server/studentResults.test.ts
       - run: npm run build
       - run: npx playwright install --with-deps chrome
       - run: npm run test:e2e
