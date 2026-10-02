@@ -214,7 +214,7 @@ export const updateStudentResultSettings = (ownerId: string, eventId: string, ex
       return normalizeStudentResultColumn({ ...edited, label: cleanText(edited.label), description: edited.description.trim() });
     }),
   };
-  if (JSON.stringify(before) === JSON.stringify(after)) return event;
+  if (JSON.stringify({ ...before, columns: before.columns.map(normalizeStudentResultColumn) }) === JSON.stringify(after)) return event;
   return updateEvent(eventId, (current) => ({
     ...current,
     ...after,

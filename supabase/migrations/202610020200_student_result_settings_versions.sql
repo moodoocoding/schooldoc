@@ -79,7 +79,12 @@ begin
         and (c.label is distinct from edited.label
           or c.max_score is distinct from edited.max_score
           or c.description is distinct from edited.description
-          or c.kind is distinct from edited.kind)
+          -- Legacy NULL means label inference, not an explicit score choice.
+          -- Canonicalizing that representation alone is not a user correction.
+          or coalesce(c.kind, case when lower(regexp_replace(c.label, '\s', '', 'g'))
+            in ('총점', '합계', '종합점수', '전체점수', 'total', 'totalscore') then 'total' else 'score' end)
+            is distinct from coalesce(edited.kind, case when lower(regexp_replace(edited.label, '\s', '', 'g'))
+              in ('총점', '합계', '종합점수', '전체점수', 'total', 'totalscore') then 'total' else 'score' end))
     );
   -- Saving identical settings must not erase a valid confirmation/history.
   if not v_changed then return true; end if;

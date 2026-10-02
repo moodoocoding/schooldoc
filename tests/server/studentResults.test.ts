@@ -256,3 +256,25 @@ Deno.test('settings change during reload rejects a mixed snapshot; same-transact
     assert(second, 'Two writes in a transaction must produce different CAS tokens');
   });
 }));
+
+Deno.test('legacy NULL kinds retain confirmation on semantically identical save, but real edits invalidate it', () => fixture(async (f) => {
+  const created = await f.create();
+  await f.db.query('update student_result_columns set kind=null where event_id=$1', [created.id]);
+  const session = await f.authenticate(created);
+  assert(studentResultSummary(session.result.event.columns, session.result.recipient.values).score === 92);
+  assert((await f.confirm(session)).status === 200);
+  const current = await f.get(created.id);
+  assert(current.columns.every((c: any) => c.kind === undefined));
+  assert((await f.save(current, {})).status === 200);
+  const same = await f.get(created.id);
+  assert(same.updatedAt === current.updatedAt && same.recipients[0].updatedAt === current.recipients[0].updatedAt);
+  assert(same.recipients[0].status === 'confirmed' && same.recipients[0].confirmedAt === current.recipients[0].confirmedAt && !same.revisions);
+  // Also exercise the new client's explicit serialization of legacy kinds.
+  const explicitColumns = current.columns.map((c: any) => ({ ...c, kind: c.id === 'total' ? 'total' : 'score' }));
+  assert((await f.save(same, { columns: explicitColumns })).status === 200);
+  const stillSame = await f.get(created.id);
+  assert(stillSame.updatedAt === current.updatedAt && stillSame.recipients[0].status === 'confirmed' && !stillSame.revisions);
+  assert(stillSame.columns.every((c: any) => c.kind === undefined));
+  assert((await f.save(stillSame, { columns: explicitColumns.map((c: any) => ({ ...c, maxScore: 200 })) })).status === 200);
+  assert((await f.get(created.id)).recipients[0].status === 'reconfirm');
+}));

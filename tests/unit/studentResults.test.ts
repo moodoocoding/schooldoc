@@ -118,6 +118,23 @@ describe('학생 결과 안내 로컬 흐름', () => {
     } finally { vi.useRealTimers(); }
   });
 
+  it('종류가 없는 이전 안내의 무변경 저장은 확인·버전·이력을 유지한다', () => {
+    const created = createStudentResultEvent('teacher-a', {
+      ...draft,
+      columns: [...draft.columns, { id: 'total', label: '합계', maxScore: 10, description: '' }],
+      recipients: [{ ...draft.recipients[0], values: { score: 9, total: 9 } }],
+    });
+    confirmStudentResult(created.id, created.recipients[0].id);
+    const legacy = JSON.parse(memory.get('schooldoc_student_results_v1')!);
+    legacy[0].columns.forEach((column: { kind?: string }) => { delete column.kind; });
+    memory.set('schooldoc_student_results_v1', JSON.stringify(legacy));
+    const current = getStudentResultEvent('teacher-a', created.id)!;
+    updateStudentResultSettings('teacher-a', current.id, current.updatedAt, current);
+    expect(getStudentResultEvent('teacher-a', current.id)).toEqual(current);
+    updateStudentResultSettings('teacher-a', current.id, current.updatedAt, { ...current, columns: current.columns.map((column) => ({ ...column, maxScore: 20 })) });
+    expect(getStudentResultEvent('teacher-a', current.id)?.recipients[0].status).toBe('reconfirm');
+  });
+
   it('총점 열을 개별 과목에 다시 더하지 않고, 명시 종류와 기존 머리글 모두 인식한다', () => {
     const columns = [
       { id: 'math', label: '수학', maxScore: 50, description: '', kind: 'score' as const },
