@@ -117,3 +117,43 @@ test('a mismatched asset in a draft prevents all publication mutations', async t
   await assert.rejects(f.publish(), /asset mismatch/);
   assert.ok(f.calls.every(call => call[0] === 'api'));
 });
+test('a newly created draft can appear late without duplicate creation or weaker validation', async t => {
+  const f = await fixture(t);
+  const waits = [];
+  let hidden = 2;
+  await f.publish({ candidate: true, wait: async ms => { waits.push(ms); }, gh: args => {
+    const result = f.gh(args);
+    if (f.getRelease() && args.some(arg => arg.endsWith('/releases?per_page=100')) && hidden-- > 0)
+      return JSON.stringify([[]]);
+    return result;
+  } });
+  assert.deepEqual(waits, [250, 1000]);
+  assert.equal(f.calls.filter(call => call[1] === 'create').length, 1);
+  assert.equal(f.getRelease().assets.length, 4);
+  assert.equal(f.getRelease().prerelease, true);
+});
+
+test('a draft that remains invisible is retained and never uploaded or published', async t => {
+  const f = await fixture(t);
+  await assert.rejects(f.publish({ wait: async () => {}, gh: args => {
+    const result = f.gh(args);
+    if (f.getRelease() && args.some(arg => arg.endsWith('/releases?per_page=100')))
+      return JSON.stringify([[]]);
+    return result;
+  } }), /not visible after retries/);
+  assert.equal(f.calls.filter(call => call[1] === 'create').length, 1);
+  assert.ok(!f.calls.some(call => ['upload', 'edit'].includes(call[1])));
+  assert.equal(f.getRelease().draft, true);
+});
+
+test('incorrect metadata is diagnosed immediately and is never retried into publication', async t => {
+  const f = await fixture(t);
+  const waits = [];
+  await assert.rejects(f.publish({ wait: async ms => { waits.push(ms); }, gh: args => {
+    const result = f.gh(args);
+    if (args[1] === 'create') f.getRelease().target_commitish = 'b'.repeat(40);
+    return result;
+  } }), /Draft release metadata mismatch:.*target.*bbbb/);
+  assert.deepEqual(waits, []);
+  assert.ok(!f.calls.some(call => ['upload', 'edit'].includes(call[1])));
+});
