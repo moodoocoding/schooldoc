@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { jsPDF } from 'jspdf';
+import { confirmConsentPlacementPreview, finishConsentFieldPlacement } from './consentFieldPlacement';
 
 for (const width of [1440, 390]) test('좁은 PDF 표에 텍스트 칸 배치·저장·응답 ' + width, async ({ page }) => {
   const errors: string[] = [];
@@ -37,9 +38,10 @@ for (const width of [1440, 390]) test('좁은 PDF 표에 텍스트 칸 배치·�
   await expect(settings.getByLabel('높이',{exact:true})).toHaveValue('1');
   await settings.getByLabel('높이',{exact:true}).fill('1.8');
   await canvas.screenshot({path:'test-results/consent-small-field-editor-' + width + '.png'});
-  await page.getByRole('button',{name:'필드 배치 완료'}).click();
+  await finishConsentFieldPlacement(page);
   await page.getByLabel('명단 없이 받기').check();
   await page.getByRole('button',{name:'다음: 공유 설정'}).click();
+  await confirmConsentPlacementPreview(page);
   await page.getByRole('button',{name:'수합 만들기'}).click();
   await page.getByRole('button',{name:'관리·공유'}).click();
   const href = await page.getByLabel('응답 화면 열기').getAttribute('href');

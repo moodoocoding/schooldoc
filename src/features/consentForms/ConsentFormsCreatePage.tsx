@@ -5,6 +5,7 @@ import { useTeacherAuth } from '../../auth/teacherAuth';
 import { getDefaultRetentionMonths, loadPrivacyRetentionSettings } from '../settings/privacyRetentionSettings';
 import { analyzeConsentDocument, consentDocumentAccept } from './consentDocumentImport';
 import { ConsentFieldEditor } from './ConsentFieldEditor';
+import { getConsentFieldLayoutIssues } from './consentFieldLayout';
 import { ConsentRecipientsStep } from './ConsentRecipientsStep';
 import { ConsentShareStep } from './ConsentShareStep';
 import { addConsentLocalDraft, saveConsentLocalRecipients, getConsentLocalDraft, hashConsentPassword, updateConsentLocalDraft } from './consentFormsLocalStore';
@@ -183,21 +184,31 @@ export function ConsentFormsCreatePage() {
 
   if (step === 'recipients') return <ConsentRecipientsStep mode={recipientMode} recipients={recipients} onModeChange={setRecipientMode} onRecipientsChange={setRecipients} onBack={() => setStep('fields')} onNext={() => setStep('sharing')} />;
 
-  if (step === 'sharing' && analysis && sourceFile) return <ConsentShareStep title={title} fileName={analysis.fileName} fieldCount={fields.length} recipientMode={recipientMode} recipientCount={editDraft?.recipientCount ?? recipients.length} settings={shareSettings} hasExistingPassword={Boolean(editDraft?.passwordHash)} saving={saving} error={error} onSettingsChange={setShareSettings} onBack={()=>pendingFormId?setError('준비 중인 수합의 저장을 먼저 완료해 주세요. 이후 관리 화면에서 수정할 수 있습니다.'):setStep(editDraft?'fields':'recipients')} onCreate={async () => {
+  if (step === 'sharing' && analysis && sourceFile) return <ConsentShareStep title={title} fileName={analysis.fileName} fields={fields} pageSizes={analysis.pageSizes} file={sourceFile} recipientMode={recipientMode} recipientCount={editDraft?.recipientCount ?? recipients.length} settings={shareSettings} hasExistingPassword={Boolean(editDraft?.passwordHash)} saving={saving} error={error} onSettingsChange={setShareSettings} onBack={()=>pendingFormId?setError('준비 중인 수합의 저장을 먼저 완료해 주세요. 이후 관리 화면에서 수정할 수 있습니다.'):setStep(editDraft?'fields':'recipients')} onCreate={async () => {
     if (saving) return;
+    if (getConsentFieldLayoutIssues(fields, analysis.pageCount).length) {
+      setError('응답 필드의 위치와 설정을 다시 확인해 주세요.');
+      setStep('fields');
+      return;
+    }
+    const publishedFields = fields.map(field => {
+      const published = { ...field };
+      delete published.placementPending;
+      return published;
+    });
     setSaving(true);
     setError('');
     try {
       if (!isConsentFormsDemoMode) {
         if (editDraft) {
-          await updateRemoteConsentForm(editDraft.id, { title: title.trim() || editDraft.title, description: description.trim(), fields, pageCount: analysis.pageCount, pageSizes: analysis.pageSizes, fileName: sourceFile.name, sourceFile, deadline: shareSettings.deadline, allowResubmission: shareSettings.allowResubmission, passwordEnabled: shareSettings.passwordEnabled, password: shareSettings.password, retentionMonths: shareSettings.retentionMonths });
+          await updateRemoteConsentForm(editDraft.id, { title: title.trim() || editDraft.title, description: description.trim(), fields: publishedFields, pageCount: analysis.pageCount, pageSizes: analysis.pageSizes, fileName: sourceFile.name, sourceFile, deadline: shareSettings.deadline, allowResubmission: shareSettings.allowResubmission, passwordEnabled: shareSettings.passwordEnabled, password: shareSettings.password, retentionMonths: shareSettings.retentionMonths });
           await clearConsentDraft();
           navigate(`/tools/consent-forms/${editDraft.id}`);
         } else {
-          const created = await createRemoteConsentForm({title,description,fields,pageSizes:analysis.pageSizes,recipientMode,recipientCount:recipients.length,settings:shareSettings,sourceFile,pendingId:pendingFormId || undefined});
+          const created = await createRemoteConsentForm({title,description,fields:publishedFields,pageSizes:analysis.pageSizes,recipientMode,recipientCount:recipients.length,settings:shareSettings,sourceFile,pendingId:pendingFormId || undefined});
           if(!created) throw new Error('생성한 수합을 확인하지 못했습니다.');
           setPendingFormId(created.id);
-          await saveConsentDraft({savedAt:new Date().toISOString(),editId:'',pendingFormId:created.id,pendingOwnerId:user?.id,title,description,step:'sharing',fields,analysis,recipientMode,deadline:shareSettings.deadline,passwordEnabled:shareSettings.passwordEnabled,allowResubmission:shareSettings.allowResubmission,retentionMonths:shareSettings.retentionMonths,fileName:sourceFile.name,file:sourceFile});
+          await saveConsentDraft({savedAt:new Date().toISOString(),editId:'',pendingFormId:created.id,pendingOwnerId:user?.id,title,description,step:'sharing',fields:publishedFields,analysis,recipientMode,deadline:shareSettings.deadline,passwordEnabled:shareSettings.passwordEnabled,allowResubmission:shareSettings.allowResubmission,retentionMonths:shareSettings.retentionMonths,fileName:sourceFile.name,file:sourceFile});
           // 명단과 비밀번호를 같은 트랜잭션에 저장한 뒤 공개한다.
           await finalizeConsentForm(created.id,recipientMode==='named'?recipients.map(({id,name,identifier})=>({id,name,studentKey:identifier})):[],shareSettings.passwordEnabled?shareSettings.password.trim():'');
           await clearConsentDraft();
@@ -207,12 +218,12 @@ export function ConsentFormsCreatePage() {
       }
       const passwordHash = shareSettings.passwordEnabled ? shareSettings.password.trim() ? await hashConsentPassword(shareSettings.password.trim()) : editDraft?.passwordHash ?? '' : '';
       if (editDraft) {
-        updateConsentLocalDraft(editDraft.id, { title, fileName: analysis.fileName, fieldCount: fields.length, description, fields, pageCount: analysis.pageCount, pageSizes: analysis.pageSizes, deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled, passwordHash: passwordHash || editDraft.passwordHash, allowResubmission: shareSettings.allowResubmission, retentionMonths: shareSettings.retentionMonths, sourcePdfDataUrl: await fileToDataUrl(sourceFile) });
+        updateConsentLocalDraft(editDraft.id, { title, fileName: analysis.fileName, fieldCount: fields.length, description, fields: publishedFields, pageCount: analysis.pageCount, pageSizes: analysis.pageSizes, deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled, passwordHash: passwordHash || editDraft.passwordHash, allowResubmission: shareSettings.allowResubmission, retentionMonths: shareSettings.retentionMonths, sourcePdfDataUrl: await fileToDataUrl(sourceFile) });
         await clearConsentDraft();
         navigate(`/tools/consent-forms/${editDraft.id}`);
       } else {
         const localId=crypto.randomUUID();
-        addConsentLocalDraft({ id: localId, title, fileName: analysis.fileName, fieldCount: fields.length, recipientMode, recipientCount: recipientMode === 'named' ? recipients.length : 0, createdAt: new Date().toISOString(), description, fields, publicToken: crypto.randomUUID(), deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled, passwordHash, allowResubmission: shareSettings.allowResubmission, responseCount: 0, status: 'open', retentionMonths: shareSettings.retentionMonths, pageCount: analysis.pageCount, pageSizes: analysis.pageSizes, sourcePdfDataUrl: await fileToDataUrl(sourceFile) });
+        addConsentLocalDraft({ id: localId, title, fileName: analysis.fileName, fieldCount: fields.length, recipientMode, recipientCount: recipientMode === 'named' ? recipients.length : 0, createdAt: new Date().toISOString(), description, fields: publishedFields, publicToken: crypto.randomUUID(), deadline: shareSettings.deadline, passwordEnabled: shareSettings.passwordEnabled, passwordHash, allowResubmission: shareSettings.allowResubmission, responseCount: 0, status: 'open', retentionMonths: shareSettings.retentionMonths, pageCount: analysis.pageCount, pageSizes: analysis.pageSizes, sourcePdfDataUrl: await fileToDataUrl(sourceFile) });
         await clearConsentDraft();
         if(recipientMode==='named') saveConsentLocalRecipients(localId,recipients);
         navigate('/tools/consent-forms');

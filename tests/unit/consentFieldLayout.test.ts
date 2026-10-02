@@ -7,6 +7,11 @@ const field = (id: string, x: number, y: number): ConsentFieldDraft => ({
 });
 
 describe('consent field layout', () => {
+  it('새 필드의 임시 좌표는 배치 확인 전까지 유효한 위치로 취급하지 않는다', () => {
+    expect(getConsentFieldLayoutIssues([{ ...field('new', 10, 12), placementPending: true }], 1))
+      .toContainEqual(expect.objectContaining({ type: 'placement', fieldIds: ['new'] }));
+    expect(getConsentFieldLayoutIssues([field('legacy', 10, 12)], 1)).toEqual([]);
+  });
   it('좁은 표의 텍스트·날짜 칸은 3% × 1%까지 허용한다', () => {
     for (const kind of ['text', 'date'] as const) {
       expect(getConsentFieldLayoutIssues([{ ...field('small', 20.1, 40.2), kind, width: 3, height: 1 }], 1)).toEqual([]);

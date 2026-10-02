@@ -22,6 +22,7 @@ export function ConsentResponseForm({ document, file, values, setValues, submitt
   const [step, setStep] = useState(-1);
   const [reviewing, setReviewing] = useState(false);
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 639px)').matches);
+  const [mobileZoom, setMobileZoom] = useState(1);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [error, setError] = useState('');
   const [pdfState, setPdfState] = useState<{ file: File; pages: Record<number, ConsentPdfState> }>();
@@ -68,6 +69,11 @@ export function ConsentResponseForm({ document, file, values, setValues, submitt
     requestAnimationFrame(() => {
       const element = globalThis.document.getElementById(`consent-original-${field.id}`);
       if (element) {
+        const viewport = element.closest('[data-pdf-viewport]');
+        if (mobile && viewport instanceof HTMLElement && mobileZoom > 1) {
+          viewport.scrollLeft = element.getBoundingClientRect().left - viewport.getBoundingClientRect().left
+            + viewport.scrollLeft - viewport.clientWidth / 2 + element.clientWidth / 2;
+        }
         // 입력칸 위의 설명과 아래의 모바일 입력창을 함께 볼 수 있는 위치로 이동한다.
         const top = element.getBoundingClientRect().top + window.scrollY - Math.min(window.innerHeight * .35, 280);
         window.scrollTo({ top: Math.max(0, top), behavior: 'instant' });
@@ -115,6 +121,8 @@ export function ConsentResponseForm({ document, file, values, setValues, submitt
         {document.recipientSubmitted ? <p role="status" className="mb-2 font-semibold text-[#126B32]">이미 제출한 응답을 불러왔습니다. 수정 후 다시 제출하면 최신 응답으로 반영됩니다.</p> : null}
         {document.description ? <p className="mb-2">{document.description}</p> : null}
         <p>문서를 읽고 회색 입력칸을 눌러 작성해 주세요. 어느 칸이든 다시 수정할 수 있습니다.</p>
+        {mobile ? <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label="원본 확대"><span className="mr-auto text-xs font-semibold">원본 크기 {Math.round(mobileZoom * 100)}%</span><button type="button" disabled={mobileZoom <= 1} onClick={() => setMobileZoom(value => Math.max(1, value - 0.5))} className={control} aria-label="원본 축소">−</button><button type="button" disabled={mobileZoom >= 2} onClick={() => setMobileZoom(value => Math.min(2, value + 0.5))} className={control} aria-label="원본 확대">＋</button></div> : null}
+        {mobile && mobileZoom > 1 ? <p className="mt-1 text-xs">확대한 문서는 좌우로 밀어 읽을 수 있습니다. 입력값은 유지됩니다.</p> : null}
       </div>
       {pdfReady && reviewing ? <section ref={review} tabIndex={-1} aria-label="제출 전 확인" className="mx-auto mt-4 max-w-[794px] scroll-mt-24 border border-[#C8D0DA] bg-white p-4 outline-none">
         <h2 className="text-base font-bold">제출 전 확인</h2><p className="mt-1 text-sm text-[#526174]">아래 원본에 작성된 내용을 확인한 후 제출해 주세요.</p>
@@ -123,13 +131,13 @@ export function ConsentResponseForm({ document, file, values, setValues, submitt
       <div className="mx-auto max-w-[834px] space-y-5 px-2 py-4 sm:px-5 sm:py-6">
         {Array.from({ length: document.pageCount }, (_, pageIndex) => {
           const pageSize = document.pageSizes[pageIndex];
-          return <section key={pageIndex} aria-label={`${pageIndex + 1}쪽`} style={{ aspectRatio: pageAspectRatio(pageSize?.width, pageSize?.height) }} className="relative mx-auto w-full max-w-[794px] overflow-hidden bg-white shadow-sm">
+          return <div key={pageIndex} data-pdf-viewport role={mobile && mobileZoom > 1 ? 'region' : undefined} aria-label={mobile && mobileZoom > 1 ? `${pageIndex + 1}쪽 원본 확대 영역` : undefined} tabIndex={mobile && mobileZoom > 1 ? 0 : undefined} className={mobile ? 'mx-auto max-w-[794px] overflow-x-auto overflow-y-hidden' : 'mx-auto max-w-[794px]'}><section aria-label={`${pageIndex + 1}쪽`} style={{ aspectRatio: pageAspectRatio(pageSize?.width, pageSize?.height), width: mobile ? `${mobileZoom * 100}%` : '100%' }} className="relative overflow-hidden bg-white shadow-sm">
             <ConsentPdfPage file={file} pageNumber={pageIndex + 1} onStateChange={onPdfStateChange} />
             {pdfReady ? document.fields.filter(field => field.pageIndex === pageIndex).map(field => {
               const index = fieldQuestion(field);
               return <ConsentResponseField key={field.id} field={field} value={values[field.id] ?? ''} question={questions[index]} mobile={mobile} active={!reviewing && index === step} onActivate={() => { setStep(index); setReviewing(false); }} onOpen={() => move(index, field.id)} onChange={value => updateValue(field, value)} onSign={() => openSignature(field)} />;
             }) : null}
-          </section>;
+          </section></div>;
         })}
       </div>
       <footer className="fixed inset-x-0 bottom-0 z-40 border-t border-[#C8D0DA] bg-white px-3 py-2 shadow-sm">
