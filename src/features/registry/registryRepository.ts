@@ -200,34 +200,6 @@ const assembleRegistries = async (
   });
 };
 
-const loadRelatedRows = async (registryRows: RegistryRow[]) => {
-  if (registryRows.length === 0) return [];
-  const ids = registryRows.map((row) => row.id);
-  const [columnsResult, participantsResult, signaturesResult] = await Promise.all([
-    client().from('registry_columns').select('id, registry_id, label, position').in('registry_id', ids),
-    callParticipants<{ participants: ParticipantRow[] }>({ action: 'read', registryIds: ids }),
-    client().from('registry_signatures').select('registry_id, participant_id, source, storage_path, created_at').in('registry_id', ids),
-  ]);
-  if (columnsResult.error) fail('등록부 열을 불러오지 못했습니다', columnsResult.error);
-  if (signaturesResult.error) fail('서명 현황을 불러오지 못했습니다', signaturesResult.error);
-
-  return assembleRegistries(
-    registryRows,
-    (columnsResult.data ?? []) as ColumnRow[],
-    participantsResult.participants ?? [],
-    (signaturesResult.data ?? []) as SignatureRow[],
-  );
-};
-
-export const listRemoteRegistries = async () => {
-  const { data, error } = await client()
-    .from('registries')
-    .select('id, public_token, mode, title, left_header, right_header, layout, status, allow_walk_in, password_digest, created_at, updated_at, retention_months, closed_at')
-    .order('updated_at', { ascending: false });
-  if (error) fail('등록부 목록을 불러오지 못했습니다', error);
-  return loadRelatedRows((data ?? []) as RegistryRow[]);
-};
-
 export const getRemoteRegistry = async (id: string) => {
   const result = await callParticipants<{ registry: RegistryRow; columns: ColumnRow[]; participants: ParticipantRow[]; signatures: SignatureRow[] }>({ action: 'snapshot', registryId: id });
   return (await assembleRegistries([result.registry], result.columns, result.participants, result.signatures))[0] ?? null;

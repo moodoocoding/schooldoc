@@ -3,10 +3,6 @@ import * as remote from './registryRepository';
 import * as local from './registryStore';
 import type { Registry, RegistryDraft, RegistryParticipant, RegistrySummary, RegistryPurgeCounts } from './types';
 
-export const listRegistries = async () => (
-  isRegistryDemoMode ? local.listRegistries() : remote.listRemoteRegistries()
-);
-
 export const getRegistry = async (id: string) => (
   isRegistryDemoMode ? local.getRegistry(id) : remote.getRemoteRegistry(id)
 );

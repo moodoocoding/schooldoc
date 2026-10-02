@@ -35,9 +35,6 @@ const invoke = async <T>(body: Record<string, unknown>): Promise<T> => {
   throw new Error(message);
 };
 
-export const isDataCollectAdminUnavailable = (error: unknown) =>
-  error instanceof DataCollectAdminUnavailableError;
-
 const uploadSigned = async (
   path: string,
   token: string,
@@ -60,14 +57,6 @@ export const listRemoteDataCollections = async () => {
     action: "list",
   });
   return result.collections;
-};
-
-export const getRemoteDataCollection = async (id: string) => {
-  const result = await invoke<{ collection: DataCollection }>({
-    action: "get",
-    id,
-  });
-  return result.collection;
 };
 
 export const createRemoteDataCollection = async (
@@ -129,18 +118,6 @@ export const createRemoteDataCollection = async (
   // 운영 Edge Function은 생성 결과를 직접 반환하고, 로컬/기존 응답 경계는
   // `{ collection }`으로 감쌀 수 있다. 두 형식을 모두 받아 중복 생성을 피한다.
   return "collection" in result ? result.collection : result;
-};
-
-export const updateRemoteDataCollectionStatus = async (
-  id: string,
-  status: DataCollection["status"],
-) => {
-  const result = await invoke<{ collection: DataCollection }>({
-    action: "status",
-    id,
-    status,
-  });
-  return result.collection;
 };
 
 export const deleteRemoteDataCollection = async (id: string) => {

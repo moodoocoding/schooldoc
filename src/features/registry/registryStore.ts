@@ -6,12 +6,6 @@ import type {
   SignatureSubmission,
 } from './types';
 import { isRegistryDemoMode } from './registryConfig';
-import {
-  createRegistryBackup,
-  parseRegistryBackup,
-  serializeRegistryBackup,
-  summarizeRegistryBackup,
-} from './registryBackup';
 import { isValidSignatureDataUrl, mergeSignedFieldValues } from './registryUtils';
 
 const STORAGE_KEY = 'schooldoc_registry_v1';
@@ -134,27 +128,6 @@ export const updateRegistry = (id: string, patch: Partial<Registry>) => (
 );
 
 export const deleteRegistry = (id: string) => write(read().filter((registry) => registry.id !== id));
-
-export const exportRegistryDemoData = () => (
-  serializeRegistryBackup(createRegistryBackup(read()))
-);
-
-export const inspectRegistryDemoBackup = (text: string) => {
-  const backup = parseRegistryBackup(text);
-  return { backup, summary: summarizeRegistryBackup(backup) };
-};
-
-export const restoreRegistryDemoData = (text: string) => {
-  const backup = parseRegistryBackup(text);
-  write(backup.registries);
-  return summarizeRegistryBackup(backup);
-};
-
-export const resetRegistryDemoData = () => {
-  const registries = sampleRegistries();
-  write(registries);
-  return registries;
-};
 
 export const addParticipant = (
   registryId: string,

@@ -52,10 +52,6 @@ async function invoke<T>(endpoint: string, body: object): Promise<T> {
   if (data?.error) throw new Error(data.error);
   return data as T;
 }
-export const subscribeMissions = (listener: () => void) => {
-  window.addEventListener(changedEvent, listener);
-  return () => window.removeEventListener(changedEvent, listener);
-};
 export async function listMissionBoards(): Promise<MissionBoard[]> {
   if (isMissionsDemo) return readDemo().map(project);
   const result = await invoke<{ boards: MissionBoard[] }>('class-missions-admin', { action: 'list' });

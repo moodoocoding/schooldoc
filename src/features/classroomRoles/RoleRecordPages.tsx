@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  activeRolePeriod,
   isRoleDay,
   ROLE_STATUS_LABELS,
   roleDates,
   roleForStudent,
   roleMonthRange,
-  rolePublicUrl,
   roleToday,
   writeRoleRecord,
   type RolePeriod,
@@ -18,7 +16,6 @@ import type { RolePageProps } from "./ClassroomRolesWorkspace";
 import {
   RoleError,
   RoleField,
-  roleButton,
   roleInput,
   rolePanel,
   roleSecondary,
@@ -78,195 +75,6 @@ function RecordSelect({
         </option>
       ))}
     </select>
-  );
-}
-
-export function RolePracticePage({ board }: RolePageProps) {
-  const [date, setDate] = useState(roleToday());
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
-  const [copied, setCopied] = useState(false);
-  const {
-    records,
-    error: loadError,
-    loading,
-    refresh,
-  } = useRoleRecords(date, date, board.version);
-  const period = activeRolePeriod(board.state, date);
-  const url = rolePublicUrl(board.public_token);
-  const change = async (studentId: string, status: string) => {
-    if (!period || saving) return;
-    setSaving(true);
-    setError("");
-    setMessage("");
-    try {
-      await writeRoleRecord({
-        periodId: period.id,
-        studentId,
-        date,
-        status,
-        version: board.version,
-      });
-      refresh();
-      setMessage("교사 정정을 저장했습니다.");
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  };
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-    } catch {
-      setError("복사하지 못했습니다. 아래 주소를 선택해 복사해 주세요.");
-    }
-  };
-  return (
-    <div className="space-y-5">
-      <section className={`${rolePanel} space-y-4`}>
-        <div>
-          <h2 className="text-lg font-bold">하나의 화면, 두 가지 사용 방식</h2>
-          <p className="mt-2 text-sm text-[#526174]">
-            학생 입력은 이름 선택 → 실천 체크, 전자칠판 보기는 입력 없는
-            표시용입니다. 모든 학생이 같은 링크를 사용합니다.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <a
-            className={roleButton}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            학생 화면 열기
-          </a>
-          <button className={roleSecondary} onClick={() => void copy()}>
-            {copied ? "링크 복사됨" : "학생 공용 링크 복사"}
-          </button>
-          <a
-            className={roleSecondary}
-            href={`${url}?view=display`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            전자칠판 보기
-          </a>
-        </div>
-        <RoleField label="학생 공용 주소">
-          <input
-            readOnly
-            value={url}
-            className={roleInput}
-            onFocus={(e) => e.target.select()}
-          />
-        </RoleField>
-        {!board.state.settings.publicEnabled && (
-          <p className="text-sm text-amber-800">
-            운영 설정에서 학생 입력을 중지한 상태입니다.
-          </p>
-        )}
-      </section>
-      <section className={`${rolePanel} space-y-4`}>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <RoleField label="확인할 날짜">
-            <input
-              type="date"
-              className={roleInput}
-              value={date}
-              max={roleToday()}
-              onChange={(e) => {
-                if (e.target.value) {
-                  setDate(e.target.value);
-                  setMessage("");
-                }
-              }}
-            />
-          </RoleField>
-          <button
-            className={roleSecondary}
-            onClick={() => setDate(roleToday())}
-          >
-            오늘로
-          </button>
-          <button className={roleSecondary} onClick={refresh}>
-            기록 새로고침
-          </button>
-        </div>
-        <p className="text-sm text-[#526174]">
-          학생 자기보고입니다. 미기록은 아직 제출하지 않은 상태입니다. 결석·역할
-          없음은 ‘해당 없음’으로 정정할 수 있습니다. 30초마다 갱신됩니다.
-        </p>
-        <RoleError message={error || loadError} />
-        {message && (
-          <p role="status" className="text-sm text-emerald-800">
-            {message}
-          </p>
-        )}
-        {loading ? (
-          <p role="status">기록을 불러오는 중…</p>
-        ) : loadError ? (
-          <p>새로고침하여 기록을 확인해 주세요.</p>
-        ) : !period ? (
-          <p>
-            이 날짜에 배정된 역할이 없습니다.{" "}
-            <Link
-              className="text-[#0F6CBD] underline"
-              to="/tools/classroom-roles/assign"
-            >
-              학생 역할 배정
-            </Link>
-          </p>
-        ) : (
-          <div className="grid gap-3 md:grid-cols-2">
-            {period.students.map((s) => {
-              const record = statusFor(records, period, s, date);
-              const eligible = isRoleDay(board.state, period, s.id, date);
-              return (
-                <article
-                  key={s.id}
-                  className="rounded-xl border border-[#DCE3EA] p-4"
-                >
-                  <div className="flex justify-between gap-2">
-                    <h3 className="font-bold">
-                      {s.number}번 {s.name}
-                    </h3>
-                    <StatusBadge
-                      status={
-                        record?.status ?? (eligible ? "missing" : "exempt")
-                      }
-                    />
-                  </div>
-                  <p className="mt-2 text-sm text-[#526174]">
-                    {roleForStudent(period, s.id)?.name}
-                  </p>
-                  {!eligible && (
-                    <p className="mt-1 text-xs text-[#64748B]">
-                      실천일 아님{record ? " · 기존 제출 기록 표시" : ""}
-                    </p>
-                  )}
-                  <RecordSelect
-                    label={`${s.number}번 ${s.name} 기록 정정`}
-                    value={record?.status ?? "missing"}
-                    disabled={saving || date > roleToday()}
-                    onChange={(status) => void change(s.id, status)}
-                  />
-                  {record && (
-                    <p className="mt-2 text-xs text-[#64748B]">
-                      {record.source === "teacher"
-                        ? "교사 정정"
-                        : "학생 자기보고"}
-                    </p>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
-    </div>
   );
 }
 

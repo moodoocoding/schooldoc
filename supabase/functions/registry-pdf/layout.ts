@@ -1,12 +1,5 @@
 export type PdfRegistryLayout = 10 | 15 | 20 | 30;
 
-export interface PdfColumnWidths {
-  number: number;
-  name: number;
-  fields: number[];
-  signature: number;
-}
-
 export const getPdfPageSettings = (layout: PdfRegistryLayout) => {
   if (layout === 20) return { tableColumns: 2, rowsPerColumn: 10 } as const;
   if (layout === 30) return { tableColumns: 2, rowsPerColumn: 15 } as const;

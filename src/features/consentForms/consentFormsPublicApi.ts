@@ -39,10 +39,6 @@ const invoke=async<T>(body:Record<string,unknown>):Promise<T>=>{
 
 export const openConsentPublicDocument = async(token:string,recipientToken='') => (await invoke<{form:ConsentPublicMetadata | ConsentPublicDocument}>({action:'open',token,recipientToken})).form;
 
-export const getConsentPublicMetadata = async (token: string, recipientToken = '') => (
-  await invoke<{ form: ConsentPublicMetadata }>({ action: 'metadata', token, recipientToken })
-).form;
-
 export const getConsentPublicDocument = async (token: string, password = '', recipientToken = '') => (
   await invoke<{ form: ConsentPublicDocument }>({ action: 'document', token, password, recipientToken })
 ).form;
