@@ -225,3 +225,58 @@
 - [CI 37025330119](https://github.com/moodoocoding/schooldoc/actions/runs/37025330119)는 Chrome 304통과·1실패·5별도 서버 생략으로 verify 실패, package/publish 미실행이었다. 한국 시간 토요일에 월~금 예약표의 오늘 칸이 없는데 배색 검사가 이를 요구하는 날짜 준비 오류다. 실패 전체 화면·DOM과 한국 날짜 공통 함수를 대조해 확인했다. 실패한 CI를 통과로 보고하거나 main을 병합하지 않았다.
 - 검사 커밋 3a6d03d에서 평일 시계만 고정하고 기존 배색 3개 기대값을 그대로 유지했다. UTC 금요일·한국 토요일 경계에서는 오늘 표시가 없고 예약 칸이 활성화되는 별도 검사를 추가했다. 제품 소스는 변경하지 않았다. `node node_modules/@playwright/test/cli.js test tests/e2e/special-rooms-week-grid.spec.ts` 11개, `npm run typecheck`, `npm run lint` 통과(기존 경고6).
 - 이 기록 시점에는 최신 전체 CI·새 후보·main squash·자동 정식 릴리즈·정식 다운로드 실제 검증은 대기다. 최신 main 변경 여부와 필수 결과를 확인한 뒤 이어간다. 기존 사용자 미커밋4개와 실제 자료·키·secrets는 보존했다. 시험 자료의 정리 대기 ID·이유와 실물 프린터/AI 인식 정확도 한계는 앞 절을 따른다.
+
+## 2026-10-03 전체 미사용 코드 검토와 정리 (codex)
+
+- 기준은 최신 원격 main의 7cc1680ee30d3416154c9473fe7fa741fbedc444이다. 별도 브랜치 codex/remove-unused-code-20261003에서 진행했으며, 코드 커밋은 e7acb6c8efc7c4edbe0b69fe56799762c0a0b7ec이다.
+- 추적 중인 TypeScript/JavaScript 466개 파일을 대상으로 import/export·동적 import·require·자산 URL 참조를 분석했다. 제품 프런트엔드 224개, Edge Function 37개, Electron 4개, 빌드·검증·릴리즈 스크립트 4개와 설정·테스트의 진입점을 대조했다. 미사용 코드 정리를 위한 참조 검토이며 모든 코드의 보안·정확성을 보증하는 감사가 아니다.
+- 완료 기준은 삭제 대상의 실행/테스트 참조 확인 → 남은 동작 코드 대조 → 타입·단위·서버·Chrome 검사 → 변경과 한계 기록이다. 네 단계 모두 완료했다. 자동 분석 후보를 그대로 삭제하지 않고 전체 검색과 호출 경로를 함께 확인했다.
+- 시작 전 원본 main checkout의 사용자 변경 4개(DEVELOPMENT.md, 개발 일지, receiptExportPdf.ts, receipt-export.spec.ts)를 확인했으며 종료 시 동일한 64줄 추가·38줄 삭제 상태를 확인했다. 사용자 변경은 별도 워크트리의 이번 커밋에 포함하지 않았다.
+
+### 삭제 대상과 근거
+
+| 범위 | 정리 내용과 근거 |
+| --- | --- |
+| 연결되지 않은 화면 19개 | Classmate, Community, CreateEventModal, Dashboard, EventDetail, Infomate, KanbanSidebar, KanbanWorkspace, LandingPage, Navbar, PinterestGrid, PinterestNavbar, PinterestSidebar, QRPrintView, StudentPortal, TeacherDashboard, Timetable, ToolExecutionPage, Workmate의 TSX 파일을 삭제했다. 현재 App 라우팅·데모·테스트에서 도달하지 않으며 현행 기능 화면으로 대체되었거나 시안으로 남아 있었다. |
+| 이전 데이터 모델·유틸리티 | src/types/index.ts, src/utils/excelHelper.ts, src/utils/mockData.ts와 schooldoc.ts의 이전 시안 전용 타입 5개를 삭제했다. 삭제한 예전 화면 이외의 호출이 없다. 현재 학생 결과 안내의 가져오기·조회·QR·내보내기는 별도 기능 구현과 테스트를 유지한다. |
+| 시안 자산·별칭 | 미사용 App.css, hero.png, react.svg, vite.svg, public/icons.svg와 RemotePublicDataCollectPage.tsx의 사용하지 않는 재수출 별칭을 삭제했다. index.html이 사용하는 favicon.svg와 PDF 폰트·라이선스는 유지했다. |
+| 1인 1역 | 연결되지 않은 RolePracticePage와 관련 import를 삭제했다. 현행 RolePracticeBoardPage·RoleHistoryPage 및 학생/전자칠판 경로는 유지했다. |
+| 자료 수합 | 사용하지 않는 라벨·용량 상수 별칭, 관리자 오류 판별 별칭, 이전 get/status/delete/submit 서비스 래퍼 및 get/status API를 제거했다. 목록·현황·공개 제출·재제출·마감 복구·소유자 확인·파기는 현행 경로를 유지한다. 진행 업무의 이전 목록 fallback은 실제 사용하므로 남겼다. |
+| 등록부 서명 | 사용하지 않는 전체 목록/관련 행 일괄 조회와 데모 백업·복원·초기화 연결 함수를 제거했다. 현행 요약 목록·snapshot·이미지 조회·서명·파기 경로는 유지했다. |
+| 학급 미션·특별실 예약·통신문 | 미사용 subscribeMissions, 특별실 listBoards/getBoard 서비스 래퍼, 통신문 replaceConsentRecipients/getConsentPublicMetadata 래퍼를 제거했다. 실제 사용하는 변경 이벤트·새로고침·공개 open/document·발행 경로는 유지했다. |
+| 영수증 | 미사용 복원 날짜 라벨과 호출되지 않는 브라우저 이미지/PDF OCR 파이프라인을 제거했다. 서버 AI 분석·외부 전송 동의·수기 입력·예산 반영·IndexedDB/localStorage·PDF 내보내기는 유지했다. |
+| 의존성·Tailwind 설정 | tesseract.js와 전이 의존성 12개를 제거했다. 새 패키지 추가나 남은 패키지 버전 변경은 없다. 현재 사용하는 클래스가 없는 fluent/brand 색상 설정을 제거했다. |
+| 서버 공통 선언 | normalizeRecipientName 별칭, DataCollectDecision 타입, PdfColumnWidths 인터페이스만 제거했다. 암호화 구현·키·인증·RLS·요청 제한·파일 검증·마이그레이션은 변경하지 않았다. |
+
+- 코드 변경은 48개 파일, 6,515줄 삭제·3줄 추가이며 파일 자체 삭제는 28개다. 남은 17개 수정 코드 파일의 import 이외 최상위 실행 문장은 삭제 전과 동일하다.
+- 정리 후 프런트엔드 파일은 201개다. 실행·테스트 기준의 미참조 소스 파일은 남지 않았다. 테스트 전용 receiptOcr.ts의 텍스트 파서, registryBackup.ts, specialRoomsOptimistic.ts는 기존 회귀 검사 계약을 유지했다. 이 세 모듈을 실제 제품의 실행 경로라고 보고하지 않는다.
+- 자동 분석에서 미사용으로 보였던 downloadReceiptBookPdf는 ReceiptBookDetailPage의 동적 import 후 구조 분해로 실제 호출되므로 보존했다. HTML·CSS·서버 설정에만 쓰이는 자산도 별도로 확인했다.
+- 현재 화면을 새로 만들거나 배치를 바꾸지 않았다. 삭제 전후 CSS를 대조하여 사용하지 않는 클래스 409개가 빠졌고, 해당 클래스의 현재 소스 내 직접 참조는 0개였다. 프로덕션 CSS는 130,953 → 92,557바이트로 38,396바이트(약 29.3%) 감소했다. 미사용 색상 설정 추가 정리 뒤에도 CSS 파일 이름·크기가 같았다. JavaScript 전체 크기나 EXE 크기 감소로 과장하지 않는다.
+- Chrome에서 생성한 가상 24명 통신문 PC 전체 화면과 혼합 제출 상태의 30명 자료 수합 모바일 전체 화면을 확인했다. 현황·QR·제출 상태·다운로드 영역의 배치를 유지했다. 별도의 신규 디자인 평가나 실제 전문가/교사 사용성 시험을 한 것으로 보고하지 않는다.
+
+### 검증 결과
+
+| 실행한 검사 | 최종 결과 | 검증 범위 |
+| --- | --- | --- |
+| npm run typecheck | 통과 | 최초에는 삭제 후 남은 roleButton import를 검출했다. 제거 후 전체 타입 검사 통과. |
+| npm run lint | 통과, 기존 경고 4개 | ToolCard/BookingSheet의 컴포넌트와 도구 함수 혼합 export 2개, 과거 design 검증 스크립트의 미사용 인자 2개. 현행 기능에서 쓰는 함수를 경고 해소 목적으로 삭제하지 않았다. |
+| npm test | 69개 파일·547개 테스트 통과 | 기존 테스트 삭제·기대값 완화 없이 전체 실행. 서버 선언 정리 후 다시 실행해 같은 결과 확인. |
+| npm run test:e2e | Chrome 306개 통과·5개 조건부 생략 | 새 시험 프로필, 127.0.0.1:4173 데모/가상 HTTP 대역. 학급 미션·1인 1역·학생 결과 안내·통신문·등록부·자료 수합·특별실·영수증·진행 업무·설정·인증 복구·모바일·QR/PDF/Excel을 포함. 실제 Google/Supabase 검증과 구분한다. |
+| npm run test:server-flow | 별도 Chrome 5개 모두 통과 | 기존 Deno 2.9.6으로 4195/4196 로컬 HTTP·PGlite PostgreSQL 가상 서버 실행. 위 전체 E2E에서 생략된 5개를 별도 완료했다. |
+| npm run test:desktop | 15개 통과 | Electron URL·IPC·OAuth 경계와 릴리즈 게시의 단위 검사. 실제 게시 EXE 실행 검사를 대신하지 않는다. |
+| Deno 2.9.6 check --no-lock --node-modules-dir=none | 수정한 서버 모듈 3개 통과 | _shared/dataCollectRules.ts, _shared/consentCrypto.ts, registry-pdf/layout.ts |
+| Deno 2.9.6 test --no-lock --allow-env --allow-read --node-modules-dir=none | 70개·20하위단계 통과 | classMissions.test.ts, classMissionsRegression.test.ts, classroomRoles.test.ts, classroomRolesSql.test.ts, registryPublic.test.ts, specialRooms.test.ts, specialRoomsSql.test.ts, studentResults.test.ts, studentResultsSafety.test.ts. 모두 tests/server 아래의 대역·로컬 SQL 검사. |
+| npm run build | 통과 | 의존성 정리·PDF.js legacy worker·CSS 생성 확인. 기존 500KB 초과 chunk 안내는 남아 있으며 경고 기준을 완화하지 않았다. |
+| npm ls --depth=0·의존성 diff | 통과 | tesseract 계열 12개만 제거, 추가/버전 변경 0개 |
+| git diff --check·남은 코드 AST 대조 | 통과 | 삭제 대상 이외의 실행 문장 변경 없음, 테스트 및 과거 검증 이력 변경 없음 |
+
+- 전체 E2E가 덮어쓴 과거 리뷰 이미지·PDF·Excel·JSON 53개는 이번 로컬 test-results/code-review/e2e-evidence로 보관하고 추적 파일을 원래 이력으로 복원했다. 참조 그래프·삭제 목록·CSS/의존성 대조는 같은 무시된 test-results/code-review에 보관했다. 이 검사 산출물을 GitHub에 게시한 것으로 보고하지 않는다.
+- 외부 ../schooldoc-docs/development-history.md는 없어 이 저장소의 기존 개발 일지에 기록했다. 원본 README·DEVELOPMENT·AGENTS 및 기존 개발 이력을 다시 쓰지 않았다.
+
+### 원격 적용과 남은 범위
+
+- Git은 위 별도 브랜치의 로컬 코드 커밋과 별도 일지 커밋으로 정리한다. 이번 요청에는 새 GitHub push·PR 생성·main 병합·릴리즈를 포함하지 않았으며 원격 반영 완료로 보고하지 않는다.
+- DB: 해당 없음. 마이그레이션·RLS·운영 자료·암호화 키·secrets 변경 없음.
+- Edge Functions: 미적용. 서버 변경은 미사용 선언 삭제이며 관련 Deno/단위 검사는 통과했지만 이번 정리의 원격 함수 배포는 실행하지 않았다.
+- 프런트엔드·EXE: 미적용. 새 후보/정식 EXE 빌드·다운로드·실행, 실제 Google 로그인·원격 Supabase 연동 검사는 이번 코드 정리에서 미실행이다.
+- 현재 제거 근거가 있는 코드 정리와 회귀 검증은 완료했다. 별도 보안 감사, 원격 인증/DB 실행 및 릴리즈 검증 결과로 확대 해석하지 않는다.
