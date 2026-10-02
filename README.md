@@ -1,5 +1,12 @@
 # SchoolDoc
 
+## [Windows EXE 다운로드 — 최신 릴리즈](https://github.com/moodoocoding/schooldoc/releases/latest)
+
+설치 없이 사용하는 Windows x64 버전입니다. 최신 릴리즈의 **Assets**에서
+`SchoolDoc_Portable_`로 시작하는 `.exe` 파일을 내려받아 실행하세요.
+
+[웹에서 바로 사용하기](https://schooldoc-nine.vercel.app) · [전체 릴리즈 보기](https://github.com/moodoocoding/schooldoc/releases)
+
 교사의 반복적인 학교 업무를 더 간단하고 안전하게 처리하는 웹 애플리케이션입니다.
 
 SchoolDoc은 교사용 관리 화면과 학생·학부모·참여자용 공개 화면을 분리합니다. 교사는 업무를
