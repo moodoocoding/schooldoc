@@ -1,4 +1,4 @@
-import { createPayloadCrypto, normalizePersonName } from './payloadCrypto.ts';
+import { createPayloadCrypto } from './payloadCrypto.ts';
 
 /**
  * 가정통신문 수신자 명단 보호용 키.
@@ -8,8 +8,6 @@ export const consentCrypto = createPayloadCrypto(
   'CONSENT_FORMS_ENCRYPTION_KEY',
   '수신자 명단 암호화 키가 설정되지 않았습니다.',
 );
-
-export const normalizeRecipientName = normalizePersonName;
 
 export interface ConsentRecipientIdentity {
   name: string;

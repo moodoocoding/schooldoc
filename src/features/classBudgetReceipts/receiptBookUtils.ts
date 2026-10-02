@@ -26,10 +26,5 @@ export const calculateReceiptBookSummary = (book: ReceiptBook) => {
   };
 };
 
-export const receiptEntryRestoreLabel = (entry: ReceiptEntry) => {
-  if (!entry.purgeAfter) return '';
-  return new Date(entry.purgeAfter).toLocaleDateString('ko-KR');
-};
-
 export const isReceiptEntryRestorable = (entry: ReceiptEntry) => Boolean(entry.purgeAfter)
   && new Date(entry.purgeAfter!).getTime() > Date.now();

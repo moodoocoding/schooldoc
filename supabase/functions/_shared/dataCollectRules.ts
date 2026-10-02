@@ -11,7 +11,6 @@ export const DATA_COLLECT_EXTENSIONS = [
   "jpg",
   "jpeg",
 ] as const;
-export type DataCollectDecision = "confirmed" | "corrected" | "submitted";
 export const validDataCollectDecision = (
   hasTemplate: boolean,
   decision: string,

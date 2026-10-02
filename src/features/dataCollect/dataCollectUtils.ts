@@ -1,28 +1,6 @@
-import type { DataCollectionKind } from "./types";
-
-export const DATA_COLLECTION_KIND_LABELS: Record<DataCollectionKind, string> = {
-  worksheet: "평가지",
-  plan: "계획서",
-  consent: "동의서",
-  custom: "직접 입력",
-};
-export const DATA_COLLECTION_TARGET_LABELS: Record<
-  DataCollectionKind,
-  [string, string]
-> = {
-  worksheet: ["과목", "담당자"],
-  plan: ["학급·부서·동아리", "담당자"],
-  consent: ["학생", "담당자"],
-  custom: ["제출 대상", "담당자"],
-};
-
 import {
   dataCollectFileError,
-  DATA_COLLECT_SUBMISSION_LIMIT,
-  DATA_COLLECT_TEMPLATE_LIMIT,
 } from "../../../supabase/functions/_shared/dataCollectRules";
-export const MAX_COLLECTION_FILE_SIZE = DATA_COLLECT_SUBMISSION_LIMIT;
-export const MAX_TEMPLATE_FILE_SIZE = DATA_COLLECT_TEMPLATE_LIMIT;
 export const validateCollectionFile = async (file: File, template = false) => {
   const message = await dataCollectFileError(file, file.name, template);
   if (message) throw new Error(message);

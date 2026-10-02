@@ -19,21 +19,6 @@ import type {
  * 공개 화면은 로그인하지 않으므로 비밀번호를 매 요청에 들려 보낸다. 데모 저장소는 그것을
  * 무시하지만, 두 경로의 호출 모양을 같게 두어야 화면이 갈라지지 않는다.
  */
-export const listBoards = async (ownerId: string) =>
-  isSpecialRoomsDemoMode
-    ? local.listBoards(ownerId)
-    : listAllSummaries(ownerId);
-
-export const getBoard = async (
-  ownerId: string,
-  boardId: string,
-  roomId = '',
-  week?: string,
-) =>
-  isSpecialRoomsDemoMode
-    ? local.getBoard(ownerId, boardId)
-    : remote.getRemoteBoard(boardId, roomId, week);
-
 export const createBoard = async (
   ownerId: string,
   draft: SpecialRoomBoardDraft,
