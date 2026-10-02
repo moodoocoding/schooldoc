@@ -300,3 +300,16 @@
 - GitHub Pages 보조 배포: https://github.com/moodoocoding/schooldoc/actions/runs/37074197102 — success. 포터블 CI와 구분한다.
 - 정식 포터블: https://github.com/moodoocoding/schooldoc/actions/runs/37074197649 — 위 main의 verify·package·publish 진행 중. PR EXE를 이름만 바꾸어 정식 자산으로 게시하지 않는다.
 - 후속 배포 결과는 main 9c03e05를 기준으로 만든 codex/unused-code-deployment-report-20261003의 별도 문서 커밋에 보관한다. 이미 배포한 소스 SHA와 결과 기록을 구분하고, 기록만을 위해 정식 EXE를 반복 생성하지 않는다. 기존 원본 checkout의 사용자 변경 4개는 보존한다.
+
+### 정식 EXE 게시 완료와 후속 검증 대기
+
+- 정식 CI: https://github.com/moodoocoding/schooldoc/actions/runs/37074197649 — 2026-10-03 08:12:32 KST 완료, verify·package·publish 모두 success. main 9c03e05bcc4ff2e8c84949ab2c91f18d616110b5로 새로 빌드했다. verify 22분29초, Windows package 3분44초, publish 27초다.
+- main 검사: typecheck·lint·단위 69파일/547개·desktop 15개·Deno 서버 70개/20단계·학생 결과 안전 SQL·자료 수합 마감 SQL·웹 build 모두 통과. Chrome E2E는 306통과/5조건부 생략(20.3분), 별도 서버 흐름은 위 생략 대상 5개 모두 통과했다. 데모/가상 HTTP·로컬 SQL 검사이며 운영 Google/Supabase 검증으로 보고하지 않는다. 기존 lint 경고 4개와 대형 chunk 안내는 유지한다.
+- 정식 릴리즈: https://github.com/moodoocoding/schooldoc/releases/tag/portable-v1.0.1-9c03e05bcc4f — draft=false, prerelease=false, GitHub latest 릴리즈다. 릴리즈 태그·게시 manifest·smoke 보고서·현재 원격 main이 모두 위 전체 SHA와 일치한다. 이번 정리의 별도 후보 prerelease는 게시하지 않았으며, PR 빌드 산출물과 정식 main 릴리즈를 구분한다.
+- EXE: SchoolDoc_Portable_1.0.1_9c03e05bcc4f.exe, 101,073,626바이트. SHA-256: 4694e7bbe0baa8495aa9c770ee9231d3ec75fcb684869391aa3dbacdff328af5.
+- 게시 확인 범위: GitHub EXE 자산 digest/크기와 다운로드한 portable-manifest.json·SHA256SUMS.txt·portable-smoke.json의 commit/hash/size/success를 대조해 일치를 확인했다. EXE 파일 자체의 재다운로드·로컬 SHA-256 계산·이 PC에서의 실행은 하지 않았다. 위 체크섬은 게시 자산과 CI 기록의 값이다.
+- 실제 자동 실행 환경: GitHub Actions windows-latest의 Windows x64 패키지 EXE. 보고서는 localArtifact=true, mockedBackend=true, remoteGoogleLogin=not-tested, realSupabase=not-tested, success=true, errors=[]다. 교사 인증 차단, 가상 인증의 8개 업무 이동, 한글/공백 경로, 2페이지 PDF.js worker/canvas, Blob 다운로드와 한글 파일명, 종료·재실행 후 localStorage/IndexedDB 유지, 가상 로그아웃을 확인했다. Electron A4 printToPDF는 통과했지만 실물 프린터와 네이티브 인쇄 대화상자는 미검증이다.
+- 사용자 지시에 따라 실제 수동 재검증은 대기다. 새 정식 EXE 다운로드→파일 해시 재계산→소스 폴더와 별개인 한글/공백 경로 실행→Google 로그인/로그아웃→가상 업무 생성·공개 Chrome 링크/QR 제출·교사 반영→PDF/파일/인쇄→저장과 재시작을 이후에 확인한다. 기존 실제 업무·개인정보·키·서버 secrets는 변경하지 않는다.
+- 실제 정상 흐름·오류 복구 대기 기능: 학급 미션, 1인 1역, 학생 결과 안내, 가정통신문, 자료 수합, 등록부 서명, 특별실 예약, 영수증, 진행 업무, 설정. 자동 Chrome 검사는 이 기능들의 가상 흐름을 포함하며, 실제 운영 검증 성공으로 바꾸어 기록하지 않는다.
+- 최종 배포 상태: 기능 코드 main 통합 완료, Vercel Production 웹 적용 확인, 정식 Windows 포터블 게시 확인. secrets·DB 마이그레이션 해당 없음. Edge Functions는 실행/API 변화 없는 미사용 선언 삭제이므로 이번 소스 정리는 원격 미적용이며 재배포 불필요. 운영 동작 재검증은 미실행이다.
+- 원본 checkout 사용자 변경 4개와 64줄 추가/38줄 삭제 상태를 마지막으로 다시 확인했다. 후속 배포 기록은 codex/unused-code-deployment-report-20261003에 커밋·push하며 main에는 아직 통합하지 않는다. 기능 코드는 모두 위 main에 포함됐고, 이 브랜치의 추가 변경은 배포 이후 작성한 작업일지뿐이다. 다음 기능 변경과 함께 기록을 통합할 수 있다.
