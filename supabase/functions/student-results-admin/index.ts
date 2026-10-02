@@ -253,14 +253,27 @@ Deno.serve(async (request) => {
     if (action === 'reply') {
       const reply = String(body.reply ?? '').trim();
       if (!reply || reply.length > 4000) throw new HttpError(400, '답변 내용을 4,000자 이내로 입력해 주세요.');
-      const { data: answered, error } = await db.from('student_result_disputes').update({ reply_ciphertext: await encryptStudentPayload(reply), teacher_reply: null, replied_at: new Date().toISOString() }).eq('event_id', eventId).eq('recipient_id', recipientId).select('id').maybeSingle();
+      const { data: result, error } = await db.rpc('reply_student_result_dispute', {
+        p_owner_id: ownerId, p_event_id: eventId, p_recipient_id: recipientId,
+        p_reply_ciphertext: await encryptStudentPayload(reply),
+      });
       if (error) throw error;
-      if (!answered) throw new HttpError(409, '접수된 이의가 없습니다. 새로고침 후 다시 확인해 주세요.');
-      const { error: statusError } = await db.from('student_result_recipients').update({ status: ownedEvent.allow_confirmation ? 'reconfirm' : 'replied', confirmed_at: null }).eq('id', recipientId).eq('event_id', eventId);
-      if (statusError) throw statusError;
+      if (result === 'EVENT_NOT_FOUND') throw new HttpError(404, '결과 안내를 찾을 수 없습니다.');
+      if (result === 'RECIPIENT_NOT_FOUND') throw new HttpError(404, '학생 결과를 찾을 수 없습니다.');
+      if (result === 'DISPUTE_NOT_FOUND') throw new HttpError(409, '접수된 이의가 없습니다. 새로고침 후 다시 확인해 주세요.');
+      if (result !== 'OK') throw new Error('Unexpected student result reply response.');
       return respond(200, { ok: true });
     }
-    if (action === 'regenerate') { const { error } = await db.from('student_result_recipients').update({ personal_token: crypto.randomUUID() }).eq('id', recipientId); if (error) throw error; return respond(200, { ok: true }); }
+    if (action === 'regenerate') {
+      const { data: result, error } = await db.rpc('regenerate_student_result_personal_token', {
+        p_owner_id: ownerId, p_event_id: eventId, p_recipient_id: recipientId, p_personal_token: crypto.randomUUID(),
+      });
+      if (error) throw error;
+      if (result === 'EVENT_NOT_FOUND') throw new HttpError(404, '결과 안내를 찾을 수 없습니다.');
+      if (result === 'RECIPIENT_NOT_FOUND') throw new HttpError(404, '학생 결과를 찾을 수 없습니다.');
+      if (result !== 'OK') throw new Error('Unexpected student result regeneration response.');
+      return respond(200, { ok: true });
+    }
     throw new HttpError(400, '지원하지 않는 요청입니다.');
   } catch (error) {
     if (error instanceof HttpError) return respond(error.status, { error: error.message });

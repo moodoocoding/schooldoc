@@ -153,8 +153,8 @@ test('교사 생성부터 학생 이의와 재확인까지 로컬 흐름이 이�
   const qrRecipientName = page.getByTestId('student-result-qr-name');
   await expect(qrRecipientName).toHaveText('김하늘');
   await expect(qrRecipientName).toHaveCSS('overflow-y', 'visible');
-  await expect(page.getByRole('button', { name: /학생 QR 이미지 저장/ })).toHaveCount(0);
-  await expect(page.getByTestId('student-result-qr-card').locator('svg')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: /학생 QR 이미지 저장/ })).toHaveCount(1);
+  await expect(page.getByTestId('student-result-qr-code').locator('svg')).toHaveCount(1);
   const qrPdfDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'PDF 다운로드' }).click();
   const downloadedQrPdf = await qrPdfDownload;
