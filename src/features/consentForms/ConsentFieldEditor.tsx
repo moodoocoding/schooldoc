@@ -2,6 +2,7 @@ import { ConsentChoiceSettings } from './ConsentChoiceSettings';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, ArrowLeft, ArrowRight, CalendarDays, CheckSquare, ChevronLeft, ChevronRight, Copy, GripVertical, PenLine, Plus, Redo2, Sparkles, Trash2, Type, Undo2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { ConsentPdfPage } from './ConsentPdfPage';
+import type { ConsentPdfState } from './ConsentPdfPage';
 import { alignmentGuides, cloneFieldsToPage, consentFieldMinimumSize, fieldStyle, findAvailableFieldPosition, getConsentFieldLayoutIssues, pageAspectRatio, resolveConsentFieldOverlaps, snapFieldPosition } from './consentFieldLayout';
 import type { ConsentDocumentAnalysis, ConsentFieldDraft, ConsentFieldKind } from './types';
 
@@ -17,8 +18,8 @@ const defaultSize = (kind: ConsentFieldKind) => kind === 'signature'
   : kind === 'checkbox'
     ? { width: 2.4, height: 1.7 }
   : kind === 'text'
-    ? { width: 30, height: 7 }
-    : { width: 22, height: 6 };
+    ? { width: 30, height: 4 }
+    : { width: 22, height: 4 };
 
 const resizeCornerLabel = { nw: '왼쪽 위', ne: '오른쪽 위', sw: '왼쪽 아래', se: '오른쪽 아래' } as const;
 
@@ -39,6 +40,10 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
   const [guides, setGuides] = useState<{ vertical: number[]; horizontal: number[] }>({ vertical: [], horizontal: [] });
   const [toast, setToast] = useState('');
   const [zoom, setZoom] = useState(1);
+  const [pdfState, setPdfState] = useState<{ file: File; pages: Record<number, ConsentPdfState> }>();
+  const onPdfStateChange = useCallback((source: File, pageNumber: number, state: ConsentPdfState) => {
+    setPdfState(previous => ({ file: source, pages: { ...(previous?.file === source ? previous.pages : {}), [pageNumber]: state } }));
+  }, []);
   const resizeRef = useRef<{ field: ConsentFieldDraft; corner: 'nw' | 'ne' | 'sw' | 'se'; startX: number; startY: number; bounds: DOMRect } | null>(null);
   const history = useRef<{ past: ConsentFieldDraft[][]; future: ConsentFieldDraft[][] }>({ past: [], future: [] });
   const [historyDepth, setHistoryDepth] = useState({ past: 0, future: 0 });
@@ -46,12 +51,19 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
   const selectedMinimum = consentFieldMinimumSize(selected?.kind ?? 'text');
   const pageFields = fields.filter((field) => field.pageIndex === pageIndex);
   const pagesWithFields = Array.from(new Set(fields.map((field) => field.pageIndex))).sort((a, b) => a - b);
+  const openPage = (nextPageIndex: number) => {
+    if (nextPageIndex === pageIndex) return;
+    setPdfState(previous => previous?.file === file
+      ? { file, pages: { ...previous.pages, [nextPageIndex + 1]: 'loading' } }
+      : { file, pages: { [nextPageIndex + 1]: 'loading' } });
+    setPageIndex(nextPageIndex);
+  };
 
   const goToFieldPage = (direction: 1 | -1) => {
     const ahead = direction === 1
       ? pagesWithFields.filter((page) => page > pageIndex)
       : [...pagesWithFields].reverse().filter((page) => page < pageIndex);
-    if (ahead.length) setPageIndex(ahead[0]);
+    if (ahead.length) openPage(ahead[0]);
   };
 
   const syncHistoryDepth = () => setHistoryDepth({ past: history.current.past.length, future: history.current.future.length });
@@ -89,7 +101,10 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
   const layoutIssues = getConsentFieldLayoutIssues(fields, analysis.pageCount);
   const overlappingIds = new Set(layoutIssues.filter((issue) => issue.type === 'overlap').flatMap((issue) => issue.fieldIds));
   const pageHasOverlap = pageFields.some((field) => overlappingIds.has(field.id));
-  const canContinue = fields.length > 0 && layoutIssues.length === 0;
+  const pdfPages = pdfState?.file === file ? pdfState.pages : {};
+  const verifiedPageCount = Array.from({ length: analysis.pageCount }, (_, index) => pdfPages[index + 1] === 'ready').filter(Boolean).length;
+  const pageReady = pdfPages[pageIndex + 1] === 'ready';
+  const canContinue = fields.length > 0 && layoutIssues.length === 0 && verifiedPageCount === analysis.pageCount;
   const pageSize = analysis.pageSizes[pageIndex];
   const pageRatio = pageAspectRatio(pageSize?.width, pageSize?.height);
 
@@ -100,7 +115,7 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
     const field: ConsentFieldDraft = {
       id: crypto.randomUUID(), kind,
       label: fieldOptions.find((option) => option.kind === kind)?.label ?? '응답',
-      required: kind !== 'checkbox', pageIndex,
+      required: kind !== 'checkbox', pageIndex, placementPending: true,
       ...position,
       ...size,
     };
@@ -115,7 +130,7 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
     const pageSize = analysis.pageSizes[pageIndex];
     const size = { width: 2.4, height: 2.4 * pageAspectRatio(pageSize?.width, pageSize?.height) };
     for (const label of ['예', '아니오']) {
-      added.push({ id: crypto.randomUUID(), kind: 'checkbox', label, required: false, choice, pageIndex,
+      added.push({ id: crypto.randomUUID(), kind: 'checkbox', label, required: false, choice, pageIndex, placementPending: true,
         ...size, ...findAvailableFieldPosition([...pageFields, ...added], size) });
     }
     markHistory();
@@ -125,7 +140,7 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
 
   const patchSelected = (patch: Partial<ConsentFieldDraft>) => {
     if (!selected) return;
-    onFieldsChange(fields.map((field) => field.id === selected.id ? { ...field, ...patch } : field));
+    onFieldsChange(fields.map((field) => field.id === selected.id ? { ...field, ...patch, placementPending: patch.x !== undefined || patch.y !== undefined ? false : field.placementPending } : field));
   };
 
   const removeSelected = () => {
@@ -144,7 +159,8 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
   /** 복사본은 보고 있는 쪽의 빈 자리에 놓는다. 다른 쪽으로 옮겨 붙이는 것이 주된 쓰임이다. */
   const pasteClipboard = useCallback((sources: ConsentFieldDraft[]) => {
     if (!sources.length) return;
-    const clones = cloneFieldsToPage(fields.filter((field) => field.pageIndex === pageIndex), sources, pageIndex);
+    const clones = cloneFieldsToPage(fields.filter((field) => field.pageIndex === pageIndex), sources, pageIndex)
+      .map(field => ({ ...field, placementPending: true }));
     markHistory();
     onFieldsChange([...fields, ...clones]);
     setSelectedId(clones.at(-1)?.id ?? null);
@@ -179,6 +195,7 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
   }, [clipboard, copySelected, pasteClipboard, redo, selected, undo]);
 
   const startDrag = (event: React.PointerEvent, field: ConsentFieldDraft) => {
+    if (!pageReady) return;
     // preventDefault가 기본 포커스 이동까지 막는다. 직접 옮겨야 방향키와 단축키가 바로 먹는다.
     event.preventDefault();
     if (event.currentTarget instanceof HTMLElement) event.currentTarget.focus();
@@ -197,7 +214,7 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
       const x = Math.max(0, Math.min(100 - field.width, snapped.x));
       const y = Math.max(0, Math.min(100 - field.height, snapped.y));
       setGuides(alignmentGuides({ ...field, x, y }, others));
-      onFieldsChange(fields.map((candidate) => candidate.id === field.id ? { ...candidate, x, y } : candidate));
+      onFieldsChange(fields.map((candidate) => candidate.id === field.id ? { ...candidate, x, y, placementPending: false } : candidate));
     };
     const finish = () => { setGuides({ vertical: [], horizontal: [] }); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', finish); };
     window.addEventListener('pointermove', move);
@@ -298,7 +315,20 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
       ...candidate,
       x: Math.max(0, Math.min(100 - field.width, field.x + delta.x)),
       y: Math.max(0, Math.min(100 - field.height, field.y + delta.y)),
+      placementPending: false,
     } : candidate));
+  };
+
+  const placeSelectedAt = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!selected?.placementPending || selected.pageIndex !== pageIndex || !pageReady) return;
+    if (event.target instanceof Element && event.target.closest('[role="button"], [data-resize-handle]')) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const x = Math.max(0, Math.min(100 - selected.width, (event.clientX - bounds.left) / bounds.width * 100 - selected.width / 2));
+    const y = Math.max(0, Math.min(100 - selected.height, (event.clientY - bounds.top) / bounds.height * 100 - selected.height / 2));
+    markHistory();
+    onFieldsChange(fields.map(field => field.id === selected.id ? { ...field, x, y, placementPending: false } : field));
+    const next = fields.find(field => field.id !== selected.id && field.pageIndex === pageIndex && field.placementPending);
+    if (next) setSelectedId(next.id);
   };
 
   return (
@@ -313,14 +343,14 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
           <div>
             <p className="text-xs font-bold text-[#0F6CBD]">새 가정통신문 수합</p>
             <h1 className="mt-1 text-2xl font-extrabold">응답 필드 배치</h1>
-            <p className="mt-2 text-sm leading-6 text-[#526174]">필드를 추가하고, 원본의 원하는 위치로 옮기세요. 모서리를 잡아 크기를 조절할 수 있습니다.</p>
+            <p className="mt-2 text-sm leading-6 text-[#526174]">필드를 추가하고 원본의 입력칸을 클릭해 위치를 정하세요. 드래그나 위치 숫자로도 조정할 수 있습니다.</p>
           </div>
 
           <section aria-label="필드 추가 도구" className="border-y border-[#DCE3EA] bg-white px-4 py-4">
             <h2 className="text-sm font-bold">필드 추가</h2>
             <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-2">
-              {fieldOptions.map(({kind,label,icon:Icon}) => <button key={kind} type="button" onClick={() => addField(kind)} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-[#C8D0DA] px-2 text-xs font-bold text-[#334155] hover:border-[#0F6CBD] hover:text-[#0F6CBD]"><Icon className="h-4 w-4 shrink-0" />{label}</button>)}
-              <button type="button" onClick={addChoiceQuestion} className="col-[1/-1] inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD]"><Plus className="h-4 w-4 shrink-0" />예 / 아니오 질문</button>
+              {fieldOptions.map(({kind,label,icon:Icon}) => <button key={kind} type="button" disabled={!pageReady} onClick={() => addField(kind)} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-[#C8D0DA] px-2 text-xs font-bold text-[#334155] hover:border-[#0F6CBD] hover:text-[#0F6CBD] disabled:opacity-40"><Icon className="h-4 w-4 shrink-0" />{label}</button>)}
+              <button type="button" disabled={!pageReady} onClick={addChoiceQuestion} className="col-[1/-1] inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-[#0F6CBD] px-3 text-xs font-bold text-[#0F6CBD] disabled:opacity-40"><Plus className="h-4 w-4 shrink-0" />예 / 아니오 질문</button>
             </div>
             <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-2 border-t border-[#EEF1F4] pt-3">
               <button type="button" disabled={!historyDepth.past} onClick={undo} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-[#C8D0DA] px-2 text-xs font-bold text-[#334155] disabled:cursor-not-allowed disabled:opacity-50"><Undo2 className="h-4 w-4 shrink-0" />되돌리기</button>
@@ -357,10 +387,11 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
               ? <p className="mt-3 text-xs leading-5 text-[#64748B]">아직 배치한 필드가 없습니다. 위에서 필드를 추가하세요.</p>
               : <ul className="mt-3 space-y-1.5">{[...fields].sort((a, b) => a.pageIndex - b.pageIndex || a.y - b.y).map((field) => {
                 const Icon = fieldOptions.find((option) => option.kind === field.kind)?.icon ?? Type;
-                return <li key={field.id}><button type="button" onClick={() => { setPageIndex(field.pageIndex); setSelectedId(field.id); }} className={`flex w-full min-h-[40px] items-center gap-2 rounded-lg border px-2.5 text-left text-xs font-semibold ${field.id === selectedId ? 'border-[#0F6CBD] bg-[#EFF6FC] text-[#0F6CBD]' : overlappingIds.has(field.id) ? 'border-[#FECACA] bg-[#FEF2F2] text-[#B42318]' : 'border-[#DCE3EA] text-[#334155] hover:border-[#0F6CBD]'}`}>
+                return <li key={field.id}><button type="button" onClick={() => { openPage(field.pageIndex); setSelectedId(field.id); }} className={`flex w-full min-h-[40px] items-center gap-2 rounded-lg border px-2.5 text-left text-xs font-semibold ${field.id === selectedId ? 'border-[#0F6CBD] bg-[#EFF6FC] text-[#0F6CBD]' : overlappingIds.has(field.id) ? 'border-[#FECACA] bg-[#FEF2F2] text-[#B42318]' : 'border-[#DCE3EA] text-[#334155] hover:border-[#0F6CBD]'}`}>
                   <span className="shrink-0 rounded bg-[#EEF1F4] px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-[#526174]">{field.pageIndex + 1}쪽</span>
                   <Icon className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">{field.label}{field.required ? ' *' : ''}</span>
+                  {field.placementPending ? <span className="ml-auto shrink-0 text-[10px] text-[#B54708]">배치 필요</span> : null}
                   {overlappingIds.has(field.id) ? <AlertTriangle className="ml-auto h-3.5 w-3.5 shrink-0" /> : null}
                 </button></li>;
               })}</ul>}
@@ -372,10 +403,10 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
           <div data-testid="consent-editor-document-toolbar" className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 border-b border-[#DCE3EA] bg-white px-3 py-3 sm:px-5">
             <div className="flex flex-wrap items-center gap-1.5">
               <h2 className="mr-2 text-sm font-bold">원본 PDF</h2>
-              <button type="button" disabled={pageIndex === 0} onClick={() => setPageIndex(value => value - 1)} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#DCE3EA] text-[#334155] disabled:opacity-50" aria-label="이전 쪽"><ChevronLeft className="h-5 w-5" /></button>
-              <input type="number" min={1} max={analysis.pageCount} value={pageIndex + 1} onChange={event => { const page=Math.round(Number(event.target.value)); if(Number.isFinite(page)) setPageIndex(Math.max(0,Math.min(analysis.pageCount-1,page-1))); }} data-allow-field-shortcuts="true" className="h-11 w-16 rounded-lg border border-[#C8D0DA] bg-white text-center text-xs font-bold tabular-nums" aria-label="쪽 번호" />
+              <button type="button" disabled={pageIndex === 0} onClick={() => openPage(pageIndex - 1)} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#DCE3EA] text-[#334155] disabled:opacity-50" aria-label="이전 쪽"><ChevronLeft className="h-5 w-5" /></button>
+              <input type="number" min={1} max={analysis.pageCount} value={pageIndex + 1} onChange={event => { const page=Math.round(Number(event.target.value)); if(Number.isFinite(page)) openPage(Math.max(0,Math.min(analysis.pageCount-1,page-1))); }} data-allow-field-shortcuts="true" className="h-11 w-16 rounded-lg border border-[#C8D0DA] bg-white text-center text-xs font-bold tabular-nums" aria-label="쪽 번호" />
               <span className="text-xs font-semibold tabular-nums text-[#526174]">/ {analysis.pageCount}쪽</span>
-              <button type="button" disabled={pageIndex+1 >= analysis.pageCount} onClick={() => setPageIndex(value => value + 1)} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#DCE3EA] text-[#334155] disabled:opacity-50" aria-label="다음 쪽"><ChevronRight className="h-5 w-5" /></button>
+              <button type="button" disabled={pageIndex+1 >= analysis.pageCount} onClick={() => openPage(pageIndex + 1)} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#DCE3EA] text-[#334155] disabled:opacity-50" aria-label="다음 쪽"><ChevronRight className="h-5 w-5" /></button>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               <button type="button" disabled={zoom<=0.5} onClick={() => setZoom(value => Math.max(0.5,Math.round((value-0.25)*100)/100))} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#DCE3EA] text-[#334155] disabled:opacity-50" aria-label="축소"><ZoomOut className="h-4 w-4" /></button>
@@ -390,8 +421,8 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
             </div> : null}
           </div>
           <div data-testid="consent-editor-document-viewport" className="overflow-x-auto overflow-y-hidden p-3 sm:p-6">
-              <div data-testid="consent-field-canvas" data-field-canvas style={{ aspectRatio: pageRatio, width: `${zoom * 100}%` }} className="relative mx-auto shrink-0 overflow-hidden bg-white shadow-[0_8px_28px_rgba(15,23,42,0.16)]">
-            <ConsentPdfPage file={file} pageNumber={pageIndex + 1} />
+              <div data-testid="consent-field-canvas" data-field-canvas onClick={placeSelectedAt} style={{ aspectRatio: pageRatio, width: `${zoom * 100}%` }} className={`relative mx-auto shrink-0 overflow-hidden bg-white shadow-[0_8px_28px_rgba(15,23,42,0.16)] ${selected?.placementPending && pageReady ? 'cursor-crosshair' : ''}`}>
+            <ConsentPdfPage file={file} pageNumber={pageIndex + 1} onStateChange={onPdfStateChange} />
             {guides.vertical.map((at) => <span key={`v-${at}`} aria-hidden className="pointer-events-none absolute top-0 z-30 h-full border-l border-dashed border-[#D92D20]" style={{ left: `${at}%` }} />)}
             {guides.horizontal.map((at) => <span key={`h-${at}`} aria-hidden className="pointer-events-none absolute left-0 z-30 w-full border-t border-dashed border-[#D92D20]" style={{ top: `${at}%` }} />)}
             {pageFields.map((field) => <div key={field.id} role="button" tabIndex={0} aria-invalid={overlappingIds.has(field.id)} onPointerDown={(event) => startDrag(event, field)} onClick={() => setSelectedId(field.id)} onKeyDown={(event) => moveFieldByKeyboard(event, field)} style={fieldStyle(field)} className={`absolute z-20 flex min-h-0 touch-none items-center justify-center overflow-visible border-2 ${field.kind === 'checkbox' ? 'p-0' : 'px-1'} text-[10px] font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]/35 ${field.kind !== 'checkbox' && field.id === selectedId ? "bg-white/85" : "bg-transparent"} ${overlappingIds.has(field.id) ? 'border-[#D92D20] text-[#B42318]' : field.id === selectedId ? 'border-[#0F6CBD] text-[#0F6CBD]' : 'border-[#64748B] text-[#334155]'}`} aria-label={`${field.label} 필드${overlappingIds.has(field.id) ? ' 겹침 오류' : ''}`} aria-describedby="field-keyboard-help">{field.kind !== 'checkbox' && field.id === selectedId ? <GripVertical className="mr-0.5 h-3 w-3 shrink-0" /> : null}{field.kind !== 'checkbox' ? <span className="truncate rounded-sm bg-white/85 px-1">{field.label}{field.required ? ' *' : ''}</span> : null}</div>)}
@@ -401,11 +432,12 @@ export function ConsentFieldEditor({ analysis, file, fields, onFieldsChange, onB
             <p id="field-keyboard-help" className="sr-only">방향키로 이동하고 Alt와 방향키로 크기를 조절하며 Delete 키로 삭제합니다.</p>
           </div>
           </div>
+          <p role="status" className="px-3 pb-3 text-center text-xs font-semibold text-[#526174]">{pdfPages[pageIndex + 1] === 'error' ? '이 쪽 원본을 표시하지 못했습니다. 문서의 다시 시도를 눌러 주세요.' : !pageReady ? '원본을 표시하는 중입니다. 표시가 끝나면 필드를 배치할 수 있습니다.' : selected?.placementPending && selected.pageIndex === pageIndex ? `‘${selected.label}’을(를) 놓을 원본 위치를 클릭하세요.` : `원본 표시 확인 ${verifiedPageCount}/${analysis.pageCount}쪽${verifiedPageCount < analysis.pageCount ? ' · 다른 쪽도 열어 확인하세요.' : ''}`}</p>
         </section>
       </div>
       {toast ? <p role="status" className="pointer-events-none fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-[#0F172A]/90 px-4 py-2 text-xs font-bold text-white shadow-lg">{toast}</p> : null}
       <div className="sticky bottom-0 z-20 flex flex-wrap items-center justify-between gap-3 border-t border-[#DCE3EA] bg-[#F6F8FB]/95 py-3 backdrop-blur">
-        <p className={`text-xs ${layoutIssues.length ? 'font-semibold text-[#B42318]' : 'text-[#526174]'}`}>{layoutIssues.length ? layoutIssues[0].message : fields.length>0 ? `응답 필드 ${fields.length}개가 배치되었습니다.` : '문서에 응답 필드를 하나 이상 배치하세요.'}</p>
+        <p className={`text-xs ${layoutIssues.length ? 'font-semibold text-[#B42318]' : 'text-[#526174]'}`}>{layoutIssues.length ? layoutIssues[0].message : verifiedPageCount < analysis.pageCount ? `원본 ${verifiedPageCount}/${analysis.pageCount}쪽 확인 · 나머지 쪽도 열어 주세요.` : fields.length>0 ? `응답 필드 ${fields.length}개가 배치되었습니다.` : '문서에 응답 필드를 하나 이상 배치하세요.'}</p>
         <button type="button" disabled={!canContinue} onClick={onNext} className="ml-auto inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[#0F6CBD] px-5 text-sm font-bold text-white hover:bg-[#0B5B9F] disabled:bg-[#AAB7C4]">필드 배치 완료<ArrowRight className="h-4 w-4 shrink-0" /></button>
       </div>
     </div>

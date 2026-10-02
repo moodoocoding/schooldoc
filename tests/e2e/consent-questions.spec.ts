@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { jsPDF } from 'jspdf';
 import AxeBuilder from '@axe-core/playwright';
 import type { ConsentFieldDraft } from '../../src/features/consentForms/types';
+import { confirmConsentPlacementPreview, finishConsentFieldPlacement } from './consentFieldPlacement';
 
 const choice = { id: 'agreement', label: '동의 여부', mode: 'single' as const, required: true, minSelections: 1 };
 const fields: ConsentFieldDraft[] = [
@@ -173,11 +174,12 @@ test('교사는 기존 체크박스를 질문으로 묶고 새 질문을 작게 
   await expect(settings.getByText('선택지:', { exact: false })).toContainText('참가 / 불참');
   await page.getByRole('button', { name: '예 / 아니오 질문', exact: true }).click();
   await expect(settings.getByLabel('질문 제목')).toHaveValue('동의 여부');
-  await expect(page.getByRole('button', { name: '필드 배치 완료' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: '필드 배치 완료' })).toBeDisabled();
   await page.getByTestId('consent-field-canvas').screenshot({ path: 'test-results/consent-checkbox-editor.png' });
-  await page.getByRole('button', { name: '필드 배치 완료' }).click();
+  await finishConsentFieldPlacement(page);
   await page.getByLabel('명단 없이 받기').check();
   await page.getByRole('button', { name: '다음: 공유 설정' }).click();
+  await confirmConsentPlacementPreview(page);
   await page.getByRole('button', { name: '수합 만들기' }).click();
   await page.getByRole('button', { name: '관리·공유' }).click();
   const link = await page.getByLabel('응답 화면 열기').getAttribute('href');

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { jsPDF } from 'jspdf';
 import { defaultRoleState, parseRoleRoster } from '../../supabase/functions/_shared/classroomRoles';
+import { confirmConsentPlacementPreview, finishConsentFieldPlacement } from './consentFieldPlacement';
 
 const demoKey = 'schooldoc_classroom_roles_demo_v1';
 const recipients = (page: Page) => page.locator('section').filter({ has: page.getByRole('heading', { name: '수신자 명단', exact: true }) });
@@ -15,7 +16,7 @@ async function openRecipients(page: Page) {
   await page.getByRole('textbox', { name: '제목', exact: true }).fill('우리반 가정통신문');
   await page.getByRole('button', { name: '확인 후 필드 배치' }).click();
   await page.getByRole('button', { name: '텍스트', exact: true }).click();
-  await page.getByRole('button', { name: '필드 배치 완료' }).click();
+  await finishConsentFieldPlacement(page);
   await expect(page.getByRole('heading', { name: '누가 응답할지 정하기' })).toBeVisible();
 }
 
@@ -59,6 +60,7 @@ test('설정에서 저장한 우리반 명단을 번호순으로 추가하고 �
   await page.getByRole('button', { name: '수신자 설정으로' }).click();
   await expect(recipients(page).locator('li')).toHaveCount(4);
   await page.getByRole('button', { name: '다음: 공유 설정' }).click();
+  await confirmConsentPlacementPreview(page);
   await page.getByRole('button', { name: '수합 만들기' }).click();
   await expect(page.getByRole('heading', { name: '우리반 가정통신문', exact: true })).toBeVisible();
   expect(errors).toEqual([]);
