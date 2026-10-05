@@ -51,7 +51,7 @@ npm run test:portable
 - Supabase Auth redirect allowlist에는 이 loopback 주소 패턴이 필요하다.
   `http://127.0.0.1:*/callback**`를 해당 프로젝트에서 허용하고 실제 로그인으로 확인한다.
   기존 웹 redirect·프로젝트 secrets·암호화 키를 덮어쓰지 않는다.
-- 영수증 관리자 접근과 원본 IndexedDB·장부 localStorage 정책은 유지한다.
+- 영수증은 로그인한 모든 비익명 교사 계정에 열고, 원본 IndexedDB·장부 localStorage의 계정별 격리 정책은 유지한다.
   무설치 EXE도 프로필은 사용자 AppData에 저장하므로 EXE 하나에 자료가 함께 담기지는 않는다.
   과거 `file://` 베타 EXE의 저장소를 자동으로 이관하지 않는다. 기존 프로필을 삭제하지 말고
   기존 자료가 필요한 경우 백업·이관과 구버전 프로필 재사용을 별도로 검증한다.

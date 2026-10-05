@@ -21,11 +21,7 @@ import { useAppearanceSettings } from './features/settings/appearanceContext';
 import { PublicClassroomRolesPage } from './features/classroomRoles/PublicClassroomRolesPage';
 import { ClassMissionsWorkspace } from './features/classMissions/ClassMissionsWorkspace';
 import { PublicClassMissionsPage } from './features/classMissions/PublicClassMissionsPage';
-import {
-  canAccessClassBudgetReceipts,
-  isClassBudgetReceiptsAdmin,
-  isClassBudgetReceiptsPreviewEnabled,
-} from './features/classBudgetReceipts/classBudgetReceiptsConfig';
+import { canAccessClassBudgetReceipts } from './features/classBudgetReceipts/classBudgetReceiptsConfig';
 import { useTeacherAuth } from './auth/teacherAuth';
 import type { SidebarTab, SchoolTool } from './types/schooldoc';
 
@@ -36,9 +32,8 @@ function AdminApp() {
   const [isOpenMobile, setIsOpenMobile] = useState<boolean>(false);
   const [quickMenuIds, setQuickMenuIds] = useState<string[]>(['notice-collect', 'student-lookup']);
   const [isOpenNotifications, setIsOpenNotifications] = useState<boolean>(false);
-  const { user, loading: authLoading } = useTeacherAuth();
+  const { user, loading: authLoading, signIn, error: authError } = useTeacherAuth();
   const { settings: appearance } = useAppearanceSettings();
-  const isReceiptAdmin = isClassBudgetReceiptsAdmin(user);
   const canUseReceiptBooks = canAccessClassBudgetReceipts(user);
 
   // 10 Core Services matched EXACTLY with user specification
@@ -97,10 +92,8 @@ function AdminApp() {
       name: '학급 운영비 영수증',
       desc: '학급 운영비 지출을 기록하고 전체 예산과 남은 금액을 확인합니다.',
       iconName: 'receipt',
-      status: canUseReceiptBooks ? 'ready' : 'in_progress',
-      statusText: isClassBudgetReceiptsPreviewEnabled
-        ? '1차 개발 중'
-        : isReceiptAdmin ? '관리자 미리보기' : '개발 중',
+      status: 'ready',
+      statusText: canUseReceiptBooks ? undefined : '로그인 후 사용',
     },
     'cert-collect': {
       id: 'cert-collect',
@@ -162,7 +155,6 @@ function AdminApp() {
     // 아직 만들지 않은 도구는 열지 않는다. 단계와 업로드가 있는 화면이 열리면
     // 동작하는 줄 알고 자료를 올리게 된다.
     if (!route) return;
-    if (toolId === 'receipt-auto' && !canUseReceiptBooks) return;
     navigate(route);
   };
 
@@ -219,13 +211,17 @@ function AdminApp() {
               : isDataCollectRoute ? <DataCollectWorkspace />
               : isClassMissionsRoute ? <ClassMissionsWorkspace />
               : isClassroomRolesRoute ? <Routes><Route path="/tools/classroom-roles/*" element={<ClassroomRolesWorkspace />} /></Routes>
-              : canUseReceiptBooks ? <ReceiptBooksWorkspace />
+              : !authLoading && canUseReceiptBooks ? <ReceiptBooksWorkspace key={user?.id} />
                 : <section className="mx-auto max-w-xl border-y border-[#DCE3EA] bg-white px-6 py-16 text-center">
-                  <h1 className="text-xl font-extrabold text-[#0F172A]">학급 운영비 영수증은 개발 중입니다</h1>
+                  <h1 className="text-xl font-extrabold text-[#0F172A]">학급 운영비 영수증</h1>
                   <p className="mt-3 text-sm leading-6 text-[#526174]">
-                    {authLoading ? '관리자 계정인지 확인하고 있습니다.' : '현재는 관리자 계정에서만 미리 볼 수 있습니다.'}
+                    {authLoading ? '로그인 상태를 확인하고 있습니다.' : '교사 계정으로 로그인하면 개인 장부를 만들고 영수증을 정리할 수 있습니다.'}
                   </p>
-                  <button type="button" onClick={() => navigate('/')} className="mt-6 min-h-[44px] rounded-lg border border-[#0F6CBD] px-5 text-sm font-bold text-[#0F6CBD]">홈으로 돌아가기</button>
+                  {authError ? <p role="alert" className="mt-3 text-sm text-[#B42318]">{authError}</p> : null}
+                  <div className="mt-6 flex flex-wrap justify-center gap-3">
+                    {!authLoading ? <button type="button" onClick={() => void signIn()} className="min-h-[44px] rounded-lg bg-[#0F6CBD] px-5 text-sm font-bold text-white">Google로 로그인</button> : null}
+                    <button type="button" onClick={() => navigate('/')} className="min-h-[44px] rounded-lg border border-[#0F6CBD] px-5 text-sm font-bold text-[#0F6CBD]">홈으로 돌아가기</button>
+                  </div>
                 </section>}
           </main>
         ) : (

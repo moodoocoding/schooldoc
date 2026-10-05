@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import { buildReceiptRequest, createReceiptHandler, isReceiptAiAdmin, readUpload, ReceiptError, requestReceiptAnalysis, validateReceipts } from '../../supabase/functions/receipt-analyze/core';
+import { authorizeReceiptRequest, buildReceiptRequest, createReceiptHandler, readUpload, ReceiptError, requestReceiptAnalysis, validateReceipts } from '../../supabase/functions/receipt-analyze/core';
 
 const upload = { mimeType: 'application/pdf', data: btoa('%PDF-1.7\n') };
 const row = { spentAt: '2026-09-08', merchant: '문구점', amount: 32500, currency: 'KRW', description: '문구', page: 1, warnings: [] };
@@ -7,12 +7,35 @@ const request = (body: unknown = upload) => new Request('https://local.test', { 
 const response = (data: unknown = { receipts: [row] }) => new Response(JSON.stringify({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(data) }] }] }));
 
 describe('OpenAI 영수증 서버 경계', () => {
-  test('인증된 관리자 메타데이터 또는 확인된 허용 이메일만 승인한다', () => {
-    const emails = new Set(['admin@example.invalid']);
-    expect(isReceiptAiAdmin({ email: 'admin@example.invalid' }, emails)).toBe(false);
-    expect(isReceiptAiAdmin({ email: 'ADMIN@example.invalid', email_confirmed_at: '2026-09-08' }, emails)).toBe(true);
-    expect(isReceiptAiAdmin({ app_metadata: { role: 'admin' } }, emails)).toBe(true);
-    expect(isReceiptAiAdmin({ app_metadata: { role: 'teacher' }, email: 'other@example.invalid', email_confirmed_at: '2026-09-08' }, emails)).toBe(false);
+  test('일반 교사의 검증된 사용자 ID로만 한도와 분석을 처리한다', async () => {
+    const req = request({ ...upload, userId: 'spoofed-owner', role: 'admin' });
+    req.headers.set('Authorization', 'Bearer verified-test-token');
+    const verifyUser = vi.fn(async () => ({ data: { user: { id: 'ordinary-teacher', is_anonymous: false } }, error: null }));
+    const consumeQuota = vi.fn(async () => true), analyze = vi.fn(async () => [row]);
+    const handler = createReceiptHandler({ authorize: req => authorizeReceiptRequest(req, verifyUser), consumeQuota, analyze });
+    expect((await handler(req)).status).toBe(200);
+    expect(verifyUser).toHaveBeenCalledWith('verified-test-token');
+    expect(consumeQuota).toHaveBeenCalledWith('ordinary-teacher');
+    expect(analyze).toHaveBeenCalledOnce();
+  });
+  test('인증 없는 요청은 사용자 확인과 한도를 호출하지 않는다', async () => {
+    const verifyUser = vi.fn(), consumeQuota = vi.fn(), analyze = vi.fn();
+    const handler = createReceiptHandler({ authorize: req => authorizeReceiptRequest(req, verifyUser), consumeQuota, analyze });
+    expect((await handler(request())).status).toBe(401);
+    expect(verifyUser).not.toHaveBeenCalled(); expect(consumeQuota).not.toHaveBeenCalled(); expect(analyze).not.toHaveBeenCalled();
+  });
+  test.each(['invalid', 'missing-user', 'anonymous', 'verification-error'])('인증 %s 상태는 AI와 한도를 호출하지 않는다', async state => {
+    const req = request(); req.headers.set('Authorization', 'Bearer test-token');
+    const verifyUser = vi.fn(async () => {
+      if (state === 'verification-error') throw new Error('sensitive-token');
+      return { data: { user: state === 'missing-user' ? null : { id: 'u', is_anonymous: state === 'anonymous' } }, error: state === 'invalid' ? new Error('sensitive-token') : null };
+    });
+    const consumeQuota = vi.fn(), analyze = vi.fn();
+    const handler = createReceiptHandler({ authorize: req => authorizeReceiptRequest(req, verifyUser), consumeQuota, analyze });
+    const result = await handler(req);
+    expect(result.status).toBe(state === 'anonymous' ? 403 : 401);
+    expect(await result.text()).not.toContain('sensitive-token');
+    expect(consumeQuota).not.toHaveBeenCalled(); expect(analyze).not.toHaveBeenCalled();
   });
   test('PDF 원본과 strict schema를 전송하고 응답 저장을 끈다', () => {
     const body = buildReceiptRequest(upload, 'test-model');
@@ -28,10 +51,10 @@ describe('OpenAI 영수증 서버 경계', () => {
     expect((await handler(request())).status).toBe(401);
     expect(analyze).not.toHaveBeenCalled(); expect(consumeQuota).not.toHaveBeenCalled();
   });
-  test('관리자 외 계정을 거부한다', async () => {
+  test('한도 확인 오류에서도 AI 호출을 하지 않는다', async () => {
     const analyze = vi.fn();
-    const handler = createReceiptHandler({ authorize: async () => { throw new ReceiptError(403, '관리자 전용'); }, consumeQuota: async () => true, analyze });
-    expect((await handler(request())).status).toBe(403); expect(analyze).not.toHaveBeenCalled();
+    const handler = createReceiptHandler({ authorize: async () => 'u', consumeQuota: async () => { throw new ReceiptError(503, '제한 확인 실패'); }, analyze });
+    expect((await handler(request())).status).toBe(503); expect(analyze).not.toHaveBeenCalled();
   });
   test('호출 제한 실패 시 AI 호출을 하지 않는다', async () => {
     const analyze = vi.fn();

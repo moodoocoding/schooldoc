@@ -1,29 +1,24 @@
 import { describe, expect, test } from 'vitest';
 import {
   canAccessClassBudgetReceipts,
-  isClassBudgetReceiptsAdmin,
+  classBudgetReceiptsOwnerId,
 } from '../../src/features/classBudgetReceipts/classBudgetReceiptsConfig';
 
-const user = (email: string, role?: string) => ({
-  email,
-  app_metadata: role ? { role } : {},
-});
-
-describe('학급 운영비 영수증 관리자 미리보기', () => {
-  test('지정된 관리자 이메일은 운영에서도 접근할 수 있다', () => {
-    expect(isClassBudgetReceiptsAdmin(user('PANTHEA0@gmail.com'))).toBe(true);
-    expect(canAccessClassBudgetReceipts(user('panthea0@gmail.com'), false)).toBe(true);
+describe('학급 운영비 영수증 로그인 교사 접근', () => {
+  test('관리자 역할·이메일 허용 목록 없이 로그인 계정에 연다', () => {
+    expect(canAccessClassBudgetReceipts({ id: 'ordinary-teacher', is_anonymous: false })).toBe(true);
+    expect(canAccessClassBudgetReceipts({ id: 'another-teacher' })).toBe(true);
   });
 
-  test('관리자 역할이 있는 계정도 접근할 수 있다', () => {
-    expect(isClassBudgetReceiptsAdmin(user('teacher@example.com', 'ADMIN'))).toBe(true);
+  test('로그아웃·익명 로그인·사용자 ID 누락을 차단한다', () => {
+    expect(canAccessClassBudgetReceipts(null)).toBe(false);
+    expect(canAccessClassBudgetReceipts()).toBe(false);
+    expect(canAccessClassBudgetReceipts({ id: '', is_anonymous: false })).toBe(false);
+    expect(canAccessClassBudgetReceipts({ id: 'guest', is_anonymous: true })).toBe(false);
   });
 
-  test('일반 교사는 운영 미리보기에서 차단한다', () => {
-    expect(canAccessClassBudgetReceipts(user('teacher@example.com'), false)).toBe(false);
-  });
-
-  test('개발 환경 미리보기는 기존처럼 모든 계정에 연다', () => {
-    expect(canAccessClassBudgetReceipts(null, true)).toBe(true);
+  test('계정 ID를 장부·원본 저장 공간 구분자로 그대로 사용한다', () => {
+    expect(classBudgetReceiptsOwnerId('teacher-a')).toBe('teacher-a');
+    expect(classBudgetReceiptsOwnerId('teacher-b')).toBe('teacher-b');
   });
 });

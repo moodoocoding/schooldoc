@@ -4,8 +4,18 @@ export class ReceiptError extends Error {
 export const MAX_BYTES = 10 * 1024 * 1024;
 const MAX_BODY = Math.ceil(MAX_BYTES / 3) * 4 + 4096;
 export interface ReceiptUpload { mimeType: string; data: string; }
-export function isReceiptAiAdmin(user: { email?: string; email_confirmed_at?: string; app_metadata?: { role?: unknown } }, allowedEmails: Set<string>) {
-  return user.app_metadata?.role === 'admin' || Boolean(user.email_confirmed_at && allowedEmails.has(user.email?.trim().toLowerCase() ?? ''));
+interface VerifiedUser { id: string; is_anonymous?: boolean; }
+type VerifyUser = (token: string) => Promise<{ data: { user: VerifiedUser | null }; error: unknown }>;
+export async function authorizeReceiptRequest(request: Request, verifyUser: VerifyUser): Promise<string> {
+  const token = request.headers.get('Authorization')?.match(/^Bearer (\S+)$/i)?.[1];
+  if (!token) throw new ReceiptError(401, 'AI 분석은 로그인 후 사용할 수 있습니다.');
+  let result: Awaited<ReturnType<VerifyUser>>;
+  try { result = await verifyUser(token); }
+  catch { throw new ReceiptError(401, '로그인 상태를 확인하지 못했습니다. 다시 로그인해 주세요.'); }
+  if (result.error || !result.data.user?.id) throw new ReceiptError(401, '로그인이 만료되었습니다. 다시 로그인해 주세요.');
+  if (result.data.user.is_anonymous) throw new ReceiptError(403, '교사 계정으로 로그인한 뒤 사용할 수 있습니다.');
+  // 사용자 ID는 요청 본문/클라이언트 역할이 아니라 검증된 Supabase 사용자에서 얻는다.
+  return result.data.user.id;
 }
 export interface ExtractedReceipt {
   spentAt: string | null; merchant: string | null; amount: number | null;

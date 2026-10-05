@@ -1,30 +1,10 @@
 import type { User } from '@supabase/supabase-js';
 
-export const isClassBudgetReceiptsPreviewEnabled = import.meta.env.DEV
-  || import.meta.env.VITE_CLASS_BUDGET_RECEIPTS_PREVIEW === 'true';
+type ReceiptAccessUser = Pick<User, 'id' | 'is_anonymous'>;
 
-const receiptAdminEmails = new Set([
-  'panthea0@gmail.com',
-  ...(import.meta.env.VITE_CLASS_BUDGET_RECEIPTS_ADMIN_EMAILS ?? '')
-    .split(',')
-    .map((email: string) => email.trim().toLowerCase())
-    .filter(Boolean),
-]);
-
-type ReceiptAccessUser = Pick<User, 'email' | 'app_metadata'>;
-
-export const isClassBudgetReceiptsAdmin = (user?: ReceiptAccessUser | null) => {
-  if (!user) return false;
-  const role = typeof user.app_metadata?.role === 'string'
-    ? user.app_metadata.role.toLowerCase()
-    : '';
-  const email = user.email?.trim().toLowerCase() ?? '';
-  return role === 'admin' || receiptAdminEmails.has(email);
-};
-
-export const canAccessClassBudgetReceipts = (
-  user?: ReceiptAccessUser | null,
-  previewEnabled = isClassBudgetReceiptsPreviewEnabled,
-) => previewEnabled || isClassBudgetReceiptsAdmin(user);
+// 운영·개발 환경 모두 로그인한 교사의 계정으로만 장부를 연다.
+// 실제 API 인증은 서버가 Supabase에서 다시 검증한다.
+export const canAccessClassBudgetReceipts = (user?: ReceiptAccessUser | null) =>
+  Boolean(user?.id && !user.is_anonymous);
 
 export const classBudgetReceiptsOwnerId = (userId?: string) => userId || 'local-demo-teacher';
