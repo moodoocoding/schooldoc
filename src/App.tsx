@@ -23,6 +23,7 @@ import { ClassMissionsWorkspace } from './features/classMissions/ClassMissionsWo
 import { PublicClassMissionsPage } from './features/classMissions/PublicClassMissionsPage';
 import { canAccessClassBudgetReceipts } from './features/classBudgetReceipts/classBudgetReceiptsConfig';
 import { useTeacherAuth } from './auth/teacherAuth';
+import { getVisibleSchoolTools } from './auth/schoolToolVisibility';
 import type { SidebarTab, SchoolTool } from './types/schooldoc';
 
 function AdminApp() {
@@ -36,7 +37,7 @@ function AdminApp() {
   const { settings: appearance } = useAppearanceSettings();
   const canUseReceiptBooks = canAccessClassBudgetReceipts(user);
 
-  // 10 Core Services matched EXACTLY with user specification
+  // 개발 중인 네 도구의 공개 범위는 아래 공통 필터에서 구분한다.
   const allToolsMap: Record<string, SchoolTool> = {
     'class-missions': {
       id: 'class-missions',
@@ -129,6 +130,9 @@ function AdminApp() {
     },
   };
 
+  const visibleToolsMap = getVisibleSchoolTools(allToolsMap, user, authLoading);
+  const visibleQuickMenuIds = quickMenuIds.filter((id) => Boolean(visibleToolsMap[id]));
+
   const isRegistryRoute = location.pathname.startsWith('/tools/registry-sign');
   const isStudentResultsRoute = location.pathname.startsWith('/tools/student-results');
   const isConsentFormsRoute = location.pathname.startsWith('/tools/consent-forms');
@@ -151,6 +155,7 @@ function AdminApp() {
   };
 
   const handleSelectTool = (toolId: string) => {
+    if (!visibleToolsMap[toolId]) return;
     const route = toolRoutes[toolId];
     // 아직 만들지 않은 도구는 열지 않는다. 단계와 업로드가 있는 화면이 열리면
     // 동작하는 줄 알고 자료를 올리게 된다.
@@ -159,14 +164,16 @@ function AdminApp() {
   };
 
   const handleAddQuickMenu = (toolId: string) => {
-    if (quickMenuIds.length >= 5) return;
-    if (!quickMenuIds.includes(toolId)) {
-      setQuickMenuIds([...quickMenuIds, toolId]);
-    }
+    if (!visibleToolsMap[toolId]) return;
+    setQuickMenuIds((current) => {
+      const visibleIds = current.filter((id) => Boolean(visibleToolsMap[id]));
+      if (visibleIds.length >= 5 || visibleIds.includes(toolId)) return current;
+      return [...visibleIds, toolId];
+    });
   };
 
   const handleRemoveQuickMenu = (toolId: string) => {
-    setQuickMenuIds(quickMenuIds.filter((id) => id !== toolId));
+    setQuickMenuIds((current) => current.filter((id) => id !== toolId));
   };
 
   return (
@@ -178,8 +185,8 @@ function AdminApp() {
           setActiveTab(tab);
           navigate('/');
         }}
-        quickMenuIds={quickMenuIds}
-        allToolsMap={allToolsMap}
+        quickMenuIds={visibleQuickMenuIds}
+        allToolsMap={visibleToolsMap}
         onSelectTool={handleSelectTool}
         onAddQuickMenu={handleAddQuickMenu}
         onRemoveQuickMenu={handleRemoveQuickMenu}
@@ -228,7 +235,7 @@ function AdminApp() {
           <main className="flex-1">
             {activeTab === 'home' && (
               <HomeWorkspace
-                allToolsMap={allToolsMap}
+                allToolsMap={visibleToolsMap}
                 onSelectTool={handleSelectTool}
                 onOpenMobileMenu={() => setIsOpenMobile(true)}
               />

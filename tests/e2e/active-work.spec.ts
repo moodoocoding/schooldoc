@@ -15,7 +15,7 @@ test.describe('진행 중인 업무', () => {
     await expect(page.getByText('특별실 예약', { exact: true })).toBeVisible();
     const toolNames = await page.locator('h3').allTextContents();
     expect(toolNames.indexOf('특별실 예약')).toBeGreaterThan(toolNames.indexOf('자료 수합'));
-    expect(toolNames.indexOf('문서 서명')).toBeGreaterThan(toolNames.indexOf('특별실 예약'));
+    expect(toolNames).not.toContain('문서 서명');
   });
 
   test('도구 제목은 목록으로, 개별 업무는 관리 화면으로 이동한다', async ({ page }) => {
@@ -134,7 +134,7 @@ test.describe('진행 중인 업무', () => {
   });
 });
 
-test('가정통신문 재제출은 현재 응답 수로 표시하고 준비 중인 수합은 숨긴다', async ({ page }) => {
+test('가정통신문 재제출은 현재 응답 수로 표시하고 준비 중인 수합은 숨긴다', async ({ page }, testInfo) => {
   await page.addInitScript(() => {
     localStorage.setItem('schooldoc:consent-forms:drafts', JSON.stringify([
       { id: 'consent-current', title: '가상 재제출 수합', recipientMode: 'named', recipientCount: 24, responseCount: 9, currentResponseCount: 1, publicationState: 'ready', status: 'open' },
@@ -148,5 +148,5 @@ test('가정통신문 재제출은 현재 응답 수로 표시하고 준비 중�
   await expect(row).not.toContainText('9/24명 응답');
   await expect(page.getByText('가상 준비 중 수합')).toHaveCount(0);
   await page.mouse.move(1100, 500);
-  await page.screenshot({ path: 'design/feature-reviews/2026-10-02-integration/current-consent-active.png', fullPage: true, animations: 'disabled' });
+  await page.screenshot({ path: testInfo.outputPath('current-consent-active.png'), fullPage: true, animations: 'disabled' });
 });

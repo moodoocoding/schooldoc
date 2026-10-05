@@ -68,7 +68,7 @@ export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
           <Search className="w-5 h-5 text-[#64748B] absolute left-4 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="가정통신문, 이수증, 특별실 등을 검색하세요"
+            placeholder="가정통신문, 자료 수합, 특별실 등을 검색하세요"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-12 pr-10 py-3.5 rounded-xl bg-white border border-[#DCE3EA] text-[#0F172A] placeholder-[#64748B] text-sm font-medium focus:outline-none focus:border-[#0F6CBD] focus:ring-2 focus:ring-[#0F6CBD]/20 shadow-xs transition-all min-h-[48px]"
@@ -86,7 +86,7 @@ export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
         </div>
       </section>
 
-      {/* Tools Area (10개 카드를 직접 표시) */}
+      {/* 현재 계정에 표시할 업무 도구 */}
       <section className="space-y-4 pt-2">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-[#0F172A]">
