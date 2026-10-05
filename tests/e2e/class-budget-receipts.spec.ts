@@ -14,7 +14,7 @@ async function setup(page: Page, rows = [receipt]) {
   // 브라우저 통합 테스트용 인증/API 대역. 실제 OpenAI 호출·정확도 검증이 아니다.
   await page.route('**/src/utils/supabaseClient.ts', route => route.fulfill({ contentType: 'application/javascript', body: `
     export const isSupabaseConfigured = true;
-    const user = {id:'receipt-test-teacher', email:'test@example.invalid', app_metadata:{role:'admin'}, user_metadata:{name:'테스트 교사'}};
+    const user = {id:'receipt-test-teacher', email:'test@example.invalid', app_metadata:{}, user_metadata:{name:'테스트 교사'}};
     export const supabase = {
       auth: {
         getSession: async () => ({data:{session:{user}}}),

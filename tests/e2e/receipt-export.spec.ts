@@ -35,7 +35,7 @@ async function setup(page: Page, kind: FixtureKind = 'mixed') {
   // 가상 계정과 브라우저 저장소만 사용한다. 원격 Supabase와 영수증 AI는 호출하지 않는다.
   await page.route('**/src/utils/supabaseClient.ts', route => route.fulfill({ contentType: 'application/javascript', body: `
     export const isSupabaseConfigured = true;
-    const user = { id: '${OWNER_ID}', email: 'export-test@example.invalid', app_metadata: { role: 'admin' }, user_metadata: { name: '출력 테스트 교사' } };
+    const user = { id: '${OWNER_ID}', email: 'export-test@example.invalid', app_metadata: {}, user_metadata: { name: '출력 테스트 교사' } };
     export const supabase = {
       auth: {
         getSession: async () => ({ data: { session: { user } } }),
