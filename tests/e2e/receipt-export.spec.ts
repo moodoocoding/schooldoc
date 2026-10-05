@@ -126,7 +126,7 @@ async function renderDownloadedPdf(page: Page, testInfo: TestInfo, path: string)
     const pdfjs = await loadPdfJs();
     const task = pdfjs.getDocument({ data: Uint8Array.from(atob(base64), char => char.charCodeAt(0)) });
     const container = document.createElement('div'); container.id = 'export-pdf-render'; document.body.append(container);
-    const rendered: { width: number; height: number; ink: number; red: number; blue: number; green: number }[] = [];
+    const rendered: { width: number; height: number; ink: number; red: number; blue: number; green: number; redWidth: number; redHeight: number }[] = [];
     try {
       const document = await task.promise;
       for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber++) {
@@ -139,14 +139,21 @@ async function renderDownloadedPdf(page: Page, testInfo: TestInfo, path: string)
         await pdfPage.render({ canvasContext: context, canvas, viewport }).promise;
         const data = context.getImageData(0, 0, canvas.width, canvas.height).data;
         let ink = 0; let red = 0; let blue = 0; let green = 0;
+        let redLeft = canvas.width; let redRight = -1; let redTop = canvas.height; let redBottom = -1;
         for (let index = 0; index < data.length; index += 4) {
           const [r, g, b] = [data[index], data[index + 1], data[index + 2]];
           if (r < 220 || g < 220 || b < 220) ink++;
-          if (r > 150 && g < 90 && b < 90) red++;
+          if (r > 150 && g < 90 && b < 90) {
+            red++;
+            const x = (index / 4) % canvas.width; const y = Math.floor(index / 4 / canvas.width);
+            redLeft = Math.min(redLeft, x); redRight = Math.max(redRight, x);
+            redTop = Math.min(redTop, y); redBottom = Math.max(redBottom, y);
+          }
           if (b > 150 && r < 90 && g < 120) blue++;
           if (g > 110 && r < 90 && b < 110) green++;
         }
-        rendered.push({ width: viewport.width, height: viewport.height, ink, red, blue, green });
+        rendered.push({ width: viewport.width, height: viewport.height, ink, red, blue, green,
+          redWidth: red ? redRight - redLeft + 1 : 0, redHeight: red ? redBottom - redTop + 1 : 0 });
         pdfPage.cleanup();
       }
       return rendered;
@@ -345,19 +352,26 @@ test('PDF 생성을 취소하면 파일을 저장하지 않으며 이어서 다�
   expect(pageErrors).toEqual([]); expect(remoteCalls).toEqual([]);
 });
 
-test('세로로 긴 영수증을 여러 PDF 페이지로 나누어도 처음·중간·끝과 증빙번호를 보존한다', async ({ page }, testInfo) => {
+for (const fixture of [
+  { label: '세로로 긴', width: 450, height: 3000, horizontal: false, positions: [100, 1400, 2750] },
+  { label: '아래 여백이 큰', width: 450, height: 4200, horizontal: false, positions: [100, 500, 1100] },
+  { label: '가로로 넓은', width: 3000, height: 450, horizontal: true, positions: [100, 1400, 2600] },
+]) test(`${fixture.label} 영수증 사진 한 장을 자르거나 늘리지 않고 PDF 한 쪽에 보존한다`, async ({ page }, testInfo) => {
   const { pageErrors, remoteCalls } = await setup(page, 'manual');
-  const base64 = await page.evaluate(() => {
-    const canvas = document.createElement('canvas'); canvas.width = 450; canvas.height = 3000;
+  const base64 = await page.evaluate(fixture => {
+    const canvas = document.createElement('canvas'); canvas.width = fixture.width; canvas.height = fixture.height;
     const context = canvas.getContext('2d')!;
-    context.fillStyle = '#fff'; context.fillRect(0, 0, 450, 3000);
-    for (const [y, color, label] of [[100, '#c82020', 'RECEIPT START'], [1400, '#1446d2', 'RECEIPT MIDDLE'], [2750, '#14a03c', 'RECEIPT END']] as const) {
-      context.fillStyle = color; context.fillRect(40, y, 370, 200);
-      context.fillStyle = '#172b4d'; context.font = 'bold 24px sans-serif'; context.fillText(label, 40, y - 20);
+    context.fillStyle = '#fff'; context.fillRect(0, 0, canvas.width, canvas.height);
+    const markers = [['#c82020', 'RECEIPT START'], ['#1446d2', 'RECEIPT MIDDLE'], ['#14a03c', 'RECEIPT END']];
+    for (const [index, [color, label]] of markers.entries()) {
+      const x = fixture.horizontal ? fixture.positions[index] : 40;
+      const y = fixture.horizontal ? 100 : fixture.positions[index];
+      context.fillStyle = color; context.fillRect(x, y, 370, 200);
+      context.fillStyle = '#172b4d'; context.font = 'bold 24px sans-serif'; context.fillText(label, x, y - 20);
     }
     return canvas.toDataURL('image/png').split(',')[1];
-  });
-  const source: SourceFile = { id: 'tall-receipt-source', name: '세로로 긴 영수증.png', mimeType: 'image/png', base64 };
+  }, fixture);
+  const source: SourceFile = { id: 'tall-receipt-source', name: `${fixture.label} 영수증.png`, mimeType: 'image/png', base64 };
   const tallEntry = entry('tall-receipt-entry', '2026-09-09', '긴 영수증 상점', '학급 준비 물품', 12000, [source.id]);
   const file = metadata(source, [tallEntry]);
   await page.evaluate(async ({ ownerId, bookId, source, file, tallEntry }) => {
@@ -382,15 +396,16 @@ test('세로로 긴 영수증을 여러 PDF 페이지로 나누어도 처음·�
   await expect(page.getByRole('table')).toContainText('긴 영수증 상점');
   const path = await downloadFile(page, testInfo, '영수증 첨부 PDF', 'pdf');
   const pages = await renderDownloadedPdf(page, testInfo, path);
-  expect(pages.length).toBeGreaterThanOrEqual(4);
+  expect(pages).toHaveLength(2); // 지출대장 1쪽 + 사진 원본 1쪽
   for (const rendered of pages) {
     expect(rendered.width).toBeCloseTo(595.28, 0); expect(rendered.height).toBeCloseTo(841.89, 0);
     expect(rendered.ink).toBeGreaterThan(1000);
   }
-  const evidencePages = pages.slice(1);
-  expect(evidencePages[0].red).toBeGreaterThan(1000);
-  expect(evidencePages.reduce((total, rendered) => total + rendered.blue, 0)).toBeGreaterThan(1000);
-  expect(evidencePages[evidencePages.length - 1].green).toBeGreaterThan(1000);
+  const evidencePage = pages[1];
+  expect(evidencePage.red).toBeGreaterThan(1000);
+  expect(evidencePage.blue).toBeGreaterThan(1000);
+  expect(evidencePage.green).toBeGreaterThan(1000);
+  expect(evidencePage.redWidth / evidencePage.redHeight).toBeCloseTo(370 / 200, 1);
   const excelPath = await downloadFile(page, testInfo, 'Excel 정산내역', 'xlsx');
   const exported = (await readSheet(excelPath)).find(row => row.includes('긴 영수증 상점'));
   expect(exported?.[3]).toBe('전산자료');

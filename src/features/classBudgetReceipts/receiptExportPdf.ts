@@ -207,28 +207,16 @@ async function addImageEvidence(pdf: jsPDF, blob: Blob, evidence: Evidence, opti
       image.src = url;
     });
     if (!image.naturalWidth || !image.naturalHeight) throw new Error('Empty image');
-    checkCancelled(options);
-    const probe = pageCanvas(0);
-    const available = attachmentHeader(probe.context, evidence, 1, 1).height;
-    probe.canvas.width = 0; probe.canvas.height = 0;
-    const containScale = Math.min(CONTENT_WIDTH / image.naturalWidth, available / image.naturalHeight);
-    // Long till receipts must not shrink to an unreadable strip on one A4 page.
-    const split = image.naturalWidth * containScale < CONTENT_WIDTH * 0.55;
-    const scale = split ? CONTENT_WIDTH / image.naturalWidth : containScale;
+    await yieldToBrowser(options);
+    options.onProgress?.(`증빙 ${evidence.number} · 1/1쪽 만드는 중`);
+    const page = attachmentPage(pdf, evidence, 1, 1);
+    // 사진 원본 한 장은 길이·여백과 관계없이 자르지 않고 한 A4 쪽에 비율을 유지해 넣는다.
+    const scale = Math.min(CONTENT_WIDTH / image.naturalWidth, page.height / image.naturalHeight);
     const width = image.naturalWidth * scale;
-    const sourceHeight = split ? available / scale : image.naturalHeight;
-    const total = split ? Math.ceil(image.naturalHeight / sourceHeight) : 1;
-    for (let index = 0; index < total; index++) {
-      await yieldToBrowser(options);
-      options.onProgress?.(`증빙 ${evidence.number} · ${index + 1}/${total}쪽 만드는 중`);
-      const page = attachmentPage(pdf, evidence, index + 1, total);
-      const sourceY = index * sourceHeight;
-      const sliceHeight = Math.min(sourceHeight, image.naturalHeight - sourceY);
-      page.context.imageSmoothingQuality = 'high';
-      page.context.drawImage(image, 0, sourceY, image.naturalWidth, sliceHeight,
-        MARGIN + (CONTENT_WIDTH - width) / 2, page.top, width, sliceHeight * scale);
-      addCanvas(pdf, page.canvas);
-    }
+    page.context.imageSmoothingQuality = 'high';
+    page.context.drawImage(image, MARGIN + (CONTENT_WIDTH - width) / 2, page.top,
+      width, image.naturalHeight * scale);
+    addCanvas(pdf, page.canvas);
   } finally { URL.revokeObjectURL(url); }
 }
 
