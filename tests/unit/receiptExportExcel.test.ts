@@ -30,6 +30,7 @@ describe('Excel 정산내역', () => {
     const sheet = buildReceiptBookExcelSheet(book);
     const buffer = await writeXlsxFile(sheet, { sheet: '정산내역' }).toBuffer();
     const rows = await readSheet(buffer, '정산내역');
+    expect(rows[0]).toEqual(['사용일자', '사용업체명', '사용금액', '증빙구분', '사용내역']);
     expect(rows[0]).toEqual(RECEIPT_EXCEL_HEADERS);
     expect(rows).toHaveLength(3);
     expect(rows[1][0]).toBeInstanceOf(Date);
