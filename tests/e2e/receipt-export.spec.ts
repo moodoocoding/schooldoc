@@ -170,6 +170,7 @@ async function renderDownloadedPdf(page: Page, testInfo: TestInfo, path: string)
 }
 
 test('Excel은 화면의 5열 정산내역과 반영한 지출만 내보내고 수식 모양 문자를 보존한다', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
   const { pageErrors, remoteCalls } = await setup(page);
   await page.getByRole('tab', { name: /정산내역/ }).focus();
   await page.getByRole('tab', { name: /정산내역/ }).press('ArrowLeft');
@@ -180,10 +181,15 @@ test('Excel은 화면의 5열 정산내역과 반영한 지출만 내보내고 �
   await expect(rows).toHaveCount(4);
   await expect(rows.nth(0)).toContainText(FORMULA_MERCHANT);
   await expect(rows.nth(3)).toContainText('-자료상점');
+  await expect(page.getByRole('columnheader')).toHaveText(['사용일자', '사용업체명', '사용금액', '증빙구분', '사용내역']);
+  await page.screenshot({ path: testInfo.outputPath('settlement-headers-desktop.png'), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  await page.screenshot({ path: testInfo.outputPath('settlement-headers-mobile.png'), fullPage: true });
   const path = await downloadFile(page, testInfo, 'Excel 정산내역', 'xlsx');
   const data = await readSheet(path);
   const values = data.flat();
-  expect(data[0]).toEqual(['* 사용일자', '* 사용업체명', '* 사용금액', '* 증빙구분', '사용내역']);
+  expect(data[0]).toEqual(['사용일자', '사용업체명', '사용금액', '증빙구분', '사용내역']);
   expect(values).toContain(FORMULA_MERCHANT);
   expect(values).toContain(FORMULA_PURPOSE);
   expect(values).toContain('-자료상점');
