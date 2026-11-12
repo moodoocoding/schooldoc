@@ -20,10 +20,12 @@ export function AssessmentReview({
   assessment,
   onChange,
   file,
+  convertedFile,
 }: {
   assessment: Assessment;
   onChange: (item: Assessment) => void;
   file: File | null;
+  convertedFile: File | null;
 }) {
   return (
     <div className="grid items-start gap-6 lg:grid-cols-2">
@@ -108,7 +110,13 @@ export function AssessmentReview({
           </div>
         )}
       </div>
-      <NeisSourcePreview key={assessment.id} file={file} page={assessment.sourcePage ?? 1} allowPageSelection />
+      <NeisSourcePreview
+        key={assessment.id}
+        file={file}
+        convertedFile={convertedFile}
+        page={assessment.sourcePage ?? 1}
+        allowPageSelection
+      />
     </div>
   );
 }

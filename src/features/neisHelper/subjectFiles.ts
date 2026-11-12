@@ -13,15 +13,16 @@ import type { GradeBook } from '../../../supabase/functions/_shared/neisHelper';
 import { downloadBlob } from '../../utils/qrImage';
 import { countComment } from '../../../supabase/functions/_shared/neisHelper';
 import writeXlsx from 'write-excel-file/browser';
-export const PLAN_ACCEPT = '.pdf';
+export const PLAN_ACCEPT = '.pdf,.hwp,.hwpx';
 export const GRADE_ACCEPT = '.xlsx,.csv,.pdf';
+export const isHangulPlan = (file: File) => /\.hwpx?$/i.test(file.name);
 export function checkFile(file: File, kind: 'plan' | 'grades') {
   if (!file.size || file.size > NEIS_MAX_FILE_BYTES)
     throw new Error('빈 파일은 읽을 수 없습니다. 10MB 이하 파일을 선택해 주세요.');
-  if (!(kind === 'plan' ? /\.pdf$/i : /\.(pdf|xlsx|csv)$/i).test(file.name))
+  if (!(kind === 'plan' ? /\.(pdf|hwp|hwpx)$/i : /\.(pdf|xlsx|csv)$/i).test(file.name))
     throw new Error(
       kind === 'plan'
-        ? '평가계획은 PDF로 저장해 올려 주세요. HWP·HWPX는 PDF로 변환해야 합니다.'
+        ? '평가계획은 PDF·HWP·HWPX 파일을 올려 주세요.'
         : '성적은 XLSX·CSV·PDF로 올려 주세요. XLS는 XLSX로 다시 저장해 주세요.',
     );
 }

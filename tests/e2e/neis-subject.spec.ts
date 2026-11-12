@@ -1,5 +1,7 @@
-import { test, expect, type Page, type TestInfo } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { test, expect, type Locator, type Page, type TestInfo } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import initRhwp, { HwpDocument } from '@rhwp/core';
 import { jsPDF } from 'jspdf';
 import readXlsx from 'read-excel-file/node';
 import writeXlsx from 'write-excel-file/node';
@@ -140,8 +142,12 @@ async function uploadPlan(page: Page, info?: TestInfo) {
   await expect(page.getByRole('button', { name: '평가계획 분석', exact: true })).toBeDisabled();
   if (info) await capture(page, info, 'empty-upload');
   await page
-    .getByLabel('평가계획 PDF', { exact: true })
+    .getByLabel('평가계획 파일', { exact: true })
     .setInputFiles({ name: '가상_평가계획.pdf', mimeType: 'application/pdf', buffer: pdf() });
+  const picker = page.getByRole('group', { name: '평가계획 파일 업로드' });
+  await expect(picker.getByRole('status')).toContainText('가상_평가계획.pdf');
+  await expect(picker.getByRole('button', { name: '파일 바꾸기' })).toBeVisible();
+  if (info) await capture(page, info, 'selected-upload');
   await page.getByRole('button', { name: '평가계획 분석', exact: true }).click();
   await page.getByRole('button', { name: '이 교과로 계속' }).click();
   await expect(page.getByLabel('◎ 평가기준')).toHaveValue(plan.assessments[0].rubrics.high);
@@ -292,14 +298,132 @@ test('중단 후 내부 이동은 초안을 보존하고 로그아웃은 늦은 
 test('계획 분석 실패는 파일을 유지하며 재시도를 제공한다', async ({ page }) => {
   const evidence = await setup(page, { failPlan: true });
   await page.goto('/tools/neis-helper/subject');
-  await page
-    .getByLabel('평가계획 PDF', { exact: true })
-    .setInputFiles({ name: '가상_평가계획.pdf', mimeType: 'application/pdf', buffer: pdf() });
+  const choose = page.getByRole('button', { name: '파일 선택', exact: true });
+  await choose.focus();
+  const opened = page.waitForEvent('filechooser');
+  await page.keyboard.press('Enter');
+  await (await opened).setFiles({ name: '가상_평가계획.pdf', mimeType: 'application/pdf', buffer: pdf() });
   await page.getByRole('button', { name: '평가계획 분석', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('가상 분석 실패');
   await expect(page.getByText('가상_평가계획.pdf', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '평가계획 분석', exact: true })).toBeEnabled();
   expect(evidence.errors).toEqual([]);
+});
+
+async function dragFiles(page: Page, target: Locator, files: { name: string; buffer: Buffer }[]) {
+  const transfer = await page.evaluateHandle((entries) => {
+    const data = new DataTransfer();
+    for (const { name, bytes } of entries) data.items.add(new File([new Uint8Array(bytes)], name));
+    return data;
+  }, files.map(({ name, buffer }) => ({ name, bytes: [...buffer] })));
+  try {
+    await target.dispatchEvent('dragover', { dataTransfer: transfer });
+    await expect(target.getByText('여기에 놓으세요.', { exact: true })).toBeVisible();
+    await target.dispatchEvent('drop', { dataTransfer: transfer });
+    await expect(target.getByText('여기에 놓으세요.', { exact: true })).toHaveCount(0);
+  } finally {
+    await transfer.dispose();
+  }
+}
+
+async function hangulPlan(format: 'hwp' | 'hwpx') {
+  await initRhwp({ module_or_path: readFileSync('node_modules/@rhwp/core/rhwp_bg.wasm') });
+  const doc = new HwpDocument(readFileSync('src/features/schoolDocuments/assets/blank-plan.hwpx'));
+  try {
+    doc.deleteText(0, 0, 0, doc.getParagraphLength(0, 0));
+    doc.insertText(0, 0, 0, '가상 평가계획 표지');
+    doc.insertParagraph(0, 1);
+    doc.insertText(0, 1, 0, '가상 수학 평가 기준');
+    doc.applyParaFormat(0, 1, JSON.stringify({ pageBreakBefore: true }));
+    const table = JSON.parse(doc.createTableEx(JSON.stringify({
+      sectionIdx: 0, paraIdx: 1, charOffset: doc.getParagraphLength(0, 1),
+      rowCount: 3, colCount: 2, colWidths: [18000, 25000], treatAsChar: true,
+    })));
+    const { task, standardCode, rubrics } = plan.assessments[0];
+    const cells = [task, standardCode, `◎ ${rubrics.high}`, `○ ${rubrics.middle}`, `△ ${rubrics.low}`, '평가기준'];
+    cells.forEach((text, i) => doc.insertTextInCell(0, table.paraIdx, table.controlIdx, i, 0, 0, text));
+    return Buffer.from(format === 'hwp' ? doc.exportHwp() : doc.exportHwpx());
+  } finally {
+    doc.free();
+  }
+}
+
+for (const format of ['hwp', 'hwpx'] as const) {
+  test(`${format.toUpperCase()} 평가계획을 변환하고 표의 쪽과 원본 파일을 확인한다`, async ({ page }, info) => {
+    await page.setViewportSize({ width: format === 'hwp' ? 390 : 1366, height: 900 });
+    const evidence = await setup(page);
+    await page.goto('/tools/neis-helper/subject');
+    const picker = page.getByRole('group', { name: '평가계획 파일 업로드' });
+    const name = `${'가상평가계획_'.repeat(8)}.${format}`;
+    const buffer = await hangulPlan(format);
+    if (format === 'hwp') {
+      await picker.getByLabel('평가계획 파일', { exact: true }).setInputFiles({ name, mimeType: 'application/x-hwp', buffer });
+    } else {
+      await dragFiles(page, picker, [{ name, buffer }]);
+      await dragFiles(page, picker, [{ name, buffer }, { name: '추가.hwpx', buffer }]);
+      await expect(page.getByRole('alert')).toContainText('한 번에 파일 한 개');
+    }
+    await expect(picker.getByRole('status')).toContainText(name);
+    await capture(page, info, 'hangul-selected');
+    expect(evidence.calls).toHaveLength(0);
+    await page.getByRole('button', { name: '평가계획 분석', exact: true }).click();
+    await page.getByRole('button', { name: '이 교과로 계속' }).click();
+    await expect(page.getByRole('img', { name: `${name} 2쪽 변환 지면` })).toBeVisible();
+    const convertedLink = page.getByRole('link', { name: '변환 PDF 열기' });
+    const originalLink = page.getByRole('link', { name: '원본 파일 다운로드' });
+    await expect(convertedLink).toHaveAttribute('href', /^blob:/);
+    await expect(originalLink).toHaveAttribute('download', name);
+    const downloaded = page.waitForEvent('download');
+    await originalLink.click();
+    expect(readFileSync((await (await downloaded).path())!)).toEqual(buffer);
+    await capture(page, info, 'hangul-review');
+    await page.getByLabel('변환 지면 쪽', { exact: true }).selectOption('1');
+    await expect(page.getByRole('img', { name: `${name} 1쪽 변환 지면` })).toBeVisible();
+
+    const [{ data }] = evidence.calls;
+    const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const loading = getDocument({ data: Uint8Array.from(Buffer.from(String(data), 'base64')) });
+    try {
+      const converted = await loading.promise;
+      expect(converted.numPages).toBe(2);
+      const content = await (await converted.getPage(2)).getTextContent();
+      const text = content.items.map((item) => 'str' in item ? item.str : '').join('').replace(/\s/g, '');
+      for (const cell of [plan.assessments[0].task, plan.assessments[0].standardCode, ...Object.values(plan.assessments[0].rubrics)]) {
+        expect(text).toContain(cell.replace(/\s/g, ''));
+      }
+    } finally {
+      await loading.destroy();
+    }
+    if (format === 'hwpx') {
+      await page.getByRole('button', { name: '이 평가 확인', exact: true }).click();
+      await page.getByRole('button', { name: '이 평가 확인', exact: true }).click();
+      const grades = page.getByRole('group', { name: '나이스 성적 파일 업로드' });
+      await dragFiles(page, grades, [{ name: '가상성적.csv', buffer: csv() }]);
+      await expect(grades.getByRole('status')).toContainText('가상성적.csv');
+      await page.getByRole('button', { name: '성적표 불러오기' }).click();
+      await expect(page.getByRole('heading', { name: '성적표가 있는 시트를 선택하세요' })).toBeVisible();
+    }
+    expect(evidence.errors).toEqual([]);
+  });
+}
+
+test('손상된 한글 파일은 분석 요청을 보내지 않고 교체할 수 있다', async ({ page }) => {
+  const evidence = await setup(page);
+  await page.goto('/tools/neis-helper/subject');
+  const picker = page.getByRole('group', { name: '평가계획 파일 업로드' });
+  await dragFiles(page, picker, [{ name: '가상_손상.hwp', buffer: Buffer.from('invalid') }]);
+  await page.getByRole('button', { name: '평가계획 분석', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('한글 문서를 읽지 못했습니다.');
+  await expect(picker.getByRole('status')).toContainText('가상_손상.hwp');
+  await dragFiles(page, picker, [{ name: '지원하지않는형식.txt', buffer: Buffer.from('invalid') }]);
+  await expect(page.getByRole('alert')).toContainText('PDF·HWP·HWPX');
+  await expect(picker.getByRole('status')).toContainText('가상_손상.hwp');
+  expect(evidence.calls).toHaveLength(0);
+  await dragFiles(page, picker, [{ name: '가상_평가계획.pdf', buffer: pdf() }]);
+  await expect(picker.getByRole('status')).toContainText('가상_평가계획.pdf');
+  await page.getByRole('button', { name: '평가계획 분석', exact: true }).click();
+  await expect(page.getByRole('button', { name: '이 교과로 계속' })).toBeVisible();
+  expect(evidence.calls).toHaveLength(1);
 });
 
 test('PDF 성적은 원본을 보며 빈칸을 수정하고 제외되는 평가를 알린다', async ({ page }, info) => {
