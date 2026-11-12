@@ -3,8 +3,7 @@ import { isConsentFormsDemoMode } from '../consentForms/consentFormsConfig';
 import { deleteConsentLocalDraft, getConsentLocalDrafts } from '../consentForms/consentFormsLocalStore';
 import { purgeConsentForms } from '../consentForms/consentPurgeApi';
 import { dataCollectOwnerId, isDataCollectDemoMode } from '../dataCollect/dataCollectConfig';
-import { deleteDataCollection as deleteLocalDataCollection, listDataCollections as listLocalDataCollections } from '../dataCollect/dataCollectStore';
-import { deleteRemoteDataCollection } from '../dataCollect/dataCollectAdminApi';
+import { listDataCollections as listLocalDataCollections } from '../dataCollect/dataCollectStore';
 import { isMissionsDemo, listMissionBoards, missionPurgeCounts } from '../classMissions/missionApi';
 import {
   DEFAULT_PRIVACY_RETENTION_SETTINGS,
@@ -167,8 +166,7 @@ export const purgeRetainedWorkItem = async (item: RetainedWorkItem) => {
     if (result.failed.length) throw new Error(result.failed[0].error);
     return;
   }
-  if (isDataCollectDemoMode) deleteLocalDataCollection(item.id);
-  else await deleteRemoteDataCollection(item.id);
+  throw new Error('자료 수합 현황에서 삭제할 대상과 수량을 확인해 주세요.');
 };
 
 export const listPrivacyPurgeLogs = async (): Promise<PrivacyPurgeLog[]> => {

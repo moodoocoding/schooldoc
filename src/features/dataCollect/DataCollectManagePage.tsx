@@ -14,6 +14,7 @@ import { useTeacherAuth } from "../../auth/teacherAuth";
 import { getPublicAppOrigin } from "../../utils/publicAppOrigin";
 import { qrImageFileName, saveQrImage } from "../../utils/qrImage";
 import { dataCollectOwnerId } from "./dataCollectConfig";
+import { DataCollectArchiveDialog } from "./DataCollectArchiveDialog";
 import {
   cleanupDataCollectionUploads,
   clearDataCollectQueryCache,
@@ -73,7 +74,7 @@ function ManageCollection({ owner, id }: { owner: string; id: string }) {
     [auto, setAuto] = useState(false);
   const [loadedAt, setLoadedAt] = useState(""),
     [now, setNow] = useState(Date.now());
-  const [due, setDue] = useState(""),
+  const [due, setDue] = useState<string>(),
     [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false),
     [savingQr, setSavingQr] = useState(false);
@@ -89,6 +90,7 @@ function ManageCollection({ owner, id }: { owner: string; id: string }) {
     Map<string, DataCollectionTargetStatus>
   >(new Map());
   const [cleanupResult, setCleanupResult] = useState("");
+  const [archiveAction, setArchiveAction] = useState<"reopen" | "delete">();
   const [zipProgress, setZipProgress] = useState("");
   const zipAbort = useRef<AbortController | undefined>(undefined);
   const abortZip = useCallback(() => zipAbort.current?.abort(), []);
@@ -117,7 +119,6 @@ function ManageCollection({ owner, id }: { owner: string; id: string }) {
         if (!alive.current || request !== generation.current) return;
         setData(value);
         setLoadedAt(new Date().toLocaleTimeString("ko-KR"));
-        setDue(dateInput(value.collection.dueAt));
         exportSnapshot.current = undefined;
         setExportData(undefined);
         setSelected(new Map());
@@ -145,13 +146,14 @@ function ManageCollection({ owner, id }: { owner: string; id: string }) {
     const timer = window.setInterval(() => setNow(Date.now()), 10000);
     return () => window.clearInterval(timer);
   }, []);
-  const open = data
-    ? collectionStateLabel(
-        data.collection.status,
-        data.collection.dueAt,
-        now,
-      ) === "수합 중"
-    : false;
+  const open =
+    data && !data.collection.purgePending
+      ? collectionStateLabel(
+          data.collection.status,
+          data.collection.dueAt,
+          now,
+        ) === "수합 중"
+      : false;
   useEffect(() => {
     if (!auto || !open) return;
     const timer = window.setInterval(() => {
@@ -279,6 +281,7 @@ function ManageCollection({ owner, id }: { owner: string; id: string }) {
     );
   const c = data.collection,
     publicUrl = getPublicAppOrigin() + "/s/data/" + c.publicToken;
+  const dueValue = due ?? dateInput(c.dueAt);
   const selectedBytes = [...selected.values()].reduce(
     (sum, r) => sum + (r.submission?.byteSize ?? 0),
     0,
@@ -289,13 +292,21 @@ function ManageCollection({ owner, id }: { owner: string; id: string }) {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#DCE3EA] pb-3">
           <button
             className={button}
-            onClick={() => navigate("/tools/data-collect")}
+            onClick={() =>
+              navigate(
+                open
+                  ? "/tools/data-collect"
+                  : "/tools/data-collect?view=archive",
+              )
+            }
           >
             <ArrowLeft size={18} />
-            자료 수합 목록
+            {open ? "자료 수합 목록" : "보관함으로"}
           </button>
           <span className="rounded-md bg-[#EEF1F4] px-3 py-2 text-sm font-bold">
-            {collectionStateLabel(c.status, c.dueAt, now)}
+            {c.purgePending
+              ? "삭제 미완료"
+              : collectionStateLabel(c.status, c.dueAt, now)}
           </span>
         </div>
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -310,24 +321,78 @@ function ManageCollection({ owner, id }: { owner: string; id: string }) {
               {c.description || "별도 안내가 없습니다."}
             </p>
           </div>
-          <button
-            className={button}
-            disabled={busy}
-            onClick={() => {
-              setBusy(true);
-              void setDataCollectionStatus(
-                owner,
-                id,
-                c.status === "open" ? "closed" : "open",
-              )
-                .then(() => refresh(true))
-                .catch((e) => setError(message(e)))
-                .finally(() => setBusy(false));
-            }}
-          >
-            {c.status === "open" ? "수합 종료" : "다시 열기"}
-          </button>
+          {open ? (
+            <button
+              className={button}
+              disabled={busy}
+              onClick={() => {
+                setBusy(true);
+                void setDataCollectionStatus(owner, id, "closed")
+                  .then(() => refresh(true))
+                  .catch((e) => setError(message(e)))
+                  .finally(() => setBusy(false));
+              }}
+            >
+              수합 종료
+            </button>
+          ) : null}
         </div>
+        {!open ? (
+          <section
+            aria-label="보관 항목 관리"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#DCE3EA] bg-white p-4"
+          >
+            <p className="text-sm leading-6 text-[#526174]">
+              {c.purgePending
+                ? "삭제가 끝나지 않았습니다. 남은 파일을 확인하고 삭제를 이어서 진행할 수 있습니다."
+                : c.dueAt
+                  ? "이전 마감: " + new Date(c.dueAt).toLocaleString("ko-KR")
+                  : "이전 마감: 기한 없음"}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {!c.purgePending ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="min-h-[44px] rounded-lg bg-[#0F6CBD] px-4 text-sm font-bold text-white disabled:opacity-50"
+                  onClick={() => setArchiveAction("reopen")}
+                >
+                  다시 열기
+                </button>
+              ) : null}
+              <button
+                type="button"
+                disabled={busy}
+                className="min-h-[44px] rounded-lg border border-[#B42318] bg-white px-4 text-sm font-bold text-[#B42318] disabled:opacity-50"
+                onClick={() => setArchiveAction("delete")}
+              >
+                {c.purgePending ? "삭제 계속" : "영구 삭제"}
+              </button>
+            </div>
+          </section>
+        ) : null}
+        {archiveAction ? (
+          <DataCollectArchiveDialog
+            action={archiveAction}
+            owner={owner}
+            id={id}
+            title={c.title}
+            initialDue={dateInput(
+              Date.parse(c.dueAt) > now
+                ? c.dueAt
+                : new Date(now + 86_400_000).toISOString(),
+            )}
+            onClose={() => setArchiveAction(undefined)}
+            onDeleteError={() => void refresh(true)}
+            onDone={() => {
+              setArchiveAction(undefined);
+              setDue(undefined);
+              if (archiveAction === "delete")
+                navigate("/tools/data-collect?view=archive", { replace: true });
+              else void refresh(true);
+            }}
+          />
+        ) : null}
         {error ? (
           <p
             role="alert"
@@ -335,6 +400,62 @@ function ManageCollection({ owner, id }: { owner: string; id: string }) {
           >
             {error}
           </p>
+        ) : null}
+        {open ? (
+          <details
+            className="rounded-lg border border-[#B8D3EA] bg-white px-4 py-1 sm:px-5"
+            onToggle={(event) => {
+              if (!event.currentTarget.open && !busy) setDue(undefined);
+            }}
+          >
+            <summary className="min-h-[44px] cursor-pointer py-3 text-sm font-bold text-[#0F6CBD]">
+              마감 기한 변경 ·{" "}
+              {c.dueAt
+                ? new Date(c.dueAt).toLocaleString("ko-KR")
+                : "기한 없음"}
+            </summary>
+            <form
+              className="flex flex-wrap items-end gap-3 border-t border-[#DCE3EA] pb-4 pt-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (busy) return;
+                setBusy(true);
+                void updateDataCollectionDue(
+                  owner,
+                  id,
+                  dueValue ? new Date(dueValue).toISOString() : "",
+                )
+                  .then(async () => {
+                    await refresh(true);
+                    setDue(undefined);
+                  })
+                  .catch((err) => setError(message(err)))
+                  .finally(() => setBusy(false));
+              }}
+            >
+              <label className="text-sm font-bold">
+                새 마감 시각
+                <input
+                  type="datetime-local"
+                  value={dueValue}
+                  disabled={busy}
+                  onChange={(e) => setDue(e.target.value)}
+                  className="mt-2 block min-h-[44px] max-w-full rounded-lg border border-[#C8D0DA] px-3"
+                />
+              </label>
+              <button
+                type="button"
+                className={button}
+                disabled={busy}
+                onClick={() => setDue("")}
+              >
+                기한 없음
+              </button>
+              <button type="submit" className={button} disabled={busy}>
+                기한 저장
+              </button>
+            </form>
+          </details>
         ) : null}
         <section
           aria-label="수합 요약"
@@ -365,7 +486,7 @@ function ManageCollection({ owner, id }: { owner: string; id: string }) {
           </p>
         ) : null}
         <details
-          open={shareInitiallyOpen}
+          open={open && shareInitiallyOpen}
           className="rounded-lg border border-[#DCE3EA] bg-white p-5"
         >
           <summary className="cursor-pointer text-lg font-bold">
@@ -455,52 +576,6 @@ function ManageCollection({ owner, id }: { owner: string; id: string }) {
             </div>
           </div>
         </details>
-        <details className="rounded-lg border border-[#DCE3EA] bg-white p-5">
-          <summary className="cursor-pointer font-bold">
-            마감 기한 변경 ·{" "}
-            {c.dueAt ? new Date(c.dueAt).toLocaleString("ko-KR") : "기한 없음"}
-          </summary>
-          {!open && c.status === "open" ? (
-            <p className="mt-3 text-sm font-bold text-[#8A5A00]">
-              기한이 지났습니다. 기한을 연장하면 다시 제출할 수 있습니다.
-            </p>
-          ) : null}
-          <form
-            className="mt-4 flex flex-wrap items-end gap-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              setBusy(true);
-              void updateDataCollectionDue(
-                owner,
-                id,
-                due ? new Date(due).toISOString() : "",
-              )
-                .then(() => refresh(true))
-                .catch((err) => setError(message(err)))
-                .finally(() => setBusy(false));
-            }}
-          >
-            <label className="text-sm font-bold">
-              새 마감 시각
-              <input
-                type="datetime-local"
-                value={due}
-                onChange={(e) => setDue(e.target.value)}
-                className="mt-2 block min-h-[44px] max-w-full rounded-lg border border-[#C8D0DA] px-3"
-              />
-            </label>
-            <button type="button" className={button} onClick={() => setDue("")}>
-              기한 없음
-            </button>
-            <button type="submit" className={button} disabled={busy}>
-              기한 저장
-            </button>
-          </form>
-          <p className="mt-3 text-xs text-[#526174]">
-            수합 종료한 업무는 기한을 바꾼 뒤에도 ‘다시 열기’를 눌러야 제출할 수
-            있습니다.
-          </p>
-        </details>
         <section className="rounded-lg border border-[#DCE3EA] bg-white">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#DCE3EA] p-5">
             <div>
@@ -518,14 +593,16 @@ function ManageCollection({ owner, id }: { owner: string; id: string }) {
                 <RefreshCw size={16} />
                 {loading ? "조회 중" : "현황 새로고침"}
               </button>
-              <label className="flex min-h-[44px] items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={auto}
-                  onChange={(e) => setAuto(e.target.checked)}
-                />
-                60초 자동 갱신
-              </label>
+              {open ? (
+                <label className="flex min-h-[44px] items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={auto}
+                    onChange={(e) => setAuto(e.target.checked)}
+                  />
+                  60초 자동 갱신
+                </label>
+              ) : null}
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
@@ -541,9 +618,11 @@ function ManageCollection({ owner, id }: { owner: string; id: string }) {
               />
               {c.hasTemplate ? "미확인만 보기" : "미제출만 보기"}
             </label>
-            <p className="text-xs text-[#526174]">
-              자동 갱신은 수합 중이고 이 화면이 보일 때만 동작합니다.
-            </p>
+            {open ? (
+              <p className="text-xs text-[#526174]">
+                자동 갱신은 수합 중이고 이 화면이 보일 때만 동작합니다.
+              </p>
+            ) : null}
           </div>
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[760px] text-left text-sm">

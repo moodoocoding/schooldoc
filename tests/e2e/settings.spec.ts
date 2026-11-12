@@ -89,8 +89,42 @@ test.describe('환경 설정', () => {
     await confirm.getByRole('button', { name: '영구 파기' }).click();
 
     await expect(page.getByText('지난 동의서')).toHaveCount(0);
-    await expect(page.getByRole('status')).toContainText('영구 파기했습니다');
+    await expect(page.getByRole('status').filter({ hasText: '영구 파기했습니다' })).toBeVisible();
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('schooldoc:consent-forms:drafts') ?? '[]').length)).toBe(0);
+  });
+
+  test('자료 수합의 파기 예정 항목은 수량을 확인하는 자료 수합 화면으로 연결한다', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('schooldoc_data_collect_v1', JSON.stringify([{
+        id: 'expired-archive-fixture',
+        title: '가상 보관기간 만료 수합',
+        ownerId: 'demo-teacher',
+        publicToken: 'fictional-test-link',
+        status: 'closed',
+        kind: 'custom',
+        mode: 'custom',
+        description: '',
+        dueAt: '',
+        retentionMonths: 1,
+        closedAt: '2025-01-01T00:00:00.000Z',
+        createdAt: '2024-12-01T00:00:00.000Z',
+        updatedAt: '2025-01-01T00:00:00.000Z',
+        targets: [],
+        submissions: [],
+      }]));
+    });
+    await page.goto('/');
+    await page.locator('button[title="설정"]').click();
+    await page.getByRole('button', { name: '알림 & 개인정보 보안' }).click();
+    await expect(page.getByText('가상 보관기간 만료 수합')).toBeVisible();
+    await page.getByRole('button', { name: '파기 대상 확인' }).click();
+    await expect(page).toHaveURL(/\/tools\/data-collect\/expired-archive-fixture$/);
+    await page.getByRole('button', { name: '영구 삭제', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: '자료 수합 영구 삭제' });
+    await expect(dialog.getByText('0개', { exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: '영구 삭제', exact: true })).toBeDisabled();
+    await dialog.getByRole('button', { name: '취소', exact: true }).click();
+    await expect(page.getByRole('heading', { name: '가상 보관기간 만료 수합' })).toBeVisible();
   });
 
   test('글자 크게가 실제 글자 크기를 키우고 다시 열어도 유지한다', async ({ page }) => {

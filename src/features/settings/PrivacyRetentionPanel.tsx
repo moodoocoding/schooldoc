@@ -192,8 +192,8 @@ export function PrivacyRetentionPanel({ userId, isLoggedIn }: { userId: string; 
                       <p className="mt-1 flex items-center gap-1.5 text-xs text-[#526174]"><CalendarClock className="h-3.5 w-3.5" />종료 {dateLabel(item.closedAt)} · 파기 예정 {dueAt ? dateLabel(dueAt) : '확인 필요'}</p>
                     </div>
                     <div className="flex shrink-0 gap-2">
-                      <button type="button" onClick={() => navigate(managePath(item))} className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-[#C8D0DA] px-3 text-xs font-bold text-[#334155]"><ExternalLink className="h-3.5 w-3.5" />업무 열기</button>
-                      {due ? item.kind === 'class-mission'
+                      {!(due && item.kind === 'data-collect') ? <button type="button" onClick={() => navigate(managePath(item))} className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-[#C8D0DA] px-3 text-xs font-bold text-[#334155]"><ExternalLink className="h-3.5 w-3.5" />업무 열기</button> : null}
+                      {due ? item.kind !== 'consent-form'
                         ? <button type="button" onClick={() => navigate(managePath(item))} className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-[#B42318] px-3 text-xs font-bold text-[#B42318] hover:bg-[#FEF2F2]"><Trash2 className="h-3.5 w-3.5" />파기 대상 확인</button>
                         : <button type="button" onClick={() => setPendingPurge(item)} className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-[#B42318] px-3 text-xs font-bold text-[#B42318] hover:bg-[#FEF2F2]"><Trash2 className="h-3.5 w-3.5" />영구 파기</button> : null}
                     </div>

@@ -127,10 +127,37 @@ describe("자료 수합 DB 최적화 경계", () => {
       clock.mockReturnValue(16_000);
       await listDataCollectionSummaries("A", cursor);
       expect(list).toHaveBeenCalledTimes(4);
-      expect(list).toHaveBeenLastCalledWith(cursor);
+      expect(list).toHaveBeenLastCalledWith(cursor, "active");
     } finally {
       clock.mockRestore();
     }
+  });
+  it("진행 목록과 보관함은 같은 커서라도 다른 조회 캐시를 사용한다", async () => {
+    list.mockResolvedValueOnce({
+      collections: [{ id: "active" }],
+      nextCursor: null,
+    });
+    list.mockResolvedValueOnce({
+      collections: [{ id: "archive" }],
+      nextCursor: null,
+    });
+    const active = await listDataCollectionSummaries("A");
+    const archive = await listDataCollectionSummaries(
+      "A",
+      undefined,
+      false,
+      "archive",
+    );
+    expect(active.collections).toEqual([{ id: "active" }]);
+    expect(archive.collections).toEqual([{ id: "archive" }]);
+    expect(await listDataCollectionSummaries("A")).toEqual(active);
+    expect(
+      await listDataCollectionSummaries("A", undefined, false, "archive"),
+    ).toEqual(archive);
+    expect(list.mock.calls).toEqual([
+      [undefined, "active"],
+      [undefined, "archive"],
+    ]);
   });
   it("A→B→A 전환 사이에 끝난 오래된 요청은 새 A 캐시에 섞이지 않는다", async () => {
     let finish: (value: unknown) => void = () => {};

@@ -1,6 +1,13 @@
 import { validateCollectionFile } from "./dataCollectUtils";
 import { supabase } from "../../utils/supabaseClient";
-import type { DataCollection, DataCollectionDraft } from "./types";
+import type {
+  DataCollection,
+  DataCollectionDraft,
+  DataCollectionListCursor,
+  DataCollectionListScope,
+  DataCollectionPurgePreview,
+  DataCollectionSummary,
+} from "./types";
 
 export class DataCollectAdminUnavailableError extends Error {
   constructor(message: string) {
@@ -141,17 +148,34 @@ export const updateRemoteDataCollectionStatus = async (
   return result.collection;
 };
 
-export const deleteRemoteDataCollection = async (id: string) => {
-  await invoke({ action: "delete", id });
-};
+export const previewRemoteDataCollectionPurge = (id: string) =>
+  invoke<DataCollectionPurgePreview>({ action: "delete-preview", id });
+
+export const deleteRemoteDataCollection = (
+  id: string,
+  preview: DataCollectionPurgePreview,
+) =>
+  invoke<{ deleted: boolean }>({
+    action: "delete",
+    id,
+    confirmed: true,
+    revision: preview.revision,
+    targetCount: preview.targetCount,
+    responseCount: preview.responseCount,
+    fileCount: preview.fileCount,
+  });
+
+export const reopenRemoteDataCollection = (id: string, dueAt: string | null) =>
+  invoke<{ reopened: boolean }>({ action: "reopen", id, dueAt });
 
 export const listRemoteDataCollectionSummaries = (
-  cursor?: import("./types").DataCollectionListCursor,
+  cursor: DataCollectionListCursor | undefined,
+  scope: DataCollectionListScope,
 ) =>
   invoke<{
-    collections: import("./types").DataCollectionSummary[];
-    nextCursor: import("./types").DataCollectionListCursor | null;
-  }>({ action: "summary", ...cursor });
+    collections: DataCollectionSummary[];
+    nextCursor: DataCollectionListCursor | null;
+  }>({ action: "summary", scope, ...cursor });
 export const getRemoteDataCollectionOverview = (
   id: string,
   after = 0,

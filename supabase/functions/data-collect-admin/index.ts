@@ -4,10 +4,7 @@ import {
   type DataCollectIdentity,
 } from "../_shared/dataCollectCrypto.ts";
 import { dataCollectFileError } from "../_shared/dataCollectRules.ts";
-import {
-  dataCollectSubmissionPrefix,
-  dataCollectTemplatePrefix,
-} from "../_shared/dataCollectStoragePaths.ts";
+import { dataCollectTemplatePrefix } from "../_shared/dataCollectStoragePaths.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -358,9 +355,11 @@ const summaryRows = async (
   id: string | null = null,
   before: string | null = null,
   beforeId: string | null = null,
+  scope = "all",
 ) => {
-  const result = await db.rpc("data_collect_summary_page", {
+  const result = await db.rpc("data_collect_scoped_summary_page", {
     p_owner_id: userId,
+    p_scope: scope,
     p_collection_id: id,
     p_before: before,
     p_before_id: beforeId,
@@ -368,6 +367,110 @@ const summaryRows = async (
   });
   if (result.error) throw result.error;
   return result.data as Array<Record<string, unknown>>;
+};
+
+const archiveError = (error: { message: string }) => {
+  const known: Record<string, [number, string]> = {
+    collection_not_found: [404, "자료 수합을 찾을 수 없습니다."],
+    collection_active: [
+      409,
+      "현재 수합 중입니다. 종료한 뒤 다시 시도해 주세요.",
+    ],
+    invalid_due: [422, "마감 시각은 현재보다 뒤로 설정해 주세요."],
+    purge_pending: [409, "파일 삭제가 시작된 자료는 다시 열 수 없습니다."],
+    purge_preview_changed: [
+      409,
+      "자료가 변경되었습니다. 대상과 수량을 다시 확인해 주세요.",
+    ],
+    upload_grace_period: [
+      409,
+      "이전에 발급한 업로드 링크의 만료를 기다리고 있습니다. 삭제 가능 시각을 확인해 주세요.",
+    ],
+    purge_files_remaining: [
+      409,
+      "남은 파일이 있습니다. 수량을 다시 확인하고 삭제를 이어서 진행해 주세요.",
+    ],
+  };
+  const mapped = known[error.message];
+  if (mapped) throw new HttpError(...mapped);
+  throw error;
+};
+
+const archiveActions = ["reopen", "delete-preview", "delete"];
+const manageArchive = async (
+  action: string,
+  body: Record<string, unknown>,
+  userId: string,
+) => {
+  const id = readString(body.id, 80);
+  if (!uuidPattern.test(id))
+    throw new HttpError(400, "자료 수합 식별자가 올바르지 않습니다.");
+  const scope = { p_owner_id: userId, p_collection_id: id };
+  if (action === "reopen") {
+    const dueAt = body.dueAt;
+    if (
+      dueAt !== null &&
+      (typeof dueAt !== "string" || !Number.isFinite(Date.parse(dueAt)))
+    )
+      throw new HttpError(422, "새 마감 시각이나 기한 없음을 선택해 주세요.");
+    const changed = await db.rpc("reopen_data_collection", {
+      ...scope,
+      p_due_at: dueAt,
+    });
+    if (changed.error) archiveError(changed.error);
+    return json(200, { reopened: true });
+  }
+  if (action === "delete-preview") {
+    const result = await db.rpc("data_collect_purge_preview", scope);
+    if (result.error) archiveError(result.error);
+    return json(200, result.data);
+  }
+  const revision = readString(body.revision, 80);
+  if (
+    body.confirmed !== true ||
+    !Number.isFinite(Date.parse(revision)) ||
+    ![body.targetCount, body.responseCount, body.fileCount].every(
+      (n) =>
+        typeof n === "number" &&
+        Number.isSafeInteger(n) &&
+        n >= 0 &&
+        n <= 2147483647,
+    )
+  )
+    throw new HttpError(
+      422,
+      "삭제할 대상과 수량을 확인하고 영구 삭제에 동의해 주세요.",
+    );
+  const started = await db.rpc("begin_data_collect_purge", {
+    ...scope,
+    p_revision: revision,
+    p_targets: body.targetCount,
+    p_responses: body.responseCount,
+    p_files: body.fileCount,
+  });
+  if (started.error) archiveError(started.error);
+  // 실패 또는 실행 시간 제한 후에도 DB의 진행 기록으로 안전하게 재시도한다.
+  for (let batch = 0; batch < 10; batch++) {
+    const result = await db.rpc("data_collect_purge_batch", scope);
+    if (result.error) throw result.error;
+    const files = result.data as { bucket: string; path: string }[];
+    if (!files.length) break;
+    for (const bucket of [COLLECTION_TEMPLATE_BUCKET, FILE_BUCKET]) {
+      const paths = files
+        .filter((file) => file.bucket === bucket)
+        .map((file) => file.path);
+      if (!paths.length) continue;
+      const removed = await db.storage.from(bucket).remove(paths);
+      if (removed.error)
+        throw new HttpError(
+          503,
+          "파일을 모두 지우지 못했습니다. 남은 수량을 확인하고 삭제를 다시 시도해 주세요.",
+        );
+    }
+  }
+  const finished = await db.rpc("finish_data_collect_purge", scope);
+  if (finished.error) archiveError(finished.error);
+  return json(200, { deleted: true });
 };
 const targetRows = async (
   userId: string,
@@ -616,6 +719,8 @@ Deno.serve(async (request) => {
     const action = readString(body.action, 40);
     const { userId, caller } = await requireUser(request);
 
+    if (archiveActions.includes(action))
+      return await manageArchive(action, body, userId);
     if (action === "cleanup-templates")
       return json(200, await cleanupTemplates(userId));
     if (action === "summary") {
@@ -624,6 +729,9 @@ Deno.serve(async (request) => {
         null,
         readString(body.before, 80) || null,
         readString(body.beforeId, 80) || null,
+        body.scope === "active" || body.scope === "archive"
+          ? body.scope
+          : "all",
       );
       return json(200, {
         collections: rows.slice(0, 20),
@@ -784,6 +892,17 @@ Deno.serve(async (request) => {
       const collectionId = path.split("/")[1];
       if (!uuidPattern.test(collectionId))
         throw new HttpError(422, "배포 파일 경로가 올바르지 않습니다.");
+      const existing = await db
+        .from("data_collections")
+        .select("id")
+        .eq("id", collectionId)
+        .maybeSingle();
+      if (existing.error) throw existing.error;
+      if (existing.data)
+        throw new HttpError(
+          409,
+          "이미 만든 자료 수합에는 새 배포 파일을 올릴 수 없습니다.",
+        );
       const reserved = await db.from("data_collect_template_uploads").insert({
         storage_path: path,
         owner_id: userId,
@@ -959,46 +1078,6 @@ Deno.serve(async (request) => {
         .eq("owner_id", userId);
       if (result.error) throw result.error;
       return json(200, { collection: await readCollection(id, userId) });
-    }
-    if (action === "delete") {
-      const row = await db
-        .from("data_collections")
-        .select("id")
-        .eq("id", id)
-        .eq("owner_id", userId)
-        .maybeSingle();
-      if (row.error) throw row.error;
-      if (!row.data) throw new HttpError(404, "자료 수합을 찾을 수 없습니다.");
-      const targetCount = await db
-        .from("data_collection_targets")
-        .select("id", { count: "exact", head: true })
-        .eq("collection_id", id);
-      if (targetCount.error) throw targetCount.error;
-      const fileCount = await db
-        .from("data_collection_files")
-        .select("id", { count: "exact", head: true })
-        .eq("collection_id", id);
-      if (fileCount.error) throw fileCount.error;
-      await removeAll(
-        COLLECTION_TEMPLATE_BUCKET,
-        dataCollectTemplatePrefix(userId, id),
-      );
-      await removeAll(FILE_BUCKET, dataCollectSubmissionPrefix(id));
-      const deleted = await db
-        .from("data_collections")
-        .delete()
-        .eq("id", id)
-        .eq("owner_id", userId);
-      if (deleted.error) throw deleted.error;
-      const logged = await db.from("privacy_purge_log").insert({
-        owner_id: userId,
-        resource_kind: "data-collect",
-        resource_id: id,
-        record_count: targetCount.count ?? 0,
-        file_count: fileCount.count ?? 0,
-      });
-      if (logged.error) console.error("privacy purge log failed", logged.error);
-      return json(200, { deleted: true });
     }
     throw new HttpError(400, "지원하지 않는 요청입니다.");
   } catch (error) {
