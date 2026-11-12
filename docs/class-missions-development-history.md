@@ -52,3 +52,13 @@
 - 검사 자료 main 커밋: [`c947015b47dd499450d9883f81a4b74a4d69fc08`](https://github.com/moodoocoding/schooldoc/commit/c947015b47dd499450d9883f81a4b74a4d69fc08), `test(missions): 실제 로그인과 권한·SQL 원격 검사 기록 (#41)`.
 - 이 작업일지는 `codex/class-missions-work-log` 브랜치의 독립 `docs(missions)` 커밋·PR로 게시한다. 최종 push·main 통합 결과는 이 파일의 GitHub 변경 이력과 연결된 PR에 기록한다.
 - 게시 작업에서는 제품 코드·빌드 설정을 바꾸지 않아 전체 단위·타입·빌드와 원격 쓰기 검사를 재실행하지 않았다. 기존 원격 검사와 이번 파일 게시 검증을 구분했다. DB·Edge Functions의 추가 적용은 해당 없음이며 프런트엔드의 추가 기능 배포도 필요하지 않다.
+
+## 2026-11-13 일별 활동 통계 추가와 운영 확인 (codex)
+
+- 교사용 학급 미션에 통계 탭을 추가했다. 학급과 시작일·종료일을 선택하면 한국 시간의 발생일 기준으로 완료 표시·취소, 교사 확인·정정의 기간 합계와 일별 건수를 확인한다. 날짜를 펼치면 미션별 건수가 표시되며, 같은 학생의 여러 변경은 각각 센다.
+- 작업 브랜치 `codex/class-missions-update`의 `0d47aa5009e75505d511ccfe019fb53f0e7700a4`를 GitHub에 push했다. [PR #66](https://github.com/moodoocoding/schooldoc/pull/66)을 squash 병합했고, main 커밋 [`6a3d94b92e50a8adf7dfcbd0a6c8dad7fee1bbf5`](https://github.com/moodoocoding/schooldoc/commit/6a3d94b92e50a8adf7dfcbd0a6c8dad7fee1bbf5)의 학급 미션 파일이 PR과 일치함을 확인했다.
+- 타입 검사, 린트, 웹 빌드, 관련 단위 테스트 20건, Chrome 데모 17건을 통과했다. Vercel 미리보기 빌드도 통과했다. PR 전체 GitHub Actions 검사는 병합 시점에 진행 중이었다. [구현·화면 검토 기록](../design/class-missions/2026-11-13-statistics-review.md)
+- **프런트엔드 적용 확인.** Vercel `schooldoc`의 Git 연동 운영 배포 `dpl_5RRSa1KzbVQWEpDVX1bpAjuSuVbj`가 `READY`이며 공식 주소가 같은 main 커밋을 가리켰다. [Vercel 배포](https://vercel.com/panthea0-9353s-projects/schooldoc/5RRSa1KzbVQWEpDVX1bpAjuSuVbj) · [운영 학급 미션](https://schooldoc-nine.vercel.app/tools/class-missions)
+- 운영 주소에서 Chrome으로 HTTP 200과 비로그인 교사 화면 제한을 확인했다. 배포 번들 `/assets/index-BEBfiYYK.js`에서 가상 Supabase 세션·응답을 사용해 한국 시간 자정 전후 이틀의 건수, 기간 조회, 날짜 펼침, 빈 학급 전환, 390px 화면을 확인했다. 페이지 예외는 0건이었다. 실제 운영 교사 로그인과 Supabase 자료 조회·쓰기는 실행하지 않았다.
+- DB 마이그레이션과 Edge Functions 변경은 해당 없음. 사용자 요청에 따라 이번 main 커밋의 [Windows portable 자동 실행](https://github.com/moodoocoding/schooldoc/actions/runs/43322048879)만 취소했으며 포터블 릴리즈를 게시하지 않았다.
+- 외부 공용 개발일지를 이 워크트리에서 찾지 못해 기존 학급 미션 작업일지에 기록했다. 기능 변경과 구분해 `codex/class-missions-statistics-work-log` 브랜치에 게시한다.
