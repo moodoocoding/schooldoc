@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Download, LoaderCircle } from 'lucide-react';
+import { ArrowLeft, Copy, Download, LoaderCircle } from 'lucide-react';
 import { downloadBlob } from '../../utils/qrImage';
-import type { PlanDraft } from '../../../supabase/functions/_shared/schoolPlan';
+import type { PlanConditions, PlanDraft } from '../../../supabase/functions/_shared/schoolPlan';
 import { layoutOfficialDocument } from '../officialDocument/format';
 import { pageVolumeIssues } from '../officialDocument/lint';
 import { officialPageUrl, officialPreviewFontCss } from '../officialDocument/previewFonts';
 import type { PageVolume } from '../officialDocument/rhwpWriter';
 import { runRhwp } from '../officialDocument/rhwpClient';
-import { checkedPlanDocument } from './planDocument';
+import { checkedPlanDocument, planDraftBody } from './planDocument';
 
 const button = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50';
 const field = 'mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]';
 
-export function PlanOutput({ draft, title, pages, current, onTitle, onPages, onBack }: {
+export function PlanOutput({ draft, title, pages, current, conditions, related, onTitle, onPages, onBack }: {
   draft: PlanDraft; title: string; pages: 1 | 2; current: boolean;
+  /** 기안 본문의 운영 시기·예산 출처. related는 공문을 바탕으로 작성했는지(관련 공문 줄). */
+  conditions: PlanConditions; related: boolean;
   onTitle: (title: string) => void; onPages: (pages: 1 | 2) => void; onBack: () => void;
 }) {
   const key = JSON.stringify({ draft, title, pages, current });
@@ -27,6 +29,12 @@ export function PlanOutput({ draft, title, pages, current, onTitle, onPages, onB
   const ready = preview?.key === key && loaded === preview.urls.length;
   // 제목 오류는 지면 생성 오류로 안내하므로 점검 결과는 비워 둔다.
   const checked = useMemo(() => { try { return checkedPlanDocument(draft, title, pages); } catch { return null; } }, [draft, title, pages]);
+  const draftBody = useMemo(() => title.trim() ? planDraftBody(draft, title, conditions, related) : '', [draft, title, conditions, related]);
+  const [copy, setCopy] = useState<{ body: string; ok: boolean } | null>(null);
+  const copyDraftBody = async () => {
+    try { await navigator.clipboard.writeText(draftBody); setCopy({ body: draftBody, ok: true }); }
+    catch { setCopy({ body: draftBody, ok: false }); }
+  };
   // 분량 점검은 실제 지면을 만든 뒤에 더한다.
   const issues = checked ? [...checked.issues, ...(preview?.key === key ? pageVolumeIssues(preview.volume) : [])] : [];
   useEffect(() => {
@@ -69,6 +77,13 @@ export function PlanOutput({ draft, title, pages, current, onTitle, onPages, onB
       {preview.urls.map((url, i) => <figure key={url} hidden={selectedPage !== i}><img src={url} alt={`운영계획서 ${i + 1}쪽 지면`} className="mx-auto block h-auto w-full max-w-[794px] bg-white shadow-sm" onLoad={() => setLoaded(n => n + 1)} onError={() => setFailure('지면 이미지를 표시하지 못했습니다. 다시 만들어 주세요.')}/></figure>)}
       <details className="mt-4 rounded-lg bg-white p-4"><summary className="cursor-pointer font-bold text-slate-800">문서 본문 읽기</summary><div className="mt-4 space-y-3 break-words text-base leading-7 text-slate-800">{(checked ? layoutOfficialDocument(checked.document) : []).map((line, i) => line.kind === 'table' ? <ul key={i} className="space-y-3">{line.rows.map((row, r) => <li key={r}>{row.map((text, c) => `${line.columns[c].label}: ${text}`).join(' · ')}</li>)}</ul> : line.kind === 'item' || line.kind === 'note' ? line.heading ? <h3 key={i} className="font-bold">{line.text}</h3> : <p key={i}>{line.text}</p> : null)}</div></details>
     </div>}
+    {current && draftBody && <section aria-labelledby="plan-draft-body" className="mt-6 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+      <h3 id="plan-draft-body" className="font-bold text-slate-900">K-에듀파인 기안 본문</h3>
+      <p className="mt-1 text-sm leading-6 text-slate-600">운영계획서 HWPX를 붙임으로 올리고, 아래 본문을 기안문 본문 칸에 붙여 넣습니다. 수신·제목·결재란은 K-에듀파인에서 입력합니다.{related && ' ○ 표시는 관련 공문의 문서 번호와 날짜로 바꿔 주세요.'}</p>
+      <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-slate-50 p-3 font-mono text-sm leading-6 text-slate-800">{draftBody}</pre>
+      <button type="button" className={`${button} mt-3 border border-slate-300 bg-white text-slate-700`} onClick={() => void copyDraftBody()}><Copy className="h-4 w-4" aria-hidden="true"/>기안 본문 복사</button>
+      {copy?.body === draftBody && (copy.ok ? <p role="status" className="mt-2 text-sm font-medium text-green-800">기안 본문을 복사했습니다.</p> : <p role="alert" className="mt-2 text-sm text-red-800">복사하지 못했습니다. 위 본문을 직접 선택해 복사해 주세요.</p>)}
+    </section>}
     {saved && <p role="status" className="mt-5 rounded-lg bg-green-50 p-4 font-medium text-green-900">HWPX 저장을 시작했습니다. 다운로드 폴더에서 파일을 확인해 주세요.</p>}
     <div className="mt-7 flex flex-wrap justify-between gap-3 border-t border-slate-200 pt-5"><button className={`${button} border border-slate-300 bg-white text-slate-700`} onClick={onBack}><ArrowLeft className="h-4 w-4" aria-hidden="true"/>초안 검토</button><button className={`${button} bg-[#0F6CBD] text-white hover:bg-[#0B5A9E]`} onClick={save} disabled={!ready || !!failure || !current}><Download className="h-4 w-4" aria-hidden="true"/>HWPX 저장</button></div>
   </>;

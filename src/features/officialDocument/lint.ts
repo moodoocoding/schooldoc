@@ -1,5 +1,5 @@
 import { isGaejosik } from './format';
-import { DRAFT_DISCLOSURES, type DraftDocument, type OfficialDocument, type OfficialNode } from './model';
+import type { OfficialDocument, OfficialNode } from './model';
 import type { PageVolume } from './rhwpWriter';
 
 /**
@@ -100,36 +100,7 @@ export function checkOfficialDocument(document: OfficialDocument): OfficialCheck
     if (gaejosik && VERB_END.test(text)) issues.push({ where, message: `개조식은 명사형으로 끝냅니다(~함·~임·~ 예정): '…${text.slice(-12)}'`, fixed: false });
     return { ...node, text, ...(node.children ? { children: walk(node.children, where, level + 1) } : {}) };
   });
-  const body = walk(document.body, '', 1);
-  if (document.kind !== 'draft') return { document: { ...document, title: document.title.trim(), body }, issues };
-  return { document: checkDraft({ ...document, title: document.title.trim(), body }, issues, tidy), issues };
-}
-
-/** 기안문 필수 항목과 붙임·결문 표기(korean-report-hwpx check_structure의 기안문 점검을 옮김). */
-function checkDraft(draft: DraftDocument, issues: OfficialIssue[], tidy: (text: string, where: string) => string): DraftDocument {
-  const required = (value: string | undefined, where: string) => { if (!value?.trim()) issues.push({ where, message: `${where}이(가) 비어 있습니다.`, fixed: false }); };
-  required(draft.organization, '행정기관명'); required(draft.to, '수신'); required(draft.sender, '발신명의');
-  required(draft.approval.drafter.title, '기안자 직위'); required(draft.approval.approver.title, '결재권자 직위');
-  required(draft.docNo.issue, '시행 번호');
-  if (draft.to.trim() === '수신자 참조' && !draft.recipients?.length) issues.push({ where: '수신자', message: '수신자 참조이면 수신자 목록이 필요합니다.', fixed: false });
-  if (!DRAFT_DISCLOSURES.includes(draft.contact.disclosure)) issues.push({ where: '공개 구분', message: `공개 구분은 ${DRAFT_DISCLOSURES.join('·')} 중 하나입니다.`, fixed: false });
-  const date = (value: string | undefined, where: string) => {
-    if (!value) return value;
-    const next = normalizeDates(value.trim());
-    if (next !== value.trim()) issues.push({ where, message: '날짜를 공문 표기(2026. 11. 13.)로 고쳤습니다.', fixed: true });
-    return next;
-  };
-  // 붙임 명칭 앞의 "붙임"·번호는 출력 서식이 붙인다.
-  const attachments = draft.attachments?.map((name, i) => {
-    const where = `붙임 ${i + 1}`, bare = name.replace(/^\s*붙임\s*\d*\.?\s*/, '');
-    if (bare !== name.trim()) issues.push({ where, message: '앞의 "붙임"·번호를 지웠습니다. 출력 서식이 붙입니다.', fixed: true });
-    return tidy(bare, where);
-  });
-  return {
-    ...draft, organization: draft.organization.trim(), to: draft.to.trim(), sender: draft.sender.trim(),
-    ...(attachments ? { attachments } : {}),
-    docNo: { ...draft.docNo, issueDate: date(draft.docNo.issueDate, '시행일')!, ...(draft.docNo.receiveDate ? { receiveDate: date(draft.docNo.receiveDate, '접수일') } : {}) },
-  };
+  return { document: { ...document, title: document.title.trim(), body: walk(document.body, '', 1) }, issues };
 }
 
 /**

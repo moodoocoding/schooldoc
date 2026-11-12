@@ -104,8 +104,12 @@ describe('rhwp HWPX 출력', () => {
     } finally { doc.free(); }
     const again = new HwpDocument(readFileSync(`${assets}blank.hwpx`));
     try {
-      writeOfficialDocument(again, split, 2, fonts);
+      const volume = writeOfficialDocument(again, split, 2, fonts);
       expect(again.pageCount()).toBe(2);
+      // 실제 조판 결과로 잰 쪽별 채움: 강제 쪽 나눔 전 본문은 1쪽이다.
+      expect(volume.bodyPages).toBe(1);
+      expect(volume.fills).toHaveLength(2);
+      for (const fill of volume.fills) { expect(fill).toBeGreaterThan(0); expect(fill).toBeLessThan(1); }
     } finally { again.free(); }
   });
 });

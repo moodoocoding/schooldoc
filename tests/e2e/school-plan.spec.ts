@@ -153,6 +153,21 @@ test('공문 → 근거 → 조건 → 초안 수정 → HWPX와 새로고침', 
   await page.getByLabel('미리볼 쪽').selectOption('1');
   await expect(page.getByRole('img', { name: '운영계획서 2쪽 지면' })).toBeVisible();
   await page.screenshot({ path: 'test-results/school-plan/save-desktop-page2.png', fullPage: true });
+  // K-에듀파인에 붙여 넣을 기안 본문: 관련 공문 자리, 편람 항목, 붙임과 끝 표시.
+  const draftBody = page.getByRole('region', { name: 'K-에듀파인 기안 본문' });
+  await expect(draftBody).toContainText('1. 관련: ○○○-○○○○(○○○○. ○. ○.)');
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await draftBody.getByRole('button', { name: '기안 본문 복사' }).click();
+  await expect(draftBody.getByRole('status')).toHaveText('기안 본문을 복사했습니다.');
+  // Windows 클립보드는 줄바꿈을 CRLF로 돌려준다.
+  expect((await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, '\n')).toBe([
+    '1. 관련: ○○○-○○○○(○○○○. ○. ○.)',
+    '2. 위 관련으로 「독서 주간 운영계획」을 다음과 같이 수립하여 시행하고자 합니다.',
+    '  가. 운영 시기: 2026년 11월 2~6일',
+    '  나. 소요 예산: 금200,000원(금이십만원)',
+    '',
+    '붙임  독서 주간 운영계획 1부.  끝.',
+  ].join('\n'));
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: 'test-results/school-plan/save-mobile.png', fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

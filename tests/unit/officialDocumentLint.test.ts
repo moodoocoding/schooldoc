@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { checkOfficialDocument, countSentences, koreanAmount, needsKoreanAmount, normalizeDates, officialAmount } from '../../src/features/officialDocument/lint';
+import { checkOfficialDocument, countSentences, koreanAmount, needsKoreanAmount, normalizeDates, officialAmount, pageVolumeIssues } from '../../src/features/officialDocument/lint';
 import { item, note, type OfficialDocument } from '../../src/features/officialDocument/model';
 
 // 가상 문장으로 표기 규칙만 확인한다. 기대값은 편람 예시와 korean-report-hwpx 테스트 사례를 따른다.
@@ -45,5 +45,14 @@ describe('문서 점검', () => {
   test('긴 제목·빈 내용·24시각제·금액 병기를 알린다', () => {
     const { issues } = checkOfficialDocument(doc([item('운영', [item(' '), note('오후 3시 20분에 시작하며 예산은 300,000원이다.')])], '가'.repeat(41)));
     expect(issues.map(i => [i.where, i.fixed])).toEqual([['제목', false], ['본문 1 > 1', false], ['본문 1 > 2', false], ['본문 1 > 2', false]]);
+  });
+});
+
+describe('분량 점검', () => {
+  test('본문(강제 쪽 나눔 전) 마지막 쪽이 80%보다 덜 차면 알린다', () => {
+    expect(pageVolumeIssues({ fills: [0.46, 0.58], bodyPages: 1 })).toEqual([expect.objectContaining({ where: '1쪽', fixed: false })]);
+    expect(pageVolumeIssues({ fills: [0.95, 0.3], bodyPages: 1 })).toEqual([]);
+    expect(pageVolumeIssues({ fills: [1, 0.5], bodyPages: 2 })[0].message).toContain('약 50%');
+    expect(pageVolumeIssues(undefined)).toEqual([]);
   });
 });

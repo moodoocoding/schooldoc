@@ -1,5 +1,5 @@
 import type { HwpDocument } from '@rhwp/core';
-import { isGaejosik, layoutOfficialDocument, levelIndent, lineKey, lineStyle, markerHang, markerScheme, profileOf, tableCells, type ApprovalLayout, type LineKey, type TextStyle } from './format';
+import { isGaejosik, layoutOfficialDocument, levelIndent, lineKey, lineStyle, markerHang, markerScheme, profileOf, tableCells, type LineKey, type TextStyle } from './format';
 import type { OfficialDocument } from './model';
 
 /** 글꼴 이름별 조판·미리보기용 대체 글꼴 바이트. */
@@ -22,14 +22,12 @@ const para = (hwpunit: number) => hwpunit * 2;
 const seven = <T,>(value: T) => Array.from({ length: 7 }, () => value);
 const NO_BORDER = { type: 0, width: 0, color: '#000000' };
 const noBorders = { borderLeft: NO_BORDER, borderRight: NO_BORDER, borderTop: NO_BORDER, borderBottom: NO_BORDER };
-const THIN_LINE = { type: 1, width: 1, color: '#000000' };
 
 /** 공문 문서 모델을 rhwp의 편집 가능한 문단과 표로 조판한다. 모델 XML을 직접 쓰지 않는다. */
 export function writeOfficialDocument(doc: HwpDocument, document: OfficialDocument, maxPages: number, fonts: OfficialFonts): PageVolume {
   if (!document.title.trim()) throw new Error('문서 제목을 확인해 주세요.');
   const profile = profileOf(document);
   const lines = layoutOfficialDocument(document), gaejosik = isGaejosik(document), scheme = markerScheme(profile, gaejosik);
-  const bodyWidth = profile.page.width - profile.page.marginLeft - profile.page.marginRight;
   const fontIdCache = new Map<string, number[]>();
   const fontIds = (face: string) => {
     if (!fontIdCache.has(face)) fontIdCache.set(face, Array.from({ length: 7 }, (_, lang) => doc.findOrCreateFontIdForLang(lang, face)));
@@ -55,54 +53,13 @@ export function writeOfficialDocument(doc: HwpDocument, document: OfficialDocume
     doc.applyParaFormat(0, p, JSON.stringify({ lineSpacing: textStyle.lineSpacing, lineSpacingType: 'Percent', marginRight: 0, koreanBreakUnit: 0, keepLines: true, pageBreakBefore: false, keepWithNext: false, ...noBorders, borderSpacing: [0, 0, 0, 0], ...paragraph }));
   };
   const cellText = (t: { paraIdx: number; controlIdx: number }, cell: number, value: string, textStyle: TextStyle, alignment: string) => {
-    if (value) { expected.push(value); doc.insertTextInCell(0, t.paraIdx, t.controlIdx, cell, 0, 0, value); }
+    expected.push(value);
+    doc.insertTextInCell(0, t.paraIdx, t.controlIdx, cell, 0, 0, value);
     doc.applyCharFormatInCell(0, t.paraIdx, t.controlIdx, cell, 0, 0, doc.getCellParagraphLength(0, t.paraIdx, t.controlIdx, cell, 0), charFormat(textStyle));
-    if (value) bindFont(doc.getCellCharPropertiesAt(0, t.paraIdx, t.controlIdx, cell, 0, 0), textStyle);
+    bindFont(doc.getCellCharPropertiesAt(0, t.paraIdx, t.controlIdx, cell, 0, 0), textStyle);
     doc.applyParaFormatInCell(0, t.paraIdx, t.controlIdx, cell, 0, JSON.stringify({ alignment, lineSpacing: textStyle.lineSpacing, lineSpacingType: 'Percent', marginLeft: 0, indent: 0, spacingBefore: 0, spacingAfter: 0, keepWithNext: false, pageBreakBefore: false }));
   };
   const createTable = (p: number, rows: number, widths: number[]) => JSON.parse(doc.createTableEx(JSON.stringify({ sectionIdx: 0, paraIdx: p, charOffset: 0, rowCount: rows, colCount: widths.length, colWidths: widths, treatAsChar: true }))) as { paraIdx: number; controlIdx: number };
-
-  /** 별지 제1호서식 결문 틀: 회색 띠 → 결재란(직위·서명) → 협조자 → 시행·접수 → 주소 → 연락처·공개 구분, 칸 선 없이 아래 가로선만. */
-  const approval = (p: number, layout: ApprovalLayout) => {
-    const d = profile.draft!, k = Math.max(1, layout.signers.length), unit = Math.floor(bodyWidth / k);
-    const widths = Array.from({ length: k }, (_, i) => i < k - 1 ? unit : bodyWidth - unit * (k - 1));
-    const rows: (string | string[])[] = ['', layout.signers, layout.coordinators, layout.receive ? [layout.issue, layout.receive] : layout.issue, layout.address, layout.contact];
-    const t = createTable(p, rows.length, widths);
-    doc.applyParaFormat(0, p, JSON.stringify({ alignment: 'center', marginLeft: 0, indent: 0, spacingBefore: 0, spacingAfter: 0, keepWithNext: false, pageBreakBefore: false, ...noBorders }));
-    doc.setTableProperties(0, t.paraIdx, t.controlIdx, JSON.stringify({ outerLeft: 0, outerRight: 0, outerTop: 0, outerBottom: 0 }));
-    const half = Math.max(1, Math.floor(k / 2));
-    rows.forEach((row, ri) => {
-      for (let ci = 0; ci < k; ci++) {
-        const cell = ri * k + ci;
-        const value = Array.isArray(row) ? (row.length === k ? row[ci] : ci === 0 ? row[0] : ci === half ? row[1] : '') : ci === 0 ? row : '';
-        // 맨 위 회색 띠는 1pt 빈 줄로 얇게 둔다.
-        cellText(t, cell, value, ri === 0 ? { ...d.footer, size: 100, lineSpacing: 100 } : ri === 1 ? d.approval : d.footer, 'left');
-        doc.setCellProperties(0, t.paraIdx, t.controlIdx, cell, JSON.stringify({
-          ...noBorders, ...(ri === rows.length - 1 ? { borderBottom: THIN_LINE } : {}),
-          paddingLeft: 283, paddingRight: 283, paddingTop: ri === 0 ? 0 : 140, paddingBottom: ri === 0 ? 0 : 140, applyInnerMargin: true, verticalAlign: 1,
-          ...(ri === 0 ? { fillType: 'solid', fillColor: d.barFill } : {}),
-        }));
-      }
-    });
-    // 칸 합치기는 아래 줄부터 해서 위 줄의 칸 번호가 바뀌지 않게 한다. 결재란(1줄)만 사람별 칸을 유지한다.
-    for (let ri = rows.length - 1; ri >= 0; ri--) {
-      if (ri === 1 || k === 1) continue;
-      if (Array.isArray(rows[ri])) {
-        doc.mergeTableCells(0, t.paraIdx, t.controlIdx, ri, half, ri, k - 1);
-        if (half > 1) doc.mergeTableCells(0, t.paraIdx, t.controlIdx, ri, 0, ri, half - 1);
-      } else doc.mergeTableCells(0, t.paraIdx, t.controlIdx, ri, 0, ri, k - 1);
-    }
-  };
-
-  /** 별지 제1호서식 두문 아래 가로선: 아래 변만 있는 1칸 표(문단 테두리는 미리보기에 그려지지 않아 표로 둔다). */
-  const horizontalRule = (p: number) => {
-    doc.insertParagraph(0, p);
-    const t = createTable(p, 1, [bodyWidth]);
-    doc.applyParaFormat(0, p, JSON.stringify({ alignment: 'center', marginLeft: 0, indent: 0, spacingBefore: 0, spacingAfter: para(profile.draft!.headAfter), keepWithNext: true, pageBreakBefore: false, ...noBorders }));
-    doc.setTableProperties(0, t.paraIdx, t.controlIdx, JSON.stringify({ outerLeft: 0, outerRight: 0, outerTop: 0, outerBottom: 0 }));
-    cellText(t, 0, '', { ...profile.draft!.footer, size: 100, lineSpacing: 100 }, 'left');
-    doc.setCellProperties(0, t.paraIdx, t.controlIdx, 0, JSON.stringify({ ...noBorders, borderBottom: THIN_LINE, paddingLeft: 0, paddingRight: 0, paddingTop: 0, paddingBottom: 0, applyInnerMargin: true }));
-  };
 
   doc.deleteText(0, 0, 0, doc.getParagraphLength(0, 0));
   doc.setPageDef(0, JSON.stringify(profile.page));
@@ -111,7 +68,7 @@ export function writeOfficialDocument(doc: HwpDocument, document: OfficialDocume
   lines.forEach((line, index) => {
     const p = index === 0 ? 0 : doc.getParagraphCount(0);
     if (index > 0) doc.insertParagraph(0, p);
-    const key = lineKey(line), gapBefore = index === 0 || key === 'draft' ? 0 : scheme.gapBefore(previous, key);
+    const key = lineKey(line), gapBefore = index === 0 ? 0 : scheme.gapBefore(previous, key);
     previous = key;
     if (line.kind === 'title') {
       text(p, line.text, profile.title, { alignment: 'center', marginLeft: 0, indent: 0, spacingBefore: 0, spacingAfter: para(1600), keepWithNext: true });
@@ -124,17 +81,6 @@ export function writeOfficialDocument(doc: HwpDocument, document: OfficialDocume
         marginLeft: para(levelIndent(line.level, profile.indentUnit)), indent: para(-markerHang(line.marker, textStyle.size, textStyle.font)),
         spacingBefore: para(gapBefore), spacingAfter: para(scheme.after), keepWithNext: line.heading, pageBreakBefore: line.pageBreakBefore,
       });
-    } else if (line.kind === 'draft') {
-      const d = profile.draft!, textStyle = lineStyle(profile, line, false);
-      text(p, line.text, textStyle, {
-        alignment: line.role === 'organization' || line.role === 'sender' ? 'center' : 'justify', marginLeft: para(line.left), indent: para(-line.hang),
-        spacingBefore: para(line.role === 'sender' ? d.senderBefore : line.spaceBefore ? d.attachmentsBefore : 0),
-        spacingAfter: para(line.role === 'organization' ? d.organizationAfter : line.role === 'title' ? 0 : line.role === 'sender' ? d.senderAfter : scheme.after),
-        keepWithNext: line.role === 'organization' || line.role === 'to' || line.role === 'via' || line.role === 'title' || line.role === 'sender',
-      });
-      if (line.role === 'title') horizontalRule(doc.getParagraphCount(0));
-    } else if (line.kind === 'approval') {
-      approval(p, line.layout);
     } else if (line.kind === 'table') {
       const cells = tableCells(line), widths = line.columns.map(c => c.width);
       const t = createTable(p, cells.length, widths);
