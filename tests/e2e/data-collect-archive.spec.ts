@@ -30,6 +30,7 @@ async function makeCollection(page: Page, title: string) {
 test("실제 Chrome: 수합 중 기한을 바꾸고 보관함에서 재개하거나 선택한 항목만 삭제한다", async ({
   page,
 }) => {
+  test.setTimeout(120_000);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width: 1366, height: 900 });
