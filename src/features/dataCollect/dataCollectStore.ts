@@ -130,6 +130,21 @@ export const updateDataCollectionStatus = (
 export const deleteDataCollection = (id: string) =>
   write(read().filter((collection) => collection.id !== id));
 
+export const reopenDataCollection = (id: string, dueAt: string) =>
+  write(
+    read().map((collection) =>
+      collection.id === id
+        ? {
+            ...collection,
+            status: "open",
+            dueAt,
+            closedAt: undefined,
+            updatedAt: new Date().toISOString(),
+          }
+        : collection,
+    ),
+  );
+
 export const submitDataCollectionReview = async (
   collectionId: string,
   targetId: string,

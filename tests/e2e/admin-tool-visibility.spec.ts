@@ -267,11 +267,11 @@ test('관리자는 홈에서 계획서를 열고 계정 전환 시 작성 화면
   await page.goto('/');
   await page.getByRole('button', { name: /^학교 문서 작성 시작하기/ }).click();
   await expect(page).toHaveURL(/\/tools\/school-documents$/);
-  await expect(page.getByLabel('문서 종류', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('출력 분량', { exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('admin-plan-entry-full.png'), fullPage: true });
   await changeUser(page, teacher);
   await expect(page.getByRole('alert')).toContainText('관리자 계정');
-  await expect(page.getByLabel('문서 종류')).toHaveCount(0);
+  await expect(page.getByLabel('출력 분량', { exact: true })).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('teacher-plan-blocked-full.png'), fullPage: true });
   await changeUser(page, null);
   await expect(page.getByRole('button', { name: 'Google로 로그인', exact: true })).toBeVisible();
