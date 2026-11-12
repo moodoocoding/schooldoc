@@ -1,0 +1,1289 @@
+{
+  "fingerprint": "425cfae5459f9dec85dd69080395884d3e91ce68782b9c7c7e042935b13ebab9",
+  "files": [
+    {
+      "file": "package-lock.json",
+      "sha256": "3ea32efd1db0791ae547479b534000da9657acb096a85dfe6b868dbfd6dfca7c"
+    },
+    {
+      "file": "package.json",
+      "sha256": "569b784a758f198e3c54bac01f889950bc9f0c529e1a3c727362282a57a9696c"
+    },
+    {
+      "file": "public/favicon.svg",
+      "sha256": "61bc9a161de58248288e6905425d7180f0624c2865007b97d763fdac12043a66"
+    },
+    {
+      "file": "public/third-party/README.md",
+      "sha256": "9c79ff9e3511f6b613c10ca21cddedce31e9226cfaa524f1b2692c2b2efdc630"
+    },
+    {
+      "file": "public/third-party/nanum-gothic/OFL.txt",
+      "sha256": "eeacf16032901d0ed0456876ec77b8f0fda6b3fecec7d972f8543eb602e6c30f"
+    },
+    {
+      "file": "public/third-party/rhwp/LICENSE",
+      "sha256": "1c3a7d5643b163a3ead4965e1bea33b832caee5bfca265efe42afcd7bc696b5b"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/THIRD_PARTY_LICENSES.md",
+      "sha256": "3360ab04d9f65a08366f0592f8299cfbd8b14588027f05c5dc3fc4e349892dba"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/LatinModernMath-GUST-FONT-LICENSE.txt",
+      "sha256": "e120f067589d589a9fa436db09940bd2e03b477cf29b15443c6f87d3861f734b"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/MANIFEST-RHWP-LMM-VariableOutline.txt",
+      "sha256": "c67672523217a4c4765e4f04ddc816ba155614260b98836bce82f2b47b646daf"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/NotoSansMath-OFL.txt",
+      "sha256": "4fbd190167f23b4c0e2368160f412bf2d1fade887b78b6aec66689ce31698e8b"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/NotoSansSymbols2-OFL.txt",
+      "sha256": "075f91382875da1c4b491f1facf2586f55448705133264d98ce15cab6211b125"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/SourceHanSerifK-OFL.txt",
+      "sha256": "9ff5bb567e1b92c801fc1069e5fbf992ff8efccacb9db94e5959a5b3ba9bb903"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/Cafe24Ssurround-LICENSE.pdf",
+      "sha256": "de2158b3dc8aa27513451108fb09088f9afd8fce1d65c2cac29c7e554b37a7d9"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/Cafe24Supermagic-LICENSE.pdf",
+      "sha256": "bdf5e278410f73faaf5a34db9ad4ce328cabd673d8f699bd986869a690193511"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/D2Coding-OFL.txt",
+      "sha256": "1807e8dec4d65f474cbf9be39f5e2254ecb81702babc320749e272ea66ffcc69"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/GowunBatang-OFL.txt",
+      "sha256": "49a57cc769fa9affd6eefb9070a61e3d3f6b757c97cafb15848bc6d1c81acc78"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/GowunDodum-OFL.txt",
+      "sha256": "a7c73f9521cd646bbdfb6684c99a62311bbd7bce11898dc11ef0b3c69eda1aca"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/HappinessSans-LICENSE.pdf",
+      "sha256": "f5bd344131ee034f3425517ea376ab6acea9126310e7b2cd74cd18673991b055"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/LPPL-1.3c.txt",
+      "sha256": "3d262cdf34dafa6955f703c634a8c238ec44109bc8dd6ef34fb7aa54809f7e66"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/LatinModernMath-GUST-FONT-LICENSE.txt",
+      "sha256": "49ea6cb9257bbee0a3979c48a774cd221550ac1c20c95549efe45fc99cc18050"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/NanumGothic-OFL.txt",
+      "sha256": "eeacf16032901d0ed0456876ec77b8f0fda6b3fecec7d972f8543eb602e6c30f"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/NanumGothicCoding-OFL.txt",
+      "sha256": "eeacf16032901d0ed0456876ec77b8f0fda6b3fecec7d972f8543eb602e6c30f"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/NanumMyeongjo-OFL.txt",
+      "sha256": "8eb1c1019fe7fe6d0b6e7d7bbbba1d9cbdd969d8c5f26455708f6cfb8a77284c"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/NotoCJKSerif-OFL.txt",
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/NotoSansKR-OFL.txt",
+      "sha256": "1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/NotoSansMath-OFL.txt",
+      "sha256": "4fbd190167f23b4c0e2368160f412bf2d1fade887b78b6aec66689ce31698e8b"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/NotoSansSymbols2-OFL.txt",
+      "sha256": "075f91382875da1c4b491f1facf2586f55448705133264d98ce15cab6211b125"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/Pretendard-OFL.txt",
+      "sha256": "82e9c8a4b203261f10ddba1296422d64914ff3d4b7bd8a12896d03f0f088d70a"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/README.md",
+      "sha256": "a577ccb2a4ff374e388c9bfb5d360e0b62e3cfd6e8b09b43df601d8dd8605130"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/RHWPPublicBatang-OFL.txt",
+      "sha256": "cc115f501827fffddcbf1ef86e5248ee55e40f0c3fb9725173b248ccc2d5df51"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/SIL-OFL-1.1.txt",
+      "sha256": "f19c674290e5dc79f02e8efe16139ab56a06a7128876f5b1579ffd0db5bc897e"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/SourceHanSerifK-OFL.txt",
+      "sha256": "9ff5bb567e1b92c801fc1069e5fbf992ff8efccacb9db94e5959a5b3ba9bb903"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/SpoqaHanSans-OFL.txt",
+      "sha256": "279753543734e7a1846e3cb3f80d4dcdcc91f49c436411adaba82e3913c61cde"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/fonts/licenses/font-notices.json",
+      "sha256": "6471f8a8b556352c1dc4af748cd118ba89a17d7c39cce72fc0049160039005e9"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/assets/licenses/Unicode-3.0.txt",
+      "sha256": "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/data/font-metrics/nimbus-roman/URW-FONT-NOTICE.txt",
+      "sha256": "1315a62758a603a3e6e87a79b8389563789c59c1740b9db8bc2b20e2e2145458"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/licenses/intel-mediasdk/LICENSE",
+      "sha256": "ce257ca160a079b84e74c8802f963f37676b695fb110f3e3ade6536eb87cd3ba"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/licenses/pdfium/LICENSE",
+      "sha256": "1fe9dea718fbd75cf149adaf4d8a22a4335604d964ddb76d1b45383dec8668c9"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/licenses/pdfium/README.md",
+      "sha256": "16ce8d17f8dced15c322eac429372854100d116f342b84883d7015ed9e56982c"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/npm/ajv/LICENSE",
+      "sha256": "a05350a88e318e4f5f2c2a1ff1e2e88daa4dd38e6e78b71cccae422bdc762cc3"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/npm/ajv/RHWP_PATCHES.md",
+      "sha256": "c0abfdc224c69d6e7761da7051d7dc36d283959a43f4d8e22488e8e3919a1478"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/npm/ajv/UPSTREAM_FILES.json",
+      "sha256": "5618e7d6cec44f48da70660619a9269b8e061b685d9b4a963c007272498068d4"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-codec-resource/LICENSE",
+      "sha256": "1c3a7d5643b163a3ead4965e1bea33b832caee5bfca265efe42afcd7bc696b5b"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-hayro-ccitt/LICENSE-APACHE",
+      "sha256": "0cec06e0e55fbc3dc5cee4fca9b607f66cb8f4e4dbcf3b3c013594dd156732e9"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-hayro-ccitt/LICENSE-MIT",
+      "sha256": "51b50e6120c344dcc146bbd6375ca1c78e079d97c8bea76e67a53d6ff0efebac"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-hayro-ccitt/NOTICE",
+      "sha256": "e7de8704fb9f28f7f14dbc66fde6808feb5f26ba05d7df04276622f449c066d9"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-hayro-ccitt/RHWP_PATCHES.md",
+      "sha256": "d30cc365d0ccb1ad0a4eb52507f4da73780b3f8605b4a7e3d1af5ea9f6536b39"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-hayro-ccitt/UPSTREAM_FILES.json",
+      "sha256": "805ed897b166addee116a374576a105d3f26813a021113dcb61551370aca42fe"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-hayro-jbig2/LICENSE-APACHE",
+      "sha256": "0cec06e0e55fbc3dc5cee4fca9b607f66cb8f4e4dbcf3b3c013594dd156732e9"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-hayro-jbig2/LICENSE-MIT",
+      "sha256": "51b50e6120c344dcc146bbd6375ca1c78e079d97c8bea76e67a53d6ff0efebac"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-hayro-jbig2/NOTICE",
+      "sha256": "253981dd9b71a3469c92db5346b8c9b9d6614c64274586c786dd21aad1489ac4"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-hayro-jbig2/RHWP_PATCHES.md",
+      "sha256": "40b66f4ec77ece19794260187c28ac976269affeca770d8f126f647a2ad39455"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-hayro-jbig2/UPSTREAM_FILES.json",
+      "sha256": "866fdaa1e3f8f492d3d1778c78244706369a9bf077d5482551479552472def84"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-hayro-jpeg2000/LICENSE-APACHE",
+      "sha256": "0cec06e0e55fbc3dc5cee4fca9b607f66cb8f4e4dbcf3b3c013594dd156732e9"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-hayro-jpeg2000/LICENSE-MIT",
+      "sha256": "51b50e6120c344dcc146bbd6375ca1c78e079d97c8bea76e67a53d6ff0efebac"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-hayro-jpeg2000/NOTICE",
+      "sha256": "ec7f7da5bf759b68e55f26abbd7032dbc95251b11bd6ef693b29a8f5814423a6"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-hayro-jpeg2000/RHWP_PATCHES.md",
+      "sha256": "112bf881bed389fcadc755ea0de9aa5b8ade1f41d5fbd37288b72299de5b9e1a"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-hayro-jpeg2000/UPSTREAM_FILES.json",
+      "sha256": "ea270a2650117c7039c9cf3999ffafe43ad9bd3d54ed3026ce0bdc3deb5a8593"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-hayro-jpeg2000/assets/LICENSE.txt",
+      "sha256": "469d87b5fa48f8aaf69e25f4fcac3a309c97dbb7d561b917638abdb640e004d9"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-jpeg-decoder/LICENSE-APACHE",
+      "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-jpeg-decoder/LICENSE-MIT",
+      "sha256": "22b83fb92a50418c7df9564b9c179fa2a0e74f293bc58b72dd7e218fc0902143"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-jpeg-decoder/RHWP_PATCHES.md",
+      "sha256": "06b69f835d3016f6f1770a9916d4b59159b5bf31ad193b71b484a25f0f3c9a35"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-jpeg-decoder/UPSTREAM.json",
+      "sha256": "2d63bec38bffd6d0953c3bb62f272bf1f15cc5fa9840c1f5f0774ad86f139f2f"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-jpeg-encoder/LICENSE-APACHE",
+      "sha256": "85a884980abd6032fc6b5439ba918ab16db9ac9051b5cf18db9c27c587df07c0"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-jpeg-encoder/LICENSE-IJG",
+      "sha256": "a21e92ec88aefc6823f0c51994783571a849e8d9b43d9ade61ec9d886776721e"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-jpeg-encoder/LICENSE-MIT",
+      "sha256": "4d022727ea392ebba2fe5e9a5f78c610a0eae506b491f3db29c78b6d430d6503"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-jpeg-encoder/RHWP_PATCHES.md",
+      "sha256": "3cd7cd68444d9672dd9c0a40133e94555884a604773523b74b9488b1fa5dbd55"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-jpeg-encoder/UPSTREAM.json",
+      "sha256": "69fa85ac857dfd15dc889185da7f3db97d031cc1253f72882b8cfc17a5344344"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-pdf-import-backend/LICENSE-APACHE",
+      "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-pdf-import-backend/LICENSE-MIT",
+      "sha256": "33409f3fd68d9e95a48c751757782f468bb5c183f241d26bd1028678faa0baa3"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-pdf-import-backend/NOTICE",
+      "sha256": "a914e104fc9e195ab15594a89546192b66114d6dc8e9052771a26f9a91dd537c"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-pdf-import-backend/RHWP_PATCHES.md",
+      "sha256": "fb570d6b057778c3aa82c26f663284603825430bbf82af2cff350c969cf5148e"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-pdf-import-backend/UPSTREAM_FILES.json",
+      "sha256": "fa913ef31af758abc332d341a5e349d5bab5d2bd3984dfcc1b9a3f2c25a196d5"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-pdf-import-backend/src/fonts/assets/LICENSE-DejaVu",
+      "sha256": "5fe93f9ee914fc7c4f0cfc73b7b0e972167f1b8f89ba57f9ad55d6013eb8a8ac"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-pdf-import-backend/src/fonts/assets/LICENSE-NotoEmoji",
+      "sha256": "8d64bebb6ad6958b0f38a25e2ca948ffc5df8bca30bfb55d92a67244e1c8fec0"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-pdf-import-backend/src/fonts/assets/LICENSE-fallback-fonts",
+      "sha256": "7fee68f76f08309b3a599bd93c66e0c5f263e6ccfe98dbe74ecfabbe1eb77429"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-qcms/COPYING",
+      "sha256": "36d847ae882f6574ebc72f56a4f354e4f104fde4a584373496482e97d52d31bc"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-qcms/LICENSE",
+      "sha256": "36d847ae882f6574ebc72f56a4f354e4f104fde4a584373496482e97d52d31bc"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-qcms/RHWP_PATCHES.md",
+      "sha256": "7255567fadcb301beff9e06d2ee2a42f0bbddf50556f79b533414bd6edd8c07c"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-qcms/UPSTREAM_FILES.json",
+      "sha256": "3c01cd335786a7e061b267c1cf9a3a85bf17b4beceac5d82c74fc2345487fc30"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-zune-jpeg/LICENSE-APACHE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-zune-jpeg/LICENSE-MIT",
+      "sha256": "d30047bca3b516639339a3c279bb84c3483124fb5a9dafe3c75056a85090e745"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-zune-jpeg/LICENSE-ZLIB",
+      "sha256": "d201d14804d3bcd3b944147173175e4abfbd838b7c8069b6bd3452496bf13e6c"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-zune-jpeg/README.ijg",
+      "sha256": "75815e3bf6484201a3c3d17a1bbf10f2e8e3237f84df10a2357ea896db2a81d6"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-zune-jpeg/RHWP_PATCHES.md",
+      "sha256": "7458a0abebefaa32becc7d60d5846d174f8e6032aab465e5d09c424d6bca0739"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/rhwp-zune-jpeg/UPSTREAM.json",
+      "sha256": "b27136b15310a2df38441529cafc0dd4b0f3cf421ea390a767370ce2716a4322"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/svg2pdf/LICENSE-APACHE",
+      "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/svg2pdf/LICENSE-MIT",
+      "sha256": "508a77d2e7b51d98adeed32648ad124b7b30241a8e70b2e72c99f92d8e5874d1"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/svg2pdf/NOTICE",
+      "sha256": "74544feeaa2083014e5c62c4d3eda0e6dfb77f621310b5b602b074df199dcc20"
+    },
+    {
+      "file": "public/third-party/rhwp/notices/vendor/svg2pdf/RHWP_PATCHES.md",
+      "sha256": "dbb13ee392a0ec79275ebaea056019931ee0222f400f99e8202128a2b1e60acc"
+    },
+    {
+      "file": "src/App.tsx",
+      "sha256": "2879ebe788f2d48a5b661a913f3f307e0505d6d73a52edafb082e6a336281c9c"
+    },
+    {
+      "file": "src/auth/TeacherAuthProvider.tsx",
+      "sha256": "7a2c9479b829a5e1107de2e7f2323d52c5df943bba4e76e4c6c97f155c33eb13"
+    },
+    {
+      "file": "src/auth/schoolToolVisibility.ts",
+      "sha256": "42ba29a6b611977d6641f9a7c0217b87158680b753d25730f451299495bc890a"
+    },
+    {
+      "file": "src/auth/teacherAuth.ts",
+      "sha256": "6c82c5b3c016a645e0ef418ade6c366e02856932f227a5a7ff884627f1d2c942"
+    },
+    {
+      "file": "src/auth/teacherAuthRecovery.ts",
+      "sha256": "36fd47be11a6764656608a4ce6197836c5898cea4dd7d3b98ff1f23b28996386"
+    },
+    {
+      "file": "src/components/HomeWorkspace.tsx",
+      "sha256": "ef6528e5e0fb4db59947de29c306d931978d23aca181568895ec9f02c925e5fe"
+    },
+    {
+      "file": "src/components/NotificationComingSoonDialog.tsx",
+      "sha256": "6379375103e6b83f5afa6f05b524ece350b9e70cf59a603d100c7ce85fbc578f"
+    },
+    {
+      "file": "src/components/SettingsPage.tsx",
+      "sha256": "72396666aac69fe411ea55d13790fed279d780510d14cf08d282992dd344d5f8"
+    },
+    {
+      "file": "src/components/Sidebar.tsx",
+      "sha256": "cf93b41acd29bb75c13a18c6165c4fbccaa47677c7a46678d9154b9db86fa258"
+    },
+    {
+      "file": "src/components/SidebarUserMenu.tsx",
+      "sha256": "2b9346ec33aaa14272fa7584381a11f07468302874407dc6f0f8a8861ba8221b"
+    },
+    {
+      "file": "src/components/ToolCard.tsx",
+      "sha256": "552e639e0b7ce6703b2e0fbff2170af21a10a2ff5016a404494abcc83882b4af"
+    },
+    {
+      "file": "src/components/ToolListHeader.tsx",
+      "sha256": "a84ecdf399dcf8f7c7960b2b157d43dd5e2104b37f4f608b3c6a6e61e18b83c4"
+    },
+    {
+      "file": "src/features/activeWork/ActiveWorkPage.tsx",
+      "sha256": "204813144ed899001ffabee44ac3e76e9a261e2d6d760aa51cca5caebe99549a"
+    },
+    {
+      "file": "src/features/activeWork/activeWorkProviders.ts",
+      "sha256": "17a489b8395af90615dc2f795bf26d78fb54d6f66ec3e4e2a3c2ece5977d323c"
+    },
+    {
+      "file": "src/features/activeWork/activeWorkRepository.ts",
+      "sha256": "d9cc18102c598989a2a12b376a4c56cf2c974348ff912c08e25996eaaa999195"
+    },
+    {
+      "file": "src/features/activeWork/activeWorkService.ts",
+      "sha256": "8a8c6b940a4f01592076d5a535e61cb94da24031007eaa69511ab74aeca3d5ad"
+    },
+    {
+      "file": "src/features/activeWork/activeWorkSummary.ts",
+      "sha256": "7a68959b418617faa1ac263fff8ba267163a7b5180f2e54ad649cc8e39550106"
+    },
+    {
+      "file": "src/features/activeWork/types.ts",
+      "sha256": "48793f0688ed7ea75b58d2b9bc84caef51601b6455c1f6dac2f96d0882410d41"
+    },
+    {
+      "file": "src/features/activeWork/useActiveWork.ts",
+      "sha256": "6e9ab2bdaf0af801cd130cc0f7e27fa496fea6b14a40c389c292336c66072eb0"
+    },
+    {
+      "file": "src/features/classBudgetReceipts/ReceiptBookCreatePage.tsx",
+      "sha256": "6848b264df6b56d347ce856c00b686998d19088222dfc2e4722c1196c27973bd"
+    },
+    {
+      "file": "src/features/classBudgetReceipts/ReceiptBookDetailPage.tsx",
+      "sha256": "a6a0a6416e483f123453987cfbddd4c4afcd10c3de3153134cfb60cea0de10ea"
+    },
+    {
+      "file": "src/features/classBudgetReceipts/ReceiptBooksListPage.tsx",
+      "sha256": "bf351f9d8e8d70d78ed7d536a8dddfe984e3ae0d24958e87c816053485a53fcf"
+    },
+    {
+      "file": "src/features/classBudgetReceipts/ReceiptBooksWorkspace.tsx",
+      "sha256": "774a1312bef3a1ab59dd1d354000d4e37527f4bbbce7dd080abe59d7cdcdaef8"
+    },
+    {
+      "file": "src/features/classBudgetReceipts/ReceiptOriginal.tsx",
+      "sha256": "5f852b8190ce406902a7ccb97a53feeccaaa1c9da922eb342ac94bb16f79b196"
+    },
+    {
+      "file": "src/features/classBudgetReceipts/ReceiptViewer.tsx",
+      "sha256": "2bf093394027e8cf7b4052ab725a67fe613908f47d53e995c898e0a2d41e1a64"
+    },
+    {
+      "file": "src/features/classBudgetReceipts/classBudgetReceiptsConfig.ts",
+      "sha256": "f616400571fb36eeb9534e542cf5e77ec5508f45c14f0bbfef0308b9f6155cdb"
+    },
+    {
+      "file": "src/features/classBudgetReceipts/receiptAi.ts",
+      "sha256": "c4cff7129b6c013212e152c83454306836945cf04a56f15ba9b3d50333f14e95"
+    },
+    {
+      "file": "src/features/classBudgetReceipts/receiptBookStore.ts",
+      "sha256": "ea553d53b5fea827acb942ba1a471dbf43da797839ec13a802bd8428930ea84f"
+    },
+    {
+      "file": "src/features/classBudgetReceipts/receiptBookUtils.ts",
+      "sha256": "31fabc89201c66d489356c347568a43a7c16731052d9489e2fcbfcf1cdafa5e2"
+    },
+    {
+      "file": "src/features/classBudgetReceipts/receiptCategorizer.ts",
+      "sha256": "14fa2e1eeab8f843ccecdf5d2b981c168a5637f5a35c5380acb592fd13bc0dd4"
+    },
+    {
+      "file": "src/features/classBudgetReceipts/receiptExportData.ts",
+      "sha256": "c3a241471ed2851e9fedef2dc34df855a3d32245747ad0d29a97ba9560c749b2"
+    },
+    {
+      "file": "src/features/classBudgetReceipts/receiptExportExcel.ts",
+      "sha256": "e7b7b9a5b7e5d228b58f4c892a335295b1d318d7df27bb7ed8b6a280f5ad287b"
+    },
+    {
+      "file": "src/features/classBudgetReceipts/receiptExportPdf.ts",
+      "sha256": "436cce595eb3d97c0b2ba3c6cf2a947e6935948c993f3e4f611a8f366f99fce6"
+    },
+    {
+      "file": "src/features/classBudgetReceipts/receiptOcr.ts",
+      "sha256": "e1f62f2f38ffd469b446083ccf243b3e52317bc5b48368eefb44317d563f6071"
+    },
+    {
+      "file": "src/features/classBudgetReceipts/receiptOriginalStore.ts",
+      "sha256": "4184ca7df154786906890c78f75e5435b937b7f5dff20983b731f365676e87d2"
+    },
+    {
+      "file": "src/features/classBudgetReceipts/receiptSettlement.ts",
+      "sha256": "34ee724cb0669441ca7e7e3fb0099e76c9d3da2e38fe5f21ddcecf070f80a536"
+    },
+    {
+      "file": "src/features/classBudgetReceipts/types.ts",
+      "sha256": "a2acfaaf7dc9b3b963bd76d9b4a81a0d72b0c1c53acffb8d64df9f72debc403c"
+    },
+    {
+      "file": "src/features/classBudgetReceipts/useReceiptBooks.ts",
+      "sha256": "c2595fa5bec29c32ff1bce2e89661238d88fa46c0fdb25580b96d6e884bfc1f1"
+    },
+    {
+      "file": "src/features/classMissions/ClassMissionsWorkspace.tsx",
+      "sha256": "1e4a68397c21ea44992bb5d8063bff951c23226af9517b63f773705ca1e17af8"
+    },
+    {
+      "file": "src/features/classMissions/PublicClassMissionsPage.tsx",
+      "sha256": "0a6e4abfb0ac26a3f98fa74416440a7c80ef8f374fcbb658b6ad7ea0e215c9b7"
+    },
+    {
+      "file": "src/features/classMissions/missionApi.ts",
+      "sha256": "1070371408695163b6c3398742e45e65df427213c3a3cd5af2dc08679664d4bf"
+    },
+    {
+      "file": "src/features/classMissions/missionExportExcel.ts",
+      "sha256": "e88cc76a7d87907342bcd8ef6da14f19b1b7e3f3dc41349f02a64969228411b1"
+    },
+    {
+      "file": "src/features/classMissions/missionSettingsSync.ts",
+      "sha256": "c57a671de8af7090287163aebf09ea8692dc8054c47fd46fad5c4275e9249995"
+    },
+    {
+      "file": "src/features/classroomRoles/ClassRosterImporter.tsx",
+      "sha256": "d61505458b0f1d06f3dc2f11200fb7f577c8988e38cd337e9abf99cb664bb557"
+    },
+    {
+      "file": "src/features/classroomRoles/ClassRosterSettings.tsx",
+      "sha256": "2990dc994f3896dba6546e7a5759c8668857bad65f6d90ace78f59903ffd9778"
+    },
+    {
+      "file": "src/features/classroomRoles/ClassroomRolesWorkspace.tsx",
+      "sha256": "848c39538cfc8c2bab64a294c7c7363a42f5b8a15b0fa2130bf3c92051c1f49f"
+    },
+    {
+      "file": "src/features/classroomRoles/PublicClassroomRolesPage.tsx",
+      "sha256": "e1688897bc8584342410a288c7a6af1a6723091abbf9f88b016f228f634fe500"
+    },
+    {
+      "file": "src/features/classroomRoles/RoleAssignmentPage.tsx",
+      "sha256": "6ab918b3242c667247b145e09ab22e948183df74e628f54486a2ad280c5058c8"
+    },
+    {
+      "file": "src/features/classroomRoles/RoleConfigurationPages.tsx",
+      "sha256": "65d4f2cb6cd146757477e784326a5254c4010636c52792bb14d62e36391095f0"
+    },
+    {
+      "file": "src/features/classroomRoles/RoleControls.tsx",
+      "sha256": "b64f0492eebe32609844ab83fab0e7f5dd71bb6da814493b0777157b3bbfc4b4"
+    },
+    {
+      "file": "src/features/classroomRoles/RoleExcludedDatesCalendar.tsx",
+      "sha256": "0284898dd409f2a519bfce55ebff9328c007947730cbe8dff28d05bef590220b"
+    },
+    {
+      "file": "src/features/classroomRoles/RolePosterPrintPage.tsx",
+      "sha256": "8f14a7858a47eb8521c697a23812d9dbceb9d5ee2e5b677f46c0edaccead40aa"
+    },
+    {
+      "file": "src/features/classroomRoles/RolePracticeBoardPage.tsx",
+      "sha256": "f6fb515c2fbfde15da845cf83d2499ea6a9e0560ed8c6c7d35e33a86f7b0ba96"
+    },
+    {
+      "file": "src/features/classroomRoles/RoleRecordPages.tsx",
+      "sha256": "321310e060670095d7e696b512a5958fcc5c47deed442a1cb8546e36ba3c0b58"
+    },
+    {
+      "file": "src/features/classroomRoles/RoleStudentPicker.tsx",
+      "sha256": "9cdd27f2e866360b07e100f1b3dbb79c52120b0c7d6e1deaa6e676632a24e665"
+    },
+    {
+      "file": "src/features/classroomRoles/classRosterImport.ts",
+      "sha256": "cac3c720f3a913d4b3ab3b97df09fc07adfefba567b092a8b7d4bd6906696fd7"
+    },
+    {
+      "file": "src/features/classroomRoles/roleApi.ts",
+      "sha256": "09964237affbacf29ba815098b8fc888f9a1383426569ee732be537ea96455b8"
+    },
+    {
+      "file": "src/features/classroomRoles/roleAssignmentDraft.ts",
+      "sha256": "58b329eff0882757d34734ae4bc1f84df68d2af1581ced7307270dbab16b65e4"
+    },
+    {
+      "file": "src/features/classroomRoles/rolePoster.ts",
+      "sha256": "8ae328b76dedd49c8fe208a44f5cfbe6aeefb1b89857c8af171be6c6b9c86243"
+    },
+    {
+      "file": "src/features/classroomRoles/useRoleRecords.ts",
+      "sha256": "97a1406bfc6d26b2019bf80195937b985e02173aef9f498411fc1c656e61f383"
+    },
+    {
+      "file": "src/features/classroomRoles/useUnsavedRoleChanges.ts",
+      "sha256": "da18d49e3b4db20734756e2f03746e7079037d832b31e48ceba4c8f8f6837e6c"
+    },
+    {
+      "file": "src/features/consentForms/ConsentChoiceSettings.tsx",
+      "sha256": "0a2f0df871562ac837d6ff68f4f14440e625e5c2c8e322ed5f9ef89a47378641"
+    },
+    {
+      "file": "src/features/consentForms/ConsentFieldEditor.tsx",
+      "sha256": "6e6b620bd596d140fed09bef17b9ae21a11c84cacf3090df0ea0afd129d29b56"
+    },
+    {
+      "file": "src/features/consentForms/ConsentFormsAuthGate.tsx",
+      "sha256": "33cefbf786221e627292401490bef7b14e4aefb94ece794e972fd25472e4f2f3"
+    },
+    {
+      "file": "src/features/consentForms/ConsentFormsCreatePage.tsx",
+      "sha256": "eda5b811117aa74a139e527a20a713a5fff8d4e8ea3f8d3a2e4763b7ccbf51b8"
+    },
+    {
+      "file": "src/features/consentForms/ConsentFormsListPage.tsx",
+      "sha256": "1c7efcda20ab9c35693bc279801f4e165c2e296d90c8d28ad02d89e2261a70cd"
+    },
+    {
+      "file": "src/features/consentForms/ConsentFormsManagePage.tsx",
+      "sha256": "bf63a7d9eed25822a59e3736bc523adfe4fed4fdf57b03ee8921ef8ed3168000"
+    },
+    {
+      "file": "src/features/consentForms/ConsentFormsWorkspace.tsx",
+      "sha256": "cfd4973f48a93ea3e931f6da385f71ef8e4fb3f4dd864837132621f77b3b8c6c"
+    },
+    {
+      "file": "src/features/consentForms/ConsentPdfPage.tsx",
+      "sha256": "90c76af463b2f16acafb7cee98f5004e7d806c5a9c306ee7ef5060c18ef9a401"
+    },
+    {
+      "file": "src/features/consentForms/ConsentQrPrintPage.tsx",
+      "sha256": "5cbb1cffb4970e2206ea5d681c1562ab30e63929f4e86a13bdab961729933cdd"
+    },
+    {
+      "file": "src/features/consentForms/ConsentRecipientsStep.tsx",
+      "sha256": "48c1f70b35016f793f0bee3da1b37d6614b8622580c6a5a487264b0acdbce516"
+    },
+    {
+      "file": "src/features/consentForms/ConsentResponseField.tsx",
+      "sha256": "d0f093f1fd648c633a1973af39fa4bfedc0e7e872a13ef61fee3577d5cf4b723"
+    },
+    {
+      "file": "src/features/consentForms/ConsentResponseForm.tsx",
+      "sha256": "880720fb8c24064a96b108393d1a819a12454afad6b7695159d0a23825bf2a08"
+    },
+    {
+      "file": "src/features/consentForms/ConsentShareStep.tsx",
+      "sha256": "0e785b4bdfa8b037eb3428d0bf9d1cd06d975b76390b163efd61bf1cd21373e0"
+    },
+    {
+      "file": "src/features/consentForms/PublicConsentResponsePage.tsx",
+      "sha256": "605944812674ca5e752fada5fca2ba9254ec6344756c461d6075bb418d67aa98"
+    },
+    {
+      "file": "src/features/consentForms/consentAdminApi.ts",
+      "sha256": "9effa5c2b08f3cfd8884905e7ab826ba5f5f7c96d6b50d5bf0b1cca35b8de6ad"
+    },
+    {
+      "file": "src/features/consentForms/consentDocumentImport.ts",
+      "sha256": "9498f51d87a41e851ca281f82707b364fbca8966cc6f82022891d6444ae648d7"
+    },
+    {
+      "file": "src/features/consentForms/consentDocumentReady.ts",
+      "sha256": "9e3e6516490f58f6b5522f5ded3776bdcf0d41aa1d0ce5e59a2dd23d671822ae"
+    },
+    {
+      "file": "src/features/consentForms/consentDraftStore.ts",
+      "sha256": "e0c8d6d0df99057f2372470602a4e9aa42148eff7b5c67fb1963fd2d3e0975d2"
+    },
+    {
+      "file": "src/features/consentForms/consentDuplicate.ts",
+      "sha256": "394a2ca20059f020b4e6b26b1d0b87052e0bc47e8d650faff65337e7150473ed"
+    },
+    {
+      "file": "src/features/consentForms/consentDuplicateApi.ts",
+      "sha256": "9faeeb9b18a36e06e5e6d81fd58bb6871ba398c1321e487d02c2acd297a98f1a"
+    },
+    {
+      "file": "src/features/consentForms/consentFieldLayout.ts",
+      "sha256": "a70e8812d7db8e4e5944a263bf171db3f5811fa4325423795e61e5899143cf08"
+    },
+    {
+      "file": "src/features/consentForms/consentFormsConfig.ts",
+      "sha256": "9215b3a86281e4af6f516f60da36ca0468d409a403f5d93bcf3a275f06adb816"
+    },
+    {
+      "file": "src/features/consentForms/consentFormsLocalStore.ts",
+      "sha256": "d658be927aa84da14048f90878daac1cc90c630519a4264d1560f2a604540717"
+    },
+    {
+      "file": "src/features/consentForms/consentFormsPublicApi.ts",
+      "sha256": "0c0655001c1f74a4d6a259d56667d4599464dd7b2651b2e664fa9d3237a4fbc5"
+    },
+    {
+      "file": "src/features/consentForms/consentFormsRepository.ts",
+      "sha256": "86b7c300bda52e46a2944510f075f96c0d5fe70e9a95d9fc3816c3cd2f35a1e9"
+    },
+    {
+      "file": "src/features/consentForms/consentPurgeApi.ts",
+      "sha256": "05dea164f4eb8caae67486d2047a61e2d4bc3ca76e047bccd86cbe81baf69ed8"
+    },
+    {
+      "file": "src/features/consentForms/consentPurgeSelection.ts",
+      "sha256": "1f8fda51fa0cfe252f84c42f9aadc42d21248e018b45b86e10cce3a50317d861"
+    },
+    {
+      "file": "src/features/consentForms/consentRecipientImport.ts",
+      "sha256": "8e0df29ba218312bef8acd18d0e5c87d03904413dba330858f92665762ad7c1d"
+    },
+    {
+      "file": "src/features/consentForms/consentRecipientSheet.ts",
+      "sha256": "e8f0cf1e08cc7f8b795d7e57451b00e7af8d7fb8defc91e939276491cde4b0ed"
+    },
+    {
+      "file": "src/features/consentForms/consentRecipientsApi.ts",
+      "sha256": "f0cd29c0291d9d4708a6e5feb8e5606b59694beda32d6e9981236fb0addf55ae"
+    },
+    {
+      "file": "src/features/consentForms/consentResponseRender.ts",
+      "sha256": "f5a7c530da04d90f2a07dc9df69c693d610cf695d8c12f932c96203fcc630812"
+    },
+    {
+      "file": "src/features/consentForms/consentResponsesApi.ts",
+      "sha256": "e2b42b9e5bff1806bbcd7a6d18aa32dd42e93affb5453da8f3106275cf1168f8"
+    },
+    {
+      "file": "src/features/consentForms/consentResponsesExcel.ts",
+      "sha256": "b4ade76c10182c6eaa1e4b50d21915d93c5f5331314c5a5db00ed2e88b47a783"
+    },
+    {
+      "file": "src/features/consentForms/types.ts",
+      "sha256": "6208d9e0c51695f397115c90ee8c345670432f99dfa533bc8fde61ec52fe3eb6"
+    },
+    {
+      "file": "src/features/dataCollect/DataCollectAuthGate.tsx",
+      "sha256": "0c924b17d5db10c2d916ad55672a28657e3a648f65f0712e7bd92adc024c17f6"
+    },
+    {
+      "file": "src/features/dataCollect/DataCollectCreatePage.tsx",
+      "sha256": "7dc7c542ee6499f075ae638f3eef4a50c077bc6ff2c97a0c11410ffe951eae41"
+    },
+    {
+      "file": "src/features/dataCollect/DataCollectListPage.tsx",
+      "sha256": "04fe7047cecd363ffa82219ba4a6ee480d724dcd0a11e645d7043b7f1157aa32"
+    },
+    {
+      "file": "src/features/dataCollect/DataCollectManagePage.tsx",
+      "sha256": "d32a6465fa59ca5ad50745f36affd610cd91160f6aa6a98dfa3e9d16689b1f8d"
+    },
+    {
+      "file": "src/features/dataCollect/DataCollectWorkspace.tsx",
+      "sha256": "f8c5037d33e2c33ca767d906da2f84a5c490093a47df80a5794e89fe196a9926"
+    },
+    {
+      "file": "src/features/dataCollect/PublicDataCollectPage.tsx",
+      "sha256": "fcd9fb40a6e3318655b7a8b1dbea8cdc05164c30e6fe3edc31afffdc952a17d3"
+    },
+    {
+      "file": "src/features/dataCollect/dataCollectAdminApi.ts",
+      "sha256": "f3104703060832024849c8a448a15aec18691076385f748c642d78680b05fb7d"
+    },
+    {
+      "file": "src/features/dataCollect/dataCollectConfig.ts",
+      "sha256": "7ad3d0016f99d2805099f44940fcedcf2d7e009396c634127c49e5f5b6c2af79"
+    },
+    {
+      "file": "src/features/dataCollect/dataCollectDraft.ts",
+      "sha256": "b32b903c1ed9fde3229c8772baa1d0175b0db091e10ad2458373e6c75ebe35f3"
+    },
+    {
+      "file": "src/features/dataCollect/dataCollectExport.ts",
+      "sha256": "f8e28cebfe3ccf4fa30ba5bf549bf9cbb1373d8552c2cf68ba5291aec0d8f157"
+    },
+    {
+      "file": "src/features/dataCollect/dataCollectPublicApi.ts",
+      "sha256": "d4d5fd1fd1c8294cfb3adea2be55ffdba80704bc67c4217189256f50aeb5dbf7"
+    },
+    {
+      "file": "src/features/dataCollect/dataCollectService.ts",
+      "sha256": "29f67d4d1462748cdead1c57636488ffc47c0abec085be0b9c9ec37fa7736dd7"
+    },
+    {
+      "file": "src/features/dataCollect/dataCollectStore.ts",
+      "sha256": "c286454737100571773fdecd3530b55625b3c5394da8bf3bf658e7e8c2958f75"
+    },
+    {
+      "file": "src/features/dataCollect/dataCollectUtils.ts",
+      "sha256": "496a76fd33266f9f57c6788c7676c45553bff7393ea54cd6cec23f2a936b2981"
+    },
+    {
+      "file": "src/features/dataCollect/types.ts",
+      "sha256": "338f701ba70c63aa9e7deb67901c6b638ddda4877045ba952dc0ad6bea975cde"
+    },
+    {
+      "file": "src/features/neisHelper/NeisHelperPage.tsx",
+      "sha256": "b370ad1ef679320630879323d6d78175e1c57c03e742df8cdf7b6d4dd3f1b5bf"
+    },
+    {
+      "file": "src/features/neisHelper/NeisSourcePreview.tsx",
+      "sha256": "ad459f879d2283e792420d909c5a6c7e1a98ad231fb9dfab90e7a474779ec660"
+    },
+    {
+      "file": "src/features/neisHelper/SubjectSteps.tsx",
+      "sha256": "6ef0187f93d72cb3cd74a1f76eb3866837fcaa724a4a686a9e10541a52bc3b53"
+    },
+    {
+      "file": "src/features/neisHelper/SubjectWorkspace.tsx",
+      "sha256": "e16ba80bf54e3fa697525852596346ef7a1f044ef3d24904a766bd18517ab5f7"
+    },
+    {
+      "file": "src/features/neisHelper/sourcePages.ts",
+      "sha256": "713eab7c43937f1324d39c21dab181c29dcdb534c8dbd0b9cb89c26513bb5c02"
+    },
+    {
+      "file": "src/features/neisHelper/subjectApi.ts",
+      "sha256": "2015879ed4d5cfaf4e6f07a4243afcb8b9030bec0f756f9f445e7f957443f47f"
+    },
+    {
+      "file": "src/features/neisHelper/subjectDraft.ts",
+      "sha256": "8c1ef57c1a61684f6b3710a021fea7d04c32457ade2a31148e44910e4542639b"
+    },
+    {
+      "file": "src/features/neisHelper/subjectFiles.ts",
+      "sha256": "8a7de333cbdffb0619e07b26ec05e9454be0a524988b1f50e855558430ab2e73"
+    },
+    {
+      "file": "src/features/registry/PublicRegistrySignPage.tsx",
+      "sha256": "3f63c7a55df1064a5d15a64ec1439f9ba814848b369555ebd57480f97d7c437e"
+    },
+    {
+      "file": "src/features/registry/RegistryAuthGate.tsx",
+      "sha256": "6fd76afe30b1d130e122c496cf2aaf4023869b39150993b01e8637874a10a230"
+    },
+    {
+      "file": "src/features/registry/RegistryBrowserPrint.tsx",
+      "sha256": "5147cda89126efe92ad165b3e9b5e450fdb4e497583762f3e8c0c553f0ccfbe2"
+    },
+    {
+      "file": "src/features/registry/RegistryConfirmDialog.tsx",
+      "sha256": "d759271c028b04bd4f83aa5c6e7906b3ec84da7c546edd2f3da67a63d6720d7f"
+    },
+    {
+      "file": "src/features/registry/RegistryCreatePage.tsx",
+      "sha256": "32275d474af65a6ab715653371699cdf13d8f1a4c8a1a5d57bbb110c92404e5a"
+    },
+    {
+      "file": "src/features/registry/RegistryListPage.tsx",
+      "sha256": "08e110310f70acaee5a22e08d65f1ebdda28c616d2f3a69acd2d19829dd267cc"
+    },
+    {
+      "file": "src/features/registry/RegistryManagePage.tsx",
+      "sha256": "7a948d80ffa61aeba66798979b401e3753d9b0f58df87392e2e85c597d2e6440"
+    },
+    {
+      "file": "src/features/registry/RegistryPagination.tsx",
+      "sha256": "74581418aa328e8bcf821027ed33790a2245763b329c17583c638d5b353661f1"
+    },
+    {
+      "file": "src/features/registry/RegistryPrintSheet.tsx",
+      "sha256": "ea36d06d3dbec820187049892bb1d36a3403f6d778b7d55519e28ef14ce74372"
+    },
+    {
+      "file": "src/features/registry/RegistryRosterImportDialog.tsx",
+      "sha256": "a4feb82ec0a15ea56a23dac8f62ee592252d01a6d37a649a1c2f72951a582411"
+    },
+    {
+      "file": "src/features/registry/RegistryWorkspace.tsx",
+      "sha256": "1f47442eb934ca9c5fe00723889b767c5dbc2f51681dce6a88baf1a22569a599"
+    },
+    {
+      "file": "src/features/registry/RemotePublicRegistrySignPage.tsx",
+      "sha256": "03e0b006cab0da252e37f0e861c3963e6f6a367a1fc62a92da9285ca64efbcb2"
+    },
+    {
+      "file": "src/features/registry/SignatureCanvas.tsx",
+      "sha256": "fab5f425e0bcc2d4f14b5d01f113418fa1f98f5ac917940de9dcf780eed5d31f"
+    },
+    {
+      "file": "src/features/registry/SignatureDialog.tsx",
+      "sha256": "39a2dd415fbf92af0aaa38fdeaa7e4b29917e643ab5bd6c3a67b6da053670dfc"
+    },
+    {
+      "file": "src/features/registry/registryBackup.ts",
+      "sha256": "f3ba054c3c6709649841e3b9c79f099293503f377bbae7e1b1be60a441201868"
+    },
+    {
+      "file": "src/features/registry/registryConfig.ts",
+      "sha256": "c5eabeb34eb5804c2aad981f34154580f5a4448e98046feea41f4930ac856928"
+    },
+    {
+      "file": "src/features/registry/registryPrintDocument.ts",
+      "sha256": "f143e8af6df999b7c4ea18e4de533b688abab5a6fb730f6303e91eb717807a3f"
+    },
+    {
+      "file": "src/features/registry/registryPublicApi.ts",
+      "sha256": "0153fb1f43472aa5a483b6d5beb447c039308545288c3baa0c90816d04bb283b"
+    },
+    {
+      "file": "src/features/registry/registryRepository.ts",
+      "sha256": "9119886cd74480351a3e7ad19df53f9cf20b607299eb6458a76e0974952ea364"
+    },
+    {
+      "file": "src/features/registry/registryService.ts",
+      "sha256": "1adcc20141df4ae2124c06bca87ff7a7d3723152593b56067f9532ee65431a94"
+    },
+    {
+      "file": "src/features/registry/registryStore.ts",
+      "sha256": "70458e5b101b46ee8517e08a05bba0cbd227f27e3fbb2e036942c879aab861dd"
+    },
+    {
+      "file": "src/features/registry/registryUtils.ts",
+      "sha256": "caf172578962e732b8fdecac4360bf0b57e1bbfad63884d4b38e5bb31672596c"
+    },
+    {
+      "file": "src/features/registry/types.ts",
+      "sha256": "51091e12c0b769b8b07cad2fa7414058e328c324df01cc20d0aca678ab1a590b"
+    },
+    {
+      "file": "src/features/registry/useDialogFocus.ts",
+      "sha256": "c63e3af93aa65d9b81f756437ef9b34b6be9bf509598022a5ddf3d39031e30b0"
+    },
+    {
+      "file": "src/features/registry/useRegistries.ts",
+      "sha256": "79fe44d39d50973a383b25768a7a88a2b9d005d976a7d328fa53ecf49d78c7b8"
+    },
+    {
+      "file": "src/features/schoolDocuments/PlanOutput.tsx",
+      "sha256": "a73a83a8ae53fff6aa9826a253fd0a348879436ed96c0a4f11ad25746bf822da"
+    },
+    {
+      "file": "src/features/schoolDocuments/PlanPreview.tsx",
+      "sha256": "1e1ea510a85e28789809728307f8aa8b49e454841e9eac1ea10347a4b0207ac6"
+    },
+    {
+      "file": "src/features/schoolDocuments/PlanReferenceGuide.tsx",
+      "sha256": "5d5b8cfcbbde96e61b7967512d1673c50dda346e247e002b6386344cadedb24d"
+    },
+    {
+      "file": "src/features/schoolDocuments/SchoolDocumentsWorkspace.tsx",
+      "sha256": "815c6343bf32bef745d400d2cd4330528cd2bb96d278d40d80c83726bb3875dd"
+    },
+    {
+      "file": "src/features/schoolDocuments/assets/blank-plan.hwpx",
+      "sha256": "e0b843867fce15dc00e1401791e9a6b8ab409ab7a37cd191528a1abb646999b7"
+    },
+    {
+      "file": "src/features/schoolDocuments/assets/fonts/NanumGothic-Bold.ttf",
+      "sha256": "f96298f9fb18e364d2370f4c3ce948ac67a2b61af992d7234bc15c42b033c674"
+    },
+    {
+      "file": "src/features/schoolDocuments/assets/fonts/NanumGothic-Regular.ttf",
+      "sha256": "76f45ef4a6bcff344c837c95a7dcc26e017e38b5846d5ae0cdcb5b86be2e2d31"
+    },
+    {
+      "file": "src/features/schoolDocuments/assets/fonts/OFL.txt",
+      "sha256": "eeacf16032901d0ed0456876ec77b8f0fda6b3fecec7d972f8543eb602e6c30f"
+    },
+    {
+      "file": "src/features/schoolDocuments/planApi.ts",
+      "sha256": "216f733a5990179f9ed16b4c09b8291c1f07b38baaa0480b0180581f00ad5427"
+    },
+    {
+      "file": "src/features/schoolDocuments/planHwpx.ts",
+      "sha256": "394ff898f5d05e9bb5cc985ff71f3d50ee3a4bad5a903142fa6a370620029d4e"
+    },
+    {
+      "file": "src/features/schoolDocuments/planRhwp.ts",
+      "sha256": "44df51ef7b4749c60131135290238d598319b455b9fef969f86572a44dbfc751"
+    },
+    {
+      "file": "src/features/schoolDocuments/planRhwp.worker.ts",
+      "sha256": "54370183f54129d15a11c143fa63b110b0d9d84378f004c55c6b5cc46c62580c"
+    },
+    {
+      "file": "src/features/schoolDocuments/planRhwpEngine.ts",
+      "sha256": "555d6fcafc77b4c52e5caf3fcc28225761d66cf1fed7914eff27743c4be31a3b"
+    },
+    {
+      "file": "src/features/schoolDocuments/planSourceImport.ts",
+      "sha256": "e7210710515cfdeef7aa54d3bf8a200284fd725d52890d6e48536989e0aa4fe7"
+    },
+    {
+      "file": "src/features/schoolDocuments/planStore.ts",
+      "sha256": "7212c1f2050f06bbe3370a9d8c1e0385de7b10c671f8caaa1b08fc511fcdfac1"
+    },
+    {
+      "file": "src/features/settings/AppearanceProvider.tsx",
+      "sha256": "de69729dc1e8231eb72eb10487e8dcb4571167aeb8e7c04b56ebb44a5bf5bb50"
+    },
+    {
+      "file": "src/features/settings/PrivacyRetentionPanel.tsx",
+      "sha256": "9c14bc8eb1efd43150dee5fd3738f22129fcb9e1865aecc5d1aad4dfd150feeb"
+    },
+    {
+      "file": "src/features/settings/appearanceContext.ts",
+      "sha256": "fb10341334822d382f5dae1c717d3580d5a7372e21fe0ec023e951e44623da87"
+    },
+    {
+      "file": "src/features/settings/appearanceSettings.ts",
+      "sha256": "81c1f8b2dccdd6797479c570d2c317867b18bc901135f6ce9236f6ef898baab2"
+    },
+    {
+      "file": "src/features/settings/privacyRetention.ts",
+      "sha256": "79d9e7b08fe472da0feb3d2d62c23fe64c7483fa81c32b6fe3c44619a0777013"
+    },
+    {
+      "file": "src/features/settings/privacyRetentionSettings.ts",
+      "sha256": "8d0870e891b01c6360c7983dbdad5449551ff6b476d3d34b7d1dce35b26b38cc"
+    },
+    {
+      "file": "src/features/settings/profileSettings.ts",
+      "sha256": "29273fc64a8b2143c845be5acfb7d6dbfafff377fe3802c6e1fd6f35579f5aef"
+    },
+    {
+      "file": "src/features/specialRooms/BoardInfoCard.tsx",
+      "sha256": "45ed79ed53e9e3827b868f2ec388d18d9054ab8510ed867441f663b4d6d7a0d5"
+    },
+    {
+      "file": "src/features/specialRooms/BookingSheet.tsx",
+      "sha256": "75c03cd3aca9f4130f66c51df90602a343f11a29797d4b679052b6a8cb6ef4fe"
+    },
+    {
+      "file": "src/features/specialRooms/ClosureCard.tsx",
+      "sha256": "12c1f5ab8381532106bed0ae300fc4f99c7063021acaa68f9487f5adcebab742"
+    },
+    {
+      "file": "src/features/specialRooms/PublicSpecialRoomsPage.tsx",
+      "sha256": "fc146197067f5186bc498293ba8b439837123bdb3f13f71dfabeffd2d7ff3965"
+    },
+    {
+      "file": "src/features/specialRooms/SchoolPicker.tsx",
+      "sha256": "5db933c47557359ce2ea6d55779ca965d9281997dafdb1e8c842e134b1289e4f"
+    },
+    {
+      "file": "src/features/specialRooms/SpecialRoomPicker.tsx",
+      "sha256": "1c112f6fc1ec6c17b5512da6f7ce12f88b0011a7f669d01eff26dba47dec4d79"
+    },
+    {
+      "file": "src/features/specialRooms/SpecialRoomPrint.tsx",
+      "sha256": "51715fc8e60905741631e29f971f12f46792b047aa78d316081b527fce0c27b4"
+    },
+    {
+      "file": "src/features/specialRooms/SpecialRoomWeekGrid.tsx",
+      "sha256": "19f367830a1c07d28974b86f063849179bb58ed0982973f80d19f826e7498775"
+    },
+    {
+      "file": "src/features/specialRooms/SpecialRoomsAuthGate.tsx",
+      "sha256": "4cc40be5a39abc9ec2a40409d9da8ae0fcfe014f1ae12e95595e71a8c4fb64a7"
+    },
+    {
+      "file": "src/features/specialRooms/SpecialRoomsCreatePage.tsx",
+      "sha256": "824af72c82a859f2a7bbe34f7352b8300a2f4a0f1d0cb346c069367bd51469a0"
+    },
+    {
+      "file": "src/features/specialRooms/SpecialRoomsListPage.tsx",
+      "sha256": "cdb00a5a5d71b71e9b6606460ab6a1a9f0477b793d916f0053a57afd5b02e9a0"
+    },
+    {
+      "file": "src/features/specialRooms/SpecialRoomsManagePage.tsx",
+      "sha256": "04ba0f2c1c498dd3874540b3d244753741ce3e9146e7e20855ffd1f0f57c6162"
+    },
+    {
+      "file": "src/features/specialRooms/SpecialRoomsWorkspace.tsx",
+      "sha256": "8fe1fbb01201c0fcb39eeffcc35b6b124aa4232aa5775134dd11bb2253266670"
+    },
+    {
+      "file": "src/features/specialRooms/specialRoomDrafts.ts",
+      "sha256": "83290a009dbc96c51c3ff7be5d70cedc1534d7e0ee8512a2666275fc2ceea998"
+    },
+    {
+      "file": "src/features/specialRooms/specialRoomWeek.ts",
+      "sha256": "6612db9bfab2e43e28c11eff0b93d46c991079cc587a9ec21616696169214a22"
+    },
+    {
+      "file": "src/features/specialRooms/specialRoomsBoardInfo.ts",
+      "sha256": "d52f7ae10301ccd8be072c05a0b0054393864ab46fd0b52777d6e738a5a7072f"
+    },
+    {
+      "file": "src/features/specialRooms/specialRoomsClosure.ts",
+      "sha256": "4d7c117348b6b9e267be966d94267be1b2e757b53c21ff242d72763620da1463"
+    },
+    {
+      "file": "src/features/specialRooms/specialRoomsConfig.ts",
+      "sha256": "c18b07976e9e68eb9eea390403fa76e1142bde420ceb4cf7157a59eedaae7fc7"
+    },
+    {
+      "file": "src/features/specialRooms/specialRoomsOptimistic.ts",
+      "sha256": "7f11cc40f60b24782d376c350f5fd8f237dc4e1645d77d25a29303c940bfe08c"
+    },
+    {
+      "file": "src/features/specialRooms/specialRoomsRealtime.ts",
+      "sha256": "e33f138aeb24a9cb288fcd16306589316794e47c77128b5403f179e5165d4d73"
+    },
+    {
+      "file": "src/features/specialRooms/specialRoomsRepeat.ts",
+      "sha256": "dc7c996baa4350afafef59e19b92b9046f18a754d06bc25a5b8cfe86d1de6be0"
+    },
+    {
+      "file": "src/features/specialRooms/specialRoomsRepository.ts",
+      "sha256": "f1f04f7cc13722db9c066b3dfd3ec768caff1e1ef24ba4394a1bc34b65953ab6"
+    },
+    {
+      "file": "src/features/specialRooms/specialRoomsSchedule.ts",
+      "sha256": "5c732076a2b7ff05d71772e5e5d057c74fe86e57129248977e57a981d13c20f4"
+    },
+    {
+      "file": "src/features/specialRooms/specialRoomsSchoolDays.ts",
+      "sha256": "bf2d619228ed35dd933b8b2ca22c755c6d1ccebc59e81aaea72c81fafcd18c65"
+    },
+    {
+      "file": "src/features/specialRooms/specialRoomsService.ts",
+      "sha256": "4406df4f6beb8ddeaa393aba84463933e26fee3b98f35948f5d5d91b0e428be1"
+    },
+    {
+      "file": "src/features/specialRooms/specialRoomsStore.ts",
+      "sha256": "f1bc57df108723fa68929c1b5ffc93af809cfae44c8d5cc99fa3b926f9e039e1"
+    },
+    {
+      "file": "src/features/specialRooms/types.ts",
+      "sha256": "825c99ed3577b17056ed9f4d7c170d2a3b1178409d25b0d93ef11d3f03cf02b0"
+    },
+    {
+      "file": "src/features/specialRooms/useSpecialRoomScope.ts",
+      "sha256": "5e5a43271d586251e47bdec2ed1f3f69e58209466e666614961e52986e9def7a"
+    },
+    {
+      "file": "src/features/studentResults/PublicStudentResultPage.tsx",
+      "sha256": "dd2ab3824e9b413e23b3af58da9847189b535c7410fa7ad0e77a5de269150db8"
+    },
+    {
+      "file": "src/features/studentResults/StudentResultConfirmDialog.tsx",
+      "sha256": "4bbf1b766748395d3fcc876f1225a5057a018efa51ec8349c59322d8cd63b2c4"
+    },
+    {
+      "file": "src/features/studentResults/StudentResultsAuthGate.tsx",
+      "sha256": "66eb35c7d8a4d983b0f74b055fbdd1406a3fc59576d927b29cc1f0e23031e17b"
+    },
+    {
+      "file": "src/features/studentResults/StudentResultsCreatePage.tsx",
+      "sha256": "5f2211319b764876c921d2ca7b38ec4b933ca916c9d87534a9c9b8be7a97037d"
+    },
+    {
+      "file": "src/features/studentResults/StudentResultsEditDialogs.tsx",
+      "sha256": "9bb1f3b779c813d939fbc4d07b6720b1831479a9f2627fc3d4bae37d4ca30ae9"
+    },
+    {
+      "file": "src/features/studentResults/StudentResultsListPage.tsx",
+      "sha256": "cce62bc3ef2cf10ee913a56ddc1c515f8ec65a58a48120694b2c70459a29a655"
+    },
+    {
+      "file": "src/features/studentResults/StudentResultsManagePage.tsx",
+      "sha256": "8d565cb71c6653a4ead725e56d10340f7bb2c22d9b300f704751c22f3c5d3537"
+    },
+    {
+      "file": "src/features/studentResults/StudentResultsQrPrintPage.tsx",
+      "sha256": "89f0614e511209f525822f84ebcb0d38458c4685a5f47f04c34edb1630ff5976"
+    },
+    {
+      "file": "src/features/studentResults/StudentResultsRecipientCards.tsx",
+      "sha256": "1c4420b33cfc9cfd7aeb183fb716a2d149eae142e9a298de24e170772953d1fc"
+    },
+    {
+      "file": "src/features/studentResults/StudentResultsWorkspace.tsx",
+      "sha256": "fac7d046f75068fb49fa9a2a8d6b88fccb84f6ca5c491188fa460f22b9da9fe4"
+    },
+    {
+      "file": "src/features/studentResults/studentResultsConfig.ts",
+      "sha256": "980d3c0a11f9563427cc3d703152cd10760ae0cc6c0647f4863d6e7bcff137be"
+    },
+    {
+      "file": "src/features/studentResults/studentResultsDraft.ts",
+      "sha256": "a1c4a8ef77a617835c1c2f5c2bc844fd26d364efd864618168a758c16c813e49"
+    },
+    {
+      "file": "src/features/studentResults/studentResultsHistory.ts",
+      "sha256": "a2d492c0ed1468939589fea0d63c66b505b50d17147727b478336715ec61c3a7"
+    },
+    {
+      "file": "src/features/studentResults/studentResultsImport.ts",
+      "sha256": "a9809a69407277fc4658ebfb0a9f13b30c5141f4f19e8b4997d9d640451772e3"
+    },
+    {
+      "file": "src/features/studentResults/studentResultsLoadState.ts",
+      "sha256": "d052911cd8e8a424b45b4c66f737a228f4bf4eb361214f10fe13320e7f2b12e0"
+    },
+    {
+      "file": "src/features/studentResults/studentResultsPublicApi.ts",
+      "sha256": "b34de8e2bd948d100a279997a22a055c3cb2c44e43146f0b6994161deb93e0a4"
+    },
+    {
+      "file": "src/features/studentResults/studentResultsQrLayout.ts",
+      "sha256": "1eed6f07cb510771c1951e0343df80fdcbd0e78fc61f60a08053c8989049b01d"
+    },
+    {
+      "file": "src/features/studentResults/studentResultsRepository.ts",
+      "sha256": "6614b0c87003f6eaaaf14f896761c6769b00451185f219a7161f784cf6191dc9"
+    },
+    {
+      "file": "src/features/studentResults/studentResultsService.ts",
+      "sha256": "fe3fa9e3fdaa9b6611a836f2c47b7a72726c1b71c7f68ea92672f47ee9b4720f"
+    },
+    {
+      "file": "src/features/studentResults/studentResultsStore.ts",
+      "sha256": "dd4fdba4e1d6e544ea289eeaea7fdb92f7e08239b3b3055808d3ed779421c7c5"
+    },
+    {
+      "file": "src/features/studentResults/studentResultsUtils.ts",
+      "sha256": "14652d2d29695ff2c0ccabfab0ef579b23c31397726eac3cb9fbac28ccc2bacd"
+    },
+    {
+      "file": "src/features/studentResults/types.ts",
+      "sha256": "f65a877042b076ea55050c2970d4e5d47b86ee7b9ef1540794e3a214da7587f9"
+    },
+    {
+      "file": "src/features/studentResults/useStudentResults.ts",
+      "sha256": "fb3bc857d8e8eb43d5f032f5779f0b8ffcefaffb242a01cf47736313547ca784"
+    },
+    {
+      "file": "src/index.css",
+      "sha256": "f3596600db18f5c708c9c793f53235ead331ed063442c895d884bfbdc976d03a"
+    },
+    {
+      "file": "src/main.tsx",
+      "sha256": "3df613d201fcfceb128443abfdb75f113bf38c6889fe0df2e1b52c04bdae694e"
+    },
+    {
+      "file": "src/types/schooldoc.ts",
+      "sha256": "64b3d2e67ba09e693d6745eb9887352fea1f12c01338a9344f64fcee47563766"
+    },
+    {
+      "file": "src/utils/desktop.ts",
+      "sha256": "64be2b716d00d7b3e586829eafa954e1eb1b9656dcbbacac9d460d978db734ec"
+    },
+    {
+      "file": "src/utils/pdfjs.ts",
+      "sha256": "8c475d56a3761cdfc138fc66bca3a17d3a8d999fee673518dfd66aab105bc63a"
+    },
+    {
+      "file": "src/utils/publicAppOrigin.ts",
+      "sha256": "f5fde881a87b3ec3d655e2f50137d6352e3f4492c2878edecd0bbf6ee448d2c1"
+    },
+    {
+      "file": "src/utils/qrImage.ts",
+      "sha256": "296cc3401082e0f528a7e460226ee1a5190c66ab9074741942310849572bdb8f"
+    },
+    {
+      "file": "src/utils/rowEntry.ts",
+      "sha256": "1da3e71aff66cd214cb7ea0ea2abf56e52ea764e4e4172b745ac556c7286c97d"
+    },
+    {
+      "file": "src/utils/supabaseClient.ts",
+      "sha256": "c26acb90bc8443bcfde344c93c3a8f4988453cfd21c838c4302a96ec277f046a"
+    },
+    {
+      "file": "src/utils/tabularImport.ts",
+      "sha256": "fad78620eac88f3d5579df7b94cab825a397a95847384ed73e65da19032f67d5"
+    },
+    {
+      "file": "supabase/functions/_shared/neisHelper.ts",
+      "sha256": "5ffff1c6db95932ed9faebdb50c2d4136ee222503aaaf4fc3f4f9fd23f3fb6a4"
+    },
+    {
+      "file": "supabase/functions/neis-helper/core.ts",
+      "sha256": "6c46233c9e26889eb44d398edeb124a85d5132b8993148444800929d6be901b8"
+    },
+    {
+      "file": "supabase/functions/neis-helper/index.ts",
+      "sha256": "eb0ddcd3536ad9606ef9592432b3a75c228cb0af9538291049c3ceca7f675f4b"
+    },
+    {
+      "file": "vercel.json",
+      "sha256": "44a3d3ed7bae63c44f6baa65404c4470568a1633ca88c5304f6460014842bb62"
+    },
+    {
+      "file": "vite.config.ts",
+      "sha256": "6b0352a1482e26b75a907f27d56d4f495033aac915fb3b94e9cbbb6e6486bb26"
+    }
+  ]
+}

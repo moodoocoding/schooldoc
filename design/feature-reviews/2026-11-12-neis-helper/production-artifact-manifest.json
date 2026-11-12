@@ -1,0 +1,552 @@
+{
+  "verifiedAt": "2026-11-11T22:16:52.009Z",
+  "fingerprint": "2422d3130478610574130c3f5c9d6bfc54b175be6a2681be4c7cf79ff556fd36",
+  "fileCount": 108,
+  "totalBytes": 40112942,
+  "main": "/assets/index-BG2_Gulc.js",
+  "mainSha256": "25ca53875ca54030ede3e9f7ad1c838de091013190589f24a8d026f47f9b121d",
+  "productionBundleMatches": true,
+  "anonymousStatus": 401,
+  "files": [
+    {
+      "path": "assets/NanumGothic-Bold-DvrrFc7E.ttf",
+      "bytes": 2073868,
+      "sha256": "f96298f9fb18e364d2370f4c3ce948ac67a2b61af992d7234bc15c42b033c674"
+    },
+    {
+      "path": "assets/NanumGothic-Regular-xHXjSUfO.ttf",
+      "bytes": 2054744,
+      "sha256": "76f45ef4a6bcff344c837c95a7dcc26e017e38b5846d5ae0cdcb5b86be2e2d31"
+    },
+    {
+      "path": "assets/blank-plan-DKt_GTsV.hwpx",
+      "bytes": 6382,
+      "sha256": "e0b843867fce15dc00e1401791e9a6b8ab409ab7a37cd191528a1abb646999b7"
+    },
+    {
+      "path": "assets/html2canvas-SnTO12FR.js",
+      "bytes": 199554,
+      "sha256": "ea871a5a6a53d5b624a788d3fdf7744fffd141efe8733743a90b3b0eadadb0e2"
+    },
+    {
+      "path": "assets/index-BG2_Gulc.js",
+      "bytes": 1501813,
+      "sha256": "25ca53875ca54030ede3e9f7ad1c838de091013190589f24a8d026f47f9b121d"
+    },
+    {
+      "path": "assets/index-BHMmRmve.css",
+      "bytes": 97281,
+      "sha256": "938e96d34189fb811de7baf14557cbda884b7c2f15e503398d3d2466c3fd42c8"
+    },
+    {
+      "path": "assets/index.es-DldbQqbZ.js",
+      "bytes": 151475,
+      "sha256": "5b59067788bd45e34aab6f800caf6d9df6cd827df7adbe479cbb49d1f02b48bc"
+    },
+    {
+      "path": "assets/jspdf.es.min-Doo0N_Jc.js",
+      "bytes": 393118,
+      "sha256": "d4d3e1780c9e3de7afa318c9c49155230968b6f0611f62726c9a955fcb340728"
+    },
+    {
+      "path": "assets/papaparse.min-CYDTGm5n.js",
+      "bytes": 19268,
+      "sha256": "dbb58d23485dd8b0e79f8a6a139b64b1083e38986ba66081ecc7c6bd0d1d08ce"
+    },
+    {
+      "path": "assets/pdf-BBIw_0Gv.js",
+      "bytes": 482526,
+      "sha256": "62958de5ea430d3b5850cc840efb7567abf84c7d3bdb344d8392055d190a9846"
+    },
+    {
+      "path": "assets/pdf.worker.min-CLrFZWeq.mjs",
+      "bytes": 1312452,
+      "sha256": "bc0d1b88ea0b66196b1d36a58ac243c6d92adfe725624e2a9fdd381bdf8ef434"
+    },
+    {
+      "path": "assets/planRhwp.worker-BGSiai_e.js",
+      "bytes": 148538,
+      "sha256": "48dd5f355d5a2881400285548cb2b992e71525a5b7ac8ba77d6bad9137da0a2a"
+    },
+    {
+      "path": "assets/purify.es-C-v12ISi.js",
+      "bytes": 28095,
+      "sha256": "f77d9aa6a225b52bae89b8148ab3473b4bdf1d456c81b8a892fef9cba334c1db"
+    },
+    {
+      "path": "assets/receiptExportData-BPNIQx-M.js",
+      "bytes": 951,
+      "sha256": "47ca4dfd9a5714c8f0712e708f71b937dfae5be040d2c1f077fb9a2c99702e0c"
+    },
+    {
+      "path": "assets/receiptExportExcel-CFQzdlpM.js",
+      "bytes": 1635,
+      "sha256": "da13846c328936d827e4d1f4a1c5a3eb34562a25d98a86bd4a7217adc7849265"
+    },
+    {
+      "path": "assets/receiptExportPdf-1XCQ2iok.js",
+      "bytes": 7214,
+      "sha256": "6e77d0d679edbc0ffc8a89edd2ee87e3a19baf091986b17feba0052be8361598"
+    },
+    {
+      "path": "assets/rhwp_bg-B5Jf95sq.wasm",
+      "bytes": 26835482,
+      "sha256": "c3b0632b84881f81f2c80be7c2f9e44a4086cb01e05a6a9107a3b3c6350abc1d"
+    },
+    {
+      "path": "assets/typeof-B5XbjTb1.js",
+      "bytes": 271,
+      "sha256": "a018c0f2b55a5dbeeb62334a5437c26a040d27303c72982b08859b3e12c9d2f6"
+    },
+    {
+      "path": "assets/web-worker-B_32BHDD.js",
+      "bytes": 58835,
+      "sha256": "c93ff251f973952644f0a9b1e5a9220bbab5a410ca15f5f817ec7856e74ffa60"
+    },
+    {
+      "path": "favicon.svg",
+      "bytes": 9522,
+      "sha256": "61bc9a161de58248288e6905425d7180f0624c2865007b97d763fdac12043a66"
+    },
+    {
+      "path": "index.html",
+      "bytes": 721,
+      "sha256": "eb0323017d70d60d2744dcdf4a51e5c149247f8106d57e730274a02650a7851b"
+    },
+    {
+      "path": "third-party/README.md",
+      "bytes": 664,
+      "sha256": "9c79ff9e3511f6b613c10ca21cddedce31e9226cfaa524f1b2692c2b2efdc630"
+    },
+    {
+      "path": "third-party/nanum-gothic/OFL.txt",
+      "bytes": 4534,
+      "sha256": "eeacf16032901d0ed0456876ec77b8f0fda6b3fecec7d972f8543eb602e6c30f"
+    },
+    {
+      "path": "third-party/rhwp/LICENSE",
+      "bytes": 1072,
+      "sha256": "1c3a7d5643b163a3ead4965e1bea33b832caee5bfca265efe42afcd7bc696b5b"
+    },
+    {
+      "path": "third-party/rhwp/notices/THIRD_PARTY_LICENSES.md",
+      "bytes": 32997,
+      "sha256": "3360ab04d9f65a08366f0592f8299cfbd8b14588027f05c5dc3fc4e349892dba"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/LatinModernMath-GUST-FONT-LICENSE.txt",
+      "bytes": 1449,
+      "sha256": "e120f067589d589a9fa436db09940bd2e03b477cf29b15443c6f87d3861f734b"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/MANIFEST-RHWP-LMM-VariableOutline.txt",
+      "bytes": 1198,
+      "sha256": "c67672523217a4c4765e4f04ddc816ba155614260b98836bce82f2b47b646daf"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/NotoSansMath-OFL.txt",
+      "bytes": 4103,
+      "sha256": "4fbd190167f23b4c0e2368160f412bf2d1fade887b78b6aec66689ce31698e8b"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/NotoSansSymbols2-OFL.txt",
+      "bytes": 5208,
+      "sha256": "075f91382875da1c4b491f1facf2586f55448705133264d98ce15cab6211b125"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/SourceHanSerifK-OFL.txt",
+      "bytes": 4463,
+      "sha256": "9ff5bb567e1b92c801fc1069e5fbf992ff8efccacb9db94e5959a5b3ba9bb903"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/Cafe24Ssurround-LICENSE.pdf",
+      "bytes": 1945706,
+      "sha256": "de2158b3dc8aa27513451108fb09088f9afd8fce1d65c2cac29c7e554b37a7d9"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/Cafe24Supermagic-LICENSE.pdf",
+      "bytes": 1944287,
+      "sha256": "bdf5e278410f73faaf5a34db9ad4ce328cabd673d8f699bd986869a690193511"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/D2Coding-OFL.txt",
+      "bytes": 4511,
+      "sha256": "1807e8dec4d65f474cbf9be39f5e2254ecb81702babc320749e272ea66ffcc69"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/GowunBatang-OFL.txt",
+      "bytes": 4397,
+      "sha256": "49a57cc769fa9affd6eefb9070a61e3d3f6b757c97cafb15848bc6d1c81acc78"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/GowunDodum-OFL.txt",
+      "bytes": 4395,
+      "sha256": "a7c73f9521cd646bbdfb6684c99a62311bbd7bce11898dc11ef0b3c69eda1aca"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/HappinessSans-LICENSE.pdf",
+      "bytes": 194608,
+      "sha256": "f5bd344131ee034f3425517ea376ab6acea9126310e7b2cd74cd18673991b055"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/LPPL-1.3c.txt",
+      "bytes": 19102,
+      "sha256": "3d262cdf34dafa6955f703c634a8c238ec44109bc8dd6ef34fb7aa54809f7e66"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/LatinModernMath-GUST-FONT-LICENSE.txt",
+      "bytes": 1377,
+      "sha256": "49ea6cb9257bbee0a3979c48a774cd221550ac1c20c95549efe45fc99cc18050"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/NanumGothic-OFL.txt",
+      "bytes": 4534,
+      "sha256": "eeacf16032901d0ed0456876ec77b8f0fda6b3fecec7d972f8543eb602e6c30f"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/NanumGothicCoding-OFL.txt",
+      "bytes": 4534,
+      "sha256": "eeacf16032901d0ed0456876ec77b8f0fda6b3fecec7d972f8543eb602e6c30f"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/NanumMyeongjo-OFL.txt",
+      "bytes": 4497,
+      "sha256": "8eb1c1019fe7fe6d0b6e7d7bbbba1d9cbdd969d8c5f26455708f6cfb8a77284c"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/NotoCJKSerif-OFL.txt",
+      "bytes": 4301,
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/NotoSansKR-OFL.txt",
+      "bytes": 4388,
+      "sha256": "1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/NotoSansMath-OFL.txt",
+      "bytes": 4103,
+      "sha256": "4fbd190167f23b4c0e2368160f412bf2d1fade887b78b6aec66689ce31698e8b"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/NotoSansSymbols2-OFL.txt",
+      "bytes": 5208,
+      "sha256": "075f91382875da1c4b491f1facf2586f55448705133264d98ce15cab6211b125"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/Pretendard-OFL.txt",
+      "bytes": 4816,
+      "sha256": "82e9c8a4b203261f10ddba1296422d64914ff3d4b7bd8a12896d03f0f088d70a"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/README.md",
+      "bytes": 6339,
+      "sha256": "a577ccb2a4ff374e388c9bfb5d360e0b62e3cfd6e8b09b43df601d8dd8605130"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/RHWPPublicBatang-OFL.txt",
+      "bytes": 4398,
+      "sha256": "cc115f501827fffddcbf1ef86e5248ee55e40f0c3fb9725173b248ccc2d5df51"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/SIL-OFL-1.1.txt",
+      "bytes": 4069,
+      "sha256": "f19c674290e5dc79f02e8efe16139ab56a06a7128876f5b1579ffd0db5bc897e"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/SourceHanSerifK-OFL.txt",
+      "bytes": 4463,
+      "sha256": "9ff5bb567e1b92c801fc1069e5fbf992ff8efccacb9db94e5959a5b3ba9bb903"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/SpoqaHanSans-OFL.txt",
+      "bytes": 4562,
+      "sha256": "279753543734e7a1846e3cb3f80d4dcdcc91f49c436411adaba82e3913c61cde"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/fonts/licenses/font-notices.json",
+      "bytes": 39150,
+      "sha256": "6471f8a8b556352c1dc4af748cd118ba89a17d7c39cce72fc0049160039005e9"
+    },
+    {
+      "path": "third-party/rhwp/notices/assets/licenses/Unicode-3.0.txt",
+      "bytes": 1995,
+      "sha256": "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96"
+    },
+    {
+      "path": "third-party/rhwp/notices/data/font-metrics/nimbus-roman/URW-FONT-NOTICE.txt",
+      "bytes": 52517,
+      "sha256": "1315a62758a603a3e6e87a79b8389563789c59c1740b9db8bc2b20e2e2145458"
+    },
+    {
+      "path": "third-party/rhwp/notices/licenses/intel-mediasdk/LICENSE",
+      "bytes": 1061,
+      "sha256": "ce257ca160a079b84e74c8802f963f37676b695fb110f3e3ade6536eb87cd3ba"
+    },
+    {
+      "path": "third-party/rhwp/notices/licenses/pdfium/LICENSE",
+      "bytes": 12896,
+      "sha256": "1fe9dea718fbd75cf149adaf4d8a22a4335604d964ddb76d1b45383dec8668c9"
+    },
+    {
+      "path": "third-party/rhwp/notices/licenses/pdfium/README.md",
+      "bytes": 1000,
+      "sha256": "16ce8d17f8dced15c322eac429372854100d116f342b84883d7015ed9e56982c"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/npm/ajv/LICENSE",
+      "bytes": 1090,
+      "sha256": "a05350a88e318e4f5f2c2a1ff1e2e88daa4dd38e6e78b71cccae422bdc762cc3"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/npm/ajv/RHWP_PATCHES.md",
+      "bytes": 1897,
+      "sha256": "c0abfdc224c69d6e7761da7051d7dc36d283959a43f4d8e22488e8e3919a1478"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/npm/ajv/UPSTREAM_FILES.json",
+      "bytes": 51754,
+      "sha256": "5618e7d6cec44f48da70660619a9269b8e061b685d9b4a963c007272498068d4"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-codec-resource/LICENSE",
+      "bytes": 1072,
+      "sha256": "1c3a7d5643b163a3ead4965e1bea33b832caee5bfca265efe42afcd7bc696b5b"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-hayro-ccitt/LICENSE-APACHE",
+      "bytes": 10173,
+      "sha256": "0cec06e0e55fbc3dc5cee4fca9b607f66cb8f4e4dbcf3b3c013594dd156732e9"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-hayro-ccitt/LICENSE-MIT",
+      "bytes": 1063,
+      "sha256": "51b50e6120c344dcc146bbd6375ca1c78e079d97c8bea76e67a53d6ff0efebac"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-hayro-ccitt/NOTICE",
+      "bytes": 278,
+      "sha256": "e7de8704fb9f28f7f14dbc66fde6808feb5f26ba05d7df04276622f449c066d9"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-hayro-ccitt/RHWP_PATCHES.md",
+      "bytes": 1712,
+      "sha256": "d30cc365d0ccb1ad0a4eb52507f4da73780b3f8605b4a7e3d1af5ea9f6536b39"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-hayro-ccitt/UPSTREAM_FILES.json",
+      "bytes": 1141,
+      "sha256": "805ed897b166addee116a374576a105d3f26813a021113dcb61551370aca42fe"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-hayro-jbig2/LICENSE-APACHE",
+      "bytes": 10173,
+      "sha256": "0cec06e0e55fbc3dc5cee4fca9b607f66cb8f4e4dbcf3b3c013594dd156732e9"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-hayro-jbig2/LICENSE-MIT",
+      "bytes": 1063,
+      "sha256": "51b50e6120c344dcc146bbd6375ca1c78e079d97c8bea76e67a53d6ff0efebac"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-hayro-jbig2/NOTICE",
+      "bytes": 278,
+      "sha256": "253981dd9b71a3469c92db5346b8c9b9d6614c64274586c786dd21aad1489ac4"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-hayro-jbig2/RHWP_PATCHES.md",
+      "bytes": 1712,
+      "sha256": "40b66f4ec77ece19794260187c28ac976269affeca770d8f126f647a2ad39455"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-hayro-jbig2/UPSTREAM_FILES.json",
+      "bytes": 3126,
+      "sha256": "866fdaa1e3f8f492d3d1778c78244706369a9bf077d5482551479552472def84"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-hayro-jpeg2000/LICENSE-APACHE",
+      "bytes": 10173,
+      "sha256": "0cec06e0e55fbc3dc5cee4fca9b607f66cb8f4e4dbcf3b3c013594dd156732e9"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-hayro-jpeg2000/LICENSE-MIT",
+      "bytes": 1063,
+      "sha256": "51b50e6120c344dcc146bbd6375ca1c78e079d97c8bea76e67a53d6ff0efebac"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-hayro-jpeg2000/NOTICE",
+      "bytes": 281,
+      "sha256": "ec7f7da5bf759b68e55f26abbd7032dbc95251b11bd6ef693b29a8f5814423a6"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-hayro-jpeg2000/RHWP_PATCHES.md",
+      "bytes": 2265,
+      "sha256": "112bf881bed389fcadc755ea0de9aa5b8ade1f41d5fbd37288b72299de5b9e1a"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-hayro-jpeg2000/UPSTREAM_FILES.json",
+      "bytes": 3833,
+      "sha256": "ea270a2650117c7039c9cf3999ffafe43ad9bd3d54ed3026ce0bdc3deb5a8593"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-hayro-jpeg2000/assets/LICENSE.txt",
+      "bytes": 6552,
+      "sha256": "469d87b5fa48f8aaf69e25f4fcac3a309c97dbb7d561b917638abdb640e004d9"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-jpeg-decoder/LICENSE-APACHE",
+      "bytes": 10847,
+      "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-jpeg-decoder/LICENSE-MIT",
+      "bytes": 1084,
+      "sha256": "22b83fb92a50418c7df9564b9c179fa2a0e74f293bc58b72dd7e218fc0902143"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-jpeg-decoder/RHWP_PATCHES.md",
+      "bytes": 2342,
+      "sha256": "06b69f835d3016f6f1770a9916d4b59159b5bf31ad193b71b484a25f0f3c9a35"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-jpeg-decoder/UPSTREAM.json",
+      "bytes": 2195,
+      "sha256": "2d63bec38bffd6d0953c3bb62f272bf1f15cc5fa9840c1f5f0774ad86f139f2f"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-jpeg-encoder/LICENSE-APACHE",
+      "bytes": 10701,
+      "sha256": "85a884980abd6032fc6b5439ba918ab16db9ac9051b5cf18db9c27c587df07c0"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-jpeg-encoder/LICENSE-IJG",
+      "bytes": 3228,
+      "sha256": "a21e92ec88aefc6823f0c51994783571a849e8d9b43d9ade61ec9d886776721e"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-jpeg-encoder/LICENSE-MIT",
+      "bytes": 1088,
+      "sha256": "4d022727ea392ebba2fe5e9a5f78c610a0eae506b491f3db29c78b6d430d6503"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-jpeg-encoder/RHWP_PATCHES.md",
+      "bytes": 2411,
+      "sha256": "3cd7cd68444d9672dd9c0a40133e94555884a604773523b74b9488b1fa5dbd55"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-jpeg-encoder/UPSTREAM.json",
+      "bytes": 2323,
+      "sha256": "69fa85ac857dfd15dc889185da7f3db97d031cc1253f72882b8cfc17a5344344"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-pdf-import-backend/LICENSE-APACHE",
+      "bytes": 9723,
+      "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-pdf-import-backend/LICENSE-MIT",
+      "bytes": 1065,
+      "sha256": "33409f3fd68d9e95a48c751757782f468bb5c183f241d26bd1028678faa0baa3"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-pdf-import-backend/NOTICE",
+      "bytes": 1084,
+      "sha256": "a914e104fc9e195ab15594a89546192b66114d6dc8e9052771a26f9a91dd537c"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-pdf-import-backend/RHWP_PATCHES.md",
+      "bytes": 44117,
+      "sha256": "fb570d6b057778c3aa82c26f663284603825430bbf82af2cff350c969cf5148e"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-pdf-import-backend/UPSTREAM_FILES.json",
+      "bytes": 41095,
+      "sha256": "fa913ef31af758abc332d341a5e349d5bab5d2bd3984dfcc1b9a3f2c25a196d5"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-pdf-import-backend/src/fonts/assets/LICENSE-DejaVu",
+      "bytes": 4764,
+      "sha256": "5fe93f9ee914fc7c4f0cfc73b7b0e972167f1b8f89ba57f9ad55d6013eb8a8ac"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-pdf-import-backend/src/fonts/assets/LICENSE-NotoEmoji",
+      "bytes": 4117,
+      "sha256": "8d64bebb6ad6958b0f38a25e2ca948ffc5df8bca30bfb55d92a67244e1c8fec0"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-pdf-import-backend/src/fonts/assets/LICENSE-fallback-fonts",
+      "bytes": 1195,
+      "sha256": "7fee68f76f08309b3a599bd93c66e0c5f263e6ccfe98dbe74ecfabbe1eb77429"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-qcms/COPYING",
+      "bytes": 1121,
+      "sha256": "36d847ae882f6574ebc72f56a4f354e4f104fde4a584373496482e97d52d31bc"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-qcms/LICENSE",
+      "bytes": 1121,
+      "sha256": "36d847ae882f6574ebc72f56a4f354e4f104fde4a584373496482e97d52d31bc"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-qcms/RHWP_PATCHES.md",
+      "bytes": 1141,
+      "sha256": "7255567fadcb301beff9e06d2ee2a42f0bbddf50556f79b533414bd6edd8c07c"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-qcms/UPSTREAM_FILES.json",
+      "bytes": 1428,
+      "sha256": "3c01cd335786a7e061b267c1cf9a3a85bf17b4beceac5d82c74fc2345487fc30"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-zune-jpeg/LICENSE-APACHE",
+      "bytes": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-zune-jpeg/LICENSE-MIT",
+      "bytes": 1073,
+      "sha256": "d30047bca3b516639339a3c279bb84c3483124fb5a9dafe3c75056a85090e745"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-zune-jpeg/LICENSE-ZLIB",
+      "bytes": 859,
+      "sha256": "d201d14804d3bcd3b944147173175e4abfbd838b7c8069b6bd3452496bf13e6c"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-zune-jpeg/README.ijg",
+      "bytes": 12799,
+      "sha256": "75815e3bf6484201a3c3d17a1bbf10f2e8e3237f84df10a2357ea896db2a81d6"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-zune-jpeg/RHWP_PATCHES.md",
+      "bytes": 5883,
+      "sha256": "7458a0abebefaa32becc7d60d5846d174f8e6032aab465e5d09c424d6bca0739"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/rhwp-zune-jpeg/UPSTREAM.json",
+      "bytes": 4024,
+      "sha256": "b27136b15310a2df38441529cafc0dd4b0f3cf421ea390a767370ce2716a4322"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/svg2pdf/LICENSE-APACHE",
+      "bytes": 9723,
+      "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/svg2pdf/LICENSE-MIT",
+      "bytes": 1036,
+      "sha256": "508a77d2e7b51d98adeed32648ad124b7b30241a8e70b2e72c99f92d8e5874d1"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/svg2pdf/NOTICE",
+      "bytes": 78346,
+      "sha256": "74544feeaa2083014e5c62c4d3eda0e6dfb77f621310b5b602b074df199dcc20"
+    },
+    {
+      "path": "third-party/rhwp/notices/vendor/svg2pdf/RHWP_PATCHES.md",
+      "bytes": 2306,
+      "sha256": "dbb13ee392a0ec79275ebaea056019931ee0222f400f99e8202128a2b1e60acc"
+    }
+  ]
+}
