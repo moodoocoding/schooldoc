@@ -1,22 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Download, LoaderCircle } from 'lucide-react';
 import { runPlanDocument } from './planRhwp';
-import { planDocumentBlocks } from './planRhwpEngine';
+import { PLAN_BODY_FONT, PLAN_TITLE_FONT, planDocumentBlocks } from './planRhwpEngine';
 import { downloadBlob } from '../../utils/qrImage';
 import type { PlanDraft } from '../../../supabase/functions/_shared/schoolPlan';
-import regularUrl from './assets/fonts/NanumGothic-Regular.ttf?url';
-import boldUrl from './assets/fonts/NanumGothic-Bold.ttf?url';
+import bodyUrl from './assets/fonts/NanumMyeongjo-Regular.otf?url';
+import bodyBoldUrl from './assets/fonts/NanumMyeongjo-Bold.otf?url';
+import titleUrl from './assets/fonts/NanumGothic-Bold.ttf?url';
 
 const button = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50';
 const field = 'mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]';
 let fontCss: Promise<string> | undefined;
 async function previewFontCss() {
-  fontCss ??= Promise.all([regularUrl, boldUrl].map(async (url, i) => {
+  // The saved file names 휴먼명조/HY헤드라인M; the preview paints them with the OFL substitutes used for layout.
+  const faces = [{ url: bodyUrl, family: PLAN_BODY_FONT, weight: 400, format: 'opentype' }, { url: bodyBoldUrl, family: PLAN_BODY_FONT, weight: 700, format: 'opentype' }, { url: titleUrl, family: PLAN_TITLE_FONT, weight: 400, format: 'truetype' }];
+  fontCss ??= Promise.all(faces.map(async ({ url, family, weight, format }) => {
     const response = await fetch(url);
     if (!response.ok) throw new Error('미리보기 글꼴을 불러오지 못했습니다. 다시 시도해 주세요.');
     const blob = await response.blob();
     const data = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = reject; reader.readAsDataURL(blob); });
-    return `@font-face{font-family:'나눔고딕';font-style:normal;font-weight:${i ? 700 : 400};src:url('${data}') format('truetype');}`;
+    return `@font-face{font-family:'${family}';font-style:normal;font-weight:${weight};src:url('${data}') format('${format}');}`;
   })).then(styles => styles.join('')).catch(error => { fontCss = undefined; throw error; });
   return fontCss;
 }
@@ -69,7 +72,7 @@ export function PlanOutput({ draft, title, pages, current, onTitle, onPages, onB
       <div data-decision><label htmlFor="plan-output-title" className="text-sm font-bold text-slate-800">문서 제목</label><input id="plan-output-title" className={field} maxLength={100} value={title} onChange={e => onTitle(e.target.value)}/></div>
       <div data-decision><label htmlFor="plan-output-pages" className="text-sm font-bold text-slate-800">출력 분량</label><select id="plan-output-pages" className={field} value={pages} onChange={e => onPages(Number(e.target.value) as 1 | 2)}><option value={1}>1쪽</option><option value={2}>2쪽</option></select></div>
     </div>
-    <p className="mt-3 text-sm leading-6 text-slate-600">내용과 글자 크기를 자동으로 줄이지 않습니다. 나눔고딕을 사용하며, 한글의 글꼴 환경에 따라 줄바꿈이 달라질 수 있습니다.</p>
+    <p className="mt-3 text-sm leading-6 text-slate-600">공문 서식(본문 휴먼명조 13pt·장평 100%·자간 0%·줄간격 160%, 제목 HY헤드라인M)으로 저장합니다. 미리보기는 비슷한 무료 글꼴(나눔명조·나눔고딕)로 그려서 한글에서 열면 줄바꿈이 조금 다를 수 있습니다. 내용과 글자 크기는 자동으로 줄이지 않습니다.</p>
     {!current ? <p role="alert" className="mt-5 rounded-lg bg-amber-50 p-4">학교 조건이 바뀌었습니다. 초안을 다시 작성해 주세요.</p> : failure ? <div role="alert" className="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-red-900"><p className="leading-7">{failure}</p><button className={`${button} mt-3 border border-red-300 bg-white`} onClick={() => setRetry(n => n + 1)}>지면 다시 만들기</button></div> : !ready && title.trim() ? <div role="status" className="mt-6 flex flex-wrap items-center gap-3 rounded-lg bg-slate-50 p-4"><LoaderCircle className="h-5 w-5 animate-spin" aria-hidden="true"/><span>저장할 지면을 만들고 있습니다.</span><button className={`${button} border border-slate-300 bg-white`} onClick={() => { active.current?.abort(); setFailure('지면 만들기를 취소했습니다. 입력과 초안은 유지됩니다.'); }}>취소</button></div> : null}
     {preview?.key === key && <div aria-label="한글 지면 미리보기" className="mt-6 rounded-xl bg-slate-100 p-3 sm:p-5">
       <div data-decision className="mb-4 max-w-48"><label htmlFor="plan-preview-page" className="text-sm font-bold text-slate-800">미리볼 쪽</label><select id="plan-preview-page" className={field} value={selectedPage} onChange={e => setSelectedPage(Number(e.target.value))}>{preview.urls.map((_, i) => <option key={i} value={i}>{i + 1} / {preview.urls.length}쪽</option>)}</select></div>

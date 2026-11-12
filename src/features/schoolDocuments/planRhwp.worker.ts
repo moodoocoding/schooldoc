@@ -1,8 +1,9 @@
 import init, { HwpDocument } from '@rhwp/core';
 import wasmUrl from '@rhwp/core/rhwp_bg.wasm?url';
 import templateUrl from './assets/blank-plan.hwpx?url';
-import regularUrl from './assets/fonts/NanumGothic-Regular.ttf?url';
-import boldUrl from './assets/fonts/NanumGothic-Bold.ttf?url';
+import bodyUrl from './assets/fonts/NanumMyeongjo-Regular.otf?url';
+import bodyBoldUrl from './assets/fonts/NanumMyeongjo-Bold.otf?url';
+import titleUrl from './assets/fonts/NanumGothic-Bold.ttf?url';
 import { buildPlanDocument, checkedHwpxExport } from './planRhwpEngine';
 import type { PlanWorkerRequest, PlanWorkerResponse } from './planRhwp';
 
@@ -24,9 +25,9 @@ self.onmessage = async (event: MessageEvent<PlanWorkerRequest>) => {
       if (data.length > 20 * 1024 * 1024) throw new Error('한글 공문이 너무 큽니다. 필요한 본문을 붙여 넣어 주세요.');
       self.postMessage({ ok: true, bytes: data, svgs: [], pageCount: doc.pageCount() } satisfies PlanWorkerResponse, { transfer: [data.buffer] });
     } else {
-      const [template, regular, bold] = await Promise.all([bytes(templateUrl), bytes(regularUrl), bytes(boldUrl)]);
+      const [template, body, bodyBold, title] = await Promise.all([bytes(templateUrl), bytes(bodyUrl), bytes(bodyBoldUrl), bytes(titleUrl)]);
       doc = new HwpDocument(template);
-      buildPlanDocument(doc, request.draft, request.title, request.pages, [regular, bold]);
+      buildPlanDocument(doc, request.draft, request.title, request.pages, { body, bodyBold, title });
       const data = checkedHwpxExport(doc);
       // Render the exact saved bytes, so the preview and download cannot diverge.
       doc.free(); doc = new HwpDocument(data);

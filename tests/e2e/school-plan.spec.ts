@@ -219,12 +219,12 @@ test('HWPX 원고는 문단 위치와 전체 내용으로 읽고 스캔 PDF를 �
     const { exportPlanHwpx } = await import('/src/features/schoolDocuments/planHwpx.ts');
     const { extractHwpxSource } = await import('/src/features/schoolDocuments/planSourceImport.ts');
     const d = JSON.parse(document.documentElement.dataset.fixtureDraft!);
-    const bytes = await exportPlanHwpx(d, { title: d.title, pages: 1 });
+    const bytes = await exportPlanHwpx(d, { title: d.title, pages: 2 });
     return { source: extractHwpxSource(bytes, '자체 생성.hwpx', 'testSource'), bytes: [...bytes] };
   });
   expect(actual.source.parts.map(p => p.text).join('\n')).toContain('11월 9일까지');
   expect(actual.source.parts.every(p => p.label.includes('문단'))).toBe(true);
-  const { writeFile } = await import('node:fs/promises'); await writeFile('test-results/school-plan/browser-1page.hwpx', Buffer.from(actual.bytes));
+  const { writeFile } = await import('node:fs/promises'); await writeFile('test-results/school-plan/browser-2page.hwpx', Buffer.from(actual.bytes));
   await page.getByRole('button', { name: '계획서 작성', exact: true }).click();
   const pdf = new jsPDF();
   await page.getByLabel('공문·붙임 파일').setInputFiles({ name: 'scan.pdf', mimeType: 'application/pdf', buffer: Buffer.from(pdf.output('arraybuffer')) });

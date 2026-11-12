@@ -24,6 +24,9 @@ SECRETS.local.md
 # 로컬 영수증 원본·샘플 자료
 /docs/영수증폴더/
 
+# 로컬 참고 원본(행정업무운영 편람 등). 요약은 docs/official-document-format.md에 둔다.
+/docs/references/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
