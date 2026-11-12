@@ -3,10 +3,12 @@ import { loadPdfJs } from '../../utils/pdfjs';
 
 export function NeisSourcePreview({
   file,
+  convertedFile,
   page = 1,
   allowPageSelection = false,
 }: {
   file: File | null;
+  convertedFile?: File | null;
   page?: number;
   allowPageSelection?: boolean;
 }) {
@@ -14,18 +16,24 @@ export function NeisSourcePreview({
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [retry, setRetry] = useState(0);
-  const [url, setUrl] = useState('');
+  const [urls, setUrls] = useState({ original: '', converted: '' });
   const [selectedPage, setSelectedPage] = useState(page);
   const [pageCount, setPageCount] = useState(1);
   const activePage = allowPageSelection ? selectedPage : page;
+  const pdf = convertedFile ?? file;
+  const pageLabel = convertedFile ? '변환 지면' : '원본';
   useEffect(() => {
     if (!file) return;
-    const value = URL.createObjectURL(file);
-    setUrl(value);
-    return () => URL.revokeObjectURL(value);
-  }, [file]);
+    const original = URL.createObjectURL(file);
+    const converted = convertedFile ? URL.createObjectURL(convertedFile) : '';
+    setUrls({ original, converted });
+    return () => {
+      URL.revokeObjectURL(original);
+      if (converted) URL.revokeObjectURL(converted);
+    };
+  }, [file, convertedFile]);
   useEffect(() => {
-    if (!file || !/\.pdf$/i.test(file.name)) return;
+    if (!pdf) return;
     let alive = true;
     let dispose: (() => void) | undefined;
     setLoading(true);
@@ -34,7 +42,7 @@ export function NeisSourcePreview({
       try {
         const pdfjs = await loadPdfJs();
         if (!alive) return;
-        const data = await file.arrayBuffer();
+        const data = await pdf.arrayBuffer();
         if (!alive) return;
         const task = pdfjs.getDocument({ data });
         dispose = () => {
@@ -63,29 +71,38 @@ export function NeisSourcePreview({
       alive = false;
       dispose?.();
     };
-  }, [file, activePage, retry]);
+  }, [pdf, activePage, retry]);
   if (!file) return null;
   return (
     <aside className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4" aria-label="원본 자료">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-semibold text-slate-800">원본 {activePage}쪽</h2>
-        {url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-            className="min-h-[44px] content-center text-sm font-semibold text-blue-700 underline"
-          >
-            원본 파일 열기
-          </a>
-        )}
+        <h2 className="font-semibold text-slate-800">{pageLabel} {activePage}쪽</h2>
+        <div className="flex flex-wrap gap-x-4 text-sm font-semibold text-blue-700">
+          {urls.converted && (
+            <a href={urls.converted} target="_blank" rel="noreferrer" className="min-h-[44px] content-center underline">
+              변환 PDF 열기
+            </a>
+          )}
+          {urls.original && (
+            <a
+              href={urls.original}
+              target={convertedFile ? undefined : '_blank'}
+              download={convertedFile ? file.name : undefined}
+              rel="noreferrer"
+              className="min-h-[44px] content-center underline"
+            >
+              {convertedFile ? '원본 파일 다운로드' : '원본 파일 열기'}
+            </a>
+          )}
+        </div>
       </div>
       <p className="mb-3 break-all text-xs text-slate-600">{file.name}</p>
+      {convertedFile && <p className="mb-3 text-sm text-slate-600">한글 원본과 줄바꿈이나 쪽 나눔이 다를 수 있습니다.</p>}
       {allowPageSelection && (
         <label className="mb-3 block text-sm text-slate-700">
-          원본 쪽
+          {pageLabel} 쪽
           <select
-            aria-label="원본 쪽"
+            aria-label={`${pageLabel} 쪽`}
             className="ml-3 min-h-[44px] rounded-lg border border-slate-300 bg-white px-3"
             value={selectedPage}
             onChange={(e) => setSelectedPage(Number(e.target.value))}
@@ -115,7 +132,7 @@ export function NeisSourcePreview({
         ref={canvas}
         className={`h-auto max-h-[640px] w-full object-contain ${loading || error ? 'hidden' : ''}`}
         role="img"
-        aria-label={`${file.name} ${activePage}쪽 원본. 자세한 내용은 원본 파일 열기에서 확인할 수 있습니다.`}
+        aria-label={`${file.name} ${activePage}쪽 ${pageLabel}`}
       />
     </aside>
   );

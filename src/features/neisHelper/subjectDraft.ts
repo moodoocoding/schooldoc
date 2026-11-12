@@ -26,6 +26,7 @@ export interface CommentDraft {
 export interface SubjectDraft {
   step: SubjectStep;
   planFile: File | null;
+  planPdf: File | null;
   gradeFile: File | null;
   plan: AssessmentPlan | null;
   subject: string;
@@ -46,6 +47,7 @@ export interface SubjectDraft {
 export const emptySubjectDraft = (): SubjectDraft => ({
   step: 'plan-upload',
   planFile: null,
+  planPdf: null,
   gradeFile: null,
   plan: null,
   subject: '',

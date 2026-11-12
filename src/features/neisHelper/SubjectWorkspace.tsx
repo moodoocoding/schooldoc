@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, FileUp } from 'lucide-react';
+import { ArrowLeft, Check } from 'lucide-react';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import {
   assessmentProblems,
@@ -21,6 +21,7 @@ import {
   exportComments,
   findHeaderRows,
   GRADE_ACCEPT,
+  isHangulPlan,
   parseGradeSheet,
   PLAN_ACCEPT,
   readGradeSheets,
@@ -37,12 +38,13 @@ import {
   secondaryClass,
 } from './SubjectSteps';
 import { NeisSourcePreview } from './NeisSourcePreview';
+import { SubjectFilePicker } from './SubjectFilePicker';
 
 const steps: Record<SubjectStep, { group: number; title: string; description: string }> = {
   'plan-upload': {
     group: 0,
     title: '평가계획을 올려 주세요',
-    description: '성취기준과 ◎·○·△ 평가기준이 있는 PDF 한 개를 선택하세요.',
+    description: '성취기준과 ◎·○·△ 평가기준이 있는 파일 한 개를 선택하세요.',
   },
   subject: {
     group: 0,
@@ -213,10 +215,16 @@ export function SubjectWorkspace() {
       results: {},
     }));
   }
-  function selectFile(file: File | undefined, kind: 'plan' | 'grades') {
-    if (!file) return;
+  function selectFiles(files: FileList | null, kind: 'plan' | 'grades') {
+    if (busy || !files?.length) return;
+    setNotice('');
+    if (files.length !== 1) {
+      setError('한 번에 파일 한 개를 넣어 주세요.');
+      return;
+    }
     setError('');
     try {
+      const file = files[0];
       checkFile(file, kind);
       if (kind === 'plan') setDraft({ ...emptySubjectDraft(), planFile: file });
       else
@@ -302,10 +310,14 @@ export function SubjectWorkspace() {
         move('subject');
         return;
       }
-      await run('평가계획의 기준 표를 읽고 있습니다.', async (signal, current) => {
-        const plan = await analyzePlan(draft.planFile!, signal);
+      const file = draft.planFile;
+      const label = isHangulPlan(file)
+        ? '한글 문서를 PDF로 변환하고 평가기준을 읽고 있습니다.'
+        : '평가계획의 기준 표를 읽고 있습니다.';
+      await run(label, async (signal, current) => {
+        const { plan, planPdf } = await analyzePlan(file, signal);
         if (!current()) return;
-        patch({ plan, subject: plan.assessments[0].subject, step: 'subject' });
+        patch({ plan, planPdf, subject: plan.assessments[0].subject, step: 'subject' });
       });
     } else if (draft.step === 'subject') move('plan-review', { planIndex: 0 });
     else if (draft.step === 'plan-review') {
@@ -395,7 +407,7 @@ export function SubjectWorkspace() {
     currentMapping !== SKIP_COLUMN &&
     Object.entries(draft.mappings).some(([id, value]) => id !== column?.id && value === currentMapping);
   let blocking = '';
-  if (draft.step === 'plan-upload' && !draft.planFile) blocking = '평가계획 PDF를 선택해 주세요.';
+  if (draft.step === 'plan-upload' && !draft.planFile) blocking = '평가계획 파일을 선택해 주세요.';
   if (draft.step === 'subject' && (!draft.subject || !assessments.length)) blocking = '교과를 선택해 주세요.';
   if (draft.step === 'plan-review') {
     const missing = assessment ? assessmentProblems(assessment) : ['평가 항목'];
@@ -493,33 +505,21 @@ export function SubjectWorkspace() {
             )}
           {(draft.step === 'plan-upload' || draft.step === 'grade-upload') && (
             <div className="space-y-5">
-              <label className="block rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-6">
-                <FileUp className="mb-3 h-8 w-8 text-blue-700" aria-hidden="true" />
-                <span className="mb-3 block font-semibold text-slate-800">
-                  {draft.step === 'plan-upload' ? '평가계획 PDF' : '나이스 성적 파일'}
-                </span>
-                <input
-                  className="block w-full text-sm text-slate-700 file:mr-3 file:min-h-[44px] file:rounded-lg file:border-0 file:bg-white file:px-4 file:font-semibold file:text-blue-700"
-                  type="file"
-                  accept={draft.step === 'plan-upload' ? PLAN_ACCEPT : GRADE_ACCEPT}
-                  onChange={(e) => {
-                    selectFile(e.target.files?.[0], draft.step === 'plan-upload' ? 'plan' : 'grades');
-                    e.target.value = '';
-                  }}
-                />
-              </label>
-              <p className="break-all text-sm text-slate-700">
-                {(draft.step === 'plan-upload' ? draft.planFile : draft.gradeFile)?.name ||
-                  '선택한 파일이 없습니다.'}
-              </p>
+              <SubjectFilePicker
+                label={draft.step === 'plan-upload' ? '평가계획 파일' : '나이스 성적 파일'}
+                accept={draft.step === 'plan-upload' ? PLAN_ACCEPT : GRADE_ACCEPT}
+                file={draft.step === 'plan-upload' ? draft.planFile : draft.gradeFile}
+                disabled={!!busy}
+                onSelect={(files) => selectFiles(files, draft.step === 'plan-upload' ? 'plan' : 'grades')}
+              />
               <p className="text-sm leading-6 text-slate-600">
                 {draft.step === 'plan-upload'
-                  ? 'PDF · 10MB · 80쪽까지. 한글 문서는 PDF로 저장해 주세요.'
+                  ? 'PDF·HWP 5.0·HWPX · 최대 10MB, 80쪽'
                   : 'XLSX·CSV·PDF · 10MB까지. XLS는 XLSX로 다시 저장해 주세요.'}
               </p>
               <p className="rounded-lg bg-blue-50 p-4 text-sm leading-6 text-blue-900">
                 {draft.step === 'plan-upload'
-                  ? '분석 버튼을 누르면 평가계획 PDF를 OpenAI로 전송합니다. 추출한 기준은 다음 화면에서 직접 확인합니다.'
+                  ? '평가계획 분석을 누르면 PDF를 OpenAI로 전송합니다. HWP·HWPX는 이 브라우저에서 PDF로 변환한 뒤 전송합니다.'
                   : 'XLSX·CSV는 이 브라우저에서 읽습니다. PDF를 선택하면 번호·이름·성적을 포함한 원본을 OpenAI로 전송해 분석합니다.'}
               </p>
             </div>
@@ -545,7 +545,12 @@ export function SubjectWorkspace() {
             </label>
           )}
           {draft.step === 'plan-review' && assessment && (
-            <AssessmentReview assessment={assessment} onChange={editAssessment} file={draft.planFile} />
+            <AssessmentReview
+              assessment={assessment}
+              onChange={editAssessment}
+              file={draft.planFile}
+              convertedFile={draft.planPdf}
+            />
           )}
           {draft.step === 'sheet' && (
             <label className="block max-w-xl text-sm font-semibold text-slate-800">
@@ -656,6 +661,7 @@ export function SubjectWorkspace() {
               <NeisSourcePreview
                 key={`${draft.columnIndex}-${currentMapping}`}
                 file={draft.planFile}
+                convertedFile={draft.planPdf}
                 page={assessments.find((a) => a.id === currentMapping)?.sourcePage ?? 1}
                 allowPageSelection
               />

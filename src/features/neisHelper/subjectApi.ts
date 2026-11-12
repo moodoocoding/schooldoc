@@ -12,7 +12,7 @@ import type {
   CommentInput,
   GeneratedComment,
 } from '../../../supabase/functions/_shared/neisHelper';
-import { checkFile } from './subjectFiles';
+import { checkFile, isHangulPlan } from './subjectFiles';
 import { reconcileSourcePages } from './sourcePages';
 
 async function invoke(body: Record<string, unknown>, signal: AbortSignal): Promise<unknown> {
@@ -73,16 +73,26 @@ async function pdfData(file: File, signal: AbortSignal, readPageText = false) {
     signal.removeEventListener('abort', abort);
     await task.destroy();
   }
+  return { data: pdfBase64(bytes), pageTexts };
+}
+
+function pdfBase64(bytes: Uint8Array) {
   let binary = '';
   for (let i = 0; i < bytes.length; i += 32768)
     binary += String.fromCharCode(...bytes.subarray(i, i + 32768));
-  return { data: btoa(binary), pageTexts };
+  return btoa(binary);
 }
-export async function analyzePlan(file: File, signal: AbortSignal): Promise<AssessmentPlan> {
+export async function analyzePlan(file: File, signal: AbortSignal): Promise<{ plan: AssessmentPlan; planPdf: File | null }> {
   checkFile(file, 'plan');
-  const { data, pageTexts } = await pdfData(file, signal, true);
+  const converted = isHangulPlan(file)
+    ? await (await import('./hangulPlanPdf')).convertHangulPlan(file, signal)
+    : null;
+  const { data, pageTexts } = converted
+    ? { data: pdfBase64(new Uint8Array(await converted.pdf.arrayBuffer())), pageTexts: converted.pageTexts }
+    : await pdfData(file, signal, true);
+  signal.throwIfAborted();
   const result = await invoke({ action: 'plan', data }, signal);
-  return reconcileSourcePages(validatePlan(result), pageTexts);
+  return { plan: reconcileSourcePages(validatePlan(result), pageTexts), planPdf: converted?.pdf ?? null };
 }
 export async function analyzeGradePdf(file: File, signal: AbortSignal): Promise<GradeBook> {
   checkFile(file, 'grades');
