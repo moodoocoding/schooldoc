@@ -49,10 +49,13 @@ describe('문서 점검', () => {
 });
 
 describe('분량 점검', () => {
-  test('본문(강제 쪽 나눔 전) 마지막 쪽이 80%보다 덜 차면 알린다', () => {
-    expect(pageVolumeIssues({ fills: [0.46, 0.58], bodyPages: 1 })).toEqual([expect.objectContaining({ where: '1쪽', fixed: false })]);
-    expect(pageVolumeIssues({ fills: [0.95, 0.3], bodyPages: 1 })).toEqual([]);
-    expect(pageVolumeIssues({ fills: [1, 0.5], bodyPages: 2 })[0].message).toContain('약 50%');
-    expect(pageVolumeIssues(undefined)).toEqual([]);
+  test('덜 찬 쪽은 알리지 않는다', () => {
+    expect(pageVolumeIssues({ fills: [0.46], bodyPages: 1 }, 1)).toEqual([]);
+    expect(pageVolumeIssues({ fills: [0.46, 0.58], bodyPages: 1 }, 2)).toEqual([]);
+    expect(pageVolumeIssues(undefined, 2)).toEqual([]);
+  });
+  test('선택한 분량을 넘으면 넘친 쪽 수를 알린다(저장은 막지 않음)', () => {
+    expect(pageVolumeIssues({ fills: [1, 1, 0.3], bodyPages: 1 }, 2)).toEqual([expect.objectContaining({ where: '분량', message: expect.stringContaining('선택한 2쪽보다 1쪽 많은 3쪽') })]);
+    expect(pageVolumeIssues({ fills: [1, 0.4], bodyPages: 1 }, 2)).toEqual([]);
   });
 });
