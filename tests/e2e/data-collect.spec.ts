@@ -169,6 +169,9 @@ test("배포 파일을 확인하고 이상 없음 또는 수정본으로 회신�
   });
   await page.getByLabel("전달 사항").fill("3번 문항의 표현을 고쳤습니다.");
   await page.getByRole("button", { name: "새 버전으로 회신" }).click();
+  await expect(
+    page.getByRole("heading", { name: "회신을 제출했습니다" }),
+  ).toBeVisible();
   await expect(page.getByText("수정본 제출")).toBeVisible();
 
   await page.goto("/tools/data-collect");
