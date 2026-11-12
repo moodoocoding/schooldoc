@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 import { buildPlanAiRequest, requestPlanAi } from '../../supabase/functions/school-plan/openai';
 import { consumePlanQuota } from '../../supabase/functions/school-plan/quota';
 import { authorizePlanRequest, createPlanHandler, PlanError, readPlanRequest } from '../../supabase/functions/school-plan/core';
-import { analysis, context, draft, sources } from '../fixtures/schoolPlan';
+import { analysis, authoredDraft, context, draft, sources } from '../fixtures/schoolPlan';
 import type { PlanRequest } from '../../supabase/functions/_shared/schoolPlan';
 
 const analyze: PlanRequest = { action: 'analyze', sources };
@@ -27,10 +27,74 @@ describe('계획서 OpenAI 연결', () => {
     expect(options.body).not.toContain('base64');
   });
   test('본문 전체를 생성하고 필수 공문 근거와 예산을 검증한다', async () => {
-    expect(await requestPlanAi(drafting, 'fixture', 'fixture', async () => completed(draft))).toEqual({ draft });
-    const invalid = { ...draft, budget: [{ ...draft.budget[0], unitPrice: 99999999 }] };
+    const result = await requestPlanAi(drafting, 'fixture', 'fixture', async () => completed(authoredDraft));
+    expect(result.draft).toMatchObject({ title: draft.title, schedule: draft.schedule, budget: draft.budget, unknowns: draft.unknowns });
+    const activities = result.draft!.sections.find(s => s.id === 'implementation')!;
+    expect(activities.paragraphs).toHaveLength(2);
+    for (const [i, activity] of authoredDraft.body.activities.entries()) {
+      expect(activities.paragraphs[i]).toContain(activity.procedure);
+      expect(activities.paragraphs[i]).toContain(activity.result);
+      expect(activities.paragraphs[i]).toContain('(방법안)');
+    }
+    const invalid = { ...authoredDraft, budget: [{ ...draft.budget[0], unitPrice: 99999999 }] };
     await expect(requestPlanAi(drafting, 'fixture', 'fixture', async () => completed(invalid))).rejects.toMatchObject({ status: 502 });
     await expect(requestPlanAi(analyze, 'fixture', 'fixture', async () => completed({ ...analysis, requirements: [{ ...analysis.requirements[0], quote: '공문에 없는 문구' }] }))).rejects.toMatchObject({ status: 502 });
+  });
+  test('진행 절차·결과물이 없거나 공문 근거가 위조된 활동은 완성된 초안으로 받지 않는다', async () => {
+    for (const override of [{ procedure: '' }, { result: '' }, { methodKind: 'confirmed-by-teacher' }, { requirementIds: ['training-01'] }]) {
+      const invalid = { ...authoredDraft, body: { ...authoredDraft.body, activities: [{ ...authoredDraft.body.activities[0], ...override }, authoredDraft.body.activities[1]] } };
+      await expect(requestPlanAi(drafting, 'fixture', 'fixture', async () => completed(invalid))).rejects.toMatchObject({ status: 502 });
+    }
+    // A structurally valid legacy draft lacks the new provider's activity fields.
+    // It remains valid as client input, but cannot masquerade as a newly authored response.
+    await expect(requestPlanAi(drafting, 'fixture', 'fixture', async () => completed(draft))).rejects.toMatchObject({ status: 502 });
+  });
+  test('본문 AI 수정도 활동 구조를 조립하고 기존 일정·예산·확인 사항은 보존한다', async () => {
+    const req: PlanRequest = { action: 'revise', ...context, draft, revision: { area: 'body', instruction: '읽기와 나눔 활동을 구체화해 주세요.' } };
+    expect(buildPlanAiRequest(req, 'fixture').text.format.schema.required).toEqual(['body']);
+    const result = await requestPlanAi(req, 'fixture', 'fixture', async () => completed({ body: authoredDraft.body }));
+    expect(result.draft).toMatchObject({ title: draft.title, schedule: draft.schedule, budget: draft.budget, unknowns: draft.unknowns });
+    expect(result.draft!.sections.find(s => s.id === 'implementation')!.paragraphs.join(' ')).toContain(authoredDraft.body.activities[1].result);
+    await expect(requestPlanAi(req, 'fixture', 'fixture', async () => completed({ body: authoredDraft.body, unknowns: [] }))).rejects.toMatchObject({ status: 502 });
+  });
+  test('공모전은 실제 심사 기준과 동점 순서를 요구하고 기존 본문 계약으로 출력한다', async () => {
+    const req: PlanRequest = { ...drafting, referenceType: 'contest' };
+    const selectionRules = {
+      criteria: [{ name: '적합성', check: '주제와 어울리는가', maxScore: 50 }, { name: '의미', check: '뜻이 분명한가', maxScore: 50 }],
+      evaluationMethod: '각 항목을 같은 비중으로 평가하고 합산한다.', exclusions: ['부적절한 표현이 포함된 작품'],
+      tieBreakPriority: ['적합성', '의미'], finalTie: '작품별 근거를 함께 논의하고 선정 이유를 기록한다.', methodKind: 'proposal', requirementIds: ['r2'],
+    };
+    const providerDraft = { ...authoredDraft, body: { purpose: authoredDraft.body.purpose, overview: authoredDraft.body.overview,
+      intake: authoredDraft.body.activities[0], publication: { ...authoredDraft.body.activities[1], requirementIds: ['r2', 'r3'] }, selectionRules } };
+    const result = await requestPlanAi(req, 'fixture', 'fixture', async () => completed(providerDraft));
+    const section = result.draft!.sections.find(s => s.id === 'selection_rules')!;
+    expect(section.paragraphs.join(' ')).toContain('적합성 → 의미');
+    expect(section.paragraphs.join(' ')).toContain(selectionRules.finalTie);
+    expect(section.paragraphs.join(' ')).toContain(selectionRules.exclusions[0]);
+    expect(section.heading).toContain('(안)');
+    expect(section.paragraphs.join(' ')).toContain('만점 합계 100점');
+    const sixCriteria = Array.from({ length: 6 }, (_, i) => ({ name: `기준${i + 1}`, check: '가'.repeat(80), maxScore: 10000 }));
+    const longRules = { ...selectionRules, criteria: sixCriteria, tieBreakPriority: sixCriteria.map(c => c.name), evaluationMethod: '나'.repeat(160), exclusions: ['다'.repeat(50), '라'.repeat(50)], finalTie: '마'.repeat(60) };
+    const longResult = await requestPlanAi(req, 'fixture', 'fixture', async () => completed({ ...providerDraft, body: { ...providerDraft.body, selectionRules: longRules } }));
+    const longSection = longResult.draft!.sections.find(s => s.id === 'selection_rules')!;
+    expect(longSection.paragraphs).toHaveLength(4);
+    expect(longSection.paragraphs.every(p => p.length <= 400)).toBe(true);
+    expect(longSection.paragraphs.join(' ')).toContain('기준6');
+    expect(longSection.paragraphs.join(' ')).toContain(longRules.finalTie);
+    const qualitative = { ...selectionRules, criteria: selectionRules.criteria.map(c => ({ ...c, maxScore: null })), evaluationMethod: '작품별 근거를 비교해 최종 합의한 작품을 선정한다.' };
+    const qualitativeResult = await requestPlanAi(req, 'fixture', 'fixture', async () => completed({ ...providerDraft, body: { ...providerDraft.body, selectionRules: qualitative } }));
+    expect(qualitativeResult.draft!.sections.find(s => s.id === 'selection_rules')!.paragraphs.join(' ')).not.toContain('만점');
+    for (const rules of [undefined, { ...selectionRules, tieBreakPriority: ['없는 항목'] }, { ...selectionRules, tieBreakPriority: ['적합성', '적합성'] }, { ...selectionRules, finalTie: '' }, { ...selectionRules, criteria: [{ ...selectionRules.criteria[0], maxScore: null }, selectionRules.criteria[1]] }]) {
+      await expect(requestPlanAi(req, 'fixture', 'fixture', async () => completed({ ...providerDraft, body: { ...providerDraft.body, selectionRules: rules } }))).rejects.toMatchObject({ status: 502 });
+    }
+  });
+  test('필수 조건 누락의 고정 안내만 반환하고 AI 본문을 오류에 섞지 않는다', async () => {
+    const invalid = structuredClone(authoredDraft);
+    invalid.body.followUp.requirementIds = [];
+    invalid.schedule = invalid.schedule.filter(s => !s.requirementIds.includes('r3'));
+    invalid.body.purpose.paragraphs = ['PRIVATE_SOURCE_MARKER'];
+    await expect(requestPlanAi(drafting, 'fixture', 'fixture', async () => completed(invalid))).rejects.toThrow('필수 요구사항');
+    await expect(requestPlanAi(drafting, 'fixture', 'fixture', async () => completed(invalid))).rejects.not.toThrow('PRIVATE_SOURCE_MARKER');
   });
   test('일정 수정만 요청해 반환 받고 다른 영역은 서버 원고를 보존한다', async () => {
     const req: PlanRequest = { action: 'revise', ...context, draft, revision: { area: 'schedule', instruction: '준비를 앞당겨 주세요.' } };

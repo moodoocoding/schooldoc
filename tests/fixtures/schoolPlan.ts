@@ -27,3 +27,18 @@ export const draft: PlanDraft = {
     { item: '작품 나눔 재료(제안)', unitPrice: 10000, quantity: 15, requirementIds: ['r4'] },
   ], unknowns: ['참여 학급과 담당 교사는 학교에서 확인한다.', '예산안의 단가는 실제 견적과 집행 기준을 확인한다.'],
 };
+
+// Fictional provider response; the server composes this into the unchanged PlanDraft.
+export const authoredDraft = {
+  title: draft.title,
+  body: {
+    purpose: { paragraphs: ['학생이 읽기 기록과 작품 나눔으로 자신의 독서 경험을 표현하고 친구의 관점을 이해한다.'], requirementIds: ['r2'] },
+    overview: { paragraphs: ['운영 기간: 2026년 11월 2~6일.', '활동 재료와 인쇄비만 집행하며 교통비는 제외한다.'], requirementIds: ['r1', 'r4'] },
+    activities: [
+      { name: '개별 읽기 기록', procedure: '학생이 관심 있는 책을 읽고 인상 깊은 장면과 그 이유를 기록한다. 글쓰기가 어려운 학생은 그림이나 말로 표현한다.', result: '읽기 기록과 다음에 읽고 싶은 책을 남긴다.', methodKind: 'proposal', requirementIds: ['r2'] },
+      { name: '학급 작품 나눔', procedure: '학생이 소개할 기록을 골라 게시하고 친구의 기록에 궁금한 점을 남긴다. 작성자는 질문을 읽고 자신의 생각을 설명한다.', result: '작품과 질문·응답 기록을 모아 서로 다른 읽기 경험을 확인한다.', methodKind: 'proposal', requirementIds: ['r2'] },
+    ],
+    followUp: { paragraphs: ['담당 교사가 기록과 작품 나눔 자료를 취합하여 11월 9일까지 결과를 제출하고 다음 읽기 활동 안내에 반영한다.'], requirementIds: ['r3'] },
+  },
+  schedule: draft.schedule, budget: draft.budget, unknowns: draft.unknowns,
+};
