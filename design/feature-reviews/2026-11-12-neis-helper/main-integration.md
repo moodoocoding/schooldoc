@@ -25,4 +25,8 @@
 
 DB 변경은 없다. `neis-helper` v2와 `school-plan` v2, 두 기능을 포함한 웹은 앞선 운영 배포 상태이며 이 문서 작성 시점의 새 main 배포를 뜻하지 않는다. 앞선 Neis 실사용 검증은 [운영 검증 기록](production-verification.md), 학교 문서 실사용 검증은 `DEVELOPMENT.md`의 해당 절에 기록했다.
 
-최종 PR의 통합 head에 대한 CI·후보 EXE 게시 및 실사용 검증 후 squash 병합한다. 병합 여부와 새 main SHA의 정식 EXE·웹 배포 상태는 [PR #59](https://github.com/moodoocoding/schooldoc/pull/59)의 검증·배포 기록을 기준으로 확인한다. 이 문서의 로컬 검사 통과는 후보 EXE의 실제 Google 인증·운영 업무 검증을 대신하지 않는다.
+이번 범위는 웹·서버 기능 통합이며 Electron 인증·보안·패키징 코드와 실행 검사·릴리즈 게시 스크립트는 변경하지 않았다. CI 변경도 두 서버 진입점의 Deno 검사 추가뿐이다. 통합 head의 CI·Windows 패키지 검사를 통과한 뒤 squash 병합하고, 새 main SHA의 정식 EXE·웹 배포를 확인한다. 포터블 자체 변경에 적용하는 후보 실사용 검증을 이번 웹 기능 통합의 별도 승인 조건으로 확대하지 않는다.
+
+병합 여부와 새 main SHA의 정식 EXE·웹 배포 상태는 [PR #59](https://github.com/moodoocoding/schooldoc/pull/59)의 검증·배포 기록을 기준으로 확인한다. 로컬 EXE의 가상 인증·백엔드 실행 검사 15개가 통과했다. 실제 Google 계정 선택 후 PKCE 콜백까지 도착했으나, 이후 자동화 도구가 실행 중인 앱 창을 찾지 못해 앱 내부 세션·실제 로그아웃·운영 업무 검증은 완료하지 못했다. 모의 검사나 웹 검증으로 이를 대체하여 성공으로 기록하지 않는다.
+
+전체 CI에서는 퀵 메뉴의 새 접근 가능한 이름과 `getByLabel("안내")`가 함께 일치하여 자료 수합 검사 2개가 실패했다. 제품 코드를 우회하지 않고 본문 textbox의 정확한 이름으로 검사 선택자를 수정했으며 `npm run test:e2e -- tests/e2e/data-collect.spec.ts`의 7개 검사를 재실행해 통과했다. 최종 CI 재실행 결과는 PR에서 별도로 확인한다.
