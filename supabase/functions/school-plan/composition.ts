@@ -1,4 +1,4 @@
-import type { PlanSection } from '../_shared/schoolPlan.ts';
+import type { PlanPages, PlanSection } from '../_shared/schoolPlan.ts';
 import type { PlanReferenceType } from '../_shared/schoolPlanReferences.ts';
 
 // The provider writes activity procedures and outputs separately. The client
@@ -7,15 +7,37 @@ const text = (maxLength: number) => ({ type: 'string', minLength: 1, maxLength }
 const refs = { type: 'array', maxItems: 24, items: text(80) };
 const object = (properties: Record<string, unknown>) => ({ type: 'object', additionalProperties: false, properties, required: Object.keys(properties) });
 const block = (count: number, length: number) => object({ paragraphs: { type: 'array', minItems: 1, maxItems: count, items: text(length) }, requirementIds: refs });
-export const planBodySchema = object({
-  purpose: block(1, 140),
-  overview: block(3, 140),
-  activities: { type: 'array', minItems: 2, maxItems: 4, items: object({
-    name: text(40), procedure: text(230), result: text(100),
-    methodKind: { type: 'string', enum: ['source', 'proposal'] }, requirementIds: refs,
-  }) },
-  followUp: block(1, 200),
-});
+/**
+ * 출력 분량별 글자·항목 한도. 공문 서식(휴먼명조 13pt·줄간격 160%, A4)에서 rhwp로 조판해,
+ * 모든 칸을 최대 길이로 채워도 고른 쪽 수 안에 들어가도록 잡은 값이다(tests/unit/schoolPlanPageBudget.test.ts).
+ * 1쪽은 본문·일정·예산이 한 쪽에, 2쪽은 본문이 1쪽, 일정·예산·확인 사항이 2쪽에 들어간다.
+ */
+export const PLAN_PAGE_BUDGETS = {
+  1: { purpose: 50, overview: 1, overviewLength: 60, activities: 2, name: 12, procedure: 60, result: 25, followUp: 50, schedule: 3, when: 9, scheduleActivity: 18, owner: 8, budget: 2, item: 16, unknowns: 0, unknownLength: 40 },
+  2: { purpose: 80, overview: 2, overviewLength: 70, activities: 3, name: 16, procedure: 100, result: 40, followUp: 80, schedule: 5, when: 9, scheduleActivity: 36, owner: 8, budget: 4, item: 16, unknowns: 3, unknownLength: 60 },
+} as const;
+const budgetOf = (pages: PlanPages = 2) => PLAN_PAGE_BUDGETS[pages];
+const planBody = (pages?: PlanPages) => {
+  const b = budgetOf(pages);
+  return object({
+    purpose: block(1, b.purpose),
+    overview: block(b.overview, b.overviewLength),
+    activities: { type: 'array', minItems: 2, maxItems: b.activities, items: object({
+      name: text(b.name), procedure: text(b.procedure), result: text(b.result),
+      methodKind: { type: 'string', enum: ['source', 'proposal'] }, requirementIds: refs,
+    }) },
+    followUp: block(1, b.followUp),
+  });
+};
+export const planBodySchema = planBody(2);
+/** 분량 지침: 응답 형식의 항목 수와 함께 쓴다. */
+export function pageInstructions(pages: PlanPages = 2) {
+  const b = budgetOf(pages);
+  const where = pages === 1 ? '본문·일정표·예산표·확인 사항이 모두 한 쪽에 들어가야 한다' : '1쪽에는 본문만, 2쪽에는 일정표·예산표·확인 사항이 들어간다';
+  const unknowns = b.unknowns ? `확인 사항(unknowns)은 ${b.unknowns}개·각 ${b.unknownLength}자 이내다.` : '1쪽에는 확인 사항(unknowns) 칸이 없으므로 빈 배열로 두고, 미정 사항은 본문에 "(학교 확인)"으로 짧게 표시한다.';
+  return `출력 분량은 A4 ${pages}쪽이다. ${where}. 응답 형식의 글자 수·항목 수 한도 안에서 짧은 문장으로 쓰고, 같은 내용을 반복하지 않는다.
+일정 activity는 ${b.scheduleActivity}자 이내다. ${unknowns} 필수 조건은 빼지 않고 짧게 쓴다.`;
+}
 const contestRulesSchema = object({
   criteria: { type: 'array', minItems: 1, maxItems: 6, items: object({ name: text(15), check: text(80), maxScore: { anyOf: [{ type: 'integer', minimum: 1, maximum: 10000 }, { type: 'null' }] } }) },
   evaluationMethod: text(160),
@@ -24,19 +46,19 @@ const contestRulesSchema = object({
   finalTie: text(60),
   methodKind: { type: 'string', enum: ['source', 'proposal'] }, requirementIds: refs,
 });
-function bodySchema(type: PlanReferenceType) {
+function bodySchema(type: PlanReferenceType, pages?: PlanPages) {
   const contestActivity = object({ procedure: text(230), result: text(100), methodKind: { type: 'string', enum: ['source', 'proposal'] }, requirementIds: refs });
   return type === 'contest' ? object({ purpose: planBodySchema.properties.purpose, overview: planBodySchema.properties.overview,
     intake: contestActivity, publication: contestActivity, selectionRules: contestRulesSchema,
-  }) : planBodySchema;
+  }) : planBody(pages);
 }
-export const getComposedDraftSchema = (type: PlanReferenceType) => object({
-  title: text(100), body: bodySchema(type),
-  schedule: { type: 'array', minItems: 1, maxItems: 8, items: object({ when: text(80), activity: text(180), owner: text(60), requirementIds: refs }) },
-  budget: { type: 'array', maxItems: 6, items: object({ item: text(80), unitPrice: { type: 'integer', minimum: 0, maximum: 100000000 }, quantity: { type: 'integer', minimum: 1, maximum: 10000 }, requirementIds: refs }) },
-  unknowns: { type: 'array', maxItems: 9, items: text(200) },
+export const getComposedDraftSchema = (type: PlanReferenceType, pages?: PlanPages) => object({
+  title: text(100), body: bodySchema(type, pages),
+  schedule: { type: 'array', minItems: 1, maxItems: budgetOf(pages).schedule, items: object({ when: text(budgetOf(pages).when), activity: text(budgetOf(pages).scheduleActivity), owner: text(budgetOf(pages).owner), requirementIds: refs }) },
+  budget: { type: 'array', maxItems: budgetOf(pages).budget, items: object({ item: text(budgetOf(pages).item), unitPrice: { type: 'integer', minimum: 0, maximum: 100000000 }, quantity: { type: 'integer', minimum: 1, maximum: 10000 }, requirementIds: refs }) },
+  unknowns: { type: 'array', maxItems: budgetOf(pages).unknowns, items: text(budgetOf(pages).unknownLength) },
 });
-export const getComposedBodyRevisionSchema = (type: PlanReferenceType) => object({ body: bodySchema(type) });
+export const getComposedBodyRevisionSchema = (type: PlanReferenceType, pages?: PlanPages) => object({ body: bodySchema(type, pages) });
 
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid composition');
@@ -108,10 +130,10 @@ export function composePlanDraft(value: unknown, type: PlanReferenceType) {
 }
 
 export const compositionInstructions = `작성 응답은 화면 문단을 직접 나열하는 sections 대신 body에 구조화한다.
-body.purpose: 목적 한 문단(140자 이내). body.overview: 대상·일시·장소·운영 역할과 필수 집행 조건을 짧은 항목 문단 1~3개(각 140자 이내). 활동 설명·결과 제출·예산 배분액을 여기서 반복하지 않는다.
-body.activities: 이번 사업의 핵심 활동 2~4개. 각 name은 활동 이름, procedure는 누가 어떤 자료와 순서로 무엇을 하는지(230자 이내), result는 남길 구체적인 산출물 또는 확인할 행동·내용(100자 이내)이다. procedure와 result를 같은 말로 반복하지 않는다.
+body.purpose: 목적 한 문단. body.overview: 대상·일시·장소·운영 역할과 필수 집행 조건을 짧은 항목 문단으로 쓴다. 활동 설명·결과 제출·예산 배분액을 여기서 반복하지 않는다.
+body.activities: 이번 사업의 핵심 활동. 각 name은 활동 이름, procedure는 누가 어떤 자료와 순서로 무엇을 하는지, result는 남길 구체적인 산출물 또는 확인할 행동·내용이다. 모든 항목의 개수와 글자 수는 응답 형식의 한도(출력 분량에 맞춘 값)를 지킨다. procedure와 result를 같은 말로 반복하지 않는다.
 methodKind는 공문에 해당 진행 방법까지 명시된 경우만 source, AI가 방법을 구체화하면 proposal이다. 서버가 proposal 활동에 '(방법안)'을 붙인다. 원문의 대상·날짜·의무는 방법 제안을 이유로 바꾸지 않는다.
-body.followUp: 결과의 수합·점검 담당, 제출 기한과 활용을 한 문단(200자 이내)으로 적는다. body의 각 항목·활동에는 반영한 실제 requirementIds만 연결한다.
+body.followUp: 결과의 수합·점검 담당, 제출 기한과 활용을 한 문단으로 적는다. body의 각 항목·활동에는 반영한 실제 requirementIds만 연결한다.
 운영 방법을 제안해야 한다면 실제 초안으로 작성한다. unknowns에 '양식 마련 여부 확인', '내용 확정 후 계획 수립'처럼 방금 작성해야 할 일을 미루지 않는다.
 budget은 사용 가능한 상한을 채우는 표가 아니다. 필요한 품목의 단위와 수량을 알 수 있으면 해당 산출식을 제안하고, 품목별 산출 자체가 불가능하면 빈 배열과 확인 사유를 반환한다. 인쇄비·재료비 총액을 임의로 각각 1회로 나눠 예산 전액을 소진하지 않는다.`;
 

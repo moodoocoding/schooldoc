@@ -40,14 +40,34 @@ describe('계획서 OpenAI 연결', () => {
     await expect(requestPlanAi(drafting, 'fixture', 'fixture', async () => completed(invalid))).rejects.toMatchObject({ status: 502 });
     await expect(requestPlanAi(analyze, 'fixture', 'fixture', async () => completed({ ...analysis, requirements: [{ ...analysis.requirements[0], quote: '공문에 없는 문구' }] }))).rejects.toMatchObject({ status: 502 });
   });
-  test('진행 절차·결과물이 없거나 공문 근거가 위조된 활동은 완성된 초안으로 받지 않는다', async () => {
-    for (const override of [{ procedure: '' }, { result: '' }, { methodKind: 'confirmed-by-teacher' }, { requirementIds: ['training-01'] }]) {
+  test('진행 절차·결과물이 없는 활동은 완성된 초안으로 받지 않는다', async () => {
+    for (const override of [{ procedure: '' }, { result: '' }, { methodKind: 'confirmed-by-teacher' }]) {
       const invalid = { ...authoredDraft, body: { ...authoredDraft.body, activities: [{ ...authoredDraft.body.activities[0], ...override }, authoredDraft.body.activities[1]] } };
       await expect(requestPlanAi(drafting, 'fixture', 'fixture', async () => completed(invalid))).rejects.toMatchObject({ status: 502 });
     }
     // A structurally valid legacy draft lacks the new provider's activity fields.
     // It remains valid as client input, but cannot masquerade as a newly authored response.
     await expect(requestPlanAi(drafting, 'fixture', 'fixture', async () => completed(draft))).rejects.toMatchObject({ status: 502 });
+  });
+  test('공문 분석에 없는 근거 ID(참고 사례 ID·지어낸 ID)는 초안을 실패시키지 않고 지운다', async () => {
+    const forged = { ...authoredDraft, body: { ...authoredDraft.body, activities: [{ ...authoredDraft.body.activities[0], requirementIds: ['r2', 'training-01', 'made-up'] }, authoredDraft.body.activities[1]] },
+      schedule: authoredDraft.schedule.map((row, i) => i ? row : { ...row, requirementIds: [...row.requirementIds, 'program-01'] }) };
+    const result = await requestPlanAi(drafting, 'fixture', 'fixture', async () => completed(forged));
+    const ids = [...result.draft!.sections, ...result.draft!.schedule, ...result.draft!.budget].flatMap(row => row.requirementIds);
+    expect(ids.every(id => analysis.requirements.some(r => r.id === id))).toBe(true);
+    expect(ids).not.toContain('training-01');
+    // 필수 요구사항을 하나도 연결하지 못하면 여전히 실패한다.
+    const unlinked = { ...authoredDraft, body: { ...authoredDraft.body, followUp: { ...authoredDraft.body.followUp, requirementIds: ['made-up'] } }, schedule: authoredDraft.schedule.map(row => ({ ...row, requirementIds: row.requirementIds.filter(id => id !== 'r3') })) };
+    await expect(requestPlanAi(drafting, 'fixture', 'fixture', async () => completed(unlinked))).rejects.toMatchObject({ status: 502 });
+  });
+  test('선택한 분량을 AI 지침과 응답 형식의 항목 수에 반영한다', () => {
+    const one = buildPlanAiRequest({ ...drafting, pages: 1 }, 'fixture'), two = buildPlanAiRequest({ ...drafting, pages: 2 }, 'fixture');
+    expect(one.instructions).toContain('출력 분량은 A4 1쪽이다');
+    expect(two.instructions).toContain('출력 분량은 A4 2쪽이다');
+    expect(one.instructions).not.toContain('1200~1800자');
+    const schema = (request: ReturnType<typeof buildPlanAiRequest>) => request.text.format.schema as { properties: { schedule: { maxItems: number }; body: { properties: { activities: { maxItems: number } } } } };
+    expect(schema(one).properties.schedule.maxItems).toBeLessThan(schema(two).properties.schedule.maxItems);
+    expect(schema(one).properties.body.properties.activities.maxItems).toBeLessThanOrEqual(schema(two).properties.body.properties.activities.maxItems);
   });
   test('본문 AI 수정도 활동 구조를 조립하고 기존 일정·예산·확인 사항은 보존한다', async () => {
     const req: PlanRequest = { action: 'revise', ...context, draft, revision: { area: 'body', instruction: '읽기와 나눔 활동을 구체화해 주세요.' } };

@@ -23,7 +23,10 @@ export interface PlanContext {
   sources: PlanSource[]; analysis: PlanAnalysis | null;
   answers: Record<string, string>; conditions: PlanConditions;
   referenceType?: PlanReferenceChoice; referenceVersion?: string;
+  /** 처음에 고른 출력 분량. AI가 이 분량에 맞춰 쓴다. */
+  pages?: PlanPages;
 }
+export type PlanPages = 1 | 2;
 export type PlanRequest = { action: 'analyze'; sources: PlanSource[] }
   | ({ action: 'draft' } & PlanContext)
   | ({ action: 'revise'; draft: PlanDraft; revision: { area: string; instruction: string } } & PlanContext);
@@ -91,10 +94,24 @@ export function validatePlanContext(value: unknown): PlanContext {
   const budget = conditions.budget === null ? null : money(conditions.budget);
   if (budget !== null && analysis?.budgetLimit && budget > analysis.budgetLimit.amount) fail('학교 예산이 공문에서 확인한 상한을 넘습니다. 예산을 확인해 주세요.');
   const referenceType = c.referenceType === undefined ? undefined : validatePlanReferenceChoice(c.referenceType);
+  if (c.pages !== undefined && c.pages !== 1 && c.pages !== 2) fail('출력 분량을 확인해 주세요.');
   if (c.referenceVersion !== undefined && c.referenceVersion !== PLAN_REFERENCE_VERSION) fail('작성 기준이 갱신되었습니다. 입력을 보존한 뒤 화면을 새로고침해 주세요.');
   return { sources, analysis, answers, conditions: { topic: text(conditions.topic, 100), timing: text(conditions.timing, 200, true), budget },
     ...(referenceType === undefined ? {} : { referenceType }),
-    ...(c.referenceVersion === undefined ? {} : { referenceVersion: PLAN_REFERENCE_VERSION }) };
+    ...(c.referenceVersion === undefined ? {} : { referenceVersion: PLAN_REFERENCE_VERSION }),
+    ...(c.pages === undefined ? {} : { pages: c.pages as PlanPages }) };
+}
+/**
+ * AI가 붙인 근거 ID 중 공문 분석에 없는 것(참고 사례 ID, 지어낸 ID)은 버린다.
+ * 확인하지 않은 근거를 남기지 않으면서도 초안 전체를 실패시키지 않는다. 필수 요구사항 연결 검사는 validatePlanDraft가 그대로 한다.
+ */
+export function dropUnknownRequirementIds<T>(draft: T, context: Pick<PlanContext, 'analysis'>): T {
+  if (!draft || typeof draft !== 'object') return draft;
+  const known = new Set(context.analysis?.requirements.map(r => r.id) ?? []);
+  const clean = (rows: unknown) => Array.isArray(rows) ? rows.map(row => row && typeof row === 'object' && Array.isArray((row as { requirementIds?: unknown }).requirementIds)
+    ? { ...row, requirementIds: (row as { requirementIds: unknown[] }).requirementIds.filter(id => typeof id === 'string' && known.has(id)) } : row) : rows;
+  const d = draft as Record<string, unknown>;
+  return { ...d, sections: clean(d.sections), schedule: clean(d.schedule), budget: clean(d.budget) } as T;
 }
 export const planBudgetTotal = (draft: Pick<PlanDraft, 'budget'>) => draft.budget.reduce((sum, b) => sum + b.unitPrice * b.quantity, 0);
 export function validatePlanDraft(value: unknown, context: PlanContext): PlanDraft {

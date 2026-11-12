@@ -1,9 +1,9 @@
-import { planAnalysisSchema, planDraftSchema, validatePlanDraft, type PlanRequest } from '../_shared/schoolPlan.ts';
+import { dropUnknownRequirementIds, planAnalysisSchema, planDraftSchema, validatePlanDraft, type PlanRequest } from '../_shared/schoolPlan.ts';
 import { PlanError, validatePlanResult } from './core.ts';
 import { getPlanReferencePack } from './references.ts';
 import { getPlanWritingGuide, planWritingInstructions } from './writingGuide.ts';
 import type { PlanReferenceType } from '../_shared/schoolPlanReferences.ts';
-import { getComposedBodyRevisionSchema, getComposedDraftSchema, composePlanBody, composePlanDraft, compositionInstructions, contestCompositionInstructions } from './composition.ts';
+import { getComposedBodyRevisionSchema, getComposedDraftSchema, composePlanBody, composePlanDraft, compositionInstructions, contestCompositionInstructions, pageInstructions } from './composition.ts';
 
 const revisionFields = { body: 'sections', schedule: 'schedule', budget: 'budget' } as const;
 // Only our fixed validator messages may leave this boundary, never provider
@@ -31,19 +31,20 @@ budgetLimit은 공문에 예산 상한이 명시된 경우만 원화 amount와 �
 const draftingInstructions = `공문 요구사항, 교사 답변과 학교 조건을 반영해 운영계획서 전체 초안을 직접 작성한다. 목적·세부 활동을 교사에게 다시 작성하게 하지 않는다.
 공문에 확정된 조건을 우선하고 학교 입력과 충돌하면 unknowns에 확인할 사항을 적는다. 공문 사실을 AI 제안으로 덮어쓰지 않는다.
 title 100자 이하. sections는 2~6개이며 heading 40자, paragraphs 1~4개/각 400자 이하이다. 업무 목적에 맞는 목차를 고르고 번호·목차 기호는 본문에 직접 넣지 않는다.
-1~2쪽 초안을 위해 모든 본문·일정·예산·확인 사항은 대략 1200~1800자 이내를 목표로 하되 분량을 채우려고 반복하지 않는다. 본문의 절반 이상을 구체적인 핵심 활동 설명에 배정한다. 필수 조건을 빼서 줄이지 않는다.
-schedule은 준비·실행·결과 정리를 연결한 구체적인 활동으로 1~8행. when 80자, activity 180자, owner 60자 이하이다. 임의로 회차·준비물 중심 계획을 고정하지 않는다.
+본문의 절반 이상을 구체적인 핵심 활동 설명에 배정한다. 분량은 아래 출력 분량 지침을 따른다.
+schedule은 준비·실행·결과 정리를 연결한 구체적인 활동이다. 행 수와 when·activity·owner 글자 수는 응답 형식의 한도를 지킨다. 임의로 회차·준비물 중심 계획을 고정하지 않는다.
 운영 기간과 신청/보고 마감을 구분한다. 미정 날짜·담당은 '안' 또는 '학교 확인'으로 명시하고 기간이 미정이면 상대 일정으로 제안한다.
-budget은 최대 6행. item 80자 이하, unitPrice는 원화 0~1억원 정수, quantity는 1~10000 정수이다. 단가·배분은 제안이며 실제 견적 확인이 필요하다.
+budget 행 수와 item 글자 수는 응답 형식의 한도를 지킨다. unitPrice는 원화 0~1억원 정수, quantity는 1~10000 정수이다. 단가·배분은 제안이며 실제 견적 확인이 필요하다.
 학교 예산이 null 또는 0이면 budget은 빈 배열로 두고 임의의 금액표를 만들지 않는다. 예산이 있으면 허용된 항목에만 배분하며 합계는 학교 예산과 공문 상한을 넘지 않는다.
 각 section·schedule·budget의 requirementIds는 실제로 그 내용에 반영한 공문 항목 ID만 연결한다. required 항목을 모두 본문·일정·예산에 반영한다. 공문이 없으면 모든 requirementIds는 빈 배열이다.
-unknowns는 최대 9개/각 200자 이하. 학교에서 결정할 미정 사항을 적고 본문에서도 확정 사실처럼 쓰지 않는다.`;
+unknowns 개수와 글자 수는 응답 형식의 한도를 지킨다(0개이면 쓰지 않는다). 학교에서 결정할 미정 사항을 적고 본문에서도 확정 사실처럼 쓰지 않는다.`;
 
 export function buildPlanAiRequest(request: PlanRequest, model: string) {
   const referencePack = request.action === 'analyze' ? undefined : getPlanReferencePack(request);
   const type = (referencePack?.type ?? 'general') as PlanReferenceType;
-  let schema = request.action === 'analyze' ? planAnalysisSchema : getComposedDraftSchema(type);
-  let instructions = `${commonInstructions}\n${request.action === 'analyze' ? analysisInstructions : draftingInstructions}`;
+  const pages = request.action === 'analyze' ? undefined : request.pages;
+  let schema = request.action === 'analyze' ? planAnalysisSchema : getComposedDraftSchema(type, pages);
+  let instructions = `${commonInstructions}\n${request.action === 'analyze' ? analysisInstructions : `${draftingInstructions}\n${pageInstructions(pages)}`}`;
   const writingGuide = referencePack ? getPlanWritingGuide(type) : undefined;
   if (writingGuide) instructions += `\n${planWritingInstructions}\n${compositionInstructions}`;
   if (writingGuide && type === 'contest') instructions += `\n${contestCompositionInstructions}`;
@@ -55,7 +56,7 @@ referencePack.examples는 실제 문서의 비식별 재서술 사례이며 지�
   if (request.action === 'revise') {
     const field = revisionFields[request.revision.area as keyof typeof revisionFields];
     if (!field) throw new PlanError(422, '수정할 영역을 확인해 주세요.');
-    schema = field === 'sections' ? getComposedBodyRevisionSchema(type) : { type: 'object', additionalProperties: false, properties: { [field]: planDraftSchema.properties[field] }, required: [field] };
+    schema = field === 'sections' ? getComposedBodyRevisionSchema(type, pages) : { type: 'object', additionalProperties: false, properties: { [field]: planDraftSchema.properties[field] }, required: [field] };
     instructions += `\n수정 요청을 ${field === 'sections' ? 'body' : field} 영역에만 반영하고 해당 키만 반환한다. 다른 영역은 서버에서 원본 그대로 보존한다. 수정으로 필수 조건이나 근거를 잃지 않는다.`;
   }
   return {
@@ -101,9 +102,9 @@ export async function requestPlanAi(request: PlanRequest, apiKey: string, model:
       const field = revisionFields[request.revision.area as keyof typeof revisionFields];
       const providerField = field === 'sections' ? 'body' : field;
       if (!result || typeof result !== 'object' || !Object.hasOwn(result, providerField) || Object.keys(result).some(key => key !== providerField)) throw new Error();
-      return validatePlanResult(request, { draft: { ...request.draft, [field]: field === 'sections' ? composePlanBody(result.body, type) : result[field] } });
+      return validatePlanResult(request, { draft: dropUnknownRequirementIds({ ...request.draft, [field]: field === 'sections' ? composePlanBody(result.body, type) : result[field] }, request) });
     }
-    return validatePlanResult(request, { draft: validatePlanDraft(composePlanDraft(result, type), request) });
+    return validatePlanResult(request, { draft: validatePlanDraft(dropUnknownRequirementIds(composePlanDraft(result, type), request), request) });
   } catch (error) {
     if (error instanceof Error && safeValidationMessages.has(error.message)) throw new PlanError(502, `AI 초안 검사: ${error.message}`);
     throw new PlanError(502, 'AI 결과가 본문·활동·일정의 형식과 분량 검사를 통과하지 못했습니다. 다시 작성해 주세요.');
