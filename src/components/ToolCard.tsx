@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   ShieldCheck, FileCheck2, ClipboardCheck, Inbox, FileEdit, 
-  Receipt, Award, CalendarClock, SearchCheck, PackageCheck, ArrowRight
+  Receipt, Award, CalendarClock, PackageCheck, ArrowRight
 } from 'lucide-react';
 import type { SchoolTool } from '../types/schooldoc';
 
@@ -20,7 +20,6 @@ export const getToolIcon = (iconName: string): React.FC<{ className?: string }> 
     case 'receipt': return Receipt;
     case 'award': return Award;
     case 'calendar-clock': return CalendarClock;
-    case 'package-search': return SearchCheck;
     case 'package-check': return PackageCheck;
     default: return FileCheck2;
   }
@@ -28,9 +27,9 @@ export const getToolIcon = (iconName: string): React.FC<{ className?: string }> 
 
 export const ToolCard: React.FC<ToolCardProps> = ({ tool, onSelectTool }) => {
   const Icon = getToolIcon(tool.iconName);
-  // 아직 만들지 않은 도구는 열리지 않는다. 눌러서 들어간 화면이 동작하는 것처럼
-  // 보이면 자료를 올려도 되는 줄 알게 된다.
-  const isReady = tool.status === 'ready';
+  // 개발 예정 기능의 안내 화면만 명시적으로 열어 둔다.
+  const isReady = tool.status === 'ready' || tool.previewAvailable === true;
+  const actionLabel = tool.previewAvailable && tool.status !== 'ready' ? '기능 살펴보기' : '시작하기';
 
   return (
     <button
@@ -42,7 +41,7 @@ export const ToolCard: React.FC<ToolCardProps> = ({ tool, onSelectTool }) => {
           ? 'bg-white border-[#DCE3EA] hover:shadow-md hover:border-[#0F6CBD] cursor-pointer'
           : 'bg-[#F8FAFC] border-[#E2E8F0] cursor-not-allowed'
       }`}
-      aria-label={isReady ? `${tool.name} 시작하기. ${tool.desc}` : `${tool.name}. ${tool.desc} 현재 개발 중이라 아직 쓸 수 없습니다.`}
+      aria-label={isReady ? `${tool.name} ${actionLabel}. ${tool.desc}` : `${tool.name}. ${tool.desc} 현재 개발 중이라 아직 쓸 수 없습니다.`}
     >
       <div>
         {/* Header: Icon & Real Status Badge */}
@@ -62,7 +61,7 @@ export const ToolCard: React.FC<ToolCardProps> = ({ tool, onSelectTool }) => {
                   ? 'bg-[#EFF6FC] text-[#0F6CBD] border-[#0F6CBD]/20'
                   : tool.warningCount
                   ? 'bg-[#FFFBEB] text-[#A15C00] border-[#FCD34D]'
-                  : 'bg-[#F1F5F9] text-[#64748B] border-[#E2E8F0]'
+                  : 'bg-[#F1F5F9] text-[#475569] border-[#E2E8F0]'
               }`}
             >
               {tool.statusText}
@@ -90,7 +89,7 @@ export const ToolCard: React.FC<ToolCardProps> = ({ tool, onSelectTool }) => {
       {/* Footer Action Button */}
       {isReady ? (
         <div className="pt-3 mt-3 border-t border-[#F6F8FB] flex items-center justify-between text-sm font-semibold text-[#0F6CBD] group-hover:text-[#0F5B9E]">
-          <span>시작하기</span>
+          <span>{actionLabel}</span>
           <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </div>
       ) : (

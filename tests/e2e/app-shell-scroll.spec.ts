@@ -12,6 +12,7 @@ import { expect, test, type Page } from '@playwright/test';
  * 좁은 창에서 재는 이유는 표가 가로로 넘쳐야 문제가 드러나기 때문이다.
  */
 const SHELL_ROUTES = [
+  ['학교 문서 작성', '/tools/school-documents'],
   ['등록부', '/tools/registry'],
   ['학생 결과 안내', '/tools/student-results/new'],
   ['가정통신문 동의서', '/tools/consent-forms'],
@@ -28,6 +29,8 @@ const SHELL_ROUTES = [
   ['1인 1역 교체', '/tools/classroom-roles/rotate'],
   ['1인 1역 설정', '/tools/classroom-roles/settings'],
   ['학급 미션', '/tools/class-missions'],
+  ['Neis Helper', '/tools/neis-helper'],
+  ['교과 평어 작성', '/tools/neis-helper/subject'],
 ] as const;
 
 const measureBottom = async (page: Page) => page.evaluate(() => {
@@ -47,8 +50,22 @@ test.describe('앱 껍데기 스크롤', () => {
 
   for (const [label, path] of SHELL_ROUTES) {
     test(`${label} 화면을 맨 아래까지 내려도 빈 바닥이 없다`, async ({ page }) => {
+      if (path.startsWith('/tools/neis-helper') || path === '/tools/school-documents') {
+        // 개발 중 안내는 가상 관리자 인증으로만 연다. 운영 로그인을 사용하지 않는다.
+        await page.route('**/src/utils/supabaseClient.ts', route => route.fulfill({ contentType: 'application/javascript', body: `
+          export const isSupabaseConfigured = true;
+          export const supabase = { auth: {
+            getSession: async () => ({ data: { session: { user: {
+              id: 'fixture-shell-admin', email: 'panthea0@gmail.com', email_confirmed_at: '2026-10-05T00:00:00Z', is_anonymous: false, user_metadata: {}, app_metadata: {}
+            } } }, error: null }),
+            onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } })
+          } };
+        ` }));
+      }
       await page.goto(path);
       await page.waitForLoadState('networkidle');
+      if (path === '/tools/neis-helper') await expect(page.getByRole('heading', { name: 'Neis Helper', exact: true })).toBeVisible();
+      if (path === '/tools/school-documents') await expect(page.getByRole('heading', { name: '운영계획서', exact: true })).toBeVisible();
 
       const measured = await measureBottom(page);
       expect(measured.gap, `${label}: 껍데기 아래에 ${measured.gap}px가 비었다`).toBeLessThanOrEqual(1);

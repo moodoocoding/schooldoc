@@ -1,0 +1,120 @@
+{
+  "checkedAt": "2026-11-11T22:16:52.009Z",
+  "source": {
+    "baselineCommit": "d12665fbda7f3e871abf529bc17cb3099b8052a5",
+    "gitPush": false,
+    "mainMerge": false,
+    "portableRelease": false,
+    "integratedWithExistingProduction": true,
+    "stage": "test-results/neis-production-stage",
+    "sourceFingerprint": "425cfae5459f9dec85dd69080395884d3e91ce68782b9c7c7e042935b13ebab9"
+  },
+  "web": {
+    "status": "applied-and-verified",
+    "project": "schooldoc",
+    "projectId": "prj_ODKC2leDICLBfVXY5XNiAW03hKHo",
+    "teamId": "team_oQJpE9BrbFC4SKv8BoQrmCw6",
+    "deploymentId": "dpl_4vDR9CoLJGYJnNCEUVF7M1EmW3bj",
+    "url": "https://schooldoc-nine.vercel.app/tools/neis-helper/subject",
+    "ready": true,
+    "preservedDeployment": "dpl_DY6geeX1v2kvCmCYht6vdz89BoWB",
+    "mainAsset": "/assets/index-BG2_Gulc.js",
+    "mainSha256": "25ca53875ca54030ede3e9f7ad1c838de091013190589f24a8d026f47f9b121d",
+    "artifactFingerprint": "2422d3130478610574130c3f5c9d6bfc54b175be6a2681be4c7cf79ff556fd36",
+    "assetCount": 108,
+    "productionBundleMatches": true
+  },
+  "server": {
+    "status": "applied-and-verified",
+    "projectRef": "jhystopaacyfvjxhnpyd",
+    "function": "neis-helper",
+    "version": 2,
+    "active": true,
+    "verifyJwt": true,
+    "anonymousStatus": 401,
+    "secretsChanged": false,
+    "files": [
+      {
+        "file": "supabase/functions/neis-helper/index.ts",
+        "sha256": "eb0ddcd3536ad9606ef9592432b3a75c228cb0af9538291049c3ceca7f675f4b"
+      },
+      {
+        "file": "supabase/functions/neis-helper/core.ts",
+        "sha256": "6c46233c9e26889eb44d398edeb124a85d5132b8993148444800929d6be901b8"
+      },
+      {
+        "file": "supabase/functions/_shared/neisHelper.ts",
+        "sha256": "5ffff1c6db95932ed9faebdb50c2d4136ee222503aaaf4fc3f4f9fd23f3fb6a4"
+      }
+    ]
+  },
+  "database": {
+    "status": "not-applicable",
+    "newMigration": false,
+    "existingQuotaRpcChecked": true
+  },
+  "liveVerification": {
+    "mocked": false,
+    "planPages": 65,
+    "subject": "수학",
+    "assessments": 2,
+    "verifiedSourcePage": 3,
+    "gradeFile": "fictional XLSX",
+    "students": 3,
+    "realStudentDataUsed": false,
+    "duplicateMappingBlocked": true,
+    "blankGradeBlocked": true,
+    "homonymsPreserved": true,
+    "liveGeneration": true,
+    "teacherReviewUiCompleted": true,
+    "exportReadBack": {
+      "students": 3,
+      "columns": [
+        "번호",
+        "이름",
+        "성적",
+        "평어",
+        "글자 수(공백 포함)",
+        "바이트(줄바꿈 2)",
+        "평가 근거"
+      ],
+      "characters": [
+        "111",
+        "104",
+        "58"
+      ],
+      "bytes": [
+        "273",
+        "237",
+        "144"
+      ],
+      "homonymsPreserved": true,
+      "correctedGradePreserved": true,
+      "evidenceIncluded": true,
+      "sha256": "f2418aa106aa56050c80326147dedd2c401935d73362580cf9002ce4ac830c40"
+    },
+    "preservedSchoolDocumentsPreview": true,
+    "productionScreenshot": "not-captured: browser capture timeout and native monitor bounds error"
+  },
+  "automated": {
+    "unit": {
+      "files": 79,
+      "tests": 642
+    },
+    "integratedE2e": 48,
+    "postFixNeisE2e": 10,
+    "finalExcelE2e": 2,
+    "typecheck": "passed",
+    "lint": "passed; 4 existing warnings",
+    "denoCheck": "passed",
+    "productionBuild": "passed; large chunk and shared static/dynamic import notices"
+  },
+  "limits": [
+    "admin preview access retained",
+    "no real student data or diverse official NEIS layouts",
+    "no live mobile authentication or live 60-student generation",
+    "no semantic correctness guarantee",
+    "tab-memory draft only",
+    "production screenshot not available"
+  ]
+}
