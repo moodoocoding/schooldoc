@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { readFile } from 'node:fs/promises';
 import { unzipSync, strFromU8 } from 'fflate';
 import { jsPDF } from 'jspdf';
-import { analysis, draft, sourceText } from '../fixtures/schoolPlan';
+import { analysis, authoredDraft, draft, sourceText } from '../fixtures/schoolPlan';
 import { authorizePlanRequest, createPlanHandler } from '../../supabase/functions/school-plan/core';
 import { requestPlanAi } from '../../supabase/functions/school-plan/openai';
 import { PLAN_REFERENCE_VERSION } from '../../supabase/functions/_shared/schoolPlanReferences';
@@ -79,7 +79,7 @@ test('유형 자동 추천과 비식별 사례를 실제 요청 코어에 연결
         expect(data.referenceVersion).toBe(PLAN_REFERENCE_VERSION);
         referenceChecked = true;
       }
-      return new Response(JSON.stringify({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(request.action === 'analyze' ? analysis : draft) }] }] }));
+      return new Response(JSON.stringify({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(request.action === 'analyze' ? analysis : authoredDraft) }] }] }));
     }, signal),
   });
   await page.route('**/__test_school_plan', async route => {
@@ -347,7 +347,7 @@ test('실제 클라이언트 → 서버 코어 → Responses 요청 → 초안·
       const payload = JSON.parse(String(init?.body)); providerCalls.push(payload);
       expect(payload.store).toBe(false); expect(payload.text.format.strict).toBe(true);
       expect(payload.input[0].content.every((c: { type: string }) => c.type === 'input_text')).toBe(true);
-      const result = request.action === 'analyze' ? analysis : request.action === 'draft' ? draft : { schedule: draft.schedule.map((s, i) => i ? s : { ...s, when: '10월 셋째 주(안)' }) };
+      const result = request.action === 'analyze' ? analysis : request.action === 'draft' ? authoredDraft : { schedule: draft.schedule.map((s, i) => i ? s : { ...s, when: '10월 셋째 주(안)' }) };
       return new Response(JSON.stringify({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(result) }] }] }));
     }, signal),
   });

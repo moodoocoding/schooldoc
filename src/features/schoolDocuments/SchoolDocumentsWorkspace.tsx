@@ -56,7 +56,7 @@ function PlanWizard({ ownerId }: {
     const controller = useRef<AbortController | null>(null);
     const heading = useRef<HTMLHeadingElement>(null);
     const questionHeading = useRef<HTMLHeadingElement>(null);
-    const context: PlanContext = { sources: state.sources, analysis: state.analysis, answers: state.answers, conditions: state.conditions, referenceType: state.referenceType, referenceVersion: PLAN_REFERENCE_VERSION };
+    const context: PlanContext = { sources: state.sources, analysis: state.analysis, answers: state.answers, conditions: state.conditions, referenceType: state.referenceType, referenceVersion: PLAN_REFERENCE_VERSION, pages: state.pages };
     const current = !!state.draft && state.draftContext === planContextKey(context);
     const patch = (value: Partial<PlanState>) => { setState(s => ({ ...s, ...value })); };
     const go = (step: number) => { setError(''); setEdit(null); setCandidate(null); patch({ step }); };
