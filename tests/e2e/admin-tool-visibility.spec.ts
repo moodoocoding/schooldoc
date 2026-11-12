@@ -64,8 +64,14 @@ async function expectPreviewCards(page: Page, visible: boolean) {
 
 async function openQuickMenu(page: Page, width: number) {
   if (width < 768) await page.getByRole('button', { name: '사이드바 메뉴 열기' }).click();
+  else {
+    await page.locator('aside').hover();
+    await expect(page.locator('aside').getByText(/^퀵 메뉴 \(\d+\/5\)$/)).toBeVisible();
+  }
   await page.getByRole('button', { name: '퀵 메뉴 추가', exact: true }).click();
-  return page.getByRole('dialog');
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  return dialog;
 }
 
 for (const width of [1366, 390]) {
