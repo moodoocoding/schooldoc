@@ -7,6 +7,7 @@ import {
   roleToday,
   validateRoleRecord,
   validateRoleStateChange,
+  validRoleDate,
   type RoleBoard,
   type RoleRecord,
   type RoleState,
@@ -102,11 +103,28 @@ export async function loadRoleRecords(
   start: string,
   end: string,
 ): Promise<RoleRecord[]> {
-  return isRolesDemo
-    ? demoRecords().filter(
-        (r) => r.record_date >= start && r.record_date <= end,
-      )
-    : invoke("classroom-roles-admin", { action: "records", start, end });
+  if (isRolesDemo) {
+    return demoRecords().filter((r) => r.record_date >= start && r.record_date <= end);
+  }
+  const startTime = Date.parse(start);
+  const endTime = Date.parse(end);
+  const day = 86400000;
+  const maxSpan = 31 * day;
+  if (!validRoleDate(start) || !validRoleDate(end) || endTime - startTime <= maxSpan) {
+    return invoke("classroom-roles-admin", { action: "records", start, end });
+  }
+
+  // The admin endpoint accepts at most 31 days between the inclusive endpoints.
+  const records: RoleRecord[] = [];
+  for (let cursor = startTime; cursor <= endTime; cursor += maxSpan + day) {
+    const chunk = await invoke<RoleRecord[]>("classroom-roles-admin", {
+      action: "records",
+      start: new Date(cursor).toISOString().slice(0, 10),
+      end: new Date(Math.min(cursor + maxSpan, endTime)).toISOString().slice(0, 10),
+    });
+    records.push(...chunk);
+  }
+  return records;
 }
 export async function writeRoleRecord(input: {
   periodId: string;
