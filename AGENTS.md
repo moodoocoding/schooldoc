@@ -124,6 +124,7 @@ GitHub 파일 목록의 문구는 파일 설명이 아니라 해당 파일을 �
 | student-results | 학생 결과 안내 |
 | data-collect | 자료 수합 |
 | special-rooms | 특별실 예약 |
+| neis-helper | 나이스 기록 작성 보조 |
 | active-work | 진행 업무 |
 | settings | 설정 |
 | auth | 인증·접근 권한 |

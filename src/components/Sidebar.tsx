@@ -156,31 +156,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
               if (!tool) return null;
               const Icon = getToolIcon(tool.iconName);
               const isReady = tool.status === 'ready';
+              const canOpen = isReady || tool.previewAvailable === true;
               return (
                 <div
                   key={id}
-                  onClick={() => {
-                    if (!isReady) return;
-                    onSelectTool(tool.id);
-                    setIsOpenMobile(false);
-                  }}
-                  className={`group relative flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold transition-colors min-h-[40px] text-left ${
-                    isReady
+                  className={`group relative flex items-center justify-between rounded-xl text-xs font-semibold transition-colors min-h-[44px] text-left ${
+                    canOpen
                       ? 'text-[#334155] hover:bg-[#EFF6FC] hover:text-[#0F6CBD] cursor-pointer'
                       : 'text-[#94A3B8] cursor-not-allowed'
                   }`}
                   title={!isExpanded ? (isReady ? tool.name : `${tool.name} (개발 중)`) : undefined}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
+                  <button
+                    type="button"
+                    disabled={!canOpen}
+                    aria-label={`${tool.name}${isReady ? '' : ' (개발 중)'}`}
+                    onClick={() => {
+                      onSelectTool(tool.id);
+                      setIsOpenMobile(false);
+                    }}
+                    className="flex min-h-[44px] min-w-0 flex-1 items-center gap-3 rounded-xl px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F6CBD] disabled:cursor-not-allowed"
+                  >
                     <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Icon className={`w-4.5 h-4.5 ${isReady ? 'text-[#0F6CBD]' : 'text-[#AAB7C4]'}`} />
+                      <Icon className={`w-4.5 h-4.5 ${canOpen ? 'text-[#0F6CBD]' : 'text-[#AAB7C4]'}`} />
                     </div>
                     {isExpanded && (
-                      <span className={`truncate whitespace-nowrap text-xs ${isReady ? 'font-bold text-[#0F172A]' : 'font-semibold text-[#94A3B8]'}`}>
+                      <span className={`truncate whitespace-nowrap text-xs ${canOpen ? 'font-bold text-[#0F172A]' : 'font-semibold text-[#94A3B8]'}`}>
                         {tool.name}{isReady ? '' : ' (개발 중)'}
                       </span>
                     )}
-                  </div>
+                  </button>
 
                   {isExpanded && (
                     <button
@@ -188,7 +193,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         e.stopPropagation();
                         onRemoveQuickMenu(tool.id);
                       }}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-[#64748B] hover:text-[#B42318] transition-opacity ml-1 flex-shrink-0"
+                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 min-h-[44px] px-2 text-[#64748B] hover:text-[#B42318] transition-opacity flex-shrink-0"
+                      aria-label={`${tool.name} 퀵 메뉴 삭제`}
                       title="퀵 메뉴 삭제"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

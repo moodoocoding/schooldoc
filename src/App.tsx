@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { HomeWorkspace } from './components/HomeWorkspace';
@@ -21,6 +21,9 @@ import { useAppearanceSettings } from './features/settings/appearanceContext';
 import { PublicClassroomRolesPage } from './features/classroomRoles/PublicClassroomRolesPage';
 import { ClassMissionsWorkspace } from './features/classMissions/ClassMissionsWorkspace';
 import { PublicClassMissionsPage } from './features/classMissions/PublicClassMissionsPage';
+import { NeisHelperPage } from './features/neisHelper/NeisHelperPage';
+import { SubjectWorkspace } from './features/neisHelper/SubjectWorkspace';
+import { clearNeisDraftUnless } from './features/neisHelper/subjectDraft';
 import { canAccessClassBudgetReceipts } from './features/classBudgetReceipts/classBudgetReceiptsConfig';
 import { useTeacherAuth } from './auth/teacherAuth';
 import { getVisibleSchoolTools } from './auth/schoolToolVisibility';
@@ -36,8 +39,9 @@ function AdminApp() {
   const { user, loading: authLoading, signIn, error: authError } = useTeacherAuth();
   const { settings: appearance } = useAppearanceSettings();
   const canUseReceiptBooks = canAccessClassBudgetReceipts(user);
+  useEffect(() => { clearNeisDraftUnless(user?.id ?? ''); }, [user?.id]);
 
-  // 개발 중인 네 도구의 공개 범위는 아래 공통 필터에서 구분한다.
+  // 개발 중 도구의 공개 범위는 아래 공통 필터에서 구분한다.
   const allToolsMap: Record<string, SchoolTool> = {
     'class-missions': {
       id: 'class-missions',
@@ -128,6 +132,15 @@ function AdminApp() {
       status: 'in_progress',
       statusText: '개발 중',
     },
+    'neis-comments': {
+      id: 'neis-comments',
+      name: 'Neis Helper',
+      desc: '평가계획과 나이스 성적을 확인해 근거에 맞는 교과 평어를 작성합니다.',
+      iconName: 'file-pen',
+      status: 'in_progress',
+      statusText: '개발 중',
+      previewAvailable: true,
+    },
   };
 
   const visibleToolsMap = getVisibleSchoolTools(allToolsMap, user, authLoading);
@@ -141,6 +154,7 @@ function AdminApp() {
   const isReceiptBooksRoute = location.pathname.startsWith('/tools/receipts');
   const isClassroomRolesRoute = location.pathname.startsWith('/tools/classroom-roles');
   const isClassMissionsRoute = location.pathname.startsWith('/tools/class-missions');
+  const isNeisHelperRoute = ['/tools/neis-helper', '/tools/neis-helper/subject'].includes(location.pathname) && Boolean(visibleToolsMap['neis-comments']);
   const isRoleAssignmentRoute = /^\/tools\/classroom-roles\/(assign|rotate)$/.test(location.pathname);
 
   const toolRoutes: Record<string, string> = {
@@ -152,6 +166,7 @@ function AdminApp() {
     'special-room': '/tools/special-rooms',
     'data-collect': '/tools/data-collect',
     'receipt-auto': '/tools/receipts',
+    'neis-comments': '/tools/neis-helper',
   };
 
   const handleSelectTool = (toolId: string) => {
@@ -160,6 +175,7 @@ function AdminApp() {
     // 아직 만들지 않은 도구는 열지 않는다. 단계와 업로드가 있는 화면이 열리면
     // 동작하는 줄 알고 자료를 올리게 된다.
     if (!route) return;
+    if (toolId === 'neis-comments') setActiveTab('home');
     navigate(route);
   };
 
@@ -209,7 +225,7 @@ function AdminApp() {
         건드리지 않는다.
       */}
       <div className="flex-1 flex flex-col min-w-0">
-        {isRegistryRoute || isStudentResultsRoute || isConsentFormsRoute || isSpecialRoomsRoute || isDataCollectRoute || isReceiptBooksRoute || isClassroomRolesRoute || isClassMissionsRoute ? (
+        {isRegistryRoute || isStudentResultsRoute || isConsentFormsRoute || isSpecialRoomsRoute || isDataCollectRoute || isReceiptBooksRoute || isClassroomRolesRoute || isClassMissionsRoute || isNeisHelperRoute ? (
           <main className={`min-w-0 overflow-x-clip p-4 sm:p-8 ${isRoleAssignmentRoute ? 'role-assignment-main' : ''}`}>
             {isRegistryRoute ? <RegistryWorkspace />
               : isStudentResultsRoute ? <StudentResultsWorkspace />
@@ -217,6 +233,7 @@ function AdminApp() {
               : isSpecialRoomsRoute ? <SpecialRoomsWorkspace />
               : isDataCollectRoute ? <DataCollectWorkspace />
               : isClassMissionsRoute ? <ClassMissionsWorkspace />
+              : isNeisHelperRoute ? location.pathname.endsWith('/subject') ? <SubjectWorkspace key={user?.id} /> : <NeisHelperPage />
               : isClassroomRolesRoute ? <Routes><Route path="/tools/classroom-roles/*" element={<ClassroomRolesWorkspace />} /></Routes>
               : !authLoading && canUseReceiptBooks ? <ReceiptBooksWorkspace key={user?.id} />
                 : <section className="mx-auto max-w-xl border-y border-[#DCE3EA] bg-white px-6 py-16 text-center">

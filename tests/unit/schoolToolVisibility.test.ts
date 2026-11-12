@@ -4,13 +4,13 @@ import type { SchoolTool } from '../../src/types/schooldoc';
 
 const admin = { id: 'fixture-admin', email: 'panthea0@gmail.com', email_confirmed_at: '2026-10-05T00:00:00Z', is_anonymous: false };
 const teacher = { ...admin, id: 'fixture-teacher', email: 'teacher@example.invalid' };
-const previewIds = ['cert-collect', 'doc-sign', 'lost-found', 'item-rent'];
+const previewIds = ['cert-collect', 'doc-sign', 'lost-found', 'item-rent', 'neis-comments'];
 const publicIds = ['class-missions', 'classroom-roles', 'student-lookup', 'notice-collect', 'registry-sign', 'data-collect', 'special-room', 'receipt-auto'];
 const tools: Record<string, SchoolTool> = Object.fromEntries([...publicIds, ...previewIds].map(id => [id, {
   id, name: id, desc: '가상 도구', iconName: 'inbox', status: previewIds.includes(id) ? 'in_progress' : 'ready',
 }]));
 
-describe('개발 중 네 도구의 관리자 전용 표시', () => {
+describe('개발 중 도구의 관리자 전용 표시', () => {
   test('확인된 기존 관리자 계정만 볼 수 있다', () => {
     expect(canViewAdminPreviewTools(admin)).toBe(true);
     expect(canViewAdminPreviewTools({ ...admin, email: ' PANTHEA0@GMAIL.COM ' })).toBe(true);
@@ -35,7 +35,7 @@ describe('개발 중 네 도구의 관리자 전용 표시', () => {
     const visible = getVisibleSchoolTools(tools, teacher);
     expect(Object.keys(visible)).toEqual(publicIds);
     for (const id of publicIds) expect(visible[id]).toBe(tools[id]);
-    expect(Object.keys(tools)).toHaveLength(12);
+    expect(Object.keys(tools)).toHaveLength(13);
     expect(getVisibleSchoolTools(tools, admin)).toEqual(tools);
   });
 });

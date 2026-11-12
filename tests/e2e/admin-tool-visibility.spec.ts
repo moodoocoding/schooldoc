@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 
 const admin = { id: 'fixture-preview-admin', email: 'panthea0@gmail.com', email_confirmed_at: '2026-10-05T00:00:00Z', is_anonymous: false, app_metadata: {}, user_metadata: { name: '가상 관리자' } };
 const teacher = { ...admin, id: 'fixture-preview-teacher', email: 'teacher@example.invalid', user_metadata: { name: '가상 일반 교사' } };
-const previewNames = ['이수증 수합', '문서 서명', '분실물 관리', '물품 대여'];
+const previewNames = ['이수증 수합', '문서 서명', '분실물 관리', '물품 대여', 'Neis Helper'];
 type FixtureUser = typeof admin | null;
 
 async function setup(page: Page, user: FixtureUser, pending = false) {
@@ -41,16 +41,17 @@ async function changeUser(page: Page, user: FixtureUser) {
 
 async function expectPreviewCards(page: Page, visible: boolean) {
   for (const name of previewNames) {
-    const card = page.getByRole('main').getByRole('button', { name: new RegExp(`^${name}\\.`) });
+    const card = page.getByRole('main').getByRole('button', { name: new RegExp(`^${name}(?: 기능 살펴보기)?\\.`) });
     if (visible) {
       await expect(card).toBeVisible();
-      await expect(card).toBeDisabled();
+      if (name === 'Neis Helper') await expect(card).toBeEnabled();
+      else await expect(card).toBeDisabled();
       await expect(card).toContainText('개발 중');
     } else {
       await expect(card).toHaveCount(0);
     }
   }
-  await expect(page.getByRole('heading', { name: `전체 업무 도구 (${visible ? 12 : 8})`, exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: `전체 업무 도구 (${visible ? 13 : 8})`, exact: true })).toBeVisible();
 }
 
 async function openQuickMenu(page: Page, width: number) {
@@ -159,10 +160,74 @@ for (const [label, user] of [
 
 test('미구현 도구 주소를 직접 입력해도 일반 사용자에게는 숨겨진 홈만 보여준다', async ({ page }) => {
   const evidence = await setup(page, teacher);
-  for (const id of ['cert-collect', 'doc-sign', 'lost-found', 'item-rent']) {
+  for (const id of ['cert-collect', 'doc-sign', 'lost-found', 'item-rent', 'neis-helper']) {
     await page.goto(`/tools/${id}`);
     await expectPreviewCards(page, false);
   }
+  expect(evidence.errors).toEqual([]);
+  expect(evidence.remoteCalls).toEqual([]);
+});
+
+for (const [label, width, zoom] of [['desktop', 1366, 1], ['mobile', 390, 1], ['zoom', 683, 2]] as const) {
+  test(`Neis Helper 네 기능 안내와 돌아가기 ${label}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    const evidence = await setup(page, admin);
+    await page.goto('/');
+    const entry = page.getByRole('button', { name: /^Neis Helper 기능 살펴보기/ });
+    await entry.focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/tools\/neis-helper$/);
+    await expect(page.getByRole('heading', { name: 'Neis Helper', exact: true })).toBeVisible();
+    if (zoom > 1) await page.evaluate(value => { document.documentElement.style.zoom = String(value); }, zoom);
+    for (const name of ['교과학습발달상황(세특)', '행동특성 및 발달상황', '창체 누가기록 및 특기·적성', '학교스포츠클럽 특기사항']) {
+      const implemented = name === '교과학습발달상황(세특)';
+      const button = page.getByRole('button', { name: `${name}. ${implemented ? '평어 작성 시작' : '개발 예정'}`, exact: true });
+      await expect(button).toBeVisible();
+      if (implemented) await expect(button).toBeEnabled();
+      else await expect(button).toBeDisabled();
+    }
+    await expect(page.getByRole('main').getByRole('textbox')).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+    const accessibility = await new AxeBuilder({ page }).include('main').analyze();
+    expect(accessibility.violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath('neis-helper-full.png'), fullPage: true });
+    await page.getByRole('button', { name: '업무 도구로', exact: true }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/$/);
+    await expect(entry).toBeVisible();
+    expect(evidence.errors).toEqual([]);
+    expect(evidence.remoteCalls).toEqual([]);
+  });
+}
+
+test('Neis Helper 퀵 메뉴를 키보드로 열고 계정 전환 시 안내 화면도 숨긴다', async ({ page }) => {
+  const evidence = await setup(page, admin);
+  await page.goto('/');
+  await expectPreviewCards(page, true);
+  await page.locator('aside').hover();
+  const dialog = await openQuickMenu(page, 1366);
+  await dialog.getByRole('button', { name: 'Neis Helper + 추가', exact: true }).click();
+  const quickButton = page.locator('aside').getByRole('button', { name: 'Neis Helper (개발 중)', exact: true });
+  await quickButton.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { name: 'Neis Helper', exact: true })).toBeVisible();
+  await changeUser(page, teacher);
+  await expectPreviewCards(page, false);
+  await expect(quickButton).toHaveCount(0);
+  await changeUser(page, admin);
+  await expect(page.getByRole('heading', { name: 'Neis Helper', exact: true })).toBeVisible();
+  await changeUser(page, null);
+  await expectPreviewCards(page, false);
+  expect(evidence.errors).toEqual([]);
+  expect(evidence.remoteCalls).toEqual([]);
+});
+
+test('Neis Helper 직접 주소에서도 세션 확인 전에는 안내를 숨긴다', async ({ page }) => {
+  const evidence = await setup(page, admin, true);
+  await page.goto('/tools/neis-helper');
+  await expectPreviewCards(page, false);
+  await page.evaluate(() => (window as unknown as { __previewResolveSession: () => void }).__previewResolveSession());
+  await expect(page.getByRole('heading', { name: 'Neis Helper', exact: true })).toBeVisible();
   expect(evidence.errors).toEqual([]);
   expect(evidence.remoteCalls).toEqual([]);
 });
