@@ -11,9 +11,6 @@ export type SubjectStep =
   | 'grade-upload'
   | 'sheet'
   | 'header'
-  | 'mapping'
-  | 'coverage'
-  | 'roster'
   | 'grades'
   | 'length'
   | 'results';
@@ -23,47 +20,56 @@ export interface CommentDraft {
   reviewed: boolean;
   error: string;
 }
+export interface AssessmentWorksheet {
+  file: File;
+  convertedFile: File | null;
+  text: string;
+  taskContext: string;
+  warning: string;
+}
 export interface SubjectDraft {
   step: SubjectStep;
   planFile: File | null;
   planPdf: File | null;
   gradeFile: File | null;
+  gradePdf: File | null;
   plan: AssessmentPlan | null;
   subject: string;
-  planIndex: number;
+  reviewAssessmentId: string;
+  worksheetAssessmentId: string;
+  worksheets: Record<string, AssessmentWorksheet>;
   sheets: ImportSheet[];
   sheetIndex: number;
   headerIndex: number;
+  bookOrigin: { sheetIndex: number; headerIndex: number } | null;
   book: GradeBook | null;
   originalBook: GradeBook | null;
   excludedRows: GradeBook['students'];
   mappings: Record<string, string>;
-  columnIndex: number;
-  gradeIndex: number;
   length: 200 | 300 | 400;
   results: Record<string, CommentDraft>;
-  studentIndex: number;
 }
 export const emptySubjectDraft = (): SubjectDraft => ({
   step: 'plan-upload',
   planFile: null,
   planPdf: null,
   gradeFile: null,
+  gradePdf: null,
   plan: null,
   subject: '',
-  planIndex: 0,
+  reviewAssessmentId: '',
+  worksheetAssessmentId: '',
+  worksheets: {},
   sheets: [],
   sheetIndex: 0,
   headerIndex: -1,
+  bookOrigin: null,
   book: null,
   originalBook: null,
   excludedRows: [],
   mappings: {},
-  columnIndex: 0,
-  gradeIndex: 0,
   length: 200,
   results: {},
-  studentIndex: 0,
 });
 // 개인정보는 영구 저장하지 않는다. 같은 로그인 계정의 탭 내부 이동만 복원한다.
 let owner = '';

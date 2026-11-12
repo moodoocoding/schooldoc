@@ -1,108 +1,42 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check } from 'lucide-react';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import {
-  assessmentProblems,
-  buildEvidence,
-  GRADE_LABELS,
-  mappingProblems,
-  missingGrades,
-  normalizeGrade,
-  repeatedCommentIds,
-  rosterProblems,
-  SKIP_COLUMN,
-  suggestAssessment,
+  assessmentProblems, buildEvidence, GRADE_LABELS, mappingProblems, missingGrades, normalizeGrade,
+  repeatedCommentIds, rosterProblems, SKIP_COLUMN,
 } from '../../../supabase/functions/_shared/neisHelper';
-import type { Assessment, GradeBook } from '../../../supabase/functions/_shared/neisHelper';
-import { analyzeGradePdf, analyzePlan, generateComment } from './subjectApi';
-import {
-  checkFile,
-  exportComments,
-  findHeaderRows,
-  GRADE_ACCEPT,
-  isHangulPlan,
-  parseGradeSheet,
-  PLAN_ACCEPT,
-  readGradeSheets,
-} from './subjectFiles';
+import type { Assessment, GradeBook, GradeStudent } from '../../../supabase/functions/_shared/neisHelper';
+import { analyzeGradeDocument, analyzePlan, generateClassComments, readWorksheet } from './subjectApi';
+import { checkFile, exportComments, findHeaderRows, GRADE_ACCEPT, isHangulFile, isPdfOrHangul, parseGradeSheet, PLAN_ACCEPT, readGradeSheets } from './subjectFiles';
 import { emptySubjectDraft, readSubjectDraft, saveSubjectDraft } from './subjectDraft';
 import type { SubjectDraft, SubjectStep } from './subjectDraft';
-import {
-  AssessmentReview,
-  GradeReview,
-  inputClass,
-  primaryClass,
-  ResultReview,
-  RosterReview,
-  secondaryClass,
-} from './SubjectSteps';
+import { AssessmentReview, inputClass, primaryClass, secondaryClass } from './SubjectSteps';
 import { NeisSourcePreview } from './NeisSourcePreview';
 import { SubjectFilePicker } from './SubjectFilePicker';
+import { WorksheetStep } from './WorksheetStep';
+import { ClassGradeReview } from './ClassGradeReview';
+import { ClassResultTable } from './ClassResultTable';
+import { automaticMappings, buildClassRequest } from './classWorkflow';
+import { matchWorksheet } from './sourcePages';
 
-const steps: Record<SubjectStep, { group: number; title: string; description: string }> = {
-  'plan-upload': {
-    group: 0,
-    title: '평가계획을 올려 주세요',
-    description: '성취기준과 ◎·○·△ 평가기준이 있는 파일 한 개를 선택하세요.',
-  },
-  subject: {
-    group: 0,
-    title: '작성할 교과를 선택하세요',
-    description: '이번에는 한 교과의 평어를 작성합니다.',
-  },
-  'plan-review': {
-    group: 0,
-    title: '평가기준을 확인하세요',
-    description: '원본과 같은지 확인하세요. 잘못 읽힌 부분만 수정하면 됩니다.',
-  },
-  'grade-upload': {
-    group: 1,
-    title: '나이스 성적 파일을 올려 주세요',
-    description: '한 학급의 번호·이름·수행평가 성적이 있는 파일을 선택하세요.',
-  },
-  sheet: {
-    group: 1,
-    title: '성적표가 있는 시트를 선택하세요',
-    description: '한 학급의 성적이 들어 있는 시트 한 개를 선택하세요.',
-  },
-  header: {
-    group: 1,
-    title: '표의 제목 행을 선택하세요',
-    description: '번호·이름·평가 항목의 제목이 적힌 행을 선택하세요.',
-  },
-  mapping: {
-    group: 1,
-    title: '같은 평가인지 확인하세요',
-    description: '나이스의 이 열이 평가계획의 어떤 평가인지 선택하세요.',
-  },
-  coverage: {
-    group: 1,
-    title: '이번 평어의 작성 범위를 확인하세요',
-    description: '연결된 평가만 평어에 반영됩니다. 빠진 평가가 있다면 연결을 다시 확인하세요.',
-  },
-  roster: {
-    group: 2,
-    title: '학생 명단을 확인하세요',
-    description: '원본의 번호·이름·인원과 대조하세요. 동명이인은 번호로 구분합니다.',
-  },
-  grades: {
-    group: 2,
-    title: '학생별 성적을 확인하세요',
-    description: '이 평가의 성적만 확인합니다. 빈칸이나 잘못 읽힌 성적을 원본에 맞게 고쳐 주세요.',
-  },
-  length: {
-    group: 3,
-    title: '평어 분량을 선택하세요',
-    description: '확인한 평가기준과 성적을 근거로 초안을 만듭니다.',
-  },
-  results: {
-    group: 3,
-    title: '근거와 평어를 함께 검토하세요',
-    description: '학생별로 내용을 수정하고 검토를 완료하세요. 수정하면 다시 검토 전 상태가 됩니다.',
-  },
+const steps: Record<SubjectStep, { group: number; title: string; description: string; action: string }> = {
+  'plan-upload': { group: 0, title: '평가계획을 올려 주세요', description: '성취기준과 ◎·○·△ 평가기준이 있는 파일을 선택하세요.', action: '평가계획 분석' },
+  subject: { group: 0, title: '작성할 교과를 선택하세요', description: '이번 학급의 평어를 작성할 교과를 선택하세요.', action: '이 교과로 계속' },
+  'plan-review': { group: 0, title: '평가 자료를 확인하세요', description: '원문과 대조가 필요한 평가를 확인하고, 실제 평가에 사용한 빈 평가지 양식을 추가하세요.', action: '확인하고 성적표로' },
+  'grade-upload': { group: 1, title: '나이스 성적 파일을 올려 주세요', description: '한 학급의 번호·이름·수행평가 성적이 있는 파일을 선택하세요.', action: '성적표 불러오기' },
+  sheet: { group: 1, title: '성적표가 있는 시트를 선택하세요', description: '한 학급의 성적이 들어 있는 시트를 고르세요.', action: '이 시트 사용' },
+  header: { group: 1, title: '표의 제목 행을 선택하세요', description: '번호·이름·평가 항목의 제목이 적힌 행을 선택하세요.', action: '이 제목 행 사용' },
+  grades: { group: 1, title: '명단과 성적을 확인하세요', description: '번호순으로 학생 전체를 확인하세요. 확인이 필요한 연결과 성적은 이 화면에서 수정할 수 있습니다.', action: '명단·성적 확인 완료' },
+  length: { group: 2, title: '평어 분량을 선택하세요', description: '확인한 자료로 학급 전체의 평어 초안을 한 번에 작성합니다.', action: '학급 평어 생성' },
+  results: { group: 3, title: '학급 평어를 확인하세요', description: '번호순으로 평어를 검토하세요. 시작이나 문장이 겹치는 행은 따로 표시됩니다.', action: '전체 평어 검토 완료' },
 };
-const groups = ['평가계획', '평가 연결', '성적 확인', '평어 작성'];
+const groups = ['평가 자료', '명단·성적', '작성 옵션', '결과'];
+
+const clearGrade = (file: File | null = null) => ({
+  gradeFile: file, gradePdf: null, sheets: [], sheetIndex: 0, headerIndex: -1, bookOrigin: null,
+  book: null, originalBook: null, excludedRows: [], mappings: {}, results: {},
+});
 
 export function SubjectWorkspace() {
   const { user } = useTeacherAuth();
@@ -112,913 +46,366 @@ export function SubjectWorkspace() {
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [generationProgress, setGenerationProgress] = useState({ done: 0, total: 0 });
   const request = useRef<AbortController | null>(null);
-  const generation = useRef(0);
-  const mounted = useRef(true);
   const heading = useRef<HTMLHeadingElement>(null);
-  const assessments = draft.plan?.assessments.filter((a) => a.subject === draft.subject) ?? [];
-  const assessment = assessments[draft.planIndex];
-  const book = draft.book;
-  const column = book?.columns[draft.columnIndex];
-  const usedColumns =
-    book?.columns.flatMap((c, i) =>
-      draft.mappings[c.id] && draft.mappings[c.id] !== SKIP_COLUMN ? [i] : [],
-    ) ?? [];
-  const gradeColumn = usedColumns[draft.gradeIndex];
-  const unused = assessments.filter((a) => !Object.values(draft.mappings).includes(a.id));
+  const reviewHeading = useRef<HTMLHeadingElement>(null);
+  const reviewTrigger = useRef<HTMLButtonElement | null>(null);
+  const { book, results, step } = draft;
+  const subjects = [...new Set(draft.plan?.assessments.map((item) => item.subject))];
+  const assessments = draft.plan?.assessments.filter((item) => item.subject === draft.subject) ?? [];
+  const worksheetAssessment = assessments.find((item) => item.id === draft.worksheetAssessmentId) ?? assessments[0];
+  const reviewAssessment = assessments.find((item) => item.id === draft.reviewAssessmentId);
+  const planIssues = assessments.filter((item) => !item.sourcePage || item.warnings.length > 0 || assessmentProblems(item).length > 0);
+  const worksheetIssues = assessments.filter((item) => draft.worksheets[item.id]?.warning);
   const students = book?.students.toSorted((a, b) => Number(a.number) - Number(b.number)) ?? [];
-  const student = students[draft.studentIndex];
-  const result = student ? draft.results[student.id] : undefined;
-  const repeats = repeatedCommentIds(
-    Object.entries(draft.results).map(([id, row]) => ({ id, text: row.text })),
-  );
-  const allReviewed =
-    students.length > 0 &&
-    students.every((s) => draft.results[s.id]?.reviewed && draft.results[s.id]?.text.trim());
-  const meta = steps[draft.step];
-  const patch = (update: Partial<SubjectDraft>) => setDraft((prev) => ({ ...prev, ...update }));
-  const move = (step: SubjectStep, update: Partial<SubjectDraft> = {}) => {
+  const usedColumns = book?.columns.flatMap((column, index) => draft.mappings[column.id] && draft.mappings[column.id] !== SKIP_COLUMN ? [index] : []) ?? [];
+  const mapIssues = book ? mappingProblems(book, assessments, draft.mappings) : [];
+  const repeats = useMemo(() => repeatedCommentIds(Object.entries(results).map(([id, row]) => ({ id, text: row.text }))), [results]);
+  const missingResults = students.filter((student) => !results[student.id]?.text.trim() || results[student.id]?.error);
+  const allReviewed = students.length > 0 && !missingResults.length && !repeats.size && students.every((student) => results[student.id]?.reviewed);
+  const meta = steps[step];
+  const headerRows = draft.sheets[draft.sheetIndex]?.data;
+  const headerChoices = step === 'header' && headerRows
+    ? [...new Set([...headerRows.slice(0, 100).keys(), ...findHeaderRows(headerRows)])].toSorted((a, b) => a - b)
+    : [];
+  const patch = (update: Partial<SubjectDraft>) => setDraft((current) => ({ ...current, ...update }));
+  const move = (next: SubjectStep, update: Partial<SubjectDraft> = {}) => {
     setError('');
     setNotice('');
-    patch({ step, ...update });
+    patch({ ...update, step: next });
   };
-  useEffect(() => {
-    saveSubjectDraft(owner, draft);
-  }, [owner, draft]);
-  useEffect(() => {
-    mounted.current = true;
-    const stopLatestRequest = () => {
-      generation.current++;
-      request.current?.abort();
-    };
-    return () => {
-      mounted.current = false;
-      stopLatestRequest();
-    };
-  }, []);
-  useEffect(() => {
-    heading.current?.focus();
-    window.scrollTo({ top: 0 });
-  }, [draft.step, draft.planIndex, draft.columnIndex, draft.gradeIndex, draft.studentIndex]);
-  useEffect(() => {
-    if (!draft.planFile && !draft.book) return;
-    const beforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    window.addEventListener('beforeunload', beforeUnload);
-    return () => window.removeEventListener('beforeunload', beforeUnload);
-  }, [draft.planFile, draft.book]);
 
-  async function run(label: string, action: (signal: AbortSignal, current: () => boolean) => Promise<void>) {
+  useEffect(() => { saveSubjectDraft(owner, draft); }, [owner, draft]);
+  useEffect(() => () => { request.current?.abort(); }, []);
+  useEffect(() => { heading.current?.focus(); window.scrollTo({ top: 0 }); }, [step]);
+  useEffect(() => { if (step === 'plan-review' && draft.reviewAssessmentId) reviewHeading.current?.focus(); }, [step, draft.reviewAssessmentId]);
+  useEffect(() => {
+    if (!draft.planFile && !book) return;
+    const unload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', unload);
+    return () => window.removeEventListener('beforeunload', unload);
+  }, [draft.planFile, book]);
+
+  async function run(label: string, operation: (signal: AbortSignal) => Promise<void>) {
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
-    const id = ++generation.current;
-    const current = () => mounted.current && id === generation.current && !controller.signal.aborted;
-    setBusy(label);
-    setError('');
-    setNotice('');
-    try {
-      await action(controller.signal, current);
-    } catch (e) {
-      if (current()) setError(e instanceof Error ? e.message : '요청에 실패했습니다. 다시 시도해 주세요.');
+    setError(''); setNotice(''); setBusy(label);
+    try { await operation(controller.signal); }
+    catch (cause) {
+      if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : '요청에 실패했습니다. 다시 시도해 주세요.');
     } finally {
-      if (mounted.current && id === generation.current) setBusy('');
+      if (request.current === controller && !controller.signal.aborted) { request.current = null; setBusy(''); }
     }
   }
-  function cancel() {
-    generation.current++;
-    request.current?.abort();
-    setBusy('');
-    setNotice('중단했습니다. 이미 확인한 자료와 생성이 끝난 평어는 유지됩니다.');
-  }
-  function setBook(next: GradeBook) {
-    patch({
-      book: next,
-      originalBook: structuredClone(next),
-      mappings: {},
-      columnIndex: 0,
-      gradeIndex: 0,
-      excludedRows: [],
-      results: {},
-      step: 'mapping',
-    });
-  }
-  function editAssessment(next: Assessment) {
-    setDraft((prev) => ({
-      ...prev,
-      plan: prev.plan
-        ? { ...prev.plan, assessments: prev.plan.assessments.map((a) => (a.id === next.id ? next : a)) }
-        : null,
-      results: {},
-    }));
-  }
-  function selectFiles(files: FileList | null, kind: 'plan' | 'grades') {
+
+  function selectedFile(files: FileList | null) {
     if (busy || !files?.length) return;
     setNotice('');
-    if (files.length !== 1) {
-      setError('한 번에 파일 한 개를 넣어 주세요.');
-      return;
-    }
+    if (files.length !== 1) { setError('한 번에 파일 한 개를 넣어 주세요.'); return; }
     setError('');
+    return files[0];
+  }
+  function selectFile(files: FileList | null, kind: 'plan' | 'grades') {
+    const file = selectedFile(files);
+    if (!file) return;
     try {
-      const file = files[0];
       checkFile(file, kind);
       if (kind === 'plan') setDraft({ ...emptySubjectDraft(), planFile: file });
-      else
-        patch({
-          gradeFile: file,
-          book: null,
-          originalBook: null,
-          sheets: [],
-          mappings: {},
-          results: {},
-          excludedRows: [],
-        });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '파일을 확인해 주세요.');
-    }
+      else patch(clearGrade(file));
+    } catch (cause) { setError(cause instanceof Error ? cause.message : '파일을 확인해 주세요.'); }
   }
-  async function startGeneration(ids?: string[]) {
-    if (
-      !book ||
-      mappingProblems(book, assessments, draft.mappings).length ||
-      missingGrades(book, draft.mappings).length ||
-      rosterProblems(book.students).length
-    ) {
-      setError('명단·평가 연결·성적 확인을 마친 뒤 생성해 주세요.');
-      return;
-    }
-    const targets = students.filter((s) => !ids || ids.includes(s.id));
-    if (!ids) patch({ results: {}, step: 'results', studentIndex: 0 });
-    setGenerationProgress({ done: 0, total: targets.length });
-    await run('평어를 생성하고 있습니다.', async (signal, current) => {
-      for (const [index, target] of targets.entries()) {
-        if (!current()) return;
-        try {
-          const evidence = buildEvidence(book, target.id, assessments, draft.mappings);
-          const generated = await generateComment(
-            { subject: draft.subject, length: draft.length, evidence },
-            signal,
-          );
-          if (!current()) return;
-          setDraft((prev) => ({
-            ...prev,
-            results: {
-              ...prev.results,
-              [target.id]: {
-                generated,
-                text: generated.sentences.map((s) => s.text).join(' '),
-                reviewed: false,
-                error: '',
-              },
-            },
-          }));
-        } catch (e) {
-          if (!current()) return;
-          const message = e instanceof Error ? e.message : '평어를 생성하지 못했습니다.';
-          setDraft((prev) => ({
-            ...prev,
-            results: {
-              ...prev.results,
-              [target.id]: {
-                text: prev.results[target.id]?.text ?? '',
-                generated: prev.results[target.id]?.generated ?? null,
-                reviewed: false,
-                error: message,
-              },
-            },
-          }));
-          if (/한도|로그인|서버/.test(message)) {
-            setError(
-              `${target.number}번에서 중단했습니다. 완료된 평어는 유지되며 미생성 항목을 다시 시도할 수 있습니다. ${message}`,
-            );
-            return;
-          }
-        }
-        setGenerationProgress({ done: index + 1, total: targets.length });
-      }
+  async function selectWorksheet(files: FileList | null) {
+    const file = selectedFile(files);
+    if (!file || !worksheetAssessment) return;
+    const { id } = worksheetAssessment;
+    await run('평가지를 브라우저에서 읽고 있습니다.', async (signal) => {
+      const source = await readWorksheet(file, signal);
+      signal.throwIfAborted();
+      const comparison = matchWorksheet(source.text, id, assessments);
+      setDraft((current) => ({ ...current, worksheets: { ...current.worksheets, [id]: { file, ...source, ...comparison } }, results: {} }));
     });
   }
-  async function next() {
+  function editWorksheet(text: string) {
+    const id = worksheetAssessment?.id;
+    if (!id || !draft.worksheets[id]) return;
+    patch({ worksheets: { ...draft.worksheets, [id]: { ...draft.worksheets[id], taskContext: text, warning: text.trim() ? '' : matchWorksheet(draft.worksheets[id].text, id, assessments).warning } }, results: {} });
+  }
+  function removeWorksheet() {
+    const id = worksheetAssessment?.id;
+    if (!id) return;
+    const worksheets = { ...draft.worksheets };
+    delete worksheets[id];
+    patch({ worksheets, results: {} });
     setError('');
-    setNotice('');
-    if (draft.step === 'plan-upload' && draft.planFile) {
-      if (draft.plan) {
-        move('subject');
-        return;
-      }
+  }
+  function editAssessment(item: Assessment) {
+    if (!draft.plan) return;
+    patch({ plan: { ...draft.plan, assessments: draft.plan.assessments.map((previous) => previous.id === item.id ? item : previous) }, results: {} });
+  }
+  function openReview(id: string, trigger: HTMLButtonElement) {
+    reviewTrigger.current = trigger;
+    if (id === draft.reviewAssessmentId) reviewHeading.current?.focus();
+    else patch({ reviewAssessmentId: id });
+  }
+
+  function setBook(next: GradeBook, extra: Partial<SubjectDraft> = {}) {
+    move('grades', { book: next, originalBook: structuredClone(next), mappings: automaticMappings(next, assessments), results: {}, excludedRows: [], ...extra });
+  }
+  function updateStudent(id: string, update: Partial<GradeStudent>) {
+    if (!book) return;
+    patch({ book: { ...book, students: book.students.map((student) => student.id === id ? { ...student, ...update } : student) }, results: {} });
+  }
+  function excludeStudent(id: string) {
+    const row = book?.students.find((student) => student.id === id);
+    if (!book || !row) return;
+    patch({ book: { ...book, students: book.students.filter((student) => student.id !== id) }, excludedRows: [...draft.excludedRows, row], results: {} });
+  }
+
+  async function startGeneration(ids?: Set<string>) {
+    if (!book || mapIssues.length || missingGrades(book, draft.mappings).length || rosterProblems(students).length) return;
+    const targets = students.filter((student) => !ids || ids.has(student.id));
+    if (!targets.length) return;
+    patch({ step: 'results' });
+    await run(`학생 ${targets.length}명의 평어를 생성하고 있습니다.`, async (signal) => {
+      const { input, idMap } = buildClassRequest(draft.subject, draft.length, book, targets, assessments, draft.mappings, draft.worksheets, results);
+      await generateClassComments(input, signal, (row) => {
+        const id = idMap.get(row.id);
+        if (!id || signal.aborted) return;
+        setDraft((current) => {
+          const previous = current.results[id];
+          return { ...current, results: { ...current.results, [id]: {
+            generated: row.comment ?? previous?.generated ?? null,
+            text: row.comment ? row.comment.sentences.map((sentence) => sentence.text).join(' ') : previous?.text ?? '',
+            error: row.error || (row.comment ? '' : '이 학생의 평어가 응답에 없습니다.'),
+            reviewed: false,
+          } } };
+        });
+      });
+    });
+  }
+
+  async function next() {
+    setError(''); setNotice('');
+    if (step === 'plan-upload' && draft.planFile) {
+      if (draft.plan) { move(subjects.length > 1 ? 'subject' : 'plan-review'); return; }
       const file = draft.planFile;
-      const label = isHangulPlan(file)
-        ? '한글 문서를 PDF로 변환하고 평가기준을 읽고 있습니다.'
-        : '평가계획의 기준 표를 읽고 있습니다.';
-      await run(label, async (signal, current) => {
+      await run(isHangulFile(file) ? '한글 문서를 PDF로 변환하고 평가기준을 읽고 있습니다.' : '평가계획의 기준 표를 읽고 있습니다.', async (signal) => {
         const { plan, planPdf } = await analyzePlan(file, signal);
-        if (!current()) return;
-        patch({ plan, planPdf, subject: plan.assessments[0].subject, step: 'subject' });
+        signal.throwIfAborted();
+        const distinct = new Set(plan.assessments.map((item) => item.subject));
+        move(distinct.size > 1 ? 'subject' : 'plan-review', { plan, planPdf, subject: plan.assessments[0].subject });
       });
-    } else if (draft.step === 'subject') move('plan-review', { planIndex: 0 });
-    else if (draft.step === 'plan-review') {
-      if (assessmentProblems(assessment).length) return;
-      if (draft.planIndex + 1 < assessments.length) patch({ planIndex: draft.planIndex + 1 });
-      else move('grade-upload');
-    } else if (draft.step === 'grade-upload' && draft.gradeFile) {
-      if (book) {
-        move('mapping', { columnIndex: 0 });
-        return;
-      }
-      await run('성적표를 읽고 있습니다.', async (signal, current) => {
-        if (/\.pdf$/i.test(draft.gradeFile!.name)) {
-          const parsed = await analyzeGradePdf(draft.gradeFile!, signal);
-          if (current()) setBook(parsed);
-        } else {
-          const sheets = await readGradeSheets(draft.gradeFile!);
-          if (!current()) return;
-          if (!sheets.length) throw new Error('성적표가 있는 시트를 찾지 못했습니다.');
-          patch({ sheets, sheetIndex: 0, step: 'sheet' });
+    } else if (step === 'subject') move('plan-review');
+    else if (step === 'plan-review') move('grade-upload');
+    else if (step === 'grade-upload' && draft.gradeFile) {
+      if (book) { move('grades'); return; }
+      const file = draft.gradeFile;
+      await run(isHangulFile(file) ? '한글 성적표를 PDF로 변환해 읽고 있습니다.' : '성적표를 읽고 있습니다.', async (signal) => {
+        if (isPdfOrHangul(file)) {
+          const { book: nextBook, gradePdf } = await analyzeGradeDocument(file, signal);
+          signal.throwIfAborted();
+          setBook(nextBook, { gradePdf });
+          return;
         }
+        const sheets = await readGradeSheets(file);
+        signal.throwIfAborted();
+        if (!sheets.length) throw new Error('성적표가 있는 시트를 찾지 못했습니다.');
+        const candidates = sheets.flatMap((sheet, sheetIndex) => findHeaderRows(sheet.data).map((headerIndex) => ({ sheetIndex, headerIndex })));
+        if (candidates.length === 1) {
+          const origin = candidates[0];
+          const update = { sheets, ...origin, bookOrigin: origin };
+          try { setBook(parseGradeSheet(sheets[origin.sheetIndex], origin.headerIndex), update); }
+          catch (cause) { move('header', { sheets, ...origin }); throw cause; }
+        } else move(sheets.length > 1 ? 'sheet' : 'header', { sheets, sheetIndex: 0, headerIndex: -1 });
       });
-    } else if (draft.step === 'sheet') {
+    } else if (step === 'sheet') {
       const headers = findHeaderRows(draft.sheets[draft.sheetIndex].data);
-      move('header', { headerIndex: book ? draft.headerIndex : headers.length === 1 ? headers[0] : -1 });
-    } else if (draft.step === 'header') {
-      if (book) {
-        move('mapping', { columnIndex: 0 });
-        return;
-      }
-      try {
-        setBook(parseGradeSheet(draft.sheets[draft.sheetIndex], draft.headerIndex));
-      } catch (e) {
-        setError(e instanceof Error ? e.message : '제목 행을 확인해 주세요.');
-      }
-    } else if (draft.step === 'mapping' && book) {
-      if (draft.columnIndex + 1 < book.columns.length) patch({ columnIndex: draft.columnIndex + 1 });
-      else if (mappingProblems(book, assessments, draft.mappings).length)
-        setError(mappingProblems(book, assessments, draft.mappings).join(' '));
-      else move('coverage');
-    } else if (draft.step === 'coverage') move('roster');
-    else if (draft.step === 'roster') move('grades', { gradeIndex: 0 });
-    else if (draft.step === 'grades') {
-      if (draft.gradeIndex + 1 < usedColumns.length) patch({ gradeIndex: draft.gradeIndex + 1 });
-      else move('length');
-    } else if (draft.step === 'length') await startGeneration();
-    else if (draft.step === 'results' && student && result?.text.trim() && !result.error) {
-      setDraft((prev) => ({
-        ...prev,
-        results: { ...prev.results, [student.id]: { ...prev.results[student.id], reviewed: true } },
-        studentIndex: Math.min(prev.studentIndex + 1, students.length - 1),
-      }));
-      setNotice(`${student.number}번 ${student.name}의 검토를 완료했습니다.`);
+      const remembered = draft.bookOrigin?.sheetIndex === draft.sheetIndex ? draft.bookOrigin.headerIndex : -1;
+      move('header', { headerIndex: remembered >= 0 ? remembered : headers.length === 1 ? headers[0] : -1 });
+    } else if (step === 'header') {
+      const { sheetIndex, headerIndex, bookOrigin } = draft;
+      if (book && bookOrigin?.sheetIndex === sheetIndex && bookOrigin.headerIndex === headerIndex) { move('grades'); return; }
+      try { setBook(parseGradeSheet(draft.sheets[sheetIndex], headerIndex), { bookOrigin: { sheetIndex, headerIndex } }); }
+      catch (cause) { setError(cause instanceof Error ? cause.message : '제목 행을 확인해 주세요.'); }
+    } else if (step === 'grades') move('length');
+    else if (step === 'length') await startGeneration();
+    else if (step === 'results' && !repeats.size && !missingResults.length && students.length) {
+      patch({ results: Object.fromEntries(students.map((student) => [student.id, { ...results[student.id], reviewed: true }])) });
+      setNotice(`${students.length}명의 평어 검토를 완료했습니다.`);
     }
   }
-  function back() {
-    if (draft.step === 'plan-review' && draft.planIndex > 0) {
-      patch({ planIndex: draft.planIndex - 1 });
-      return;
-    }
-    if (draft.step === 'mapping' && draft.columnIndex > 0) {
-      patch({ columnIndex: draft.columnIndex - 1 });
-      return;
-    }
-    if (draft.step === 'grades' && draft.gradeIndex > 0) {
-      patch({ gradeIndex: draft.gradeIndex - 1 });
-      return;
-    }
-    const prior: Partial<Record<SubjectStep, SubjectStep>> = {
-      subject: 'plan-upload',
-      'plan-review': 'subject',
-      'grade-upload': 'plan-review',
-      sheet: 'grade-upload',
-      header: 'sheet',
-      mapping: draft.sheets.length ? 'header' : 'grade-upload',
-      coverage: 'mapping',
-      roster: 'coverage',
-      grades: 'roster',
-      length: 'grades',
-      results: 'length',
-    };
-    move(prior[draft.step] ?? 'plan-upload');
-  }
-  const currentMapping = column ? (draft.mappings[column.id] ?? '') : '';
-  const duplicateMapping =
-    currentMapping &&
-    currentMapping !== SKIP_COLUMN &&
-    Object.entries(draft.mappings).some(([id, value]) => id !== column?.id && value === currentMapping);
-  let blocking = '';
-  if (draft.step === 'plan-upload' && !draft.planFile) blocking = '평가계획 파일을 선택해 주세요.';
-  if (draft.step === 'subject' && (!draft.subject || !assessments.length)) blocking = '교과를 선택해 주세요.';
-  if (draft.step === 'plan-review') {
-    const missing = assessment ? assessmentProblems(assessment) : ['평가 항목'];
-    if (missing.length) blocking = `${missing.join(', ')}을 원본에서 확인해 입력해 주세요.`;
-  }
-  if (draft.step === 'grade-upload' && !draft.gradeFile) blocking = '나이스 성적 파일을 선택해 주세요.';
-  if (draft.step === 'header' && draft.headerIndex < 0) blocking = '제목 행을 선택해 주세요.';
-  if (draft.step === 'mapping' && (!currentMapping || duplicateMapping))
-    blocking = duplicateMapping
-      ? '이 평가에는 이미 다른 열이 연결되었습니다. 다시 선택해 주세요.'
-      : '같은 평가 또는 이번 교과에서 사용하지 않음을 선택해 주세요.';
-  if (draft.step === 'roster' && (!book?.students.length || rosterProblems(book.students).length))
-    blocking = '번호 중복·빈 이름을 확인해야 다음으로 진행할 수 있습니다.';
-  if (draft.step === 'grades' && book) {
-    const count = book.students.filter((s) => !normalizeGrade(s.grades[gradeColumn])).length;
-    if (count)
-      blocking = `확인할 성적이 ${count}개 남았습니다. 빈칸은 임의로 채우지 않고 원본과 대조해 주세요.`;
-  }
-  if (draft.step === 'results' && (!result?.text.trim() || result?.error))
-    blocking = '평어 생성이 끝난 뒤 내용을 검토할 수 있습니다.';
-  const actionText: Record<SubjectStep, string> = {
-    'plan-upload': draft.plan ? '이 평가계획 사용' : '평가계획 분석',
-    subject: '이 교과로 계속',
-    'plan-review': '이 평가 확인',
-    'grade-upload': book ? '이 성적표 사용' : '성적표 불러오기',
-    sheet: '이 시트 사용',
-    header: '이 제목 행 사용',
-    mapping: '이 연결 확인',
-    coverage: '연결된 평가로 진행',
-    roster: '명단 확인 완료',
-    grades: '이 평가의 성적 확인 완료',
-    length: Object.keys(draft.results).length ? '평어 새로 생성' : '평어 생성',
-    results: '검토 완료하고 다음 학생',
+
+  const back: Partial<Record<SubjectStep, SubjectStep>> = {
+    subject: 'plan-upload', 'plan-review': subjects.length > 1 ? 'subject' : 'plan-upload', 'grade-upload': 'plan-review',
+    sheet: book ? 'grades' : 'grade-upload', header: draft.sheets.length > 1 ? 'sheet' : book ? 'grades' : 'grade-upload',
+    grades: 'grade-upload', length: 'grades', results: 'length',
   };
-  const progressDetail =
-    draft.step === 'plan-review'
-      ? `${draft.planIndex + 1} / ${assessments.length}개 평가`
-      : draft.step === 'mapping'
-        ? `${draft.columnIndex + 1} / ${book?.columns.length}개 열`
-        : draft.step === 'grades'
-          ? `${draft.gradeIndex + 1} / ${usedColumns.length}개 평가`
-          : '';
+  let blocking = '';
+  if (step === 'plan-upload' && !draft.planFile) blocking = '평가계획 파일을 선택해 주세요.';
+  if (step === 'subject' && !assessments.length) blocking = '교과를 선택해 주세요.';
+  if (step === 'plan-review' && (!assessments.length || assessments.some((item) => assessmentProblems(item).length))) blocking = '대조 목록에서 비어 있는 평가기준을 입력해 주세요.';
+  if (step === 'grade-upload' && !draft.gradeFile) blocking = '나이스 성적 파일을 선택해 주세요.';
+  if (step === 'header' && draft.headerIndex < 0) blocking = '제목 행을 선택해 주세요.';
+  if (step === 'grades' && book) {
+    const missing = missingGrades(book, draft.mappings).length;
+    if (mapIssues.length) blocking = '평가 연결을 확인해 주세요.';
+    else if (!students.length || rosterProblems(students).length) blocking = '학생 번호와 이름을 확인해 주세요.';
+    else if (missing) blocking = `확인할 성적이 ${missing}개 있습니다.`;
+  }
+  if (step === 'results') {
+    if (repeats.size) blocking = `겹치는 표현이 있는 학생 ${repeats.size}명의 평어를 확인해 주세요.`;
+    else if (missingResults.length) blocking = `아직 완료되지 않은 평어 ${missingResults.length}개를 확인해 주세요.`;
+  }
+
+  function saveExcel() {
+    if (!book || !allReviewed) return;
+    void run('Excel 파일을 준비하고 있습니다.', async (signal) => {
+      await exportComments(draft.subject, students.map((student) => ({
+        number: student.number, name: student.name, text: results[student.id].text,
+        grades: usedColumns.map((index) => `${book.columns[index].label}: ${GRADE_LABELS[normalizeGrade(student.grades[index])!]}`).join(' · '),
+        evidence: buildEvidence(book, student.id, assessments, draft.mappings).map((e) => `${e.task} · ${e.criterion}`).join('\n'),
+      })), signal);
+      if (!signal.aborted) setNotice('검토한 학급 평어를 Excel로 저장했습니다.');
+    });
+  }
 
   return (
     <section className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
-        <button
-          className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-2 text-sm font-semibold text-slate-700"
-          onClick={() => navigate('/tools/neis-helper')}
-          disabled={!!busy}
-        >
-          <ArrowLeft className="h-5 w-5" />
-          Neis Helper
+        <button type="button" className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-slate-700" onClick={() => navigate('/tools/neis-helper')} disabled={!!busy}>
+          <ArrowLeft className="h-5 w-5" aria-hidden="true" /> Neis Helper
         </button>
         <span className="text-xs text-slate-600">현재 탭에만 보관 · 새로고침 시 초기화</span>
       </div>
       <div>
-        <p className="text-sm font-bold text-blue-700">
-          교과학습발달상황(세특){draft.subject ? ` · ${draft.subject}` : ''}
-        </p>
+        <p className="text-sm font-bold text-blue-700">교과학습발달상황(세특){draft.subject ? ` · ${draft.subject}` : ''}</p>
         <ol aria-label="작성 단계" className="mt-4 grid grid-cols-4 gap-2">
-          {groups.map((label, i) => (
-            <li
-              key={label}
-              aria-current={i === meta.group ? 'step' : undefined}
-              className={`border-t-4 pt-2 text-xs font-semibold sm:text-sm ${i === meta.group ? 'border-blue-600 text-blue-800' : i < meta.group ? 'border-slate-400 text-slate-600' : 'border-slate-200 text-slate-600'}`}
-            >
-              {i + 1}. {label}
-            </li>
-          ))}
+          {groups.map((label, index) => <li key={label} aria-current={index === meta.group ? 'step' : undefined}
+            className={`border-t-4 pt-2 text-xs font-semibold sm:text-sm ${index === meta.group ? 'border-blue-600 text-blue-800' : index < meta.group ? 'border-slate-400 text-slate-600' : 'border-slate-200 text-slate-600'}`}>
+            <span className="inline-flex flex-wrap items-center gap-x-1">
+              {index + 1}. {label}
+              {index < meta.group && <>
+                <Check className="h-3.5 w-3.5 shrink-0 text-emerald-700" aria-hidden="true" />
+                <span className="sr-only">완료</span>
+              </>}
+            </span>
+          </li>)}
         </ol>
       </div>
       <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-7">
         <header className="mb-6">
-          <p className="mb-1 text-sm font-semibold text-blue-700">{progressDetail}</p>
-          <h1
-            ref={heading}
-            tabIndex={-1}
-            className="break-keep text-xl font-bold text-slate-900 outline-none sm:text-2xl"
-          >
-            {meta.title}
-          </h1>
+          <h1 ref={heading} tabIndex={-1} className="break-keep text-xl font-bold text-slate-900 outline-none sm:text-2xl">{meta.title}</h1>
           <p className="mt-2 break-keep text-sm leading-6 text-slate-600">{meta.description}</p>
         </header>
+        {busy && <div className="mb-5 flex flex-wrap items-center gap-3 rounded-lg bg-blue-50 p-4">
+          <p role="status" className="font-semibold text-blue-900">{busy}</p>
+          <button type="button" className={secondaryClass} onClick={() => { request.current?.abort(); request.current = null; setBusy(''); setNotice('중단했습니다. 앞서 확인한 자료와 평어는 유지됩니다.'); }}>중단</button>
+        </div>}
+        {error && <p role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800">{error}</p>}
         <fieldset disabled={!!busy} className="min-w-0 space-y-5">
-          {(draft.step === 'roster' || draft.step === 'grades') &&
-            draft.gradeFile &&
-            /\.pdf$/i.test(draft.gradeFile.name) && (
-              <details className="rounded-lg border border-slate-200 p-4">
-                <summary className="min-h-[44px] cursor-pointer content-center text-sm font-semibold text-blue-700">
-                  성적표 원본 보기
-                </summary>
-                <NeisSourcePreview key={draft.gradeFile.name} file={draft.gradeFile} allowPageSelection />
+          {(step === 'plan-upload' || step === 'grade-upload') && <>
+            <SubjectFilePicker label={step === 'plan-upload' ? '평가계획 파일' : '나이스 성적 파일'} accept={step === 'plan-upload' ? PLAN_ACCEPT : GRADE_ACCEPT}
+              file={step === 'plan-upload' ? draft.planFile : draft.gradeFile} disabled={!!busy} onSelect={(files) => selectFile(files, step === 'plan-upload' ? 'plan' : 'grades')} />
+            <p className="text-sm text-slate-600">{step === 'plan-upload' ? 'PDF·HWP 5.0·HWPX · 최대 10MB, 80쪽' : 'XLSX·CSV·PDF·HWP 5.0·HWPX · 최대 10MB. 문서 파일은 최대 80쪽입니다.'}</p>
+            <p className="rounded-lg bg-blue-50 p-4 text-sm leading-6 text-blue-900">{step === 'plan-upload'
+              ? '평가계획 분석을 누르면 PDF를 OpenAI로 전송합니다. HWP·HWPX는 이 브라우저에서 PDF로 변환한 뒤 전송합니다.'
+              : 'XLSX·CSV는 브라우저에서 읽습니다. PDF·HWP·HWPX는 성적표 불러오기를 누르면 번호·이름·성적이 담긴 PDF를 OpenAI로 전송해 분석합니다. 한글 파일은 브라우저에서 PDF로 변환합니다.'}</p>
+          </>}
+          {step === 'subject' && <label className="block max-w-xl text-sm font-semibold text-slate-800">교과
+            <select className={`${inputClass} mt-2`} value={draft.subject} onChange={(e) => patch({ ...clearGrade(), subject: e.target.value, reviewAssessmentId: '' })}>
+              {subjects.map((subject) => <option key={subject}>{subject}</option>)}
+            </select>
+          </label>}
+          {step === 'plan-review' && <>
+            <div className="rounded-lg border border-slate-200 p-4 text-sm leading-6 text-slate-800">
+              <p className="font-semibold">평가계획 {assessments.length}개 · 원문 문구 일치 {assessments.length - planIssues.length}개 · 대조 필요 {planIssues.length}개</p>
+              {planIssues.length > 0 && <ul aria-label="대조가 필요한 평가계획 항목" className="mt-3 divide-y divide-slate-200">
+                {planIssues.map((item) => <li key={item.id} className="flex flex-wrap items-center justify-between gap-x-3 py-2">
+                  <div className="min-w-0 flex-1 break-words"><p className="font-semibold">{item.task || '평가 내용 확인 필요'}</p><p className="text-amber-900">{[...assessmentProblems(item), ...item.warnings].join(' · ') || '원본 쪽 확인 필요'}</p></div>
+                  <button type="button" className={secondaryClass} aria-label={`${item.task || item.standardCode} 원본 대조`} onClick={(e) => openReview(item.id, e.currentTarget)}>원본 대조</button>
+                </li>)}
+              </ul>}
+              <details className="mt-2">
+                <summary className="min-h-11 cursor-pointer content-center font-semibold text-blue-700">전체 성취기준과 평가 보기</summary>
+                <ul className="space-y-2 pb-2">{assessments.map((item) => <li key={item.id} className="break-words"><strong>{item.standardCode}</strong> {item.standard} · {item.task}
+                  <button type="button" className="ml-2 min-h-11 text-blue-700 underline" aria-label={`${item.task} 상세 보기`} onClick={(e) => openReview(item.id, e.currentTarget)}>상세</button>
+                </li>)}</ul>
               </details>
-            )}
-          {(draft.step === 'plan-upload' || draft.step === 'grade-upload') && (
-            <div className="space-y-5">
-              <SubjectFilePicker
-                label={draft.step === 'plan-upload' ? '평가계획 파일' : '나이스 성적 파일'}
-                accept={draft.step === 'plan-upload' ? PLAN_ACCEPT : GRADE_ACCEPT}
-                file={draft.step === 'plan-upload' ? draft.planFile : draft.gradeFile}
-                disabled={!!busy}
-                onSelect={(files) => selectFiles(files, draft.step === 'plan-upload' ? 'plan' : 'grades')}
-              />
-              <p className="text-sm leading-6 text-slate-600">
-                {draft.step === 'plan-upload'
-                  ? 'PDF·HWP 5.0·HWPX · 최대 10MB, 80쪽'
-                  : 'XLSX·CSV·PDF · 10MB까지. XLS는 XLSX로 다시 저장해 주세요.'}
-              </p>
-              <p className="rounded-lg bg-blue-50 p-4 text-sm leading-6 text-blue-900">
-                {draft.step === 'plan-upload'
-                  ? '평가계획 분석을 누르면 PDF를 OpenAI로 전송합니다. HWP·HWPX는 이 브라우저에서 PDF로 변환한 뒤 전송합니다.'
-                  : 'XLSX·CSV는 이 브라우저에서 읽습니다. PDF를 선택하면 번호·이름·성적을 포함한 원본을 OpenAI로 전송해 분석합니다.'}
-              </p>
             </div>
-          )}
-          {draft.step === 'subject' && (
-            <label className="block max-w-xl text-sm font-semibold text-slate-800">
-              교과
-              <select
-                className={`${inputClass} mt-2`}
-                value={draft.subject}
-                onChange={(e) => patch({ subject: e.target.value, planIndex: 0, mappings: {}, results: {} })}
-              >
-                {[...new Set(draft.plan?.assessments.map((a) => a.subject))].map((s) => (
-                  <option key={s} value={s}>
-                    {s || '교과 미확인'}
-                  </option>
-                ))}
-              </select>
-              <span className="mt-3 block font-normal text-slate-600">
-                {draft.plan?.year} {draft.plan?.schoolGrade} {draft.plan?.semester} · 평가{' '}
-                {assessments.length}개
-              </span>
-            </label>
-          )}
-          {draft.step === 'plan-review' && assessment && (
-            <AssessmentReview
-              assessment={assessment}
-              onChange={editAssessment}
-              file={draft.planFile}
-              convertedFile={draft.planPdf}
-            />
-          )}
-          {draft.step === 'sheet' && (
-            <label className="block max-w-xl text-sm font-semibold text-slate-800">
-              시트
-              <select
-                className={`${inputClass} mt-2`}
-                value={draft.sheetIndex}
-                onChange={(e) =>
-                  patch({
-                    sheetIndex: Number(e.target.value),
-                    book: null,
-                    originalBook: null,
-                    results: {},
-                    mappings: {},
-                  })
-                }
-              >
-                {draft.sheets.map((s, i) => (
-                  <option key={i} value={i}>
-                    {s.sheet}
-                  </option>
-                ))}
+            {reviewAssessment && <div className="space-y-3 rounded-lg border border-blue-200 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 ref={reviewHeading} tabIndex={-1} className="font-bold text-slate-900">평가계획 원본 대조</h2>
+                <button className={secondaryClass} type="button" onClick={() => { patch({ reviewAssessmentId: '' }); (reviewTrigger.current?.isConnected ? reviewTrigger.current : heading.current)?.focus(); }}>원본 대조 닫기</button>
+              </div>
+              <AssessmentReview key={reviewAssessment.id} assessment={reviewAssessment} onChange={editAssessment} file={draft.planFile} convertedFile={draft.planPdf} />
+            </div>}
+            {worksheetAssessment && <details className="rounded-lg border border-slate-200 px-4 py-2">
+              <summary className="min-h-11 cursor-pointer content-center font-semibold text-slate-900">수행평가 평가지 양식{worksheetIssues.length ? ` · 대조 필요 ${worksheetIssues.length}개` : ''}</summary>
+              <div className="space-y-3 pb-3">
+                <p className="text-sm leading-6 text-slate-600">빈 평가지의 문항과 과제 조건을 참고합니다. 파일이 없으면 성적표로 계속할 수 있습니다.</p>
+                <WorksheetStep assessments={assessments} assessmentId={worksheetAssessment.id} worksheets={draft.worksheets} disabled={!!busy}
+                  onAssessment={(id) => { setError(''); patch({ worksheetAssessmentId: id }); }} onFiles={(files) => void selectWorksheet(files)}
+                  onContext={editWorksheet} onRemove={removeWorksheet} />
+              </div>
+            </details>}
+          </>}
+          {step === 'sheet' && <label className="block max-w-xl text-sm font-semibold text-slate-800">시트
+            <select className={`${inputClass} mt-2`} value={draft.sheetIndex} onChange={(e) => patch({ sheetIndex: Number(e.target.value) })}>
+              {draft.sheets.map((sheet, index) => <option key={index} value={index}>{sheet.sheet}</option>)}
+            </select>
+          </label>}
+          {step === 'header' && <label className="block text-sm font-semibold text-slate-800">제목 행
+            <select className={`${inputClass} mt-2`} value={draft.headerIndex} onChange={(e) => patch({ headerIndex: Number(e.target.value) })}>
+              <option value={-1}>선택하세요</option>
+              {headerChoices.map((index) => <option key={index} value={index}>{index + 1}행 · {headerRows?.[index].map(String).join(' / ').slice(0, 120)}</option>)}
+            </select>
+          </label>}
+          {step === 'grades' && book && <>
+            {draft.gradeFile && isPdfOrHangul(draft.gradeFile) && <details className="rounded-lg border border-slate-200 p-3">
+              <summary className="min-h-11 cursor-pointer content-center text-sm font-semibold text-blue-700">성적표 원본 보기</summary>
+              <NeisSourcePreview file={draft.gradeFile} convertedFile={draft.gradePdf} allowPageSelection />
+            </details>}
+            {draft.bookOrigin && <button type="button" className={secondaryClass} onClick={() => move(draft.sheets.length > 1 ? 'sheet' : 'header', draft.bookOrigin!)}>시트·제목 행 다시 선택</button>}
+            <ClassGradeReview book={book} originalBook={draft.originalBook} students={students} assessments={assessments} mappings={draft.mappings} issues={mapIssues}
+              excluded={draft.excludedRows} onMap={(columnId, assessmentId) => patch({ mappings: { ...draft.mappings, [columnId]: assessmentId }, results: {} })}
+              onStudent={updateStudent} onExclude={excludeStudent} onRestore={() => patch({ book: { ...book, students: [...book.students, ...draft.excludedRows] }, excludedRows: [], results: {} })} />
+          </>}
+          {step === 'length' && <>
+            <label className="block max-w-md text-sm font-semibold text-slate-800">목표 분량
+              <select className={`${inputClass} mt-2`} value={draft.length} onChange={(e) => patch({ length: Number(e.target.value) as SubjectDraft['length'] })}>
+                <option value={200}>200자 내외</option><option value={300}>300자 내외</option><option value={400}>400자 내외</option>
               </select>
             </label>
-          )}
-          {draft.step === 'header' && (
-            <div className="space-y-4">
-              <label className="block text-sm font-semibold text-slate-800">
-                제목 행
-                <select
-                  className={`${inputClass} mt-2`}
-                  value={draft.headerIndex}
-                  onChange={(e) =>
-                    patch({
-                      headerIndex: Number(e.target.value),
-                      book: null,
-                      originalBook: null,
-                      mappings: {},
-                      results: {},
-                      excludedRows: [],
-                    })
-                  }
-                >
-                  <option value={-1}>선택하세요</option>
-                  {draft.sheets[draft.sheetIndex]?.data.slice(0, 100).map((row, i) => (
-                    <option key={i} value={i}>
-                      {i + 1}행 · {row.map(String).join(' / ').slice(0, 120)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <p className="text-sm text-slate-600">
-                번호·성명(이름)이 있는 제목 행을 찾습니다. 행을 선택한 뒤 평가 열과 학생을 별도로 확인합니다.
-              </p>
-            </div>
-          )}
-          {draft.step === 'mapping' && column && (
-            <div className="grid items-start gap-6 lg:grid-cols-2">
-              <div className="space-y-5">
-                <div className="rounded-xl bg-slate-50 p-5">
-                  <p className="text-xs font-semibold text-slate-600">
-                    나이스 성적표의 {draft.columnIndex + 1}번째 평가 열
-                  </p>
-                  <p className="mt-2 break-keep text-lg font-bold text-slate-900">{column.label}</p>
-                  <p className="mt-3 text-sm text-slate-600">
-                    원본 예:{' '}
-                    {book?.students
-                      .slice(0, 3)
-                      .map((s) => `${s.number}번 ${s.grades[draft.columnIndex] || '빈칸'}`)
-                      .join(' · ')}
-                  </p>
-                </div>
-                <label className="block text-sm font-semibold text-slate-800">
-                  평가계획의 같은 평가
-                  <select
-                    className={`${inputClass} mt-2`}
-                    value={currentMapping}
-                    onChange={(e) =>
-                      patch({ mappings: { ...draft.mappings, [column.id]: e.target.value }, results: {} })
-                    }
-                  >
-                    <option value="">선택하세요</option>
-                    {assessments.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.task}
-                      </option>
-                    ))}
-                    <option value={SKIP_COLUMN}>이번 교과에서 사용하지 않음</option>
-                  </select>
-                </label>
-                {!currentMapping && suggestAssessment(column.label, assessments) && (
-                  <p className="text-sm text-blue-800">
-                    제목이 같은 평가가 있습니다. 목록에서 선택하고 내용을 대조해 주세요.
-                  </p>
-                )}
-                {currentMapping === SKIP_COLUMN && (
-                  <p className="text-sm text-amber-900">이 열의 성적은 이번 평어의 근거에서 제외됩니다.</p>
-                )}
-                {assessments.find((a) => a.id === currentMapping) && (
-                  <div className="rounded-lg border border-slate-200 p-4 text-sm leading-6">
-                    <p className="font-semibold">
-                      {assessments.find((a) => a.id === currentMapping)?.standardCode}
-                    </p>
-                    <p>{assessments.find((a) => a.id === currentMapping)?.standard}</p>
-                  </div>
-                )}
-              </div>
-              <NeisSourcePreview
-                key={`${draft.columnIndex}-${currentMapping}`}
-                file={draft.planFile}
-                convertedFile={draft.planPdf}
-                page={assessments.find((a) => a.id === currentMapping)?.sourcePage ?? 1}
-                allowPageSelection
-              />
-            </div>
-          )}
-          {draft.step === 'coverage' && (
-            <div className="space-y-5">
-              <p className="text-lg font-semibold">평가 {usedColumns.length}개를 사용합니다.</p>
-              <ul className="list-disc space-y-2 pl-5 text-sm text-slate-700">
-                {usedColumns.map((i) => (
-                  <li key={i}>
-                    {book?.columns[i].label} →{' '}
-                    {assessments.find((a) => a.id === draft.mappings[book!.columns[i].id])?.task}
-                  </li>
-                ))}
-              </ul>
-              {!!unused.length && (
-                <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-                  <p className="font-bold">성적과 연결되지 않아 제외되는 평가 {unused.length}개</p>
-                  <ul className="mt-2 list-disc pl-5">
-                    {unused.map((a) => (
-                      <li key={a.id}>{a.task}</li>
-                    ))}
-                  </ul>
-                  <p className="mt-3">
-                    진행하면 위 평가를 제외하고 작성합니다. 필요한 평가가 빠졌다면 이전 단계로 돌아가 연결을
-                    고쳐 주세요.
-                  </p>
-                </div>
-              )}
-              {book?.columns.some((c) => draft.mappings[c.id] === SKIP_COLUMN) && (
-                <p className="text-sm text-slate-600">
-                  사용하지 않는 성적 열:{' '}
-                  {book.columns
-                    .filter((c) => draft.mappings[c.id] === SKIP_COLUMN)
-                    .map((c) => c.label)
-                    .join(', ')}
-                </p>
-              )}
-            </div>
-          )}
-          {draft.step === 'roster' && book && (
-            <>
-              <RosterReview
-                book={book}
-                onChange={(row) =>
-                  patch({
-                    book: { ...book, students: book.students.map((s) => (s.id === row.id ? row : s)) },
-                    results: {},
-                  })
-                }
-                onExclude={(id) => {
-                  const row = book.students.find((s) => s.id === id)!;
-                  patch({
-                    book: { ...book, students: book.students.filter((s) => s.id !== id) },
-                    excludedRows: [...draft.excludedRows, row],
-                    results: {},
-                  });
-                }}
-              />
-              {!!draft.excludedRows.length && (
-                <div className="rounded-lg bg-slate-50 p-4">
-                  <p className="text-sm text-slate-700">
-                    제외한 행 {draft.excludedRows.length}개:{' '}
-                    {draft.excludedRows.map((s) => `${s.sourceRow}행 ${s.name || '(이름 없음)'}`).join(', ')}
-                  </p>
-                  <button
-                    type="button"
-                    className="mt-2 min-h-[44px] text-sm text-blue-700 underline"
-                    onClick={() =>
-                      patch({
-                        book: {
-                          ...book,
-                          students: [...book.students, ...draft.excludedRows].toSorted(
-                            (a, b) => a.sourceRow - b.sourceRow,
-                          ),
-                        },
-                        excludedRows: [],
-                        results: {},
-                      })
-                    }
-                  >
-                    제외한 행 모두 복원
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-          {draft.step === 'grades' && book && (
-            <>
-              <div className="rounded-lg bg-slate-50 p-4">
-                <h2 className="break-keep font-bold text-slate-900">{book.columns[gradeColumn]?.label}</h2>
-                <p className="mt-2 text-sm text-slate-600">
-                  평가계획:{' '}
-                  {assessments.find((a) => a.id === draft.mappings[book.columns[gradeColumn]?.id])?.task}
-                </p>
-              </div>
-              <GradeReview
-                book={book}
-                original={draft.originalBook}
-                columnIndex={gradeColumn}
-                onGrade={(id, value) =>
-                  patch({
-                    book: {
-                      ...book,
-                      students: book.students.map((s) =>
-                        s.id === id
-                          ? { ...s, grades: s.grades.map((g, i) => (i === gradeColumn ? value : g)) }
-                          : s,
-                      ),
-                    },
-                    results: {},
-                  })
-                }
-              />
-            </>
-          )}
-          {draft.step === 'length' && (
-            <div className="space-y-5">
-              <label className="block max-w-md text-sm font-semibold text-slate-800">
-                목표 분량
-                <select
-                  className={`${inputClass} mt-2`}
-                  value={draft.length}
-                  onChange={(e) => patch({ length: Number(e.target.value) as SubjectDraft['length'] })}
-                >
-                  <option value={200}>200자 내외</option>
-                  <option value={300}>300자 내외</option>
-                  <option value={400}>400자 내외</option>
-                </select>
-              </label>
-              <p className="text-sm text-slate-600">
-                {draft.subject} · {students.length}명 · 평가 {usedColumns.length}개
-              </p>
-              <p className="rounded-lg bg-blue-50 p-4 text-sm leading-6 text-blue-900">
-                생성 버튼을 누르면 확인한 평가기준과 성적을 OpenAI로 전송합니다. 학생 번호·이름은 보내지
-                않습니다. 근거가 적으면 목표보다 짧게 작성합니다.
-              </p>
-            </div>
-          )}
-          {draft.step === 'results' && (
-            <div className="space-y-5">
-              <label className="block max-w-xl text-sm font-semibold text-slate-800">
-                검토할 학생
-                <select
-                  className={`${inputClass} mt-2`}
-                  value={draft.studentIndex}
-                  onChange={(e) => {
-                    patch({ studentIndex: Number(e.target.value) });
-                    setNotice('');
-                  }}
-                >
-                  {students.map((s, i) => (
-                    <option key={s.id} value={i}>
-                      {s.number}번 {s.name} ·{' '}
-                      {draft.results[s.id]?.reviewed
-                        ? '검토 완료'
-                        : draft.results[s.id]?.error
-                          ? '생성 실패'
-                          : draft.results[s.id]?.text
-                            ? '검토 전'
-                            : '미생성'}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {student && (
-                <div className="grid items-start gap-6 lg:grid-cols-2">
-                  <div>
-                    {result ? (
-                      <ResultReview
-                        result={result}
-                        length={draft.length}
-                        duplicate={repeats.has(student.id)}
-                        onText={(text) =>
-                          patch({
-                            results: { ...draft.results, [student.id]: { ...result, text, reviewed: false } },
-                          })
-                        }
-                      />
-                    ) : (
-                      <p className="rounded-lg bg-slate-50 p-5 text-slate-600">
-                        아직 평어가 없습니다. 생성이 끝나지 않았거나 중단된 항목을 다시 시도할 수 있습니다.
-                      </p>
-                    )}
-                    <button
-                      type="button"
-                      className="mt-4 min-h-[44px] text-sm text-blue-700 underline"
-                      onClick={() => void startGeneration([student.id])}
-                    >
-                      {result?.text ? '이 학생 평어 다시 생성' : '이 학생 평어 생성'}
-                    </button>
-                  </div>
-                  <aside
-                    className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-5"
-                    aria-label="평어 작성 근거"
-                  >
-                    <h2 className="font-bold text-slate-900">평어에 사용한 근거</h2>
-                    {book &&
-                      buildEvidence(book, student.id, assessments, draft.mappings).map((e) => (
-                        <div
-                          key={e.assessmentId}
-                          className="border-t border-slate-200 pt-3 text-sm leading-6"
-                        >
-                          <p className="font-semibold text-slate-900">
-                            {e.task} · {GRADE_LABELS[e.grade]}
-                          </p>
-                          <p className="mt-1 text-slate-600">
-                            {e.standardCode} {e.standard}
-                          </p>
-                          <p className="mt-2 text-slate-800">{e.criterion}</p>
-                          {result?.generated?.sentences
-                            .filter((s) => s.assessmentId === e.assessmentId)
-                            .map((s, i) => (
-                              <p key={i} className="mt-2 border-l-2 border-blue-500 pl-3 text-blue-900">
-                                <span className="block text-xs font-semibold">생성 당시 연결 문장</span>
-                                {s.text}
-                              </p>
-                            ))}
-                        </div>
-                      ))}
-                    <p className="text-xs leading-5 text-slate-600">
-                      근거 연결은 사실 정확성을 보증하지 않습니다. 수정한 평어도 위 기준의 범위를 벗어나지
-                      않는지 확인하세요.
-                    </p>
-                  </aside>
-                </div>
-              )}
-              {students.some((s) => !draft.results[s.id]?.text || draft.results[s.id]?.error) && (
-                <button
-                  type="button"
-                  className={secondaryClass}
-                  onClick={() =>
-                    void startGeneration(
-                      students
-                        .filter((s) => !draft.results[s.id]?.text || draft.results[s.id]?.error)
-                        .map((s) => s.id),
-                    )
-                  }
-                >
-                  미생성·실패 항목 다시 시도
-                </button>
-              )}
-            </div>
+            <p className="text-sm text-slate-600">{draft.subject} · {students.length}명 · 평가 {usedColumns.length}개</p>
+            <p className="rounded-lg bg-blue-50 p-4 text-sm leading-6 text-blue-900">공통 평가기준과 평가지에서 참고할 문항, 임시 식별자별 성적을 한 요청으로 OpenAI에 전송합니다. 이름과 출석번호는 결과 표에서 합칩니다. 근거가 적으면 목표보다 짧게 작성합니다.</p>
+          </>}
+          {step === 'results' && book && (
+            <ClassResultTable students={students} usedColumns={usedColumns} results={results} repeats={repeats}
+              onEdit={(id, text) => patch({ results: { ...results, [id]: { ...results[id], text, error: '', reviewed: false } } })}
+              onRepeat={() => void startGeneration(repeats)} onMissing={() => void startGeneration(new Set(missingResults.map((student) => student.id)))} />
           )}
         </fieldset>
-        {busy && (
-          <div className="mt-6 rounded-lg bg-blue-50 p-4">
-            <p role="status" className="font-semibold text-blue-900">
-              {busy}
-              {draft.step === 'results' ? ` ${generationProgress.done} / ${generationProgress.total}명` : ''}
-            </p>
-            <p className="mt-1 text-sm text-blue-900">잠시 걸릴 수 있습니다. 화면을 열어 둬 주세요.</p>
-            <button
-              type="button"
-              className="mt-2 min-h-[44px] text-sm font-semibold text-blue-800 underline"
-              onClick={cancel}
-            >
-              중단
-            </button>
-          </div>
-        )}
-        {error && (
-          <p
-            role="alert"
-            className="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800"
-          >
-            {error}
-          </p>
-        )}
-        {notice && (
-          <p role="status" className="mt-4 text-sm text-emerald-800">
-            {notice}
-          </p>
-        )}
+        {notice && <p role="status" className="mt-4 text-sm text-emerald-800">{notice}</p>}
         <footer className="mt-7 border-t border-slate-200 pt-5">
-          {blocking && !busy && (
-            <p id="neis-blocking" className="mb-3 text-sm leading-6 text-amber-900">
-              {blocking}
-            </p>
-          )}
-          {draft.step === 'results' && allReviewed ? (
-            <div className="space-y-4">
-              <p className="flex items-center gap-2 font-semibold text-emerald-800">
-                <Check className="h-5 w-5" />
-                {students.length}명 모두 검토했습니다.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  className={primaryClass}
-                  disabled={!!busy}
-                  onClick={() =>
-                    void run('Excel 파일을 준비하고 있습니다.', async (_signal, current) => {
-                      if (!book) return;
-                      await exportComments(
-                        draft.subject,
-                        students.map((s) => ({
-                          number: s.number,
-                          name: s.name,
-                          grades: usedColumns
-                            .map((i) => `${book.columns[i].label}: ${s.grades[i]}`)
-                            .join('\n'),
-                          text: draft.results[s.id].text,
-                          evidence: buildEvidence(book, s.id, assessments, draft.mappings)
-                            .map(
-                              (e) => `${e.standardCode} ${e.task} [${GRADE_LABELS[e.grade]}] ${e.criterion}`,
-                            )
-                            .join('\n'),
-                        })),
-                        _signal,
-                      );
-                      if (current()) setNotice('검토 완료한 평어를 Excel로 저장했습니다.');
-                    })
-                  }
-                >
-                  검토 완료 평어 Excel 저장
-                </button>
-                <button
-                  className={secondaryClass}
-                  disabled={!!busy}
-                  onClick={() =>
-                    void run('평어를 복사하고 있습니다.', async (_signal, current) => {
-                      await navigator.clipboard.writeText(
-                        students.map((s) => `${s.number}\t${s.name}\t${draft.results[s.id].text}`).join('\n'),
-                      );
-                      if (current()) setNotice('번호·이름·평어를 복사했습니다.');
-                    })
-                  }
-                >
-                  전체 복사
-                </button>
-                <button className={secondaryClass} disabled={!!busy} onClick={() => move('subject')}>
-                  교과·입력 자료 다시 확인
-                </button>
-              </div>
+          {blocking && !busy && <p id="neis-blocking" className="mb-3 text-sm leading-6 text-amber-900">{blocking}</p>}
+          {step === 'results' && allReviewed ? <div className="space-y-4">
+            <p className="flex items-center gap-2 font-semibold text-emerald-800"><Check className="h-5 w-5" aria-hidden="true" />{students.length}명 모두 검토했습니다.</p>
+            <div className="flex flex-wrap gap-3">
+              <button type="button" className={primaryClass} disabled={!!busy} onClick={saveExcel}>검토 완료 평어 Excel 저장</button>
+              <button type="button" className={secondaryClass} disabled={!!busy} onClick={() => void run('평어를 복사하고 있습니다.', async (signal) => {
+                await navigator.clipboard.writeText(students.map((student) => `${student.number}\t${student.name}\t${results[student.id].text}`).join('\n'));
+                if (!signal.aborted) setNotice('번호·이름·평어를 복사했습니다.');
+              })}>전체 복사</button>
+              <button type="button" className={secondaryClass} disabled={!!busy} onClick={() => move('grade-upload', clearGrade())}>다른 학급 성적표</button>
+              <button type="button" className={secondaryClass} disabled={!!busy} onClick={() => move(subjects.length > 1 ? 'subject' : 'plan-review')}>교과·입력 자료 다시 확인</button>
             </div>
-          ) : (
-            <div className="flex flex-wrap justify-between gap-3">
-              {draft.step !== 'plan-upload' ? (
-                <button className={secondaryClass} disabled={!!busy} onClick={back}>
-                  이전
-                </button>
-              ) : (
-                <span />
-              )}
-              <button
-                className={primaryClass}
-                disabled={!!busy || !!blocking}
-                aria-describedby={blocking ? 'neis-blocking' : undefined}
-                onClick={() => void next()}
-              >
-                {draft.step === 'results' && draft.studentIndex === students.length - 1
-                  ? '이 학생 검토 완료'
-                  : actionText[draft.step]}
-              </button>
-            </div>
-          )}
+          </div> : <div className="flex flex-wrap justify-between gap-3">
+            {back[step] ? <button type="button" className={secondaryClass} disabled={!!busy} onClick={() => move(back[step]!)}>이전</button> : <span />}
+            <button type="button" className={primaryClass} disabled={!!busy || !!blocking} aria-describedby={blocking ? 'neis-blocking' : undefined} onClick={() => void next()}>
+              {step === 'plan-upload' && draft.plan ? '이 평가계획 사용' : step === 'grade-upload' && book ? '이 성적표 사용' : meta.action}
+            </button>
+          </div>}
         </footer>
       </div>
     </section>

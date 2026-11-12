@@ -58,6 +58,9 @@ export const NEIS_MAX_FILE_BYTES = 10 * 1024 * 1024;
 export const NEIS_MAX_PAGES = 80;
 export const NEIS_MAX_STUDENTS = 60;
 export const NEIS_MAX_TASKS = 40;
+export const NEIS_MAX_TASK_CONTEXT = 1200;
+const MAX_COMMENT_STARTS = NEIS_MAX_STUDENTS * NEIS_MAX_TASKS * 2;
+const MAX_PRIOR_SENTENCES = 24;
 
 const record = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === 'object' && !Array.isArray(v);
@@ -249,7 +252,10 @@ export function validateCommentInput(value: unknown): CommentInput {
   if (!evidence.length) throw new Error('확인된 평가 근거가 필요합니다.');
   return { subject, length: Number(value.length) as CommentInput['length'], evidence };
 }
-export function validateGeneratedComment(value: unknown, input: CommentInput): GeneratedComment {
+
+const bannedStyle = /(?:^|[^가-힣])(?:모범생|장애우|어린이|칭찬함|아주|매우|비범함|그리고|그래서|또한|이로 인해|따라서|이러한|하지만)(?![가-힣])/u;
+
+export function validateGeneratedComment(value: unknown, input: CommentInput, strictStyle = false): GeneratedComment {
   if (!record(value)) throw new Error('평어 결과를 읽지 못했습니다. 다시 생성해 주세요.');
   const sentences = array(value.sentences, NEIS_MAX_TASKS).map((v): GroundedSentence => {
     if (!record(v)) throw new Error('평어 문장 형식을 확인해 주세요.');
@@ -266,7 +272,12 @@ export function validateGeneratedComment(value: unknown, input: CommentInput): G
       /향상/u, /성장/u, /발전/u, /리더십/u, /자기\s*주도/u, /적극/u, /흥미/u, /자신감/u];
     if (inferredClaims.some((claim) => claim.test(sentence.text) && !claim.test(evidence.criterion)))
       throw new Error('평가기준에 없는 어려움·도움·태도 등의 표현이 포함되었습니다. 다시 생성해 주세요.');
-    if (!/[.!?。]$/u.test(sentence.text)) sentence.text += '.';
+    const statement = sentence.text.replace(/[.!?。]+$/u, '').trimEnd();
+    const last = statement.charCodeAt(statement.length - 1);
+    if (strictStyle && (bannedStyle.test(statement) || /[*_`]/u.test(statement) || !(last >= 0xac00 && last <= 0xd7a3) || (last - 0xac00) % 28 !== 16))
+      throw new Error('금지 표현이나 명사형 종결을 확인해 주세요. 평어를 다시 생성할 수 있습니다.');
+    if (strictStyle) sentence.text = `${statement}.`;
+    else if (!/[.!?。]$/u.test(sentence.text)) sentence.text += '.';
     return sentence;
   });
   if (!sentences.length || sentences.map((s) => s.text).join(' ').length > 3000)
@@ -284,13 +295,69 @@ export function countComment(textValue: string) {
 }
 export function repeatedCommentIds(rows: { id: string; text: string }[]): Set<string> {
   const owners = new Map<string, Set<string>>();
+  const phrases: { owner: string; length: number; grams: number }[] = [];
+  const postings = new Map<string, number[]>();
+  const overlaps = new Set<string>();
   for (const row of rows)
-    for (const sentence of row.text.split(/[.!?\n]+/)) {
-      const normalized = sentence.replace(/\s+/g, '').trim();
-      if (normalized.length < 12) continue;
-      const set = owners.get(normalized) ?? new Set<string>();
+    for (const key of commentSentences(row.text).flatMap((sentence) => {
+      const words = sentence.match(/[\p{L}\p{N}]+/gu) ?? [];
+      const normalized = words.join('');
+      // Compare longer sentences even when a few words or the opening were replaced.
+      if (normalized.length >= 26) {
+        const grams = new Set(Array.from({ length: normalized.length - 2 }, (_, i) => normalized.slice(i, i + 3)));
+        const counts = new Map<number, number>();
+        for (const gram of grams) {
+          const entries = postings.get(gram) ?? [];
+          for (const index of entries) {
+            if (phrases[index].owner !== row.id) counts.set(index, (counts.get(index) ?? 0) + 1);
+          }
+          entries.push(phrases.length);
+          postings.set(gram, entries);
+        }
+        for (const [index, shared] of counts) {
+          const candidate = phrases[index];
+          if (Math.min(normalized.length, candidate.length) >= Math.max(normalized.length, candidate.length) * 0.8 &&
+            2 * shared >= (grams.size + candidate.grams) * 0.86) {
+            overlaps.add(row.id);
+            overlaps.add(candidate.owner);
+          }
+        }
+        phrases.push({ owner: row.id, length: normalized.length, grams: grams.size });
+      }
+      return [
+        ...commentStartKeys(sentence).map((start) => `start:${start}`),
+        ...(normalized ? [`sentence:${normalized}`] : []),
+        ...(words.length >= 4 ? [`words:${words.toSorted().join(' ')}`] : []),
+      ];
+    })) {
+      const set = owners.get(key) ?? new Set<string>();
       set.add(row.id);
-      owners.set(normalized, set);
+      owners.set(key, set);
     }
-  return new Set([...owners.values()].filter((s) => s.size > 1).flatMap((s) => [...s]));
+  for (const ids of owners.values()) if (ids.size > 1) for (const id of ids) overlaps.add(id);
+  return overlaps;
+}
+
+function commentSentences(value: string) {
+  return value.normalize('NFKC').toLowerCase().split(/\.(?!\d)|[!?。\n]+/u).map((part) => part.trim()).filter(Boolean);
+}
+
+function commentStartKeys(sentence: string) {
+  const words = sentence.match(/[\p{L}\p{N}]+/gu) ?? [];
+  const prefix = words.join('').slice(0, 3);
+  return [...new Set([words[0]?.slice(0, 60), prefix.length === 3 ? prefix : ''].filter((key): key is string => !!key))];
+}
+
+export function commentStyleContext(comments: string[]) {
+  const sentences = comments.flatMap(commentSentences);
+  return {
+    usedStarts: [...new Set(sentences.flatMap(commentStartKeys))].slice(0, MAX_COMMENT_STARTS),
+    priorSentences: [...new Set(sentences)].slice(-MAX_PRIOR_SENTENCES).map((sentence) => sentence.slice(0, 1000)),
+  };
+}
+
+export function validateCommentStyleContext(value: Record<string, unknown>) {
+  const usedStarts = value.usedStarts === undefined ? [] : array(value.usedStarts, MAX_COMMENT_STARTS).map((entry) => text(entry, 60));
+  const priorSentences = value.priorSentences === undefined ? [] : array(value.priorSentences, MAX_PRIOR_SENTENCES).map((entry) => text(entry, 1000));
+  return { usedStarts, priorSentences };
 }
