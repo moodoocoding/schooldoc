@@ -1,4 +1,4 @@
-import fontUrl from '../schoolDocuments/assets/fonts/NanumGothic-Regular.ttf?url';
+import fontUrl from '../officialDocument/assets/fonts/NanumGothic-Regular.ttf?url';
 import { NEIS_MAX_FILE_BYTES } from '../../../supabase/functions/_shared/neisHelper';
 import type { HangulPage, HangulRequest, HangulResponse } from './hangulPlan.worker';
 
