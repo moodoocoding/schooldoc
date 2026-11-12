@@ -50,7 +50,7 @@ test.describe('앱 껍데기 스크롤', () => {
 
   for (const [label, path] of SHELL_ROUTES) {
     test(`${label} 화면을 맨 아래까지 내려도 빈 바닥이 없다`, async ({ page }) => {
-      if (path.startsWith('/tools/neis-helper')) {
+      if (path.startsWith('/tools/neis-helper') || path === '/tools/school-documents') {
         // 개발 중 안내는 가상 관리자 인증으로만 연다. 운영 로그인을 사용하지 않는다.
         await page.route('**/src/utils/supabaseClient.ts', route => route.fulfill({ contentType: 'application/javascript', body: `
           export const isSupabaseConfigured = true;
@@ -65,6 +65,7 @@ test.describe('앱 껍데기 스크롤', () => {
       await page.goto(path);
       await page.waitForLoadState('networkidle');
       if (path === '/tools/neis-helper') await expect(page.getByRole('heading', { name: 'Neis Helper', exact: true })).toBeVisible();
+      if (path === '/tools/school-documents') await expect(page.getByRole('heading', { name: '운영계획서', exact: true })).toBeVisible();
 
       const measured = await measureBottom(page);
       expect(measured.gap, `${label}: 껍데기 아래에 ${measured.gap}px가 비었다`).toBeLessThanOrEqual(1);
