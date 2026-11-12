@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   ShieldCheck, FileCheck2, ClipboardCheck, Inbox, FileEdit, 
-  Receipt, Award, CalendarClock, SearchCheck, PackageCheck, ArrowRight
+  Receipt, Award, CalendarClock, PackageCheck, ArrowRight
 } from 'lucide-react';
 import type { SchoolTool } from '../types/schooldoc';
 
@@ -20,7 +20,6 @@ export const getToolIcon = (iconName: string): React.FC<{ className?: string }> 
     case 'receipt': return Receipt;
     case 'award': return Award;
     case 'calendar-clock': return CalendarClock;
-    case 'package-search': return SearchCheck;
     case 'package-check': return PackageCheck;
     default: return FileCheck2;
   }
@@ -62,7 +61,7 @@ export const ToolCard: React.FC<ToolCardProps> = ({ tool, onSelectTool }) => {
                   ? 'bg-[#EFF6FC] text-[#0F6CBD] border-[#0F6CBD]/20'
                   : tool.warningCount
                   ? 'bg-[#FFFBEB] text-[#A15C00] border-[#FCD34D]'
-                  : 'bg-[#F1F5F9] text-[#64748B] border-[#E2E8F0]'
+                  : 'bg-[#F1F5F9] text-[#475569] border-[#E2E8F0]'
               }`}
             >
               {tool.statusText}

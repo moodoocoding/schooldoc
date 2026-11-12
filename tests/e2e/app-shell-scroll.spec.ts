@@ -12,6 +12,7 @@ import { expect, test, type Page } from '@playwright/test';
  * 좁은 창에서 재는 이유는 표가 가로로 넘쳐야 문제가 드러나기 때문이다.
  */
 const SHELL_ROUTES = [
+  ['학교 문서 작성', '/tools/school-documents'],
   ['등록부', '/tools/registry'],
   ['학생 결과 안내', '/tools/student-results/new'],
   ['가정통신문 동의서', '/tools/consent-forms'],

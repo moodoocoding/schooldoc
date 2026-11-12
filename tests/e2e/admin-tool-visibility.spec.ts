@@ -3,7 +3,8 @@ import AxeBuilder from '@axe-core/playwright';
 
 const admin = { id: 'fixture-preview-admin', email: 'panthea0@gmail.com', email_confirmed_at: '2026-10-05T00:00:00Z', is_anonymous: false, app_metadata: {}, user_metadata: { name: '가상 관리자' } };
 const teacher = { ...admin, id: 'fixture-preview-teacher', email: 'teacher@example.invalid', user_metadata: { name: '가상 일반 교사' } };
-const previewNames = ['이수증 수합', '문서 서명', '분실물 관리', '물품 대여', 'Neis Helper'];
+const previewNames = ['이수증 수합', '문서 서명', '물품 대여', 'Neis Helper'];
+const adminOnlyNames = [...previewNames, '학교 문서 작성'];
 type FixtureUser = typeof admin | null;
 
 async function setup(page: Page, user: FixtureUser, pending = false) {
@@ -51,6 +52,13 @@ async function expectPreviewCards(page: Page, visible: boolean) {
       await expect(card).toHaveCount(0);
     }
   }
+  const planCard = page.getByRole('main').getByRole('button', { name: /^학교 문서 작성 시작하기/ });
+  if (visible) {
+    await expect(planCard).toBeVisible();
+    await expect(planCard).toBeEnabled();
+    await expect(planCard).toContainText('관리자 미리보기');
+  } else await expect(planCard).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: '분실물 관리', exact: true })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: `전체 업무 도구 (${visible ? 13 : 8})`, exact: true })).toBeVisible();
 }
 
@@ -85,7 +93,7 @@ for (const width of [1366, 390]) {
       await expect(search).not.toHaveAttribute('placeholder', /이수증/);
       await search.focus();
       await expect(search).toBeFocused();
-      for (const name of previewNames) {
+      for (const name of adminOnlyNames) {
         await search.fill(name);
         if (label === '관리자') await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
         else {
@@ -93,12 +101,16 @@ for (const width of [1366, 390]) {
           await expect(page.getByText('에 해당되는 도구를 찾지 못했습니다.', { exact: false })).toBeVisible();
         }
       }
+      await search.fill('분실물 관리');
+      await expect(page.getByRole('heading', { name: '분실물 관리', exact: true })).toHaveCount(0);
+      await expect(page.getByText('에 해당되는 도구를 찾지 못했습니다.', { exact: false })).toBeVisible();
       await page.getByRole('button', { name: '검색어 지우기' }).click();
       await expectPreviewCards(page, label === '관리자');
       const dialog = await openQuickMenu(page, width);
-      for (const name of previewNames) {
+      for (const name of adminOnlyNames) {
         await expect(dialog.getByRole('button', { name: `${name} + 추가`, exact: true })).toHaveCount(label === '관리자' ? 1 : 0);
       }
+      await expect(dialog.getByRole('button', { name: '분실물 관리 + 추가', exact: true })).toHaveCount(0);
       await page.screenshot({ path: testInfo.outputPath('quick-menu-full.png'), fullPage: true });
       expect(evidence.errors).toEqual([]);
       expect(evidence.remoteCalls).toEqual([]);
@@ -111,10 +123,10 @@ test('로그인 확인 중에는 숨기고 관리자 세션 확인 후에 표시
   await page.goto('/');
   await expectPreviewCards(page, false);
   const dialog = await openQuickMenu(page, 1366);
-  for (const name of previewNames) await expect(dialog.getByText(name, { exact: true })).toHaveCount(0);
+  for (const name of adminOnlyNames) await expect(dialog.getByText(name, { exact: true })).toHaveCount(0);
   await page.evaluate(() => (window as unknown as { __previewResolveSession: () => void }).__previewResolveSession());
   await expectPreviewCards(page, true);
-  for (const name of previewNames) await expect(dialog.getByText(name, { exact: true })).toBeVisible();
+  for (const name of adminOnlyNames) await expect(dialog.getByText(name, { exact: true })).toBeVisible();
   expect(evidence.errors).toEqual([]);
   expect(evidence.remoteCalls).toEqual([]);
 });
@@ -242,4 +254,28 @@ test('200% 크기의 좁은 화면에서도 일반 교사 홈이 가로로 넘�
   await page.screenshot({ path: testInfo.outputPath('home-200-percent-full.png'), fullPage: true });
   expect(evidence.errors).toEqual([]);
   expect(evidence.remoteCalls).toEqual([]);
+});
+
+test('관리자는 홈에서 계획서를 열고 계정 전환 시 작성 화면이 즉시 닫힌다', async ({ page }, testInfo) => {
+  const evidence = await setup(page, admin);
+  await page.goto('/');
+  await page.getByRole('button', { name: /^학교 문서 작성 시작하기/ }).click();
+  await expect(page).toHaveURL(/\/tools\/school-documents$/);
+  await expect(page.getByLabel('문서 종류', { exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('admin-plan-entry-full.png'), fullPage: true });
+  await changeUser(page, teacher);
+  await expect(page.getByRole('alert')).toContainText('관리자 계정');
+  await expect(page.getByLabel('문서 종류')).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('teacher-plan-blocked-full.png'), fullPage: true });
+  await changeUser(page, null);
+  await expect(page.getByRole('button', { name: 'Google로 로그인', exact: true })).toBeVisible();
+  expect(evidence.errors).toEqual([]); expect(evidence.remoteCalls).toEqual([]);
+});
+
+test('삭제한 분실물 주소에서도 관리자에게 분실물 도구를 표시하지 않는다', async ({ page }) => {
+  const evidence = await setup(page, admin);
+  await page.goto('/tools/lost-found');
+  await expectPreviewCards(page, true);
+  await expect(page.getByRole('heading', { name: '분실물 관리', exact: true })).toHaveCount(0);
+  expect(evidence.errors).toEqual([]); expect(evidence.remoteCalls).toEqual([]);
 });

@@ -24,6 +24,7 @@ import { PublicClassMissionsPage } from './features/classMissions/PublicClassMis
 import { NeisHelperPage } from './features/neisHelper/NeisHelperPage';
 import { SubjectWorkspace } from './features/neisHelper/SubjectWorkspace';
 import { clearNeisDraftUnless } from './features/neisHelper/subjectDraft';
+import { SchoolDocumentsWorkspace } from './features/schoolDocuments/SchoolDocumentsWorkspace';
 import { canAccessClassBudgetReceipts } from './features/classBudgetReceipts/classBudgetReceiptsConfig';
 import { useTeacherAuth } from './auth/teacherAuth';
 import { getVisibleSchoolTools } from './auth/schoolToolVisibility';
@@ -41,8 +42,16 @@ function AdminApp() {
   const canUseReceiptBooks = canAccessClassBudgetReceipts(user);
   useEffect(() => { clearNeisDraftUnless(user?.id ?? ''); }, [user?.id]);
 
-  // 개발 중 도구의 공개 범위는 아래 공통 필터에서 구분한다.
+  // 관리자 전용 도구의 공개 범위는 아래 공통 필터에서 구분한다.
   const allToolsMap: Record<string, SchoolTool> = {
+    'school-documents': {
+      id: 'school-documents',
+      name: '학교 문서 작성',
+      desc: '공문을 분석하고 운영계획서 초안을 작성해 한글 HWPX로 저장합니다.',
+      iconName: 'file-pen',
+      status: 'ready',
+      statusText: '관리자 미리보기',
+    },
     'class-missions': {
       id: 'class-missions',
       name: '학급 미션',
@@ -116,14 +125,6 @@ function AdminApp() {
       status: 'in_progress',
       statusText: '개발 중',
     },
-    'lost-found': {
-      id: 'lost-found',
-      name: '분실물 관리',
-      desc: '습득물 사진과 장소를 등록하고 반환 상태를 관리합니다.',
-      iconName: 'package-search',
-      status: 'in_progress',
-      statusText: '개발 중',
-    },
     'item-rent': {
       id: 'item-rent',
       name: '물품 대여',
@@ -155,9 +156,11 @@ function AdminApp() {
   const isClassroomRolesRoute = location.pathname.startsWith('/tools/classroom-roles');
   const isClassMissionsRoute = location.pathname.startsWith('/tools/class-missions');
   const isNeisHelperRoute = ['/tools/neis-helper', '/tools/neis-helper/subject'].includes(location.pathname) && Boolean(visibleToolsMap['neis-comments']);
+  const isSchoolDocumentsRoute = location.pathname.startsWith('/tools/school-documents');
   const isRoleAssignmentRoute = /^\/tools\/classroom-roles\/(assign|rotate)$/.test(location.pathname);
 
   const toolRoutes: Record<string, string> = {
+    'school-documents': '/tools/school-documents',
     'class-missions': '/tools/class-missions',
     'classroom-roles': '/tools/classroom-roles',
     'registry-sign': '/tools/registry-sign',
@@ -225,9 +228,10 @@ function AdminApp() {
         건드리지 않는다.
       */}
       <div className="flex-1 flex flex-col min-w-0">
-        {isRegistryRoute || isStudentResultsRoute || isConsentFormsRoute || isSpecialRoomsRoute || isDataCollectRoute || isReceiptBooksRoute || isClassroomRolesRoute || isClassMissionsRoute || isNeisHelperRoute ? (
+        {isRegistryRoute || isStudentResultsRoute || isConsentFormsRoute || isSpecialRoomsRoute || isDataCollectRoute || isReceiptBooksRoute || isClassroomRolesRoute || isClassMissionsRoute || isNeisHelperRoute || isSchoolDocumentsRoute ? (
           <main className={`min-w-0 overflow-x-clip p-4 sm:p-8 ${isRoleAssignmentRoute ? 'role-assignment-main' : ''}`}>
-            {isRegistryRoute ? <RegistryWorkspace />
+            {isSchoolDocumentsRoute ? <SchoolDocumentsWorkspace />
+              : isRegistryRoute ? <RegistryWorkspace />
               : isStudentResultsRoute ? <StudentResultsWorkspace />
               : isConsentFormsRoute ? <ConsentFormsWorkspace />
               : isSpecialRoomsRoute ? <SpecialRoomsWorkspace />
