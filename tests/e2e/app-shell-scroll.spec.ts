@@ -24,6 +24,7 @@ const SHELL_ROUTES = [
   ['1인 1역 배정', '/tools/classroom-roles/assign'],
   ['1인 1역 역할 목록', '/tools/classroom-roles/roles'],
   ['1인 1역 실천판', '/tools/classroom-roles/board'],
+  ['1인 1역 운영 기간 실천 현황', '/tools/classroom-roles/period'],
   ['1인 1역 게시판 안내문', '/tools/classroom-roles/print'],
   ['1인 1역 기록', '/tools/classroom-roles/records'],
   ['1인 1역 교체', '/tools/classroom-roles/rotate'],

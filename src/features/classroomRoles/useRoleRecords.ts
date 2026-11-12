@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { loadRoleRecords, type RoleRecord } from "./roleApi";
-export function useRoleRecords(start: string, end: string, revision = 0) {
+export function useRoleRecords(start: string, end: string, revision = 0, { live = true } = {}) {
   const [records, setRecords] = useState<RoleRecord[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -28,11 +28,11 @@ export function useRoleRecords(start: string, end: string, revision = 0) {
       }
     };
     void refresh();
-    const timer = window.setInterval(() => void refresh(), 30000);
+    const timer = live ? window.setInterval(() => void refresh(), 30000) : undefined;
     return () => {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [start, end, revision, retry]);
+  }, [start, end, revision, retry, live]);
   return { records, error, loading, refresh: () => setRetry((n) => n + 1) };
 }

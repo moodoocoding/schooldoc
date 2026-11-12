@@ -6,6 +6,7 @@ import {
   roleMonthRange,
   roleToday,
   roleWeekDates,
+  type RoleRecord,
 } from "../../supabase/functions/_shared/classroomRoles";
 const root = "/tools/classroom-roles";
 const demoKey = "schooldoc_classroom_roles_demo_v1";
@@ -77,8 +78,122 @@ test("홈은 오늘 현황과 4개 주요 기능이며 학생 타일이 아니�
   await expect(
     page.getByRole("region", { name: "오늘의 간단한 현황" }),
   ).toContainText("오늘 배정된 역할이 없습니다");
+  await expect(page.getByRole("region", { name: "이달의 현황" })).toContainText("집계할 운영 기간이 없습니다");
   await expect(page.getByRole("button", { name: /가상하늘/ })).toHaveCount(0);
   expect(errors).toEqual([]);
+});
+
+test("이달의 현황에서 학급 합계를 보고 같은 운영 기간의 학생별 상세로 이동한다", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-11-13T03:00:00Z"));
+  await page.setViewportSize({ width: 1366, height: 900 });
+  const roster = Array.from({ length: 23 }, (_, i) => `${i + 1} 가상학생${i + 1}`);
+  roster[5] = `6 ${"가상긴이름".repeat(8)}`;
+  const board = await seed(page, true, roster.join("\n"));
+  const [period] = board.state.periods;
+  period.start = "2026-11-11";
+  period.end = "2026-11-30";
+  const previous = { ...period, id: crypto.randomUUID(), start: "2026-10-12", end: "2026-11-10" };
+  board.state.periods.unshift(previous);
+  board.state.settings.excludedDates = ["2026-11-12"];
+  const record = (student: number, date: string, status: RoleRecord["status"] = "done"): RoleRecord => ({
+    period_id: period.id,
+    student_id: period.students[student - 1].id,
+    record_date: date,
+    status,
+    source: "teacher",
+    updated_at: `${date}T00:00:00Z`,
+  });
+  const records = [
+    { ...record(2, "2026-11-10"), period_id: previous.id },
+    record(6, "2026-11-11"), record(6, "2026-11-13"), record(4, "2026-11-11", "not_done"),
+    record(2, "2026-11-13"), record(2, "2026-11-12"), record(2, "2026-11-14"),
+    record(3, "2026-11-13", "exempt"),
+  ];
+  await page.evaluate(({ key, board, records }) => {
+    localStorage.setItem(key, JSON.stringify(board));
+    localStorage.setItem(`${key}_records`, JSON.stringify(records));
+  }, { key: demoKey, board, records });
+  await page.reload();
+
+  await page.goto(`${root}/settings`);
+  await page.getByLabel("수정할 운영 기간").selectOption(period.id);
+  await expect(page.getByLabel("운영 시작일")).toHaveValue("2026-11-11");
+  await expect(page.getByLabel("운영 종료일")).toHaveValue("2026-11-30");
+  await page.getByRole("link", { name: "1인 1역 홈", exact: true }).click();
+
+  const section = page.getByRole("region", { name: "이달의 현황" });
+  const summary = section.locator("dd");
+  await expect(section).toContainText("2026-11-11 ~ 2026-11-30");
+  await expect(section).toContainText("2026-11-13까지 집계");
+  await expect(summary).toHaveText(["3회", "1회", "41회"]);
+  await expect(section.getByRole("table")).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "오늘의 간단한 현황" }).getByRole("link")).toHaveAttribute("href", `${root}/board`);
+  await page.screenshot({ path: test.info().outputPath("teacher-period-summary-desktop.png"), fullPage: true });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: test.info().outputPath("teacher-period-summary-mobile.png"), fullPage: true });
+  await section.getByRole("link", { name: "이달의 실천 현황 보기" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(`${root}/period`);
+  await expect(page.getByRole("heading", { name: "운영 기간 실천 현황", level: 1 })).toBeFocused();
+
+  const detail = page.getByRole("region", { name: "학생별 실천 횟수" });
+  const table = detail.getByRole("table");
+  const dataRows = table.locator("tbody tr");
+  await expect(detail).toContainText("2026-11-11 ~ 2026-11-30");
+  await expect(table.getByRole("columnheader")).toHaveText(["학생", "성공 횟수", "못했어요", "미기록"]);
+  await expect(dataRows).toHaveCount(23);
+  await expect(dataRows.first().getByRole("cell")).toHaveText(["2", "0", "0"]);
+  await expect(dataRows.nth(1).getByRole("cell")).toHaveText(["1", "0", "1"]);
+  await expect(table.getByRole("row", { name: /3번 가상학생3/ }).getByRole("cell")).toHaveText(["0", "0", "1"]);
+  await expect(table.getByRole("row", { name: /4번 가상학생4/ }).getByRole("cell")).toHaveText(["0", "1", "1"]);
+  await page.screenshot({ path: test.info().outputPath("teacher-period-detail-mobile.png"), fullPage: true });
+  const sort = detail.getByRole("combobox", { name: "학생 통계 정렬" });
+  await sort.selectOption("number");
+  await expect(dataRows.first()).toContainText("1번가상학생1");
+
+  for (const width of [1366, 683, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    await page.screenshot({ path: test.info().outputPath(`teacher-period-detail-${width}.png`), fullPage: true });
+  }
+  const audit = await new AxeBuilder({ page }).include('[aria-labelledby="role-period-status-title"]').analyze();
+  expect(audit.violations).toEqual([]);
+
+  records.push(record(1, "2026-11-13"));
+  await page.evaluate(({ key, records }) => localStorage.setItem(key, JSON.stringify(records)), { key: `${demoKey}_records`, records });
+  await detail.getByRole("button", { name: "집계 새로고침" }).click();
+  await expect(dataRows.first().getByRole("cell")).toHaveText(["1", "0", "1"]);
+  await page.getByRole("link", { name: "1인 1역 홈", exact: true }).click();
+  await expect(summary).toHaveText(["4회", "1회", "40회"]);
+
+  await page.clock.setFixedTime(new Date("2026-12-01T03:00:00Z"));
+  await page.reload();
+  await expect(section).toContainText("최근 종료 기간 · 2026-11-11 ~ 2026-11-30");
+  await expect(section.getByText("2026-11-13까지 집계")).toHaveCount(0);
+  await section.getByRole("link", { name: "이달의 실천 현황 보기" }).click();
+  await expect(detail).toContainText("최근 종료 기간 · 2026-11-11 ~ 2026-11-30");
+});
+
+test("운영 기간 통계에서 최대 60명 명단과 기록이 없는 상태를 확인할 수 있다", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-11-13T03:00:00Z"));
+  await page.setViewportSize({ width: 320, height: 844 });
+  const board = await seed(page, true, Array.from({ length: 60 }, (_, i) => `${i + 1} 가상학생${i + 1}`).join("\n"));
+  Object.assign(board.state.periods[0], { start: "2026-01-01", end: "2026-12-31" });
+  await page.evaluate(({ key, board }) => localStorage.setItem(key, JSON.stringify(board)), { key: demoKey, board });
+  await page.reload();
+  const summary = page.getByRole("region", { name: "이달의 현황" });
+  await expect(summary.locator("dd")).toHaveText(["0회", "0회", "19,020회"]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  await page.screenshot({ path: test.info().outputPath("teacher-period-summary-60-mobile.png"), fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("link", { name: "이달의 실천 현황 보기" }).click();
+  const section = page.getByRole("region", { name: "학생별 실천 횟수" });
+  await expect(section.getByRole("table").locator("tbody tr")).toHaveCount(60);
+  const cells = section.getByRole("row", { name: /60번 가상학생60/ }).getByRole("cell");
+  await expect(cells).toHaveText(["0", "0", "317"]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({ path: test.info().outputPath("teacher-period-60-mobile.png"), fullPage: true });
 });
 test("모바일에서도 주요 기능으로 이동한다", async ({
   page,
