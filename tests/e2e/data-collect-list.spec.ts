@@ -2,7 +2,9 @@ import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { mkdir, writeFile } from "node:fs/promises";
 
-const evidence = "design/feature-reviews/2026-10-01-data-collect-fix";
+const evidence =
+  process.env.DATA_COLLECT_TEST_EVIDENCE_DIR ??
+  "test-results/data-collect-evidence";
 const storeKey = "schooldoc_data_collect_v1";
 
 async function observeStoreReads(page: Page) {
@@ -113,7 +115,7 @@ test("실제 Chrome: 수동 새로고침 뒤 이전·다음 목록은 유효한 
   );
 });
 
-test("실제 Chrome: 목록을 열어 둔 채 실제 마감 시각을 지나면 조회 없이 상태가 바뀐다", async ({
+test("실제 Chrome: 실제 마감 시각을 지나면 추가 조회 없이 기본 목록에서 빠지고 보관함에 보인다", async ({
   page,
 }) => {
   test.setTimeout(120_000);
@@ -160,12 +162,12 @@ test("실제 Chrome: 목록을 열어 둔 채 실제 마감 시각을 지나면 
   await expect(timed).toContainText("수합 중");
   await expect(open).toContainText("수합 중");
   await expect(open).toContainText("기한 없음");
-  await expect(closed.locator("span").first()).toHaveText("종료");
+  await expect(closed).toHaveCount(0);
   const before = await readCount(page);
   const observedAt = new Date().toISOString();
   await saveShot(page, "chrome-list-deadline-before-followup");
   // Real wall-clock time: no page.clock/fake timers and no response mocking.
-  await expect(timed).toContainText("기한 마감", {
+  await expect(timed).toHaveCount(0, {
     timeout: Math.max(0, deadline.getTime() - Date.now()) + 15_000,
   });
   const changedAt = new Date().toISOString();
@@ -173,8 +175,14 @@ test("실제 Chrome: 목록을 열어 둔 채 실제 마감 시각을 지나면 
   expect(Date.now() - deadline.getTime()).toBeLessThan(15_000);
   expect(await readCount(page)).toBe(before);
   await expect(open).toContainText("수합 중");
-  await expect(closed.locator("span").first()).toHaveText("종료");
   await saveShot(page, "chrome-list-deadline-after-followup");
+  expect(await readCount(page)).toBe(before);
+  await page.getByRole("link", { name: "보관함", exact: true }).click();
+  await expect(timed).toContainText("기한 마감");
+  await expect(closed.locator("span").first()).toHaveText("종료");
+  await expect(open).toHaveCount(0);
+  const archiveReads = await readCount(page);
+  await saveShot(page, "chrome-list-archive-desktop");
   const desktopAxe = (await new AxeBuilder({ page }).analyze()).violations;
   expect(desktopAxe).toEqual([]);
   await page.setViewportSize({ width: 390, height: 844 });
@@ -187,7 +195,7 @@ test("실제 Chrome: 목록을 열어 둔 채 실제 마감 시각을 지나면 
   await saveShot(page, "chrome-list-deadline-mobile-followup");
   const mobileAxe = (await new AxeBuilder({ page }).analyze()).violations;
   expect(mobileAxe).toEqual([]);
-  expect(await readCount(page)).toBe(before);
+  expect(await readCount(page)).toBe(archiveReads);
   expect(errors).toEqual([]);
   await writeFile(
     evidence + "/list-deadline-followup.json",
@@ -199,7 +207,8 @@ test("실제 Chrome: 목록을 열어 둔 채 실제 마감 시각을 지나면 
         deadline: deadline.toISOString(),
         changedAt,
         before,
-        after: await readCount(page),
+        activeAfterDeadline: before,
+        afterOpeningArchive: archiveReads,
         desktopAxeViolations: desktopAxe.length,
         mobileAxeViolations: mobileAxe.length,
         pageErrors: errors,

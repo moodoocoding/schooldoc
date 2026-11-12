@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { randomUUID } from "node:crypto";
+import { verifyDataCollectArchive } from "./dataCollectArchiveChecks.mjs";
 const require = createRequire(import.meta.url);
 const { Pool } = require("../../.tmp/data-collect-runtime/node_modules/pg");
 const connection = { host: "127.0.0.1", port: 54329, user: "schooldoc_test" };
@@ -54,11 +55,15 @@ try {
   await db.query(
     "create table registries(id uuid,owner_id uuid,title text,status text,updated_at timestamptz);create table registry_signatures(registry_id uuid);create table registry_participants(registry_id uuid);create table student_result_events(id uuid,owner_id uuid,title text,status text,updated_at timestamptz);create table student_result_recipients(event_id uuid,status text);create table special_room_boards(id uuid,owner_id uuid,title text,status text,updated_at timestamptz);create table special_room_bookings(board_id uuid);create table special_rooms(board_id uuid);alter table consent_forms add column owner_id uuid,add column title text,add column deadline timestamptz,add column recipient_mode text,add column response_count integer,add column recipient_count integer;",
   );
+  await db.query(
+    "create table storage.objects(bucket_id text not null,name text not null,primary key(bucket_id,name))",
+  );
   for (const file of [
     "202608210001_data_collect.sql",
     "202608240001_privacy_retention_lifecycle.sql",
     "202608270001_active_work_summary.sql",
     "202610010300_data_collect_submission_and_queries.sql",
+    "202611130400_data_collect_archive.sql",
   ]) {
     await db.query(readFileSync("supabase/migrations/" + file, "utf8"));
     check("migration " + file);
@@ -577,14 +582,15 @@ try {
     closed,
   );
   check("마감 변경 시 종료·보관 기산점 보존");
+  await verifyDataCollectArchive(db, owner, other, regular, check);
 } finally {
-  mkdirSync("design/feature-reviews/2026-10-01-data-collect-fix", {
+  const evidence =
+    process.env.DATA_COLLECT_TEST_EVIDENCE_DIR ??
+    "test-results/data-collect-evidence";
+  mkdirSync(evidence, {
     recursive: true,
   });
-  writeFileSync(
-    "design/feature-reviews/2026-10-01-data-collect-fix/postgres.json",
-    JSON.stringify(report, null, 2),
-  );
+  writeFileSync(evidence + "/postgres.json", JSON.stringify(report, null, 2));
   await db.end();
   await admin.query('drop database "' + database + '"');
   await admin.end();

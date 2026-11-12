@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { CalendarDays, FileCheck2, Plus, Users, RefreshCw } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ToolHeaderBadge,
   ToolListHeader,
@@ -14,18 +14,36 @@ import {
   subscribeDataCollections,
 } from "./dataCollectService";
 import { collectionStateLabel } from "./dataCollectUtils";
-import type { DataCollectionListCursor, DataCollectionSummary } from "./types";
+import type {
+  DataCollectionListCursor,
+  DataCollectionListScope,
+  DataCollectionSummary,
+} from "./types";
 
 export function DataCollectListPage() {
   const { user } = useTeacherAuth();
+  const [params] = useSearchParams();
+  const scope = params.get("view") === "archive" ? "archive" : "active";
+  const owner = dataCollectOwnerId(user?.id);
   return (
-    <DataCollectList
-      owner={dataCollectOwnerId(user?.id)}
-      key={dataCollectOwnerId(user?.id)}
-    />
+    <DataCollectList owner={owner} scope={scope} key={owner + ":" + scope} />
   );
 }
-function DataCollectList({ owner }: { owner: string }) {
+const listViews = [
+  { scope: "active", label: "수합 중", url: "/tools/data-collect" },
+  {
+    scope: "archive",
+    label: "보관함",
+    url: "/tools/data-collect?view=archive",
+  },
+] as const;
+function DataCollectList({
+  owner,
+  scope,
+}: {
+  owner: string;
+  scope: DataCollectionListScope;
+}) {
   const navigate = useNavigate();
   const [collections, setCollections] = useState<DataCollectionSummary[]>([]);
   const [cursors, setCursors] = useState<
@@ -58,7 +76,12 @@ function DataCollectList({ owner }: { owner: string }) {
     setError("");
     const load = async (force = false) => {
       try {
-        const result = await listDataCollectionSummaries(owner, cursor, force);
+        const result = await listDataCollectionSummaries(
+          owner,
+          cursor,
+          force,
+          scope,
+        );
         if (active) {
           setCollections(result.collections);
           setNext(result.nextCursor);
@@ -82,8 +105,14 @@ function DataCollectList({ owner }: { owner: string }) {
       active = false;
       unsubscribe();
     };
-  }, [owner, cursor, refresh]);
+  }, [owner, cursor, refresh, scope]);
   useEffect(() => () => clearDataCollectQueryCache(), [owner]);
+  const archived = scope === "archive";
+  const visible = archived
+    ? collections
+    : collections.filter(
+        (c) => collectionStateLabel(c.status, c.dueAt, now) === "수합 중",
+      );
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 pb-12">
       <ToolListHeader
@@ -101,18 +130,48 @@ function DataCollectList({ owner }: { owner: string }) {
           </button>
         }
       />
-      <button
-        type="button"
-        disabled={loading}
-        onClick={() => {
-          forceNextLoad.current = true;
-          setRefresh((v) => v + 1);
-        }}
-        className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-[#C8D0DA] bg-white px-4 text-sm font-bold"
-      >
-        <RefreshCw className="h-4 w-4" />
-        목록 새로고침
-      </button>
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <nav
+            aria-label="자료 수합 목록 보기"
+            className="inline-flex rounded-lg border border-[#C8D0DA] bg-white p-1"
+          >
+            {listViews.map((view) => (
+              <Link
+                key={view.scope}
+                to={view.url}
+                aria-current={scope === view.scope ? "page" : undefined}
+                className={
+                  "inline-flex min-h-[44px] items-center rounded-md px-4 text-sm font-bold " +
+                  (scope === view.scope
+                    ? "bg-[#0F6CBD] text-white"
+                    : "text-[#334155] hover:bg-[#F1F5F9]")
+                }
+              >
+                {view.label}
+              </Link>
+            ))}
+          </nav>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => {
+              forceNextLoad.current = true;
+              setRefresh((v) => v + 1);
+            }}
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-[#C8D0DA] bg-white px-4 text-sm font-bold"
+          >
+            <RefreshCw className="h-4 w-4" />
+            목록 새로고침
+          </button>
+        </div>
+        {archived ? (
+          <p className="text-sm text-[#526174]">
+            마감되거나 종료한 항목입니다. 현황에서 다시 열거나 삭제할 수
+            있습니다.
+          </p>
+        ) : null}
+      </div>
       {error ? (
         <p
           role="alert"
@@ -125,24 +184,21 @@ function DataCollectList({ owner }: { owner: string }) {
         <p role="status" className="py-10 text-center text-sm">
           목록을 불러오는 중입니다.
         </p>
-      ) : !collections.length ? (
+      ) : error && !visible.length ? null : !visible.length ? (
         <div className="border-y border-[#DCE3EA] bg-white py-16 text-center">
           <FileCheck2 className="mx-auto h-9 w-9 text-[#94A3B8]" />
-          <h2 className="mt-4 text-lg font-bold">아직 자료 수합이 없습니다</h2>
+          <h2 className="mt-4 text-lg font-bold">
+            {archived ? "보관한 항목이 없습니다" : "수합 중인 항목이 없습니다"}
+          </h2>
           <p className="mt-3 text-sm text-[#526174]">
-            파일 제출 또는 배포 자료 검토 요청을 만들어 보세요.
+            {next
+              ? "다음 목록에 더 많은 항목이 있습니다."
+              : "마감되거나 종료한 항목은 보관함으로 이동합니다."}
           </p>
-          <button
-            type="button"
-            onClick={() => navigate("/tools/data-collect/new")}
-            className="mt-4 min-h-[44px] rounded-lg border border-[#0F6CBD] px-5 text-sm font-bold text-[#0F6CBD]"
-          >
-            첫 자료 수합 만들기
-          </button>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {collections.map((c) => (
+          {visible.map((c) => (
             <button
               key={c.id}
               type="button"
@@ -151,11 +207,15 @@ function DataCollectList({ owner }: { owner: string }) {
             >
               <div className="flex flex-wrap justify-between gap-2 text-xs font-bold">
                 <span className="rounded-md bg-[#F1F5F9] px-2 py-1">
-                  {collectionStateLabel(c.status, c.dueAt, now)}
+                  {c.purgePending
+                    ? "삭제 미완료"
+                    : archived && c.status === "open"
+                      ? "기한 마감"
+                      : collectionStateLabel(c.status, c.dueAt, now)}
                 </span>
                 <span>{c.mode === "custom" ? "명단 없음" : "명단 있음"}</span>
               </div>
-              <h2 className="mt-4 min-h-12 line-clamp-2 text-lg font-bold">
+              <h2 className="mt-4 min-h-12 break-words text-lg font-bold">
                 {c.title}
               </h2>
               <p className="mt-3 flex items-center gap-2 text-sm text-[#526174]">
@@ -196,43 +256,45 @@ function DataCollectList({ owner }: { owner: string }) {
           다음 목록
         </button>
       </div>
-      <details className="rounded-lg border border-[#DCE3EA] bg-white p-4">
-        <summary className="cursor-pointer text-sm font-bold">
-          미완료 배포 파일 정리
-        </summary>
-        <p className="mt-2 text-sm text-[#526174]">
-          업무 만들기가 끝나지 않은 배포 파일 중 2시간 지난 항목을 최대 50개
-          정리합니다.
-        </p>
-        <button
-          disabled={cleaning}
-          className="mt-3 min-h-[44px] rounded-lg border border-[#C8D0DA] px-3 text-sm font-bold"
-          onClick={() => {
-            setCleaning(true);
-            void cleanupDataCollectTemplates()
-              .then((r) =>
-                setCleanupMessage(
-                  "정리 " + r.removed + "개 · 실패 " + r.failed + "개",
-                ),
-              )
-              .catch((e) =>
-                setError(
-                  e instanceof Error
-                    ? e.message
-                    : "정리하지 못했습니다. 다시 시도해 주세요.",
-                ),
-              )
-              .finally(() => setCleaning(false));
-          }}
-        >
-          미완료 배포 파일 정리하기
-        </button>
-        {cleanupMessage ? (
-          <p role="status" className="mt-2 text-sm">
-            {cleanupMessage}
+      {!archived ? (
+        <details className="rounded-lg border border-[#DCE3EA] bg-white p-4">
+          <summary className="cursor-pointer text-sm font-bold">
+            미완료 배포 파일 정리
+          </summary>
+          <p className="mt-2 text-sm text-[#526174]">
+            업무 만들기가 끝나지 않은 배포 파일 중 2시간 지난 항목을 최대 50개
+            정리합니다.
           </p>
-        ) : null}
-      </details>
+          <button
+            disabled={cleaning}
+            className="mt-3 min-h-[44px] rounded-lg border border-[#C8D0DA] px-3 text-sm font-bold"
+            onClick={() => {
+              setCleaning(true);
+              void cleanupDataCollectTemplates()
+                .then((r) =>
+                  setCleanupMessage(
+                    "정리 " + r.removed + "개 · 실패 " + r.failed + "개",
+                  ),
+                )
+                .catch((e) =>
+                  setError(
+                    e instanceof Error
+                      ? e.message
+                      : "정리하지 못했습니다. 다시 시도해 주세요.",
+                  ),
+                )
+                .finally(() => setCleaning(false));
+            }}
+          >
+            미완료 배포 파일 정리하기
+          </button>
+          {cleanupMessage ? (
+            <p role="status" className="mt-2 text-sm">
+              {cleanupMessage}
+            </p>
+          ) : null}
+        </details>
+      ) : null}
     </div>
   );
 }
