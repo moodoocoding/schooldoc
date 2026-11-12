@@ -128,7 +128,7 @@ test("배포 파일을 확인하고 이상 없음 또는 수정본으로 회신�
   await page.goto("/tools/data-collect/new");
   await page.getByLabel("제목").fill("2학기 평가 문항 검토");
   await page
-    .getByLabel("안내")
+    .getByRole("textbox", { name: "안내 선택", exact: true })
     .fill("배포한 문항을 확인하고 이상 여부를 회신해 주세요.");
   await page.getByRole("radio", { name: /파일을 보내 검토받기/ }).check();
   await page.locator('input[type="file"][accept*=".pdf"]').setInputFiles({
@@ -187,7 +187,7 @@ test("명단 없이 제출자가 이름을 입력해 자료를 제출한다", as
   await page.goto("/tools/data-collect/new");
   await page.getByLabel("제목").fill("명단 없는 자료 제출");
   await page
-    .getByLabel("안내")
+    .getByRole("textbox", { name: "안내 선택", exact: true })
     .fill("제출자 이름을 입력하고 자료를 올려 주세요.");
   await page.getByRole("radio", { name: /제출자가 이름 입력/ }).check();
   await page.getByRole("button", { name: "자료 수합 만들기" }).click();
