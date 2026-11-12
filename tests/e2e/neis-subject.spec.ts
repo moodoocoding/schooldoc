@@ -328,7 +328,7 @@ async function dragFiles(page: Page, target: Locator, files: { name: string; buf
 
 async function hangulPlan(format: 'hwp' | 'hwpx') {
   await initRhwp({ module_or_path: readFileSync('node_modules/@rhwp/core/rhwp_bg.wasm') });
-  const doc = new HwpDocument(readFileSync('src/features/schoolDocuments/assets/blank-plan.hwpx'));
+  const doc = new HwpDocument(readFileSync('src/features/officialDocument/assets/blank.hwpx'));
   try {
     doc.deleteText(0, 0, 0, doc.getParagraphLength(0, 0));
     doc.insertText(0, 0, 0, '가상 평가계획 표지');
