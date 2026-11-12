@@ -28,11 +28,11 @@ const shallow: OfficialDocument = {
 
 describe('항목 기호와 배치', () => {
   test('계층이 4단계 미만이면 편람 순서, 4단계 이상이면 □ → ◦ → - → ※', () => {
-    expect([1, 2, 3, 4, 5, 6].map(level => officialMarker(level, 1, 3))).toEqual(['2.', '나.', '2)', '나)', '(2)', '(나)']);
-    expect([1, 2, 3, 4].map(level => officialMarker(level, 0, 4))).toEqual(['□', '◦', '-', '※']);
+    expect([1, 2, 3, 4, 5, 6, 7, 8].map(level => officialMarker(level, 1, false))).toEqual(['2.', '나.', '2)', '나)', '(2)', '(나)', '②', '㉯']);
+    expect([1, 2, 3, 4].map(level => officialMarker(level, 0, true))).toEqual(['□', '◦', '-', '※']);
   });
   test('하 다음 항목은 거, 너 … 순으로 이어 간다', () => {
-    expect([13, 14, 15, 28].map(i => officialMarker(2, i, 2))).toEqual(['하.', '거.', '너.', '고.']);
+    expect([13, 14, 15, 28].map(i => officialMarker(2, i, false))).toEqual(['하.', '거.', '너.', '고.']);
   });
   test('계층 깊이는 항목만 세고, 표와 ※ 참고는 번호를 차지하지 않는다', () => {
     expect(itemDepth(shallow.body)).toBe(3);

@@ -22,7 +22,7 @@ export function runRhwp(request: RhwpRequest, signal?: AbortSignal): Promise<Ren
     worker.onmessageerror = () => finish(undefined, new Error('문서 결과를 받지 못했습니다. 다시 시도해 주세요.'));
     worker.onmessage = (event: MessageEvent<RhwpResponse>) => {
       if (!event.data.ok) finish(undefined, new Error(event.data.message));
-      else finish({ bytes: event.data.bytes, svgs: event.data.svgs, pageCount: event.data.pageCount });
+      else finish({ bytes: event.data.bytes, svgs: event.data.svgs, pageCount: event.data.pageCount, ...(event.data.volume ? { volume: event.data.volume } : {}) });
     };
     try { worker.postMessage(request); } catch (error) { finish(undefined, error); }
   });

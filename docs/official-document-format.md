@@ -12,7 +12,7 @@ SchoolDoc의 공문서 HWPX 출력이 따르는 기준이다. 서식은 공통 �
    제목 + 항목 트리(하위 항목·표·※ 참고) + 쪽 나눔 표시. 기호·들여쓰기·글꼴은 담지 않는다.
 ③ 출력 계층 (officialDocument/)
    format.ts      문서 종류 목록, 단계별 서식 프로필, 항목 기호, 들여쓰기 계산, 줄 배치
-   rules/         외부 실측 규칙 데이터(교육부 보고서, korean-report-hwpx에서 이식)와 라이선스
+   rules/         외부 규칙 데이터(교육부 보고서 실측, 기안문 별지 제1호서식, korean-report-hwpx에서 이식)와 라이선스
    lint.ts        생성 전 점검: 기호·대시·날짜 정리, 시각·금액 병기·제목 길이, 개조식 명사형·두괄식
    rhwpWriter.ts  rhwp로 HWPX 조판(편집 가능한 문단·표), 내용 보존·쪽 수 검사
    rhwp.worker.ts / rhwpClient.ts  브라우저 worker 실행(render·import), 취소·시간 제한
@@ -105,10 +105,29 @@ SchoolDoc의 공문서 HWPX 출력이 따르는 기준이다. 서식은 공통 �
   - 확인 필요: 빈 내용, 40자 넘는 제목, 오전·오후 시각, 한글 병기 없는 금액, 개조식의 동사형 종결과 □ 두 문장 이상
 - 계획서의 예산 합계는 `금200,000원(금이십만원)`처럼 한글을 병기한다(시행규칙 제2조②, 편람 49쪽).
 
-## 5. 참고한 외부 구현
+## 5. 기안문(별지 제1호서식)
+
+문서 종류 `draft`. 모델은 `DraftDocument`(행정기관명·수신·경유·제목·본문·붙임·발신명의·수신자·결재·시행 번호·연락처·공개 구분)다.
+
+- 두문: 행정기관명 HY헤드라인M 22pt 가운데, `수신  ○○`, `(경유)  ○○`, `제목  ○○`(휴먼명조 15pt·160%), 그 아래 가로선(아래 변만 있는 1칸 표).
+- 본문: 휴먼명조 15pt·160%, 편람 번호 8단계(1. → 가. → 1) → 가) → (1) → (가) → ① → ㉮), 2타 들여쓰기·내어쓰기, 단독 항목 기호 생략. 개조식은 쓰지 않는다.
+- 붙임: 1개면 `붙임  명칭  끝.`, 여러 개면 `붙임  1. 명칭` 다음 줄부터 `붙임  ` 너비만큼 들여 `2. 명칭`.
+- 끝 표시(시행규칙 제4조⑤): 문서 전체에서 한 번. 붙임이 있으면 붙임 끝, 없으면 본문 마지막 글자에서 2타 띄워서, 본문이 표로 끝나면 다음 줄 왼쪽 기본선에서 2타 띄워서.
+- 결문: 발신명의 HY헤드라인M 18pt 가운데(앞 20pt), `수신자 참조`이면 `수신자  ○○, ○○`, 결문 틀(회색 띠 → 결재란 직위·서명 → 협조자 → 시행·접수 → 우편번호·주소 / 홈페이지 → 전화·팩스 / 전자우편 / 공개 구분, 칸 선 없이 아래 가로선)은 맑은 고딕 11pt.
+- 점검: 행정기관명·수신·발신명의·기안자·결재권자·시행 번호 필수, 수신자 참조이면 수신자 목록, 공개 구분 값, 시행일·접수일 날짜 표기 정리, 붙임 명칭 앞 "붙임"·번호 정리.
+- 아직 기안문을 만드는 화면은 없다. 출력 계층과 점검만 있고 단위 테스트로 확인했다.
+
+## 6. 분량 점검
+
+- rhwp가 실제로 조판한 결과에서 각 문단 끝 좌표를 읽어 쪽별 본문 영역 채움을 잰다(`measurePageVolume`).
+- 본문(강제 쪽 나눔 전) 마지막 쪽이 80%보다 덜 차면 "공문 표기 점검"에 확인 필요로 알린다. 넘치면 출력기가 저장을 막는다.
+- korean-report-hwpx `engine/pages.py`는 한글 배치를 흉내 내 쪽 수를 예측하지만, 우리는 rhwp 실제 배치를 쓰므로 예측 코드는 옮기지 않고 경고 기준(80%)만 옮겼다.
+
+## 7. 참고한 외부 구현
 
 - [korean-report-hwpx](https://github.com/UpstageAI/korean-report-hwpx)(MIT, Copyright (c) 2026 Upstage), 커밋 `210b864`:
-  교육부 보고서 실측 규칙(`rules_report/교육부.json`)을 `rules/moeReport.ts`로, 점검·정리 규칙(`server.py`의 `_normalize`·`_style_warnings`·`_count_sentences`,
+  교육부 보고서 실측 규칙(`rules_report/교육부.json`)을 `rules/moeReport.ts`로, 기안문 서식(`rules_official/_공통.json`, `engine/official.py`)을
+  `rules/officialDraft.ts`와 `format.ts`의 기안문 배치·`rhwpWriter.ts`의 결문 틀로, 분량 경고 기준(`server.py` `_size_warnings`)을 `lint.ts`로, 점검·정리 규칙(`server.py`의 `_normalize`·`_style_warnings`·`_count_sentences`,
   `engine/official.py`의 `_정규화날짜`·`_check_amount_needed`)을 `lint.ts`로 TypeScript에 옮겼다. 라이선스 전문은 `src/features/officialDocument/rules/korean-report-hwpx.LICENSE`.
 - [kordoc](https://github.com/chrisryugj/kordoc)(MIT): 공문서 프리셋(기안문·보고서·계획서·통지·회의록), 기관 서식 추출,
   개조식·예산 검수, 글꼴 폭 보정을 갖춘 HWPX 도구. 단독 항목의 기호 생략과 표기 규칙 정리를 대조했다.
