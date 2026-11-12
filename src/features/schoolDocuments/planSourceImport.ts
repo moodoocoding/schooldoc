@@ -1,7 +1,7 @@
 import { strFromU8, unzipSync } from 'fflate';
 import { PLAN_LIMITS, validatePlanSources, type PlanSource, type PlanSourcePart } from '../../../supabase/functions/_shared/schoolPlan';
 import { loadPdfJs } from '../../utils/pdfjs';
-import { runPlanDocument } from './planRhwp';
+import { runRhwp } from '../officialDocument/rhwpClient';
 
 export const PLAN_SOURCE_ACCEPT = '.pdf,.hwp,.hwpx,.txt';
 export function readHwpxArchive(bytes: Uint8Array) {
@@ -68,7 +68,7 @@ export async function importPlanSource(file: File, id: string, signal?: AbortSig
       // Bound XML/ZIP before handing HWPX to the parser; HWP is isolated in a cancellable worker.
       if (extension === 'hwpx') extractHwpxSource(bytes, file.name, id);
       else if (![208, 207, 17, 224, 161, 177, 26, 225].every((value, i) => bytes[i] === value)) throw new Error('HWP 5.0 파일인지 확인해 주세요. 다른 형식은 한글에서 HWPX로 저장해 주세요.');
-      const result = await runPlanDocument({ action: 'import', bytes }, signal);
+      const result = await runRhwp({ action: 'import', bytes }, signal);
       signal?.throwIfAborted();
       return extractHwpxSource(result.bytes, file.name, id);
     }
