@@ -3,67 +3,49 @@ import type {
   GradeBook,
   GeneratedComment,
 } from '../../../supabase/functions/_shared/neisHelper';
-import type { ImportSheet } from '../../utils/tabularImport';
-export type SubjectStep =
-  | 'plan-upload'
-  | 'subject'
-  | 'plan-review'
-  | 'grade-upload'
-  | 'sheet'
-  | 'header'
-  | 'mapping'
-  | 'coverage'
-  | 'roster'
-  | 'grades'
-  | 'length'
-  | 'results';
+import type { ColumnLink } from './autoPipeline';
+
+/** plan: 평가계획 넣기 · prepare: 교과 선택과 성적 넣기 · results: 평어 결과 */
+export type SubjectPhase = 'plan' | 'prepare' | 'results';
+/** subject: 교과를 먼저 고르고 그 교과 계획만 넣는다 · whole: 전체 계획을 넣고 AI가 교과별로 나눈다 */
+export type PlanMode = 'subject' | 'whole';
 export interface CommentDraft {
   text: string;
   generated: GeneratedComment | null;
-  reviewed: boolean;
   error: string;
 }
 export interface SubjectDraft {
-  step: SubjectStep;
+  phase: SubjectPhase;
+  planMode: PlanMode;
+  chosenSubject: string;
   planFile: File | null;
   planPdf: File | null;
-  gradeFile: File | null;
   plan: AssessmentPlan | null;
   subject: string;
-  planIndex: number;
-  sheets: ImportSheet[];
-  sheetIndex: number;
-  headerIndex: number;
+  gradeFile: File | null;
+  gradeSheet: string;
   book: GradeBook | null;
-  originalBook: GradeBook | null;
-  excludedRows: GradeBook['students'];
-  mappings: Record<string, string>;
-  columnIndex: number;
-  gradeIndex: number;
+  links: Record<string, ColumnLink>;
   length: 200 | 300 | 400;
   results: Record<string, CommentDraft>;
-  studentIndex: number;
+  /** 결과를 만든 뒤 연결·기준을 바꿨는지. 다시 생성하기 전까지 안내한다. */
+  stale: boolean;
 }
 export const emptySubjectDraft = (): SubjectDraft => ({
-  step: 'plan-upload',
+  phase: 'plan',
+  planMode: 'subject',
+  chosenSubject: '',
   planFile: null,
   planPdf: null,
-  gradeFile: null,
   plan: null,
   subject: '',
-  planIndex: 0,
-  sheets: [],
-  sheetIndex: 0,
-  headerIndex: -1,
+  gradeFile: null,
+  gradeSheet: '',
   book: null,
-  originalBook: null,
-  excludedRows: [],
-  mappings: {},
-  columnIndex: 0,
-  gradeIndex: 0,
+  links: {},
   length: 200,
   results: {},
-  studentIndex: 0,
+  stale: false,
 });
 // 개인정보는 영구 저장하지 않는다. 같은 로그인 계정의 탭 내부 이동만 복원한다.
 let owner = '';

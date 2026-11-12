@@ -39,6 +39,20 @@ const plan = {
       sourcePage: 1,
       warnings: [],
     },
+    {
+      id: 'assessment-3',
+      subject: '국어',
+      standardCode: '[6국01-02]',
+      standard: '의견을 제시하고 함께 조정하며 토의한다.',
+      task: '토론하기',
+      rubrics: {
+        high: '근거를 들어 의견을 제시하고 조정한다.',
+        middle: '자신의 의견을 제시한다.',
+        low: '안내에 따라 의견을 말한다.',
+      },
+      sourcePage: 1,
+      warnings: [],
+    },
   ],
 };
 const pdf = () => {
@@ -136,58 +150,41 @@ async function setup(
   page.on('dialog', (dialog) => void dialog.accept());
   return { calls, errors };
 }
-async function uploadPlan(page: Page, info?: TestInfo) {
+async function uploadPlan(
+  page: Page,
+  options: { info?: TestInfo; mode?: 'subject' | 'whole'; subject?: string } = {},
+) {
+  const { info, mode = 'subject', subject = '수학' } = options;
   await page.goto('/tools/neis-helper/subject');
-  await expect(page.getByRole('heading', { name: '평가계획을 올려 주세요' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '평가계획을 넣어 주세요' })).toBeVisible();
   await expect(page.getByRole('button', { name: '평가계획 분석', exact: true })).toBeDisabled();
-  if (info) await capture(page, info, 'empty-upload');
+  if (mode === 'whole') await page.getByRole('radio', { name: /^전체 평가계획/ }).check();
+  else await page.getByLabel('교과', { exact: true }).selectOption(subject);
+  if (info) await capture(page, info, `empty-upload-${mode}`);
   await page
     .getByLabel('평가계획 파일', { exact: true })
     .setInputFiles({ name: '가상_평가계획.pdf', mimeType: 'application/pdf', buffer: pdf() });
   const picker = page.getByRole('group', { name: '평가계획 파일 업로드' });
   await expect(picker.getByRole('status')).toContainText('가상_평가계획.pdf');
-  await expect(picker.getByRole('button', { name: '파일 바꾸기' })).toBeVisible();
-  if (info) await capture(page, info, 'selected-upload');
   await page.getByRole('button', { name: '평가계획 분석', exact: true }).click();
-  await page.getByRole('button', { name: '이 교과로 계속' }).click();
-  await expect(page.getByLabel('◎ 평가기준')).toHaveValue(plan.assessments[0].rubrics.high);
-  if (info) {
-    await expect(page.getByRole('img', { name: /가상_평가계획.pdf 1쪽 원본/ })).toBeVisible();
-    await capture(page, info, 'plan-review');
+  if (mode === 'whole') {
+    await expect(page.getByRole('heading', { name: '교과를 확인하고 성적을 넣어 주세요' })).toBeVisible();
+    await expect(page.getByRole('radio', { name: /^수학/ })).toBeVisible();
+    await expect(page.getByRole('radio', { name: /^국어/ })).toBeVisible();
+    if (info) await capture(page, info, 'whole-subjects');
+    await pickSubject(page, '수학');
   }
-  await page.getByRole('button', { name: '이 평가 확인', exact: true }).click();
-  await expect(page.getByLabel('평가 내용', { exact: true })).toHaveValue('소수 곱셈');
-  await page.getByRole('button', { name: '이 평가 확인', exact: true }).click();
 }
 async function uploadGrades(page: Page, count = 3) {
+  await expect(page.getByRole('heading', { name: '수학 평가 2개' })).toBeVisible();
   await page
     .getByLabel('나이스 성적 파일', { exact: true })
     .setInputFiles({ name: '가상_성적.csv', mimeType: 'text/csv', buffer: csv(count) });
-  await page.getByRole('button', { name: '성적표 불러오기' }).click();
-  await page.getByRole('button', { name: '이 시트 사용' }).click();
-  await expect(page.getByLabel('제목 행')).toHaveValue('1');
-  await page.getByRole('button', { name: '이 제목 행 사용' }).click();
-  await page.getByLabel('평가계획의 같은 평가').selectOption('assessment-1');
-  await page.getByRole('button', { name: '이 연결 확인' }).click();
-  await page.getByLabel('평가계획의 같은 평가').selectOption('assessment-1');
-  await expect(page.getByRole('button', { name: '이 연결 확인' })).toBeDisabled();
-  await expect(
-    page.getByText('이 평가에는 이미 다른 열이 연결되었습니다. 다시 선택해 주세요.'),
-  ).toBeVisible();
-  await page.getByLabel('평가계획의 같은 평가').selectOption('assessment-2');
-  await page.getByRole('button', { name: '이 연결 확인' }).click();
-  await page.getByRole('button', { name: '연결된 평가로 진행' }).click();
-  await expect(page.getByLabel('3행 이름', { exact: true })).toHaveValue('가상동명');
-  await expect(page.getByLabel('4행 이름', { exact: true })).toHaveValue('가상동명');
-  await page.getByRole('button', { name: '명단 확인 완료' }).click();
+  await page.getByRole('button', { name: '평어 만들기', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '수학 평어 결과' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '중단', exact: true })).toHaveCount(0);
 }
-async function finishGrades(page: Page) {
-  await expect(page.getByRole('button', { name: '이 평가의 성적 확인 완료' })).toBeDisabled();
-  await page.getByLabel('2번 가상동명 성적').selectOption('low');
-  await page.getByRole('button', { name: '이 평가의 성적 확인 완료' }).click();
-  await expect(page.getByLabel('2번 가상동명 성적')).toHaveValue('middle');
-  await page.getByRole('button', { name: '이 평가의 성적 확인 완료' }).click();
-}
+const studentList = (page: Page) => page.getByRole('list', { name: '학생별 평어 목록' }).locator(':scope > li');
 async function capture(page: Page, info: TestInfo, name: string) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   const clippedControls = await page
@@ -205,48 +202,87 @@ async function capture(page: Page, info: TestInfo, name: string) {
   await page.screenshot({ path: info.outputPath(`${name}.png`), fullPage: true });
 }
 
+
 for (const [label, width] of [
   ['desktop', 1366],
   ['mobile', 390],
 ] as const) {
-  test(`교과 평어 전체 흐름·중복 연결 차단·빈 성적·동명이인·Excel ${label}`, async ({ page }, info) => {
+  test(`교과별 계획 → 성적 한 번에 평어·빈 성적 학생 제외·동명이인·Excel ${label}`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
     const evidence = await setup(page);
-    await uploadPlan(page, info);
+    await uploadPlan(page, { info });
+    // 교과별 방식은 고른 교과의 평가만 정리해 보여 준다.
+    await expect(page.getByRole('heading', { name: '수학 평가 2개' })).toBeVisible();
+    await expect(page.getByText('토론하기')).toHaveCount(0);
+    await capture(page, info, 'plan-summary');
     await uploadGrades(page);
-    await capture(page, info, 'missing-grade');
-    await finishGrades(page);
-    await page.getByRole('button', { name: '평어 생성', exact: true }).click();
-    await expect(page.getByRole('button', { name: '검토 완료하고 다음 학생' })).toBeEnabled();
-    await capture(page, info, 'review-result');
-    await page.getByRole('button', { name: '검토 완료하고 다음 학생' }).click();
-    await expect(page.getByLabel('평어', { exact: true })).toHaveValue(/간단한 자료/);
-    await expect(page.getByRole('heading', { name: '근거와 평어를 함께 검토하세요' })).toBeInViewport();
-    await expect(page.getByRole('heading', { name: '근거와 평어를 함께 검토하세요' })).toBeFocused();
-    await capture(page, info, 'partly-reviewed');
-    await page.getByRole('button', { name: '검토 완료하고 다음 학생' }).click();
-    await page.getByRole('button', { name: '이 학생 검토 완료' }).click();
-    await expect(page.getByRole('button', { name: '검토 완료 평어 Excel 저장' })).toBeEnabled();
-    await capture(page, info, 'all-reviewed');
+    // 확인 버튼 없이 바로 결과가 나오고, 빈 성적 학생만 생성하지 않는다.
+    expect(evidence.calls.filter((c) => c.action === 'generate')).toHaveLength(2);
+    await expect(page.getByRole('group', { name: '평어 현황' })).toContainText('완성2명');
+    await expect(page.getByRole('group', { name: '평어 현황' })).toContainText('확인 필요1명');
+    await expect(page.getByLabel('1번 가상동명 평어', { exact: true })).toHaveValue(/평균을 활용하여/);
+    await expect(page.getByLabel('2번 가상동명 평어', { exact: true })).toHaveCount(0);
+    await expect(studentList(page).nth(1)).toContainText('성적 확인 필요');
+    await expect(studentList(page).nth(1)).toContainText('평균 구하기 빈칸');
+    // 확인할 것이 없으면 자동 정리 내용은 접혀 있다. 열어서 연결 방식을 확인한다.
+    await page.getByText('자동으로 정리한 내용').click();
+    await expect(page.getByText('제목 일치').first()).toBeVisible();
+    await capture(page, info, 'results-attention');
+
+    await page.getByRole('radio', { name: '확인 필요 1' }).click();
+    await expect(studentList(page)).toHaveCount(1);
+    await page.getByLabel('2번 가상동명 평균 구하기 성적').selectOption('low');
+    await expect(page.getByLabel('2번 가상동명 평어', { exact: true })).toHaveValue(/간단한 자료/);
+    await expect(page.getByText('확인이 필요한 학생이 없습니다.')).toBeVisible();
+    await page.getByRole('radio', { name: '전체 3' }).click();
+    await capture(page, info, 'results-complete');
+    expect(evidence.calls.filter((c) => c.action === 'generate')).toHaveLength(3);
+    expect(JSON.stringify(evidence.calls.filter((c) => c.action === 'generate'))).not.toContain('가상동명');
+
     const downloadEvent = page.waitForEvent('download');
-    await page.getByRole('button', { name: '검토 완료 평어 Excel 저장' }).click();
+    await page.getByRole('button', { name: 'Excel 저장', exact: true }).click();
     const download = await downloadEvent;
-    const path = await download.path();
     expect(download.suggestedFilename()).toBe('수학_교과평어.xlsx');
-    const workbook = await readXlsx(path!);
+    const workbook = await readXlsx((await download.path())!);
     expect(workbook[0].data).toHaveLength(4);
     expect(workbook[0].data[1][1]).toBe('가상동명');
     expect(workbook[0].data[2][1]).toBe('가상동명');
     expect(String(workbook[0].data[2][3])).toContain('간단한 자료');
-    await page.getByLabel('평어', { exact: true }).fill('교사가 수정한 평어임.');
-    await expect(page.getByRole('button', { name: '검토 완료 평어 Excel 저장' })).toHaveCount(0);
-    expect(evidence.calls.filter((c) => c.action === 'generate')).toHaveLength(3);
-    expect(JSON.stringify(evidence.calls.filter((c) => c.action === 'generate'))).not.toContain('가상동명');
+    await page.getByLabel('1번 가상동명 평어', { exact: true }).fill('교사가 수정한 평어임.');
+    await expect(page.getByLabel('1번 가상동명 평어', { exact: true })).toHaveValue('교사가 수정한 평어임.');
     expect(evidence.errors).toEqual([]);
   });
 }
 
-test('30명 명단·긴 이름·200% 확대에서 한 평가만 확인한다', async ({ page }, info) => {
+test('전체 계획은 교과별로 나누고 다른 교과로 바꿔도 다시 분석하지 않는다', async ({ page }, info) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
+  const evidence = await setup(page);
+  await uploadPlan(page, { info, mode: 'whole' });
+  await uploadGrades(page);
+  await page.getByRole('button', { name: '다른 교과 작성', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '교과를 확인하고 성적을 넣어 주세요' })).toBeVisible();
+  await pickSubject(page, '국어');
+  await expect(page.getByRole('heading', { name: '국어 평가 1개' })).toBeVisible();
+  expect(evidence.calls.filter((c) => c.action === 'plan')).toHaveLength(1);
+  expect(evidence.errors).toEqual([]);
+});
+
+test('교과별 방식에 다른 교과만 있는 전체 계획을 넣으면 전체 방식으로 이어 간다', async ({ page }) => {
+  const evidence = await setup(page);
+  await page.goto('/tools/neis-helper/subject');
+  await page.getByLabel('교과', { exact: true }).selectOption('과학');
+  await page
+    .getByLabel('평가계획 파일', { exact: true })
+    .setInputFiles({ name: '가상_평가계획.pdf', mimeType: 'application/pdf', buffer: pdf() });
+  await page.getByRole('button', { name: '평가계획 분석', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('과학 평가를 찾지 못했습니다');
+  await page.getByRole('button', { name: '전체 평가계획으로 보고 교과 고르기' }).click();
+  await pickSubject(page, '수학');
+  await expect(page.getByRole('heading', { name: '수학 평가 2개' })).toBeVisible();
+  expect(evidence.calls).toHaveLength(1);
+});
+
+test('30명·긴 이름·200% 확대에서도 결과 목록을 한 화면 흐름으로 본다', async ({ page }, info) => {
   await page.setViewportSize({ width: 683, height: 900 });
   await setup(page);
   await uploadPlan(page);
@@ -254,43 +290,44 @@ test('30명 명단·긴 이름·200% 확대에서 한 평가만 확인한다', a
   await page.evaluate(() => {
     document.documentElement.style.zoom = '2';
   });
-  await expect(
-    page.getByRole('list', { name: '평균 구하기 학생별 성적 확인' }).getByRole('listitem'),
-  ).toHaveCount(30);
+  await expect(studentList(page)).toHaveCount(30);
   await capture(page, info, 'classroom-30-zoom');
 });
 
-test('생성 실패 항목만 재시도하고 이전 단계 성적 변경은 결과를 무효화한다', async ({ page }) => {
+test('생성 실패만 다시 시도하고 연결을 바꾸면 다시 생성을 안내한다', async ({ page }) => {
   const evidence = await setup(page, { failGeneration: true });
   await uploadPlan(page);
   await uploadGrades(page);
-  await finishGrades(page);
-  await page.getByRole('button', { name: '평어 생성', exact: true }).click();
-  await expect(page.getByRole('button', { name: '미생성·실패 항목 다시 시도' })).toBeEnabled();
-  await page.getByRole('button', { name: '미생성·실패 항목 다시 시도' }).click();
-  await expect(page.getByRole('button', { name: '검토 완료하고 다음 학생' })).toBeEnabled();
-  expect(evidence.calls.filter((c) => c.action === 'generate')).toHaveLength(4);
-  await page.getByRole('button', { name: '이전', exact: true }).click();
-  await page.getByRole('button', { name: '이전', exact: true }).click();
-  await page.getByLabel('1번 가상동명 성적').selectOption('low');
-  await page.getByRole('button', { name: '이 평가의 성적 확인 완료' }).click();
-  await expect(page.getByRole('button', { name: '평어 생성', exact: true })).toBeEnabled();
+  await expect(page.getByText('생성 실패', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '미생성·실패 1명 다시 시도' }).click();
+  await expect(page.getByText('생성 실패', { exact: true })).toHaveCount(0);
+  expect(evidence.calls.filter((c) => c.action === 'generate')).toHaveLength(3);
+  await page.getByText('자동으로 정리한 내용').click();
+  await page.getByLabel('소수 곱셈 열에 연결할 평가').selectOption('');
+  await expect(page.getByText('연결 못 함 · 평어에서 제외')).toBeVisible();
+  await page.getByRole('button', { name: '바뀐 내용으로 다시 생성' }).click();
+  await expect(page.getByRole('button', { name: '바뀐 내용으로 다시 생성' })).toHaveCount(0);
+  const last = evidence.calls.filter((c) => c.action === 'generate').at(-1) as {
+    input: { evidence: unknown[] };
+  };
+  expect(last.input.evidence).toHaveLength(1);
   expect(evidence.errors).toEqual([]);
 });
 
-test('중단 후 내부 이동은 초안을 보존하고 로그아웃은 늦은 응답을 버린다', async ({ page }) => {
+test('중단 후 내부 이동은 결과를 보존하고 로그아웃은 늦은 응답을 버린다', async ({ page }) => {
   const evidence = await setup(page, { delayGeneration: true });
   await uploadPlan(page);
-  await uploadGrades(page);
-  await finishGrades(page);
-  await page.getByRole('button', { name: '평어 생성', exact: true }).click();
+  await page
+    .getByLabel('나이스 성적 파일', { exact: true })
+    .setInputFiles({ name: '가상_성적.csv', mimeType: 'text/csv', buffer: csv() });
+  await page.getByRole('button', { name: '평어 만들기', exact: true }).click();
   await page.getByRole('button', { name: '중단', exact: true }).click();
   await page.getByRole('button', { name: 'Neis Helper', exact: true }).click();
   await page.getByRole('button', { name: '교과학습발달상황(세특). 평어 작성 시작', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '근거와 평어를 함께 검토하세요' })).toBeVisible();
-  await page.getByRole('button', { name: '미생성·실패 항목 다시 시도' }).click();
+  await expect(page.getByRole('heading', { name: '수학 평어 결과' })).toBeVisible();
+  await page.getByRole('button', { name: /미생성·실패 \d명 다시 시도/ }).click();
   await page.evaluate(() => (window as unknown as { __neisLogout: () => void }).__neisLogout());
-  await expect(page.getByRole('heading', { name: '근거와 평어를 함께 검토하세요' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: '수학 평어 결과' })).toHaveCount(0);
   await expect(page.getByText('가상동명', { exact: false })).toHaveCount(0);
   expect(evidence.errors).toEqual([]);
 });
@@ -298,6 +335,7 @@ test('중단 후 내부 이동은 초안을 보존하고 로그아웃은 늦은 
 test('계획 분석 실패는 파일을 유지하며 재시도를 제공한다', async ({ page }) => {
   const evidence = await setup(page, { failPlan: true });
   await page.goto('/tools/neis-helper/subject');
+  await page.getByLabel('교과', { exact: true }).selectOption('수학');
   const choose = page.getByRole('button', { name: '파일 선택', exact: true });
   await choose.focus();
   const opened = page.waitForEvent('filechooser');
@@ -348,11 +386,13 @@ async function hangulPlan(format: 'hwp' | 'hwpx') {
   }
 }
 
+
 for (const format of ['hwp', 'hwpx'] as const) {
   test(`${format.toUpperCase()} 평가계획을 변환하고 표의 쪽과 원본 파일을 확인한다`, async ({ page }, info) => {
     await page.setViewportSize({ width: format === 'hwp' ? 390 : 1366, height: 900 });
     const evidence = await setup(page);
     await page.goto('/tools/neis-helper/subject');
+    await page.getByLabel('교과', { exact: true }).selectOption('수학');
     const picker = page.getByRole('group', { name: '평가계획 파일 업로드' });
     const name = `${'가상평가계획_'.repeat(8)}.${format}`;
     const buffer = await hangulPlan(format);
@@ -367,7 +407,9 @@ for (const format of ['hwp', 'hwpx'] as const) {
     await capture(page, info, 'hangul-selected');
     expect(evidence.calls).toHaveLength(0);
     await page.getByRole('button', { name: '평가계획 분석', exact: true }).click();
-    await page.getByRole('button', { name: '이 교과로 계속' }).click();
+    await expect(page.getByRole('heading', { name: '수학 평가 2개' })).toBeVisible();
+    await page.locator('summary', { hasText: '평균 구하기' }).first().click();
+    await page.getByText('원본과 대조하거나 수정', { exact: true }).first().click();
     await expect(page.getByRole('img', { name: `${name} 2쪽 변환 지면` })).toBeVisible();
     const convertedLink = page.getByRole('link', { name: '변환 PDF 열기' });
     const originalLink = page.getByRole('link', { name: '원본 파일 다운로드' });
@@ -395,13 +437,11 @@ for (const format of ['hwp', 'hwpx'] as const) {
       await loading.destroy();
     }
     if (format === 'hwpx') {
-      await page.getByRole('button', { name: '이 평가 확인', exact: true }).click();
-      await page.getByRole('button', { name: '이 평가 확인', exact: true }).click();
       const grades = page.getByRole('group', { name: '나이스 성적 파일 업로드' });
       await dragFiles(page, grades, [{ name: '가상성적.csv', buffer: csv() }]);
       await expect(grades.getByRole('status')).toContainText('가상성적.csv');
-      await page.getByRole('button', { name: '성적표 불러오기' }).click();
-      await expect(page.getByRole('heading', { name: '성적표가 있는 시트를 선택하세요' })).toBeVisible();
+      await page.getByRole('button', { name: '평어 만들기', exact: true }).click();
+      await expect(page.getByRole('heading', { name: '수학 평어 결과' })).toBeVisible();
     }
     expect(evidence.errors).toEqual([]);
   });
@@ -410,6 +450,7 @@ for (const format of ['hwp', 'hwpx'] as const) {
 test('손상된 한글 파일은 분석 요청을 보내지 않고 교체할 수 있다', async ({ page }) => {
   const evidence = await setup(page);
   await page.goto('/tools/neis-helper/subject');
+  await page.getByLabel('교과', { exact: true }).selectOption('수학');
   const picker = page.getByRole('group', { name: '평가계획 파일 업로드' });
   await dragFiles(page, picker, [{ name: '가상_손상.hwp', buffer: Buffer.from('invalid') }]);
   await page.getByRole('button', { name: '평가계획 분석', exact: true }).click();
@@ -422,32 +463,28 @@ test('손상된 한글 파일은 분석 요청을 보내지 않고 교체할 수
   await dragFiles(page, picker, [{ name: '가상_평가계획.pdf', buffer: pdf() }]);
   await expect(picker.getByRole('status')).toContainText('가상_평가계획.pdf');
   await page.getByRole('button', { name: '평가계획 분석', exact: true }).click();
-  await expect(page.getByRole('button', { name: '이 교과로 계속' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '수학 평가 2개' })).toBeVisible();
   expect(evidence.calls).toHaveLength(1);
 });
 
-test('PDF 성적은 원본을 보며 빈칸을 수정하고 제외되는 평가를 알린다', async ({ page }, info) => {
+test('PDF 성적은 원본을 보며 빈칸만 입력하고 빠진 평가를 알린다', async ({ page }, info) => {
   await setup(page);
   await uploadPlan(page);
   await page
     .getByLabel('나이스 성적 파일', { exact: true })
     .setInputFiles({ name: '가상_PDF_성적.pdf', mimeType: 'application/pdf', buffer: pdf() });
-  await page.getByRole('button', { name: '성적표 불러오기' }).click();
-  await page.getByLabel('평가계획의 같은 평가').selectOption('assessment-1');
-  await page.getByRole('button', { name: '이 연결 확인' }).click();
-  await expect(page.getByText('성적과 연결되지 않아 제외되는 평가 1개')).toBeVisible();
-  await page.getByRole('button', { name: '연결된 평가로 진행' }).click();
+  await page.getByRole('button', { name: '평어 만들기', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '수학 평어 결과' })).toBeVisible();
+  await page.getByText('자동으로 정리한 내용').click();
+  await expect(page.getByText('성적 열이 없어 평어에서 빠진 평가: 소수 곱셈')).toBeVisible();
   await page.getByText('성적표 원본 보기', { exact: true }).click();
   await expect(page.getByRole('img', { name: /가상_PDF_성적.pdf 1쪽 원본/ })).toBeVisible();
-  await capture(page, info, 'pdf-roster-source');
-  await page.getByRole('button', { name: '명단 확인 완료' }).click();
-  await expect(page.getByRole('button', { name: '이 평가의 성적 확인 완료' })).toBeDisabled();
-  await page.getByLabel('1번 가상학생 성적').selectOption('middle');
-  await page.getByRole('button', { name: '이 평가의 성적 확인 완료' }).click();
-  await expect(page.getByRole('heading', { name: '평어 분량을 선택하세요' })).toBeVisible();
+  await capture(page, info, 'pdf-grade-source');
+  await page.getByLabel('1번 가상학생 평균 구하기 성적').selectOption('middle');
+  await expect(page.getByLabel('1번 가상학생 평어', { exact: true })).toHaveValue(/주어진 자료의 평균/);
 });
 
-test('XLSX 실제 worker가 시트와 빈 평가 셀을 보존한다', async ({ page }) => {
+test('XLSX 실제 worker에서 성적표 시트를 찾아 빈 평가 셀을 보존한다', async ({ page }) => {
   await setup(page);
   await uploadPlan(page);
   const cell = (value: string) => ({ type: String, value });
@@ -458,48 +495,39 @@ test('XLSX 실제 worker가 시트와 빈 평가 셀을 보존한다', async ({ 
       data: [['번호', '이름', '평균 구하기', '소수 곱셈'].map(cell), ['1', '가상학생', '', '△'].map(cell)],
     },
   ]).toBuffer();
-  await page
-    .getByLabel('나이스 성적 파일', { exact: true })
-    .setInputFiles({
-      name: '가상성적.xlsx',
-      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      buffer,
-    });
-  await page.getByRole('button', { name: '성적표 불러오기' }).click();
-  await page.getByRole('combobox', { name: '시트', exact: true }).selectOption({ label: '수학 성적' });
-  await page.getByRole('button', { name: '이 시트 사용' }).click();
-  await page.getByRole('button', { name: '이 제목 행 사용' }).click();
-  await expect(page.getByText('원본 예: 1번 빈칸')).toBeVisible();
-  await page.getByLabel('평가계획의 같은 평가').selectOption('assessment-1');
-  await page.getByRole('button', { name: '이 연결 확인' }).click();
-  await expect(page.getByText('원본 예: 1번 △')).toBeVisible();
+  await page.getByLabel('나이스 성적 파일', { exact: true }).setInputFiles({
+    name: '가상성적.xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    buffer,
+  });
+  await page.getByRole('button', { name: '평어 만들기', exact: true }).click();
+  await expect(page.getByText(/수학 성적 시트 · 1명/)).toBeVisible();
+  await expect(studentList(page).first()).toContainText('평균 구하기 빈칸');
 });
 
-test('최대 60명 명단도 모두 표시하며 누락을 가리지 않는다', async ({ page }, info) => {
+test('최대 60명 결과도 모두 표시하며 확인 필요를 가리지 않는다', async ({ page }, info) => {
   await page.setViewportSize({ width: 1366, height: 900 });
   await setup(page);
   await uploadPlan(page);
   await uploadGrades(page, 60);
-  await expect(
-    page.getByRole('list', { name: '평균 구하기 학생별 성적 확인' }).getByRole('listitem'),
-  ).toHaveCount(60);
+  await expect(studentList(page)).toHaveCount(60);
+  await expect(page.getByRole('radio', { name: '확인 필요 1' })).toBeVisible();
   await capture(page, info, 'classroom-60');
 });
 
-test('제목 행까지 돌아갔다 와도 정정한 성적을 유지한다', async ({ page }) => {
+test('수정한 평어는 다른 화면에 다녀와도 유지된다', async ({ page }) => {
   await setup(page);
   await uploadPlan(page);
   await uploadGrades(page);
-  await finishGrades(page);
-  await page.getByRole('button', { name: '이전', exact: true }).click();
-  await page.getByLabel('1번 가상동명 성적').selectOption('high');
-  for (let i = 0; i < 6; i++) await page.getByRole('button', { name: '이전', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '표의 제목 행을 선택하세요' })).toBeVisible();
-  await page.getByRole('button', { name: '이 제목 행 사용' }).click();
-  await page.getByRole('button', { name: '이 연결 확인' }).click();
-  await page.getByRole('button', { name: '이 연결 확인' }).click();
-  await page.getByRole('button', { name: '연결된 평가로 진행' }).click();
-  await page.getByRole('button', { name: '명단 확인 완료' }).click();
-  await page.getByRole('button', { name: '이 평가의 성적 확인 완료' }).click();
-  await expect(page.getByLabel('1번 가상동명 성적')).toHaveValue('high');
+  await page.getByLabel('3번 가상아주긴이름학생 평어', { exact: true }).fill('교사가 고친 평어임.');
+  await page.getByRole('button', { name: 'Neis Helper', exact: true }).click();
+  await page.getByRole('button', { name: '교과학습발달상황(세특). 평어 작성 시작', exact: true }).click();
+  await expect(page.getByLabel('3번 가상아주긴이름학생 평어', { exact: true })).toHaveValue('교사가 고친 평어임.');
 });
+
+// 교과 선택지는 라벨 전체가 누르는 영역이다. 숨긴 라디오 대신 사용자가 누르는 라벨을 누른다.
+async function pickSubject(page: Page, subject: string) {
+  const radio = page.getByRole('radio', { name: new RegExp(`^${subject}`) });
+  await radio.locator('xpath=..').click();
+  await expect(radio).toBeChecked();
+}
