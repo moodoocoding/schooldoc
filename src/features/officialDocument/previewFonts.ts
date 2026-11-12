@@ -1,14 +1,13 @@
-import { ATTACHMENT_PROFILE } from './format';
-import { fontUrls } from './fontAssets';
+import { ATTACHMENT_PROFILE, profileFonts } from './format';
+import { substituteFor } from './fontAssets';
 
 let fontCss: Promise<string> | undefined;
 /** 저장 파일은 한컴 글꼴 이름을 쓰므로, 미리보기 SVG에서 그 이름을 OFL 대체 글꼴로 그리는 @font-face를 만든다. */
 export function officialPreviewFontCss(profile = ATTACHMENT_PROFILE) {
-  const faces = [
-    { url: fontUrls.body, family: profile.bodyFont, weight: 400, format: 'opentype' },
-    { url: fontUrls.bodyBold, family: profile.bodyFont, weight: 700, format: 'opentype' },
-    { url: fontUrls.title, family: profile.titleFont, weight: 400, format: 'truetype' },
-  ];
+  const faces = profileFonts(profile).flatMap(family => {
+    const source = substituteFor(family);
+    return [{ ...source.regular, family, weight: 400 }, { ...source.bold, family, weight: 700 }];
+  });
   fontCss ??= Promise.all(faces.map(async ({ url, family, weight, format }) => {
     const response = await fetch(url);
     if (!response.ok) throw new Error('미리보기 글꼴을 불러오지 못했습니다. 다시 시도해 주세요.');

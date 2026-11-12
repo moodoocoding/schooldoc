@@ -11,7 +11,9 @@ SchoolDoc의 공문서 HWPX 출력이 따르는 기준이다. 서식은 공통 �
 ② 공문 문서 모델 (officialDocument/model.ts)
    제목 + 항목 트리(하위 항목·표·※ 참고) + 쪽 나눔 표시. 기호·들여쓰기·글꼴은 담지 않는다.
 ③ 출력 계층 (officialDocument/)
-   format.ts      문서 종류 목록, 서식 프로필, 항목 기호, 들여쓰기 계산, 줄 배치
+   format.ts      문서 종류 목록, 단계별 서식 프로필, 항목 기호, 들여쓰기 계산, 줄 배치
+   rules/         외부 실측 규칙 데이터(교육부 보고서, korean-report-hwpx에서 이식)와 라이선스
+   lint.ts        생성 전 점검: 기호·대시·날짜 정리, 시각·금액 병기·제목 길이, 개조식 명사형·두괄식
    rhwpWriter.ts  rhwp로 HWPX 조판(편집 가능한 문단·표), 내용 보존·쪽 수 검사
    rhwp.worker.ts / rhwpClient.ts  브라우저 worker 실행(render·import), 취소·시간 제한
    previewFonts.ts  미리보기 SVG에 대체 글꼴 적용
@@ -92,9 +94,23 @@ SchoolDoc의 공문서 HWPX 출력이 따르는 기준이다. 서식은 공통 �
 - 휴먼명조·HY헤드라인M은 한컴 글꼴이라 배포하지 않는다. 파일에는 이 글꼴 이름을 저장하고, 미리보기 조판과 그림에는 OFL 대체 글꼴(나눔명조, 나눔고딕 Bold)을 쓴다. 한글에서 열면 줄바꿈이 미리보기와 조금 다를 수 있다.
 - 13pt·160%에서는 목차 두 개 정도가 1쪽 분량이다. 넘치면 내용이나 글자 크기를 줄이지 않고 2쪽 선택을 안내한다(기본값 2쪽).
 
-## 4. 참고한 외부 구현
+## 4. 단계별 서식과 생성 전 점검
 
+- 편람 번호 체계(4단계 미만): 1단계 목차는 휴먼명조 13pt 굵게, 하위 항목과 ※는 휴먼명조 13pt, 목차 앞 6pt·줄 뒤 2pt 간격.
+- 개조식(4단계 이상): 교육부 보고서 34건 실측값을 본문 크기에 비례해 쓴다(◦ 15pt → 13pt).
+  □ HY헤드라인M 13pt, ◦ 휴먼명조 13pt, - 휴먼명조 13pt·줄간격 180%, ※ 맑은 고딕 10.5pt. 간격은 실측 문서 과반에서 띄운 경우만 쓴다.
+- 표: 휴먼명조 12pt, 머리행 굵게·회색 바탕(편람 서식 기준). 교육부 실측(맑은 고딕 12pt, #DFE6F7)은 `rules/moeReport.ts`에 보관한다.
+- 생성 전 점검(`lint.ts`)은 저장 화면의 "공문 표기 점검"에 표시한다. 저장을 막지 않는다.
+  - 자동 정리: 본문 앞에 넣은 항목 기호·번호(날짜 `11. 2.`와 구분), 긴 대시, 날짜 표기(`2026-11-13`, `2026.11.13`, `09.` → `2026. 11. 13.`)
+  - 확인 필요: 빈 내용, 40자 넘는 제목, 오전·오후 시각, 한글 병기 없는 금액, 개조식의 동사형 종결과 □ 두 문장 이상
+- 계획서의 예산 합계는 `금200,000원(금이십만원)`처럼 한글을 병기한다(시행규칙 제2조②, 편람 49쪽).
+
+## 5. 참고한 외부 구현
+
+- [korean-report-hwpx](https://github.com/UpstageAI/korean-report-hwpx)(MIT, Copyright (c) 2026 Upstage), 커밋 `210b864`:
+  교육부 보고서 실측 규칙(`rules_report/교육부.json`)을 `rules/moeReport.ts`로, 점검·정리 규칙(`server.py`의 `_normalize`·`_style_warnings`·`_count_sentences`,
+  `engine/official.py`의 `_정규화날짜`·`_check_amount_needed`)을 `lint.ts`로 TypeScript에 옮겼다. 라이선스 전문은 `src/features/officialDocument/rules/korean-report-hwpx.LICENSE`.
 - [kordoc](https://github.com/chrisryugj/kordoc)(MIT): 공문서 프리셋(기안문·보고서·계획서·통지·회의록), 기관 서식 추출,
-  개조식·예산 검수, 글꼴 폭 보정을 갖춘 HWPX 도구. 단독 항목의 기호 생략과 표기 규칙 정리를 대조했다. 코드는 가져오지 않았다.
+  개조식·예산 검수, 글꼴 폭 보정을 갖춘 HWPX 도구. 단독 항목의 기호 생략과 표기 규칙 정리를 대조했다.
 - [edunote](https://github.com/codersongpro/edunote) `geminiService.ts`의 공문서 작성기: 문서 종류별 분량 지침과 형식 우선순위
   (지정 양식 → 직접 입력 → 저장 기관 서식 → 요청문 → 표준 예시 → 기본 형식). 문서 종류 목록과 계획 계층 분리에 참고했다.

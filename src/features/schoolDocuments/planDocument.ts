@@ -1,4 +1,5 @@
 import { planBudgetTotal, type PlanDraft } from '../../../supabase/functions/_shared/schoolPlan';
+import { checkOfficialDocument, officialAmount, type OfficialCheck } from '../officialDocument/lint';
 import { item, note, table, type OfficialDocument } from '../officialDocument/model';
 
 /**
@@ -12,7 +13,7 @@ export function planToOfficialDocument(draft: PlanDraft, title: string, pages: 1
     ? [
       table([{ label: '항목', width: 20500 }, { label: '단가', width: 10000, align: 'right' }, { label: '수량', width: 6500, align: 'right' }, { label: '금액', width: 11100, align: 'right' }],
         draft.budget.map(b => [b.item, won(b.unitPrice), String(b.quantity), won(b.unitPrice * b.quantity)])),
-      note(`합계 ${won(planBudgetTotal(draft))}(단가와 배분은 제안이며 집행 기준·실제 견적 확인 필요)`),
+      note(`합계 ${officialAmount(planBudgetTotal(draft))}. 단가와 배분은 제안이며 집행 기준·실제 견적 확인 필요`),
     ]
     : [note('예산 없음 또는 미정: 금액 확정 후 집행 기준에 따라 확인')];
   return {
@@ -27,3 +28,6 @@ export function planToOfficialDocument(draft: PlanDraft, title: string, pages: 1
     ],
   };
 }
+
+/** 저장 전에 공문 표기를 점검하고 기호·날짜 표기를 고친 문서를 돌려준다. */
+export const checkedPlanDocument = (draft: PlanDraft, title: string, pages: 1 | 2): OfficialCheck => checkOfficialDocument(planToOfficialDocument(draft, title, pages));

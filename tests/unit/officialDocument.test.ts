@@ -3,11 +3,17 @@ import { readFileSync } from 'node:fs';
 import init, { HwpDocument } from '@rhwp/core';
 import { strFromU8, unzipSync } from 'fflate';
 import { item, itemDepth, note, table, type OfficialDocument } from '../../src/features/officialDocument/model';
-import { layoutOfficialDocument, markerHang, officialMarker } from '../../src/features/officialDocument/format';
+import { ATTACHMENT_PROFILE, layoutOfficialDocument, markerHang, officialMarker } from '../../src/features/officialDocument/format';
 import { checkedHwpxExport, writeOfficialDocument, type OfficialFonts } from '../../src/features/officialDocument/rhwpWriter';
 
 const assets = 'src/features/officialDocument/assets/';
-const fonts: OfficialFonts = { body: readFileSync(`${assets}fonts/NanumMyeongjo-Regular.otf`), bodyBold: readFileSync(`${assets}fonts/NanumMyeongjo-Bold.otf`), title: readFileSync(`${assets}fonts/NanumGothic-Bold.ttf`) };
+const read = (name: string) => readFileSync(`${assets}fonts/${name}`);
+const gothicBold = read('NanumGothic-Bold.ttf');
+const fonts: OfficialFonts = {
+  휴먼명조: { regular: read('NanumMyeongjo-Regular.otf'), bold: read('NanumMyeongjo-Bold.otf') },
+  HY헤드라인M: { regular: gothicBold, bold: gothicBold },
+  '맑은 고딕': { regular: read('NanumGothic-Regular.ttf'), bold: gothicBold },
+};
 beforeAll(async () => { await init({ module_or_path: readFileSync('node_modules/@rhwp/core/rhwp_bg.wasm') }); });
 
 // 가상의 공문 내용으로 출력 계층만 확인한다.
@@ -71,6 +77,23 @@ describe('rhwp HWPX 출력', () => {
       expect(header).toContain('<hc:intent value="0" unit="HWPUNIT"/><hc:left value="1300" unit="HWPUNIT"/>');
       expect(section).toMatch(/<hp:margin header="2835" footer="2835" gutter="0" left="5669" right="5669" top="4252" bottom="4252"\/>/);
       expect((section.match(/<hp:tbl\b/g) ?? []).length).toBe(1);
+    } finally { doc.free(); }
+  });
+  test('4단계 개조식은 교육부 실측 서식을 본문 크기에 비례해 쓴다(□ HY헤드라인M, ◦·- 휴먼명조, ※ 맑은 고딕)', () => {
+    expect(ATTACHMENT_PROFILE.gaejosik.levels.map(l => [l.font, l.size, l.lineSpacing])).toEqual([['HY헤드라인M', 1300, 160], ['휴먼명조', 1300, 160], ['휴먼명조', 1300, 180], ['맑은 고딕', 1050, 160]]);
+    // 실측 문서 과반에서 띄운 간격만 쓴다: ◦ 다음 □ 9pt → 13/15 비례 7.5pt, □ 다음 ◦는 붙인다.
+    expect(ATTACHMENT_PROFILE.gaejosik.gapBefore('l2', 'l1')).toBe(800);
+    expect(ATTACHMENT_PROFILE.gaejosik.gapBefore('l1', 'l2')).toBe(0);
+    const deep: OfficialDocument = { kind: 'attachment-plan', title: '가상 개선 보고', body: [item('현황 점검 결과를 공유함', [item('참여 학급 확대 필요', [item('세부 일정 조정', [item('학교 사정 반영')])])]), item('다음 단계를 준비함', [item('설문 실시')])] };
+    const doc = new HwpDocument(readFileSync(`${assets}blank.hwpx`));
+    try {
+      writeOfficialDocument(doc, deep, 1, fonts);
+      const header = strFromU8(unzipSync(checkedHwpxExport(doc))['Contents/header.xml']);
+      const hangulFaces = header.match(/<hh:fontface lang="HANGUL"[\s\S]*?<\/hh:fontface>/)![0];
+      const faces = new Map([...hangulFaces.matchAll(/<hh:font id="(\d+)" face="([^"]+)"/g)].map(m => [m[1], m[2]]));
+      const shapes = [...header.matchAll(/<hh:charPr id="\d+" height="(\d+)"[\s\S]*?<hh:fontRef hangul="(\d+)"/g)].map(m => `${faces.get(m[2])} ${m[1]}`);
+      expect(shapes).toEqual(expect.arrayContaining(['HY헤드라인M 1300', '휴먼명조 1300', '맑은 고딕 1050']));
+      expect(header).toMatch(/<hh:lineSpacing type="PERCENT" value="180"/);
     } finally { doc.free(); }
   });
   test('쪽 나눔은 문서 모델의 표시로만 정하고, 쪽 수를 넘으면 내용을 줄이지 않고 거부한다', () => {
