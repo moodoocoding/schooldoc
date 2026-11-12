@@ -1,5 +1,5 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
-import templateUrl from './assets/blank-plan.hwpx?url';
+import templateUrl from '../officialDocument/assets/blank.hwpx?url';
 import { planBudgetTotal, type PlanDraft } from '../../../supabase/functions/_shared/schoolPlan';
 
 const HP = 'http://www.hancom.co.kr/hwpml/2011/paragraph';
@@ -107,6 +107,6 @@ export async function exportLegacyPlanHwpx(draft: PlanDraft, options: { title: s
 }
 
 export async function exportPlanHwpx(draft: PlanDraft, options: { title: string; pages: 1 | 2; signal?: AbortSignal }): Promise<Uint8Array<ArrayBuffer>> {
-  const { runPlanDocument } = await import('./planRhwp');
-  return (await runPlanDocument({ action: 'generate', draft, title: options.title, pages: options.pages }, options.signal)).bytes;
+  const [{ runRhwp }, { planToOfficialDocument }] = await Promise.all([import('../officialDocument/rhwpClient'), import('./planDocument')]);
+  return (await runRhwp({ action: 'render', document: planToOfficialDocument(draft, options.title, options.pages), maxPages: options.pages }, options.signal)).bytes;
 }

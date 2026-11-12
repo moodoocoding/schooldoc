@@ -1,15 +1,15 @@
-import type { PlanDraft } from '../../../supabase/functions/_shared/schoolPlan';
-import type { PlanDocument } from './planRhwpEngine';
-export type PlanWorkerRequest = { action: 'generate'; draft: PlanDraft; title: string; pages: 1 | 2 } | { action: 'import'; bytes: Uint8Array<ArrayBuffer> };
-export type PlanWorkerResponse = ({ ok: true } & PlanDocument) | { ok: false; message: string };
+import type { OfficialDocument } from './model';
+import type { RenderedDocument } from './rhwpWriter';
+export type RhwpRequest = { action: 'render'; document: OfficialDocument; maxPages: number } | { action: 'import'; bytes: Uint8Array<ArrayBuffer> };
+export type RhwpResponse = ({ ok: true } & RenderedDocument) | { ok: false; message: string };
 
 /** One worker per operation bounds document lifetime; termination cancels synchronous WASM. */
-export function runPlanDocument(request: PlanWorkerRequest, signal?: AbortSignal): Promise<PlanDocument> {
+export function runRhwp(request: RhwpRequest, signal?: AbortSignal): Promise<RenderedDocument> {
   signal?.throwIfAborted();
   return new Promise((resolve, reject) => {
-    const worker = new Worker(new URL('./planRhwp.worker.ts', import.meta.url), { type: 'module' });
+    const worker = new Worker(new URL('./rhwp.worker.ts', import.meta.url), { type: 'module' });
     let settled = false;
-    const finish = (result?: PlanDocument, error?: unknown) => {
+    const finish = (result?: RenderedDocument, error?: unknown) => {
       if (settled) return;
       settled = true;
       clearTimeout(timeout); signal?.removeEventListener('abort', abort); worker.terminate();
@@ -20,9 +20,9 @@ export function runPlanDocument(request: PlanWorkerRequest, signal?: AbortSignal
     signal?.addEventListener('abort', abort, { once: true });
     worker.onerror = () => finish(undefined, new Error('문서 엔진을 시작하지 못했습니다. 연결을 확인하고 다시 시도해 주세요.'));
     worker.onmessageerror = () => finish(undefined, new Error('문서 결과를 받지 못했습니다. 다시 시도해 주세요.'));
-    worker.onmessage = (event: MessageEvent<PlanWorkerResponse>) => {
+    worker.onmessage = (event: MessageEvent<RhwpResponse>) => {
       if (!event.data.ok) finish(undefined, new Error(event.data.message));
-      else finish({ bytes: event.data.bytes, svgs: event.data.svgs, pageCount: event.data.pageCount });
+      else finish({ bytes: event.data.bytes, svgs: event.data.svgs, pageCount: event.data.pageCount, ...(event.data.volume ? { volume: event.data.volume } : {}) });
     };
     try { worker.postMessage(request); } catch (error) { finish(undefined, error); }
   });

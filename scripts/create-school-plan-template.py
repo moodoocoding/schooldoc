@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 import win32com.client
 
 root = Path(__file__).resolve().parent.parent
-target = root / "src/features/schoolDocuments/assets/blank-plan.hwpx"
+target = root / "src/features/officialDocument/assets/blank.hwpx"
 target.parent.mkdir(parents=True, exist_ok=True)
 with TemporaryDirectory(prefix="schooldoc-plan-") as temp:
     raw = Path(temp) / "blank.hwpx"
