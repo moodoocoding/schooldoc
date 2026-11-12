@@ -37,7 +37,7 @@ schedule은 준비·실행·결과 정리를 연결한 구체적인 활동이다
 budget 행 수와 item 글자 수는 응답 형식의 한도를 지킨다. unitPrice는 원화 0~1억원 정수, quantity는 1~10000 정수이다. 단가·배분은 제안이며 실제 견적 확인이 필요하다.
 학교 예산이 null 또는 0이면 budget은 빈 배열로 두고 임의의 금액표를 만들지 않는다. 예산이 있으면 허용된 항목에만 배분하며 합계는 학교 예산과 공문 상한을 넘지 않는다.
 각 section·schedule·budget의 requirementIds는 실제로 그 내용에 반영한 공문 항목 ID만 연결한다. required 항목을 모두 본문·일정·예산에 반영한다. 공문이 없으면 모든 requirementIds는 빈 배열이다.
-unknowns 개수와 글자 수는 응답 형식의 한도를 지킨다(0개이면 쓰지 않는다). 학교에서 결정할 미정 사항을 적고 본문에서도 확정 사실처럼 쓰지 않는다.`;
+unknowns는 문서에 들어가지 않고 교사의 검토 화면에만 표시된다. 학교에서 결정할 미정 사항만 짧게 적고, 본문에서는 그 내용을 확정 사실처럼 쓰지 않는다(예: 장소(미정)).`;
 
 export function buildPlanAiRequest(request: PlanRequest, model: string) {
   const referencePack = request.action === 'analyze' ? undefined : getPlanReferencePack(request);

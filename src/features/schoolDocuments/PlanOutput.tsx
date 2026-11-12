@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ArrowLeft, Copy, Download, LoaderCircle } from 'lucide-react';
 import { downloadBlob } from '../../utils/qrImage';
-import type { PlanConditions, PlanDraft } from '../../../supabase/functions/_shared/schoolPlan';
+import type { PlanConditions, PlanDraft, PlanPages } from '../../../supabase/functions/_shared/schoolPlan';
 import { layoutOfficialDocument } from '../officialDocument/format';
 import { pageVolumeIssues } from '../officialDocument/lint';
 import { officialPageUrl, officialPreviewFontCss } from '../officialDocument/previewFonts';
@@ -14,7 +14,7 @@ const field = 'mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white 
 
 /** 초안 검토·저장: 저장할 한글 지면을 그대로 보여 주고, 수정·HWPX 저장·기안 본문 복사를 한 화면에서 한다. */
 export function PlanOutput({ draft, title, pages, current, conditions, related, onTitle, onBack, actions }: {
-  draft: PlanDraft; title: string; pages: 1 | 2; current: boolean;
+  draft: PlanDraft; title: string; pages: PlanPages; current: boolean;
   /** 기안 본문의 운영 시기·예산 출처. related는 공문을 바탕으로 작성했는지(관련 공문 줄). */
   conditions: PlanConditions; related: boolean;
   onTitle: (title: string) => void; onBack: () => void;
@@ -38,7 +38,7 @@ export function PlanOutput({ draft, title, pages, current, conditions, related, 
     catch { setCopy({ body: draftBody, ok: false }); }
   };
   // 자동으로 고친 표기는 지면에 이미 반영되므로, 교사가 확인할 것만 보여 준다. 분량은 지면을 만든 뒤 더한다.
-  const issues = checked ? [...checked.issues.filter(i => !i.fixed), ...(preview?.key === key ? pageVolumeIssues(preview.volume, pages) : [])] : [];
+  const issues = checked ? [...checked.issues.filter(i => !i.fixed), ...(preview?.key === key ? pageVolumeIssues(preview.volume, pages) : []), ...draft.unknowns.map(message => ({ where: '학교 확인', message, fixed: false }))] : [];
   useEffect(() => {
     const c = new AbortController(); active.current = c;
     let urls: string[] = [];

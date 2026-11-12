@@ -1,4 +1,4 @@
-import type { PlanPages, PlanSection } from '../_shared/schoolPlan.ts';
+import { EFFECTS_ID, type PlanPages, type PlanSection } from '../_shared/schoolPlan.ts';
 import type { PlanReferenceType } from '../_shared/schoolPlanReferences.ts';
 
 // The provider writes activity procedures and outputs separately. The client
@@ -10,12 +10,18 @@ const block = (count: number, length: number) => object({ paragraphs: { type: 'a
 /**
  * 출력 분량별 글자·항목 한도. 공문 서식(휴먼명조 13pt·줄간격 160%, A4)에서 rhwp로 조판해,
  * 모든 칸을 최대 길이로 채워도 고른 쪽 수 안에 들어가도록 잡은 값이다(tests/unit/schoolPlanPageBudget.test.ts).
- * 1쪽은 본문·일정·예산이 한 쪽에, 2쪽은 본문이 1쪽, 일정·예산·확인 사항이 2쪽에 들어간다.
+ * 1쪽은 모든 내용이 한 쪽에, 2쪽 이상은 본문이 앞쪽들에, 일정·예산·기대 효과가 마지막 쪽에 들어간다.
+ * 확인 사항(unknowns)은 문서에 넣지 않고 검토 화면에만 보여 주므로 분량과 관계없다.
  */
 export const PLAN_PAGE_BUDGETS = {
-  1: { purpose: 50, overview: 1, overviewLength: 60, activities: 2, name: 12, procedure: 60, result: 25, followUp: 50, schedule: 3, when: 9, scheduleActivity: 18, owner: 8, budget: 2, item: 16, unknowns: 0, unknownLength: 40 },
-  2: { purpose: 80, overview: 2, overviewLength: 70, activities: 3, name: 16, procedure: 100, result: 40, followUp: 80, schedule: 5, when: 9, scheduleActivity: 36, owner: 8, budget: 4, item: 16, unknowns: 3, unknownLength: 60 },
+  1: { purpose: 50, overview: 1, overviewLength: 60, activities: 2, name: 12, procedure: 60, result: 25, effects: 2, effectLength: 30, schedule: 3, when: 9, scheduleActivity: 18, owner: 8, budget: 2, item: 16 },
+  2: { purpose: 80, overview: 2, overviewLength: 70, activities: 3, name: 16, procedure: 100, result: 40, effects: 2, effectLength: 50, schedule: 5, when: 9, scheduleActivity: 36, owner: 8, budget: 4, item: 16 },
+  3: { purpose: 150, overview: 3, overviewLength: 110, activities: 4, name: 20, procedure: 260, result: 90, effects: 3, effectLength: 50, schedule: 5, when: 9, scheduleActivity: 40, owner: 8, budget: 4, item: 16 },
+  4: { purpose: 180, overview: 4, overviewLength: 120, activities: 5, name: 24, procedure: 320, result: 110, effects: 3, effectLength: 50, schedule: 5, when: 9, scheduleActivity: 40, owner: 8, budget: 4, item: 16 },
+  5: { purpose: 220, overview: 5, overviewLength: 140, activities: 6, name: 24, procedure: 380, result: 140, effects: 3, effectLength: 50, schedule: 5, when: 9, scheduleActivity: 40, owner: 8, budget: 4, item: 16 },
 } as const;
+/** 학교에서 확인할 사항: 문서에는 넣지 않고 검토 화면에서만 보여 준다. */
+const UNKNOWNS = { count: 3, length: 80 };
 const budgetOf = (pages: PlanPages = 2) => PLAN_PAGE_BUDGETS[pages];
 const planBody = (pages?: PlanPages) => {
   const b = budgetOf(pages);
@@ -26,17 +32,16 @@ const planBody = (pages?: PlanPages) => {
       name: text(b.name), procedure: text(b.procedure), result: text(b.result),
       methodKind: { type: 'string', enum: ['source', 'proposal'] }, requirementIds: refs,
     }) },
-    followUp: block(1, b.followUp),
+    effects: block(b.effects, b.effectLength),
   });
 };
-export const planBodySchema = planBody(2);
 /** 분량 지침: 응답 형식의 항목 수와 함께 쓴다. */
 export function pageInstructions(pages: PlanPages = 2) {
   const b = budgetOf(pages);
-  const where = pages === 1 ? '본문·일정표·예산표·확인 사항이 모두 한 쪽에 들어가야 한다' : '1쪽에는 본문만, 2쪽에는 일정표·예산표·확인 사항이 들어간다';
-  const unknowns = b.unknowns ? `확인 사항(unknowns)은 ${b.unknowns}개·각 ${b.unknownLength}자 이내다.` : '1쪽에는 확인 사항(unknowns) 칸이 없으므로 빈 배열로 두고, 미정 사항은 본문에 "(학교 확인)"으로 짧게 표시한다.';
-  return `출력 분량은 A4 ${pages}쪽이다. ${where}. 응답 형식의 글자 수·항목 수 한도 안에서 짧은 문장으로 쓰고, 같은 내용을 반복하지 않는다.
-일정 activity는 ${b.scheduleActivity}자 이내다. ${unknowns} 필수 조건은 빼지 않고 짧게 쓴다.`;
+  const where = pages === 1 ? '본문·일정표·예산표·기대 효과가 모두 한 쪽에 들어가야 한다'
+    : `${pages === 2 ? '1쪽' : `1~${pages - 1}쪽`}에는 목적·운영 개요·세부 추진 계획을, ${pages}쪽에는 일정표·예산표·기대 효과를 쓴다`;
+  return `출력 분량은 A4 ${pages}쪽이다. ${where}. 응답 형식의 글자 수·항목 수 한도 안에서 쓰되, 분량이 비지 않도록 한도에 가깝게 구체적으로 쓴다. 같은 내용을 반복하지 않는다.
+일정 activity는 ${b.scheduleActivity}자 이내다. 필수 조건은 빼지 않는다.`;
 }
 const contestRulesSchema = object({
   criteria: { type: 'array', minItems: 1, maxItems: 6, items: object({ name: text(15), check: text(80), maxScore: { anyOf: [{ type: 'integer', minimum: 1, maximum: 10000 }, { type: 'null' }] } }) },
@@ -48,15 +53,16 @@ const contestRulesSchema = object({
 });
 function bodySchema(type: PlanReferenceType, pages?: PlanPages) {
   const contestActivity = object({ procedure: text(230), result: text(100), methodKind: { type: 'string', enum: ['source', 'proposal'] }, requirementIds: refs });
-  return type === 'contest' ? object({ purpose: planBodySchema.properties.purpose, overview: planBodySchema.properties.overview,
-    intake: contestActivity, publication: contestActivity, selectionRules: contestRulesSchema,
-  }) : planBody(pages);
+  const general = planBody(pages);
+  return type === 'contest' ? object({ purpose: general.properties.purpose, overview: general.properties.overview,
+    intake: contestActivity, publication: contestActivity, selectionRules: contestRulesSchema, effects: general.properties.effects,
+  }) : general;
 }
 export const getComposedDraftSchema = (type: PlanReferenceType, pages?: PlanPages) => object({
   title: text(100), body: bodySchema(type, pages),
   schedule: { type: 'array', minItems: 1, maxItems: budgetOf(pages).schedule, items: object({ when: text(budgetOf(pages).when), activity: text(budgetOf(pages).scheduleActivity), owner: text(budgetOf(pages).owner), requirementIds: refs }) },
   budget: { type: 'array', maxItems: budgetOf(pages).budget, items: object({ item: text(budgetOf(pages).item), unitPrice: { type: 'integer', minimum: 0, maximum: 100000000 }, quantity: { type: 'integer', minimum: 1, maximum: 10000 }, requirementIds: refs }) },
-  unknowns: { type: 'array', maxItems: budgetOf(pages).unknowns, items: text(budgetOf(pages).unknownLength) },
+  unknowns: { type: 'array', maxItems: UNKNOWNS.count, items: text(UNKNOWNS.length) },
 });
 export const getComposedBodyRevisionSchema = (type: PlanReferenceType, pages?: PlanPages) => object({ body: bodySchema(type, pages) });
 
@@ -78,22 +84,24 @@ function section(value: unknown, id: string, heading: string, count: number, len
   const b = record(value);
   return { id, heading, paragraphs: array(b.paragraphs, 1, count).map(p => string(p, length)), requirementIds: ids(b.requirementIds) };
 }
+
+
 export function composePlanBody(value: unknown, type: PlanReferenceType): PlanSection[] {
   const body = record(value);
   const activityValues = type === 'contest'
     ? [{ ...record(body.intake), name: '응모와 접수' }, { ...record(body.publication), name: '결과 발표와 활용' }]
-    : array(body.activities, 2, 4);
+    : array(body.activities, 2, 8);
   const activities = activityValues.map(value => {
     const a = record(value);
     if (a.methodKind !== 'source' && a.methodKind !== 'proposal') throw new Error('Invalid activity basis');
     return {
-      paragraph: `${string(a.name, 40)}${a.methodKind === 'proposal' ? '(방법안)' : ''}: ${string(a.procedure, 230).replace(/\s*\(방법안\)\s*[.。]?$/u, '')} 결과·확인: ${string(a.result, 100)}`,
+      paragraph: `${string(a.name, 40)}${a.methodKind === 'proposal' ? '(방법안)' : ''}: ${string(a.procedure, 400).replace(/\s*\(방법안\)\s*[.。]?$/u, '')} 결과·확인: ${string(a.result, 150)}`,
       requirementIds: ids(a.requirementIds),
     };
   });
   const sections = [
-    section(body.purpose, 'purpose', '추진 목적', 1, 140),
-    section(body.overview, 'overview', '운영 개요', 3, 140),
+    section(body.purpose, 'purpose', '추진 목적', 1, 250),
+    section(body.overview, 'overview', '운영 개요', 5, 200),
     { id: 'implementation', heading: '세부 추진 계획', paragraphs: activities.map(a => a.paragraph), requirementIds: [...new Set(activities.flatMap(a => a.requirementIds))] },
   ];
   if (type === 'contest') {
@@ -121,7 +129,7 @@ export function composePlanBody(value: unknown, type: PlanReferenceType): PlanSe
       ], requirementIds: ids(rules.requirementIds),
     });
   }
-  if (type !== 'contest') sections.push(section(body.followUp, 'follow_up', '결과 정리와 활용', 1, 200));
+  sections.push(section(body.effects, EFFECTS_ID, '기대 효과', 3, 120));
   return sections;
 }
 export function composePlanDraft(value: unknown, type: PlanReferenceType) {
@@ -133,11 +141,11 @@ export const compositionInstructions = `작성 응답은 화면 문단을 직접
 body.purpose: 목적 한 문단. body.overview: 대상·일시·장소·운영 역할과 필수 집행 조건을 짧은 항목 문단으로 쓴다. 활동 설명·결과 제출·예산 배분액을 여기서 반복하지 않는다.
 body.activities: 이번 사업의 핵심 활동. 각 name은 활동 이름, procedure는 누가 어떤 자료와 순서로 무엇을 하는지, result는 남길 구체적인 산출물 또는 확인할 행동·내용이다. 모든 항목의 개수와 글자 수는 응답 형식의 한도(출력 분량에 맞춘 값)를 지킨다. procedure와 result를 같은 말로 반복하지 않는다.
 methodKind는 공문에 해당 진행 방법까지 명시된 경우만 source, AI가 방법을 구체화하면 proposal이다. 서버가 proposal 활동에 '(방법안)'을 붙인다. 원문의 대상·날짜·의무는 방법 제안을 이유로 바꾸지 않는다.
-body.followUp: 결과의 수합·점검 담당, 제출 기한과 활용을 한 문단으로 적는다. body의 각 항목·활동에는 반영한 실제 requirementIds만 연결한다.
+body.effects: 이 계획으로 학생·교사·학교에 기대되는 효과를 '~ 함양', '~ 기여'처럼 짧은 항목 문단으로 쓴다. 결과 수합·제출 같은 절차는 활동과 일정에 쓰고 여기서 반복하지 않는다. body의 각 항목·활동에는 반영한 실제 requirementIds만 연결한다.
 운영 방법을 제안해야 한다면 실제 초안으로 작성한다. unknowns에 '양식 마련 여부 확인', '내용 확정 후 계획 수립'처럼 방금 작성해야 할 일을 미루지 않는다.
 budget은 사용 가능한 상한을 채우는 표가 아니다. 필요한 품목의 단위와 수량을 알 수 있으면 해당 산출식을 제안하고, 품목별 산출 자체가 불가능하면 빈 배열과 확인 사유를 반환한다. 인쇄비·재료비 총액을 임의로 각각 1회로 나눠 예산 전액을 소진하지 않는다.`;
 
-export const contestCompositionInstructions = `이번 유형은 공모전이다. 일반 유형의 activities와 followUp 대신 body.intake와 body.publication을 작성한다. 각각 procedure·result·methodKind·requirementIds를 갖는다. intake는 응모자가 작성할 항목과 접수·누락 확인 방법, publication은 결과 수합·발표 기한·공개 범위·선정작 활용을 적는다. 심사는 selectionRules에만 작성해 서로 다른 규칙이 중복되지 않게 한다.
+export const contestCompositionInstructions = `이번 유형은 공모전이다. 일반 유형의 activities 대신 body.intake와 body.publication을 작성하고, body.effects에 기대 효과를 쓴다. 각각 procedure·result·methodKind·requirementIds를 갖는다. intake는 응모자가 작성할 항목과 접수·누락 확인 방법, publication은 결과 수합·발표 기한·공개 범위·선정작 활용을 적는다. 심사는 selectionRules에만 작성해 서로 다른 규칙이 중복되지 않게 한다.
 selectionRules.criteria는 이번 공문의 평가 항목별 실제로 살펴볼 내용을 name·check로 적는다. evaluationMethod는 항목별 평가 결과를 어떻게 종합해 선정하는지, exclusions는 제외할 구체적인 표현·출품 조건을 쓴다.
 점수로 심사하면 각 criteria.maxScore에 실제로 사용할 만점 정수를 제안한다. 서버가 항목별 배점과 합계를 표시한다. '점수를 합산한다'만 쓰고 배점을 다시 학교가 만들게 하지 않는다. 원문이 투표·정성 비교 등 점수 없는 방식을 정했다면 모든 maxScore를 null로 두고 evaluationMethod에 그 선정 절차를 적는다. 글자 제한에 맞추느라 낱말을 잘라 쓰지 말고 완결된 짧은 문장으로 다시 쓴다.
 tieBreakPriority는 criteria에 있는 항목 이름을 비교할 순서대로 1~6개 나열한다. finalTie에는 그 순서로 비교해도 같을 때 적용할 실제 절차를 적는다(예: 심사자가 작품별 근거를 논의하고 선정 이유를 기록). '추후 정한다', '기준 마련', '학교 확인'은 처리 규칙이 아니다.

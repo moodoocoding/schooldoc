@@ -57,13 +57,15 @@ describe('계획서 OpenAI 연결', () => {
     expect(ids.every(id => analysis.requirements.some(r => r.id === id))).toBe(true);
     expect(ids).not.toContain('training-01');
     // 필수 요구사항을 하나도 연결하지 못하면 여전히 실패한다.
-    const unlinked = { ...authoredDraft, body: { ...authoredDraft.body, followUp: { ...authoredDraft.body.followUp, requirementIds: ['made-up'] } }, schedule: authoredDraft.schedule.map(row => ({ ...row, requirementIds: row.requirementIds.filter(id => id !== 'r3') })) };
+    const unlinked = { ...authoredDraft, body: { ...authoredDraft.body, effects: { ...authoredDraft.body.effects, requirementIds: ['made-up'] } }, schedule: authoredDraft.schedule.map(row => ({ ...row, requirementIds: row.requirementIds.filter(id => id !== 'r3') })) };
     await expect(requestPlanAi(drafting, 'fixture', 'fixture', async () => completed(unlinked))).rejects.toMatchObject({ status: 502 });
   });
   test('선택한 분량을 AI 지침과 응답 형식의 항목 수에 반영한다', () => {
     const one = buildPlanAiRequest({ ...drafting, pages: 1 }, 'fixture'), two = buildPlanAiRequest({ ...drafting, pages: 2 }, 'fixture');
     expect(one.instructions).toContain('출력 분량은 A4 1쪽이다');
     expect(two.instructions).toContain('출력 분량은 A4 2쪽이다');
+    const five = buildPlanAiRequest({ ...drafting, pages: 5 }, 'fixture');
+    expect(five.instructions).toContain('1~4쪽에는 목적·운영 개요·세부 추진 계획을, 5쪽에는 일정표·예산표·기대 효과를 쓴다');
     expect(one.instructions).not.toContain('1200~1800자');
     const schema = (request: ReturnType<typeof buildPlanAiRequest>) => request.text.format.schema as { properties: { schedule: { maxItems: number }; body: { properties: { activities: { maxItems: number } } } } };
     expect(schema(one).properties.schedule.maxItems).toBeLessThan(schema(two).properties.schedule.maxItems);
@@ -85,7 +87,7 @@ describe('계획서 OpenAI 연결', () => {
       tieBreakPriority: ['적합성', '의미'], finalTie: '작품별 근거를 함께 논의하고 선정 이유를 기록한다.', methodKind: 'proposal', requirementIds: ['r2'],
     };
     const providerDraft = { ...authoredDraft, body: { purpose: authoredDraft.body.purpose, overview: authoredDraft.body.overview,
-      intake: authoredDraft.body.activities[0], publication: { ...authoredDraft.body.activities[1], requirementIds: ['r2', 'r3'] }, selectionRules } };
+      intake: authoredDraft.body.activities[0], publication: { ...authoredDraft.body.activities[1], requirementIds: ['r2', 'r3'] }, selectionRules, effects: authoredDraft.body.effects } };
     const result = await requestPlanAi(req, 'fixture', 'fixture', async () => completed(providerDraft));
     const section = result.draft!.sections.find(s => s.id === 'selection_rules')!;
     expect(section.paragraphs.join(' ')).toContain('적합성 → 의미');
@@ -110,7 +112,7 @@ describe('계획서 OpenAI 연결', () => {
   });
   test('필수 조건 누락의 고정 안내만 반환하고 AI 본문을 오류에 섞지 않는다', async () => {
     const invalid = structuredClone(authoredDraft);
-    invalid.body.followUp.requirementIds = [];
+    invalid.body.effects.requirementIds = [];
     invalid.schedule = invalid.schedule.filter(s => !s.requirementIds.includes('r3'));
     invalid.body.purpose.paragraphs = ['PRIVATE_SOURCE_MARKER'];
     await expect(requestPlanAi(drafting, 'fixture', 'fixture', async () => completed(invalid))).rejects.toThrow('필수 요구사항');

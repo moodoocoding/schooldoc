@@ -29,6 +29,8 @@ describe('계획서 근거·예산·출력 계약', () => {
   test('원문 금액과 다른 상한·초과 예산·미정인 예산표를 거부한다', () => {
     expect(() => validatePlanAnalysis({ ...analysis, budgetLimit: { amount: 500000, requirementId: 'r4' } }, sources)).toThrow(/금액/);
     expect(() => validatePlanContext({ ...context, conditions: { ...context.conditions, budget: 300001 } })).toThrow(/상한/);
+    for (const pages of [1, 2, 3, 4, 5]) expect(validatePlanContext({ ...context, pages } as typeof context).pages).toBe(pages);
+    expect(() => validatePlanContext({ ...context, pages: 6 } as unknown as typeof context)).toThrow(/출력 분량/);
     expect(() => validatePlanDraft(draft, { ...context, conditions: { ...context.conditions, budget: 100000 } })).toThrow(/학교 예산/);
     for (const budget of [0, null]) expect(() => validatePlanDraft(draft, { ...context, conditions: { ...context.conditions, budget } })).toThrow(/금액표/);
     expect(() => validatePlanDraft({ ...draft, budget: [{ ...draft.budget[0], unitPrice: 3.14 }] }, context)).toThrow();

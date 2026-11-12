@@ -8,7 +8,7 @@ import { checkedHwpxExport, writeOfficialDocument, type OfficialFonts } from '..
 import { checkedPlanDocument, planToOfficialDocument } from '../../src/features/schoolDocuments/planDocument';
 import { authoredDraft, context, draft } from '../fixtures/schoolPlan';
 import { composePlanDraft } from '../../supabase/functions/school-plan/composition';
-import { validatePlanDraft } from '../../supabase/functions/_shared/schoolPlan';
+import { EFFECTS_ID, validatePlanDraft, type PlanPages } from '../../supabase/functions/_shared/schoolPlan';
 
 const assets = 'src/features/officialDocument/assets/';
 const read = (name: string) => readFileSync(`${assets}fonts/${name}`);
@@ -21,7 +21,7 @@ const fonts: OfficialFonts = {
 beforeAll(async () => { await init({ module_or_path: readFileSync('node_modules/@rhwp/core/rhwp_bg.wasm') }); });
 
 describe('운영계획서 초안 → 공문 문서 모델', () => {
-  test('AI 표시 없이 제목·목차·문단·일정·예산·확인 사항을 트리로 담는다', () => {
+  test('AI 표시 없이 제목·목차·문단·일정·예산을 트리로 담는다', () => {
     const document = planToOfficialDocument(draft, draft.title, 2);
     expect(document).toMatchObject({ kind: 'attachment-plan', title: draft.title });
     const text = layoutOfficialDocument(document).flatMap(l => l.kind === 'table' ? [] : [l.text]);
@@ -35,9 +35,18 @@ describe('운영계획서 초안 → 공문 문서 모델', () => {
     expect(text).toContain('※ 합계 금200,000원(금이십만원). 단가와 배분은 제안이며 집행 기준·실제 견적 확인 필요');
     expect(text.join('\n')).not.toMatch(/\[초안\]|AI 작성/);
   });
-  test('2쪽 출력만 일정 목차 앞에서 쪽을 나눈다', () => {
-    const breaks = (pages: 1 | 2) => planToOfficialDocument(draft, draft.title, pages).body.flatMap(n => n.kind === 'item' && n.pageBreakBefore ? [n.text] : []);
-    expect(breaks(2)).toEqual(['세부추진 일정(안)']);
+  test('기대 효과는 예산 뒤 마지막 목차이고, 학교 확인 사항은 문서에 넣지 않는다', () => {
+    const effects = { id: EFFECTS_ID, heading: '기대 효과', paragraphs: ['독서 습관 형성'], requirementIds: [] };
+    const document = planToOfficialDocument({ ...draft, sections: [...draft.sections.slice(0, 2), effects, ...draft.sections.slice(2)] }, draft.title, 3);
+    const headings = document.body.flatMap(n => n.kind === 'item' ? [n.text] : []);
+    expect(headings.slice(-3)).toEqual(['세부추진 일정(안)', '소요 예산(안)', '기대 효과']);
+    const json = JSON.stringify(document);
+    expect(json).not.toContain('확인 사항');
+    expect(draft.unknowns.some(u => json.includes(u))).toBe(false);
+  });
+  test('2쪽 이상은 일정 목차 앞에서 쪽을 나눈다', () => {
+    const breaks = (pages: PlanPages) => planToOfficialDocument(draft, draft.title, pages).body.flatMap(n => n.kind === 'item' && n.pageBreakBefore ? [n.text] : []);
+    for (const pages of [2, 3, 4, 5] as const) expect(breaks(pages)).toEqual(['세부추진 일정(안)']);
     expect(breaks(1)).toEqual([]);
   });
   test('저장 전 공문 표기 점검: 가상 초안은 고칠 점이 없고, 본문에 넣은 기호·날짜는 정리한다', () => {
@@ -94,7 +103,7 @@ describe('실제 rhwp WASM의 계획서 생성·보존', () => {
   test('새 활동 구조와 공모전의 배점·동점 기준을 실제 HWPX에 빠짐없이 보존한다', () => {
     const composed = validatePlanDraft(composePlanDraft({ ...authoredDraft, body: {
       purpose: authoredDraft.body.purpose, overview: authoredDraft.body.overview,
-      intake: authoredDraft.body.activities[0], publication: { ...authoredDraft.body.activities[1], requirementIds: ['r2', 'r3'] },
+      intake: authoredDraft.body.activities[0], publication: { ...authoredDraft.body.activities[1], requirementIds: ['r2', 'r3'] }, effects: authoredDraft.body.effects,
       selectionRules: { criteria: [{ name: '적합성', check: '주제에 어울리는지 확인한다.', maxScore: 50 }, { name: '의미', check: '뜻이 분명한지 확인한다.', maxScore: 50 }],
         evaluationMethod: '합산 점수가 높은 순으로 선정한다.', exclusions: ['부적절한 표현이 포함된 작품'],
         tieBreakPriority: ['적합성', '의미'], finalTie: '함께 논의하고 선정 이유를 기록한다.', methodKind: 'proposal', requirementIds: ['r2'] },

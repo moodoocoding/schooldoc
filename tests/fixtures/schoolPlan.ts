@@ -38,7 +38,7 @@ export const authoredDraft = {
       { name: '개별 읽기 기록', procedure: '학생이 관심 있는 책을 읽고 인상 깊은 장면과 그 이유를 기록한다. 글쓰기가 어려운 학생은 그림이나 말로 표현한다.', result: '읽기 기록과 다음에 읽고 싶은 책을 남긴다.', methodKind: 'proposal', requirementIds: ['r2'] },
       { name: '학급 작품 나눔', procedure: '학생이 소개할 기록을 골라 게시하고 친구의 기록에 궁금한 점을 남긴다. 작성자는 질문을 읽고 자신의 생각을 설명한다.', result: '작품과 질문·응답 기록을 모아 서로 다른 읽기 경험을 확인한다.', methodKind: 'proposal', requirementIds: ['r2'] },
     ],
-    followUp: { paragraphs: ['담당 교사가 기록과 작품 나눔 자료를 취합하여 11월 9일까지 결과를 제출하고 다음 읽기 활동 안내에 반영한다.'], requirementIds: ['r3'] },
+    effects: { paragraphs: ['책을 고르고 생각을 나누는 독서 습관 형성', '학급 작품 나눔을 통한 표현력과 공감 능력 신장'], requirementIds: ['r3'] },
   },
   schedule: draft.schedule, budget: draft.budget, unknowns: draft.unknowns,
 };

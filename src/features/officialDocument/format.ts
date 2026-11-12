@@ -72,7 +72,7 @@ export const ATTACHMENT_PROFILE: OfficialFormatProfile = {
 };
 /** 문서 종류 목록. 새 공문서는 여기에 서식과 분량을 등록하고, 내용은 각 기능의 변환기가 문서 모델로 만든다. */
 export const OFFICIAL_DOCUMENT_KINDS: Record<OfficialDocumentKind, OfficialDocumentKindInfo> = {
-  'attachment-plan': { label: '붙임 계획서', profile: ATTACHMENT_PROFILE, pageOptions: [1, 2] },
+  'attachment-plan': { label: '붙임 계획서', profile: ATTACHMENT_PROFILE, pageOptions: [1, 2, 3, 4, 5] },
 };
 export const profileOf = (document: OfficialDocument) => OFFICIAL_DOCUMENT_KINDS[document.kind].profile;
 /** 계층이 4단계 이상이면 개조식(□ ◦ - ※), 그 미만이면 편람 번호 체계를 쓴다. */
