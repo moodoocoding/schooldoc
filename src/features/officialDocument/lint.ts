@@ -104,12 +104,11 @@ export function checkOfficialDocument(document: OfficialDocument): OfficialCheck
 }
 
 /**
- * 분량 점검(korean-report-hwpx `_size_warnings`를 옮김): 본문(강제 쪽 나눔 전) 마지막 쪽이 80%보다 덜 차면 알린다.
- * 넘침은 출력기가 저장을 막으므로 여기서는 다루지 않는다.
+ * 분량 점검: 선택한 쪽 수를 실제로 넘을 때만 알린다(저장은 막지 않는다).
+ * 덜 찬 쪽은 교사에게 방해가 되므로 알리지 않는다.
  */
-export function pageVolumeIssues(volume: PageVolume | undefined): OfficialIssue[] {
+export function pageVolumeIssues(volume: PageVolume | undefined, targetPages?: number): OfficialIssue[] {
   if (!volume || !volume.fills.length) return [];
-  const page = Math.min(volume.bodyPages, volume.fills.length), fill = volume.fills[page - 1];
-  if (fill >= 0.8) return [];
-  return [{ where: `${page}쪽`, message: `본문 마지막 쪽이 약 ${Math.round(fill * 100)}%만 찼습니다. 쪽 수를 줄이거나 무엇·왜·누가·언제·숫자 같은 세부 내용을 보강할 수 있습니다.`, fixed: false }];
+  if (!targetPages || volume.fills.length <= targetPages) return [];
+  return [{ where: '분량', message: `선택한 ${targetPages}쪽보다 ${volume.fills.length - targetPages}쪽 많은 ${volume.fills.length}쪽입니다. 본문·일정 수정으로 줄이거나 그대로 저장할 수 있습니다.`, fixed: false }];
 }

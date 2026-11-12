@@ -32,7 +32,7 @@ self.onmessage = async (event: MessageEvent<RhwpRequest>) => {
         return [family, { regular: await load(source.regular.url), bold: await load(source.bold.url) }] as const;
       })]);
       doc = new HwpDocument(template);
-      const volume = writeOfficialDocument(doc, request.document, request.maxPages, Object.fromEntries(sources));
+      const volume = writeOfficialDocument(doc, request.document, Object.fromEntries(sources));
       const data = checkedHwpxExport(doc);
       // Render the exact saved bytes, so the preview and download cannot diverge.
       doc.free(); doc = new HwpDocument(data);

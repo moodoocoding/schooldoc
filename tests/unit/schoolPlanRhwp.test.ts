@@ -3,6 +3,7 @@ import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import init, { HwpDocument } from '@rhwp/core';
 import { unzipSync, strFromU8 } from 'fflate';
 import { layoutOfficialDocument } from '../../src/features/officialDocument/format';
+import { pageVolumeIssues } from '../../src/features/officialDocument/lint';
 import { checkedHwpxExport, writeOfficialDocument, type OfficialFonts } from '../../src/features/officialDocument/rhwpWriter';
 import { checkedPlanDocument, planToOfficialDocument } from '../../src/features/schoolDocuments/planDocument';
 import { draft } from '../fixtures/schoolPlan';
@@ -60,7 +61,7 @@ describe('실제 rhwp WASM의 계획서 생성·보존', () => {
     const doc = new HwpDocument(readFileSync(`${assets}blank.hwpx`));
     const plan = pages === 1 ? compact : draft;
     try {
-      writeOfficialDocument(doc, planToOfficialDocument(plan, plan.title, pages), pages, fonts);
+      writeOfficialDocument(doc, planToOfficialDocument(plan, plan.title, pages), fonts);
       const bytes = checkedHwpxExport(doc);
       const xml = strFromU8(unzipSync(bytes)['Contents/section0.xml']);
       expect((xml.match(/<hp:tbl\b/g) ?? []).length).toBe(2);
@@ -76,11 +77,15 @@ describe('실제 rhwp WASM의 계획서 생성·보존', () => {
       writeFileSync(`test-results/rhwp-implementation/wasm-${pages}page.hwpx`, bytes);
     } finally { doc.free(); }
   });
-  test('분량 초과 시 내용을 줄이지 않고 저장을 거부한다', () => {
+  test('분량을 넘어도 내용과 글자 크기를 줄이지 않고 만들며, 넘친 쪽 수를 알린다', () => {
     const doc = new HwpDocument(readFileSync(`${assets}blank.hwpx`));
     try {
       const long = { ...draft, sections: draft.sections.map(s => ({ ...s, paragraphs: s.paragraphs.map(p => p.repeat(12)) })) };
-      expect(() => writeOfficialDocument(doc, planToOfficialDocument(long, draft.title, 1), 1, fonts)).toThrow(/1쪽에 담기 어렵습니다/);
+      const volume = writeOfficialDocument(doc, planToOfficialDocument(long, draft.title, 1), fonts);
+      expect(volume.fills.length).toBeGreaterThan(1);
+      const text = JSON.parse(doc.getTextFileText()) as string;
+      expect(text.replace(/\s/g, '')).toContain(long.sections[0].paragraphs[0].replace(/\s/g, ''));
+      expect(pageVolumeIssues(volume, 1)).toEqual([expect.objectContaining({ where: '분량', message: expect.stringContaining('선택한 1쪽보다') })]);
     } finally { doc.free(); }
   });
 });

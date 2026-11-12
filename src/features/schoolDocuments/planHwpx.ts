@@ -108,5 +108,5 @@ export async function exportLegacyPlanHwpx(draft: PlanDraft, options: { title: s
 
 export async function exportPlanHwpx(draft: PlanDraft, options: { title: string; pages: 1 | 2; signal?: AbortSignal }): Promise<Uint8Array<ArrayBuffer>> {
   const [{ runRhwp }, { planToOfficialDocument }] = await Promise.all([import('../officialDocument/rhwpClient'), import('./planDocument')]);
-  return (await runRhwp({ action: 'render', document: planToOfficialDocument(draft, options.title, options.pages), maxPages: options.pages }, options.signal)).bytes;
+  return (await runRhwp({ action: 'render', document: planToOfficialDocument(draft, options.title, options.pages) }, options.signal)).bytes;
 }

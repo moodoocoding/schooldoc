@@ -24,7 +24,8 @@ const NO_BORDER = { type: 0, width: 0, color: '#000000' };
 const noBorders = { borderLeft: NO_BORDER, borderRight: NO_BORDER, borderTop: NO_BORDER, borderBottom: NO_BORDER };
 
 /** 공문 문서 모델을 rhwp의 편집 가능한 문단과 표로 조판한다. 모델 XML을 직접 쓰지 않는다. */
-export function writeOfficialDocument(doc: HwpDocument, document: OfficialDocument, maxPages: number, fonts: OfficialFonts): PageVolume {
+/** 쪽 수는 막지 않는다. 목표 분량과의 차이는 PageVolume으로 돌려주고 화면에서 알린다(내용·글자 크기를 자동으로 줄이지 않는다). */
+export function writeOfficialDocument(doc: HwpDocument, document: OfficialDocument, fonts: OfficialFonts): PageVolume {
   if (!document.title.trim()) throw new Error('문서 제목을 확인해 주세요.');
   const profile = profileOf(document);
   const lines = layoutOfficialDocument(document), gaejosik = isGaejosik(document), scheme = markerScheme(profile, gaejosik);
@@ -100,7 +101,6 @@ export function writeOfficialDocument(doc: HwpDocument, document: OfficialDocume
   const normalize = (value: string) => decode(value).replace(/\s+/g, '');
   const actual = normalize(JSON.parse(doc.getTextFileText()));
   if (expected.some(value => !actual.includes(normalize(value)))) throw new Error('문서 내용 보존 검사에 실패했습니다. 초안을 유지한 채 다시 시도해 주세요.');
-  if (doc.pageCount() > maxPages) throw new Error(`현재 내용을 ${maxPages}쪽에 담기 어렵습니다. ${maxPages === 1 ? '2쪽을 선택하거나 ' : ''}본문을 수정해 주세요. 내용과 글자 크기는 자동으로 줄이지 않습니다.`);
   return measurePageVolume(doc, lines.length, forcedBreaks);
 }
 

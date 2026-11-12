@@ -30,7 +30,8 @@ export function loadPlanState(ownerId: string, storage: Pick<Storage, 'getItem' 
       draft = validatePlanDraft(s.draft, draftContext);
     }
     const referenceType = validatePlanReferenceChoice(s.referenceType ?? 'auto');
-    return { state: { ...s, sources, analysis, draft, referenceType, step: s.step >= 4 && !draft ? 3 : s.step }, warning: '' };
+    // 예전 6단계 저장(초안 검토 4, 저장 5)은 합쳐진 검토·저장(4)으로 연다.
+    return { state: { ...s, sources, analysis, draft, referenceType, step: s.step >= 4 && !draft ? 3 : Math.min(s.step, 4) }, warning: '' };
   } catch {
     try { if (raw) storage.setItem(`${key}:recovery`, raw); } catch { return { state: emptyPlanState(), warning: '이전 초안을 읽거나 보존하지 못했습니다. 자동 저장을 사용하지 말고 브라우저 저장 공간을 확인해 주세요.' }; }
     return { state: emptyPlanState(), warning: '읽지 못한 이전 기록은 이 기기의 복구용 사본으로 보존했습니다. 새 초안으로 시작합니다.' };
