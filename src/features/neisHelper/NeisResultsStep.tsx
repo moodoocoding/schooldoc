@@ -6,6 +6,7 @@ import {
   commentLengthRange,
   GRADE_LABELS,
   normalizeGrade,
+  recordTextProblems,
   repeatedCommentIds,
 } from '../../../supabase/functions/_shared/neisHelper';
 import type {
@@ -368,6 +369,11 @@ export function NeisResultsStep({
                         {repeats.has(student.id) && (
                           <span className="font-semibold text-amber-900">다른 학생과 같은 문장이 있습니다.</span>
                         )}
+                        {!!result?.text && recordTextProblems(result.text).length > 0 && (
+                          <span className="font-semibold text-amber-900">
+                            기재요령 확인: {recordTextProblems(result.text).join(', ')}
+                          </span>
+                        )}
                         <button
                           type="button"
                           className="min-h-[44px] font-semibold text-blue-700 underline"
@@ -414,8 +420,8 @@ export function NeisResultsStep({
           })}
         </ul>
         <p className="text-xs leading-5 text-slate-600">
-          평어는 학생별 평가기준을 근거로 만든 초안입니다. 근거 연결은 사실 정확성을 보증하지 않으니 나이스에
-          옮기기 전에 읽어 보세요. 글자 수는 공백 포함, 바이트는 줄바꿈을 2바이트로 셉니다.
+          평어는 학생별 평가기준과 평가계획의 수업·평가 과정을 근거로 작성했습니다. 글자 수는 공백 포함, 바이트는
+          나이스 기준(한글 3, 영문·숫자 1, 줄바꿈 1바이트)으로 셉니다.
         </p>
       </section>
     </div>

@@ -109,8 +109,9 @@ export interface ColumnLink {
   assessmentId: string;
   method: LinkMethod;
 }
+// PDF 추출 과정에서 가운뎃점이 제어 문자(예: U+007F)로 바뀌는 경우가 있어 보이지 않는 문자도 지운다.
 const comparable = (s: string) =>
-  s.replace(/[·ㆍ∙・]/gu, '').normalize('NFKC').replace(/[\s()[\]{}.,:;'"‘’“”\-_/]/gu, '').toLowerCase();
+  s.replace(/[·ㆍ∙・․‧⋅]/gu, '').normalize('NFKC').replace(/[\p{C}\s()[\]{}.,:;'"‘’“”\-_/]/gu, '').toLowerCase();
 function bigrams(s: string) {
   const grams = new Map<string, number>();
   for (let i = 0; i < s.length - 1; i++) {

@@ -101,6 +101,13 @@ describe('성적표 자동 정리', () => {
     expect(studentEvidence(grades, grades.students[0], links, assessments).map((e) => [e.assessmentId, e.grade]))
       .toEqual([['speaking', 'high'], ['writing', 'middle'], ['reading', 'low']]);
   });
+  test('PDF에서 가운뎃점이 보이지 않는 제어 문자로 읽혀도 영역을 연결한다', () => {
+    const assessments = [item('speaking', '국어', '의견을 제시하고 토의하기', { domain: '듣기·말하기' })];
+    for (const label of ['듣기\u007f말하기', '듣기․말하기', '듣기.말하기']) {
+      expect(Object.values(autoLinkColumns(book([label], [['1', '가상학생', '◎']]), assessments)))
+        .toEqual([{ assessmentId: 'speaking', method: 'domain' }]);
+    }
+  });
   test('같은 영역의 평가가 여럿이면 부분 문자열이나 순서로 하나를 고르지 않는다', () => {
     const assessments = [
       item('a', '국어', '소개하는 글 쓰기', { domain: '쓰기' }),
