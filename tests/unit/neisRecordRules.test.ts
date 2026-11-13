@@ -20,6 +20,7 @@ describe('2026 기재요령 표기 검사', () => {
     expect(recordTextProblems('교내 글쓰기 대회에서 수상함.')).toContain('대회·수상');
     expect(recordTextProblems('방과후 수업에서 익힘.')).toContain('방과후학교');
     expect(recordTextProblems('presentation 자료를 만듦.')).toContain('영문 표기');
+    expect(recordTextProblems('気持ち를 전하는 편지를 씀.')).toContain('한글 외 문자');
   });
   test('평범한 문장의 끝 글자를 문단 번호로 오인하지 않는다', () => {
     expect(recordTextProblems('보고서를 씀. 다양한 매체 자료를 활용함. 편지를 완성함.')).toEqual([]);
@@ -82,6 +83,15 @@ describe('시기 순서상 오른 성적', () => {
     expect(() => say('자료를 정리하며 정리하는 방법을 익힘.')).not.toThrow();
     expect(() => validateGeneratedComment({ sentences: [{ text: '자료를 정확하게 정리함.', assessmentId: '1', evidenceQuote: rubrics.high }] },
       { ...input, evidence: [{ ...input.evidence[0], grade: 'high', criterion: rubrics.high }] })).not.toThrow();
+  });
+  test('학급 평어에서 평가어와 능력 문장 반복을 거절한다', () => {
+    const input: CommentInput = { subject: '국어', length: 200, evidence: [{
+      assessmentId: '1', standardCode: '[4국03-02]', standard: '글을 쓴다.', task: '보고서 쓰기', grade: 'high', criterion: rubrics.high,
+    }] };
+    const say = (texts: string[]) => validateGeneratedComment({ sentences: texts.map((text) => ({ text, assessmentId: '1', evidenceQuote: rubrics.high })) }, input, true);
+    expect(() => say(['자료를 정리하는 능력이 돋보임.', '보고서를 쓰는 능력이 뛰어남.', '발표하는 능력이 우수함.'])).toThrow('반복');
+    expect(() => say(['気持ち를 전하는 편지를 씀.'])).toThrow('한글이 아닌 문자');
+    expect(() => say(['자료를 짜임새 있게 정리함.', '보고서를 쓰는 데 능숙하고 결과를 전달하는 능력이 돋보임.'])).not.toThrow();
   });
   test('학급 요청에 해당 교과 문체 예시만 넣는다', () => {
     const base: ClassCommentInput = { subject: '국어', length: 200,
