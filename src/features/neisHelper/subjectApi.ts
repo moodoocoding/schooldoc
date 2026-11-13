@@ -11,6 +11,7 @@ import type {
 } from '../../../supabase/functions/_shared/neisHelper';
 import type { ClassCommentEvent, ClassCommentInput, ClassCommentResult, ClassCommentRow } from '../../../supabase/functions/_shared/neisClassComments';
 import { readJsonEvents } from '../../../supabase/functions/_shared/neisEvents';
+import { generateClassWithRepairs } from '../../../supabase/functions/_shared/neisClassGeneration';
 import { checkFile, isHangulFile } from './subjectFiles';
 import { reconcileSourcePages } from './sourcePages';
 
@@ -119,6 +120,9 @@ export async function analyzeGradeDocument(file: File, signal: AbortSignal): Pro
   return { book: validateGradeBook({ ...result, columns: result.columns?.map((c) => c.label) }), gradePdf: convertedFile };
 }
 export async function generateClassComments(input: ClassCommentInput, signal: AbortSignal, onRow: (row: ClassCommentRow) => void) {
+  await generateClassWithRepairs(input, signal, requestClassOnce, onRow);
+}
+async function requestClassOnce(input: ClassCommentInput, signal: AbortSignal, onRow: (row: ClassCommentRow) => void) {
   const result = await invoke({ action: 'generate-class', input }, signal, true);
   if (result instanceof Response && result.body) {
     for await (const raw of readJsonEvents(result.body)) {

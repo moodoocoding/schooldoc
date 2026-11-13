@@ -374,11 +374,11 @@ export function SubjectWorkspace() {
           {step === 'length' && <>
             <label className="block max-w-md text-sm font-semibold text-slate-800">목표 분량
               <select className={`${inputClass} mt-2`} value={draft.length} onChange={(e) => patch({ length: Number(e.target.value) as SubjectDraft['length'] })}>
-                <option value={200}>200자 내외</option><option value={300}>300자 내외</option><option value={400}>400자 내외</option>
+                <option value={200}>200자 (180~220자)</option><option value={300}>300자 (270~330자)</option><option value={400}>400자 (360~440자)</option>
               </select>
             </label>
             <p className="text-sm text-slate-600">{draft.subject} · {students.length}명 · 평가 {usedColumns.length}개</p>
-            <p className="rounded-lg bg-blue-50 p-4 text-sm leading-6 text-blue-900">공통 평가기준과 평가지에서 참고할 문항, 임시 식별자별 성적을 한 요청으로 OpenAI에 전송합니다. 이름과 출석번호는 결과 표에서 합칩니다. 근거가 적으면 목표보다 짧게 작성합니다.</p>
+            <p className="rounded-lg bg-blue-50 p-4 text-sm leading-6 text-blue-900">공통 평가기준과 평가지에서 참고할 문항, 임시 식별자별 성적을 한 요청으로 OpenAI에 전송합니다. 이름과 출석번호는 결과 표에서 합칩니다. 공백과 문장부호를 포함해 선택 분량의 ±10%로 작성합니다.</p>
           </>}
           {step === 'results' && book && (
             <ClassResultTable students={students} usedColumns={usedColumns} results={results} repeats={repeats}

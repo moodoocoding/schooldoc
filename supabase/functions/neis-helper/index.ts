@@ -1,6 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.110.8';
 import { PDFDocument } from 'npm:pdf-lib@1.17.1';
-import { authorizeNeisRequest, createNeisHandler, NeisError, requestNeisAi, requestNeisClassStream } from './core.ts';
+import { authorizeNeisRequest, createNeisHandler, NeisError, requestNeisAi, requestNeisClassStream, selectNeisAiModel } from './core.ts';
 
 const db = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -46,12 +46,12 @@ Deno.serve(
       requestNeisAi(
         request,
         Deno.env.get('OPENAI_API_KEY')!,
-        Deno.env.get('NEIS_HELPER_AI_MODEL')?.trim() || 'gpt-4.1-mini',
+        selectNeisAiModel(request.action, { model: Deno.env.get('NEIS_HELPER_AI_MODEL'), commentModel: Deno.env.get('NEIS_HELPER_COMMENT_MODEL') }),
       ),
     streamClass: (request, signal) => requestNeisClassStream(
       request,
       Deno.env.get('OPENAI_API_KEY')!,
-      Deno.env.get('NEIS_HELPER_AI_MODEL')?.trim() || 'gpt-4.1-mini',
+      selectNeisAiModel(request.action, { model: Deno.env.get('NEIS_HELPER_AI_MODEL'), commentModel: Deno.env.get('NEIS_HELPER_COMMENT_MODEL') }),
       signal,
     ),
   }),

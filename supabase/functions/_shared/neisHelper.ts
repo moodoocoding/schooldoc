@@ -60,7 +60,7 @@ export const NEIS_MAX_STUDENTS = 60;
 export const NEIS_MAX_TASKS = 40;
 export const NEIS_MAX_TASK_CONTEXT = 1200;
 const MAX_COMMENT_STARTS = NEIS_MAX_STUDENTS * NEIS_MAX_TASKS * 2;
-const MAX_PRIOR_SENTENCES = 24;
+const MAX_PRIOR_SENTENCES = NEIS_MAX_STUDENTS * NEIS_MAX_TASKS;
 
 const record = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === 'object' && !Array.isArray(v);
@@ -293,13 +293,30 @@ export function countComment(textValue: string) {
     bytes: new TextEncoder().encode(normalized).length + (normalized.match(/\n/g)?.length ?? 0),
   };
 }
-export function repeatedCommentIds(rows: { id: string; text: string }[]): Set<string> {
+export function commentLengthRange(target: CommentInput['length']) {
+  return { min: Math.ceil(target * 0.9), max: Math.floor(target * 1.1) };
+}
+export function validateCommentLength(comment: GeneratedComment, target: CommentInput['length']): GeneratedComment {
+  const characters = countComment(comment.sentences.map((sentence) => sentence.text).join(' ')).characters;
+  const { min, max } = commentLengthRange(target);
+  if (characters < min || characters > max) {
+    const correction = characters < min
+      ? `목표 ${target}자에 맞추어 약 ${target - characters}자 보완하세요. 기존 평가기준의 기능·방법·결과를 구체적으로 풀어 쓰고 새로운 사실이나 반복 문구를 추가하지 마세요.`
+      : `목표 ${target}자에 맞추어 약 ${characters - target}자 줄이세요. 모든 평가의 핵심 내용과 자연스러운 문장을 유지해 주세요.`;
+    throw new Error(`현재 공백 포함 ${characters}자입니다. 선택한 ${target}자의 허용 범위는 ${min}~${max}자입니다. ${correction}`);
+  }
+  return comment;
+}
+export function repeatedCommentIds(rows: { id: string; text: string }[], { compareStarts = true } = {}): Set<string> {
   const owners = new Map<string, Set<string>>();
   const phrases: { owner: string; length: number; grams: number }[] = [];
   const postings = new Map<string, number[]>();
   const overlaps = new Set<string>();
-  for (const row of rows)
-    for (const key of commentSentences(row.text).flatMap((sentence) => {
+  for (const row of rows) {
+    const sentences = commentSentences(row.text);
+    for (const key of [
+      ...(compareStarts ? commentStartKeys(sentences[0] ?? '').map((start) => `start:${start}`) : []),
+      ...sentences.flatMap((sentence) => {
       const words = sentence.match(/[\p{L}\p{N}]+/gu) ?? [];
       const normalized = words.join('');
       // Compare longer sentences even when a few words or the opening were replaced.
@@ -325,15 +342,15 @@ export function repeatedCommentIds(rows: { id: string; text: string }[]): Set<st
         phrases.push({ owner: row.id, length: normalized.length, grams: grams.size });
       }
       return [
-        ...commentStartKeys(sentence).map((start) => `start:${start}`),
         ...(normalized ? [`sentence:${normalized}`] : []),
         ...(words.length >= 4 ? [`words:${words.toSorted().join(' ')}`] : []),
       ];
-    })) {
+    })]) {
       const set = owners.get(key) ?? new Set<string>();
       set.add(row.id);
       owners.set(key, set);
     }
+  }
   for (const ids of owners.values()) if (ids.size > 1) for (const id of ids) overlaps.add(id);
   return overlaps;
 }
@@ -350,14 +367,15 @@ function commentStartKeys(sentence: string) {
 
 export function commentStyleContext(comments: string[]) {
   const sentences = comments.flatMap(commentSentences);
-  return {
-    usedStarts: [...new Set(sentences.flatMap(commentStartKeys))].slice(0, MAX_COMMENT_STARTS),
-    priorSentences: [...new Set(sentences)].slice(-MAX_PRIOR_SENTENCES).map((sentence) => sentence.slice(0, 1000)),
-  };
+  const usedStarts = [...new Set(comments.flatMap((comment) => commentStartKeys(commentSentences(comment)[0] ?? '')))];
+  const priorSentences = [...new Set(sentences)];
+  if (usedStarts.length > MAX_COMMENT_STARTS || priorSentences.length > MAX_PRIOR_SENTENCES || priorSentences.some((sentence) => sentence.length > 3000))
+    throw new Error('비교할 평어가 너무 깁니다. 학생별 평어 분량을 확인해 주세요.');
+  return { usedStarts, priorSentences };
 }
 
 export function validateCommentStyleContext(value: Record<string, unknown>) {
   const usedStarts = value.usedStarts === undefined ? [] : array(value.usedStarts, MAX_COMMENT_STARTS).map((entry) => text(entry, 60));
-  const priorSentences = value.priorSentences === undefined ? [] : array(value.priorSentences, MAX_PRIOR_SENTENCES).map((entry) => text(entry, 1000));
+  const priorSentences = value.priorSentences === undefined ? [] : array(value.priorSentences, MAX_PRIOR_SENTENCES).map((entry) => text(entry, 3000));
   return { usedStarts, priorSentences };
 }

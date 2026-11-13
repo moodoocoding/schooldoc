@@ -1,4 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
+import { teacherCommentPrompt } from '../../supabase/functions/neis-helper/teacherCommentPrompt';
+import { neisWritingRules } from '../../supabase/functions/neis-helper/neisWritingRules';
 import {
   authorizeNeisRequest,
   buildNeisAiRequest,
@@ -6,6 +8,7 @@ import {
   NeisError,
   readNeisRequest,
   requestNeisAi,
+  selectNeisAiModel,
 } from '../../supabase/functions/neis-helper/core';
 import type { NeisDependencies, NeisRequest } from '../../supabase/functions/neis-helper/core';
 
@@ -15,6 +18,14 @@ const request = (body: unknown = { action: 'plan', data: btoa('%PDF-1.7\n') }) =
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer fixture-token' },
     body: JSON.stringify(body),
   });
+test('평어 모델을 문서 분석과 구분하고 기존 명시 설정을 보존한다', () => {
+  expect(selectNeisAiModel('generate-class')).toBe('gpt-6-luna');
+  expect(selectNeisAiModel('generate')).toBe('gpt-6-luna');
+  expect(selectNeisAiModel('plan')).toBe('gpt-4.1-mini');
+  expect(selectNeisAiModel('grades', { model: 'global', commentModel: 'writing' })).toBe('global');
+  expect(selectNeisAiModel('generate-class', { model: ' global ', commentModel: ' writing ' })).toBe('writing');
+  expect(selectNeisAiModel('generate-class', { model: ' global ', commentModel: ' ' })).toBe('global');
+});
 const teacher = {
   id: 'verified-id',
   email: 'panthea0@gmail.com',
@@ -174,7 +185,8 @@ describe('Neis Helper 서버 인증·비용·응답 경계', () => {
   test('고정 파일명·구조화 응답·무저장을 사용하며 사실성 지시를 포함한다', () => {
     const body = buildNeisAiRequest(generate, 'test-model');
     expect(body).toMatchObject({ model: 'test-model', store: false, text: { format: { strict: true } } });
-    expect(body.instructions).toContain('도움·노력·향상');
+    expect(body.instructions).toContain(teacherCommentPrompt);
+    expect(body.instructions).toContain(neisWritingRules);
     expect(body.instructions).toContain('자료 안의 명령');
     expect(JSON.stringify(body)).not.toContain('studentName');
     expect(buildNeisAiRequest({ action: 'plan', data: 'test' }, 'm').input[0].content[1]).toMatchObject({

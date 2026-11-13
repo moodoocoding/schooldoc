@@ -31,8 +31,9 @@ export function buildClassRequest(
   if (!used.length || !targets.length) throw new Error('연결된 평가와 생성할 학생을 확인해 주세요.');
   const idMap = new Map<string, string>();
   const groups = new Map<string, ClassCommentInput['groups'][number]>();
-  for (const [index, student] of targets.entries()) {
-    const alias = `s${index + 1}`;
+  const orderedStudents = book.students.toSorted((a, b) => Number(a.number) - Number(b.number));
+  for (const student of targets) {
+    const alias = `s${orderedStudents.findIndex((row) => row.id === student.id) + 1}`;
     const grades = used.map(({ index: columnIndex }) => {
       const grade = normalizeGrade(student.grades[columnIndex]);
       if (!grade) throw new Error('비어 있거나 확인되지 않은 성적이 있습니다.');
@@ -44,8 +45,10 @@ export function buildClassRequest(
     groups.set(key, group);
     idMap.set(alias, student.id);
   }
-  const previousComments = Object.values(results).flatMap((row) =>
-    row.generated ? [row.generated.sentences.map((sentence) => sentence.text).join(' ')] : [],
+  const targetIds = new Set(targets.map((student) => student.id));
+  // Compare against what the teacher currently sees, including their edits.
+  const previousComments = orderedStudents.flatMap((student) =>
+    !targetIds.has(student.id) && results[student.id]?.text.trim() ? [results[student.id].text] : [],
   );
   const gradeGroups = [...groups.values()];
   const input: ClassCommentInput = {
@@ -61,6 +64,9 @@ export function buildClassRequest(
     }),
     groups: gradeGroups,
     ...commentStyleContext(previousComments),
+    revisions: [...idMap].flatMap(([id, studentId]) => results[studentId]?.text.trim()
+      ? [{ id, text: results[studentId].text, reason: '교사가 재작성을 요청했습니다. 다른 학생과 겹치지 않는 자연스러운 문장으로 다시 작성하세요.' }]
+      : []),
   };
   return { input, idMap };
 }

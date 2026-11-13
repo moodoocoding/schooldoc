@@ -5,7 +5,7 @@ import initRhwp, { HwpDocument } from '@rhwp/core';
 import { jsPDF } from 'jspdf';
 import readXlsx from 'read-excel-file/node';
 import writeXlsx from 'write-excel-file/node';
-import { validateClassOutput } from '../../supabase/functions/_shared/neisClassComments';
+import { classAssessmentOrder, validateClassOutput } from '../../supabase/functions/_shared/neisClassComments';
 import type { ClassCommentInput } from '../../supabase/functions/_shared/neisClassComments';
 
 const plan = {
@@ -59,7 +59,7 @@ const csv = (count = 3) =>
 
 async function setup(
   page: Page,
-  options: { failGeneration?: boolean; delayGeneration?: boolean; failPlan?: boolean; duplicateGeneration?: boolean; streamGeneration?: boolean } = {},
+  options: { failGeneration?: boolean; delayGeneration?: boolean; failPlan?: boolean; duplicateGeneration?: boolean; alwaysDuplicate?: boolean; streamGeneration?: boolean; shortGeneration?: boolean } = {},
 ) {
   const calls: Record<string, unknown>[] = [];
   const errors: string[] = [];
@@ -118,15 +118,39 @@ async function setup(
       generationCalls++;
       if (options.delayGeneration) await new Promise((resolve) => setTimeout(resolve, 1200));
       const input = body.input as ClassCommentInput;
-      const starts = ['표를', '계산에서는', '주어진', '곱하는', '문제에서', '자리값에', '값의', '두 소수를', '조건대로'];
+      const starts = ['표를', '계산에서는', '주어진', '곱하는', '문제에서', '자리값에', '값의', '두 소수를', '조건대로', '수식을', '차례대로', '결과를', '숫자를', '곱셈식을', '기호를'];
+      const details = [
+        [
+          "자료의 각 값을 빠짐없이 살펴 합계를 낸 뒤 자료의 개수로 나누어 평균값을 구하고, 구한 값이 자료 전체를 대표한다는 의미를 계산 과정과 연결해 설명함. 표에 제시된 수와 문제의 조건을 함께 읽어 필요한 값을 찾아 식으로 나타냄.",
+          "두 소수를 곱하는 식에서 각 숫자의 자리값과 소수점의 위치를 살피며 정해진 순서에 따라 계산함. 자연수의 곱셈과 소수의 곱셈이 연결되는 부분을 식에서 확인하고, 계산한 값을 문제의 조건에 맞게 적어 답을 나타냄."
+        ],
+        [
+          "각 자료의 크기를 확인하여 더한 값을 자료의 수로 나누고 주어진 수들의 평균을 구함. 표의 행과 열에 적힌 수를 읽어 계산에 필요한 자료를 고르며, 합계와 평균을 구분해 수식에 알맞은 수를 넣고 결과를 기록함.",
+          "자리값에 따라 소수를 바르게 적고 두 수를 곱하는 계산을 순서에 맞게 수행함. 계산식에서 숫자와 소수점이 놓이는 위치를 확인하며 곱셈 결과를 써 보고, 문제에 제시된 수와 구한 값을 비교해 답의 형태를 맞추어 나타냄."
+        ],
+        [
+          "평균값을 이용해 문제의 조건을 해석하고 자료에서 필요한 수를 골라 계산하여 답을 구함. 전체 자료의 합계와 개수 사이의 관계를 이해하여 평균을 구하는 식을 세우고, 계산 과정에 사용한 수가 무엇을 뜻하는지 자료와 연결해 설명함.",
+          "곱하는 두 수를 자리에 맞게 쓰고 소수의 곱셈을 계산하여 결과를 나타냄. 각 계산 단계에서 얻은 숫자를 순서대로 기록하며 소수점의 위치를 확인하고, 주어진 식과 계산 결과를 함께 살펴 문제에서 요구한 답을 완성함."
+        ]
+      ];
+      const shortDetails = [
+        ['자료에 제시된 수를 모두 더하고 자료의 개수로 나누어 평균값을 구하며, 구한 값과 주어진 조건을 연결해 문제의 답을 나타냄.', '두 소수의 자리값을 확인하고 곱셈을 순서대로 계산하며, 소수점의 위치를 살펴 구한 값을 주어진 식에 알맞은 형태로 기록함.'],
+        ['각 자료의 크기를 읽고 필요한 수를 골라 합계를 구하며, 더한 값을 자료의 수로 나누어 간단한 자료의 평균을 식으로 나타냄.', '소수를 자리에 맞게 적고 두 수를 곱하는 과정을 차례대로 수행하며, 계산 단계에서 나온 숫자와 소수점의 위치를 하나씩 확인함.'],
+        ['문제의 조건에 맞는 자료를 찾아 평균을 구하는 식을 세우며, 합계와 개수를 활용한 계산 결과를 자료의 내용과 연결해 설명함.', '곱하는 수와 곱해지는 수의 자리값을 살펴 소수의 곱셈을 수행하며, 문제에서 요구하는 답을 구해 계산 결과를 바르게 제시함.'],
+      ];
       const rows = input.groups.flatMap((group) => group.ids.map((id) => ({
-        id, sentences: group.grades.map((grade, index) => {
+        id, sentences: classAssessmentOrder(id, input.evaluations.length).map((assessmentId, sentenceIndex) => {
+          const index = assessmentId - 1;
+          const grade = group.grades[index];
           const offset = Number(id.slice(1)) - 1;
-          const repeated = options.duplicateGeneration && generationCalls === 1 && offset <= 1 && index === 0;
+          const repeated = (options.alwaysDuplicate || (options.duplicateGeneration && generationCalls === 1)) && offset <= 1 && sentenceIndex === 0;
           const start = repeated ? '자료를' : starts[(offset * 2 + index + (generationCalls > 1 ? 6 : 0)) % starts.length];
           const criterion = input.evaluations[index].rubrics[grade]!;
-          if (offset === 2 && index === 0 && grade === 'high') return { a: 1, t: '문제에서 필요한 평균을 계산해 해결함.' };
-          return { a: index + 1, t: `${start} 살펴 ${criterion.replace(/한다\.$/, '함.').replace(/구한다\.$/, '구함.')}` };
+          const opening = offset === 2 && index === 0 && grade === 'high' ? '문제에서 필요한 평균을 계산해 해결함.'
+            : `${start} 살펴 ${criterion.replace(/한다\.$/, '함.').replace(/구한다\.$/, '구함.')}`;
+          if (options.shortGeneration && offset === 1 && generationCalls === 1) return { a: index + 1, t: opening };
+          const content = input.length === 200 ? shortDetails : details;
+          return { a: index + 1, t: `${opening} ${content[offset % content.length][index % 2]}` };
         }),
       })));
       await route.fulfill({
@@ -297,35 +321,56 @@ test('빈 HWPX 평가지는 한 번 읽고 연결한 평가와 다른 학급에�
   expect(evidence.calls.filter((call) => call.action === 'plan')).toHaveLength(1);
 });
 
-test('첫 단어가 겹치는 두 학생만 함께 다시 생성하고 다른 행은 유지한다', async ({ page }, info) => {
+test('첫 단어가 겹친 학생을 자동 재작성하고 먼저 검증된 다른 행은 유지한다', async ({ page }, info) => {
   const evidence = await setup(page, { duplicateGeneration: true });
   await uploadPlan(page); await uploadGrades(page); await finishGrades(page);
   await page.getByRole('button', { name: '학급 평어 생성' }).click();
-  const retry = page.getByRole('button', { name: '겹치는 학생 2명 다시 생성' });
-  await expect(retry).toBeVisible();
-  await capture(page, info, 'duplicate-rows');
+  await expect(page.getByRole('button', { name: '전체 평어 검토 완료' })).toBeEnabled();
+  await capture(page, info, 'repaired-rows');
   const unaffected = page.getByRole('row').filter({ has: page.getByRole('rowheader', { name: /3번 가상아주긴이름학생/ }) }).getByText(/문제에서 필요한 평균/);
   const original = await unaffected.innerText();
-  await retry.click();
-  await expect(page.getByRole('button', { name: '전체 평어 검토 완료' })).toBeEnabled();
   await expect(unaffected).toHaveText(original);
   const requests = evidence.calls.filter((call) => call.action === 'generate-class').map((call) => call.input as ClassCommentInput);
-  expect(requests.map((input) => input.groups.flatMap((group) => group.ids).length)).toEqual([3, 2]);
+  expect(requests.map((input) => input.groups.flatMap((group) => group.ids).toSorted())).toEqual([['s1', 's2', 's3'], ['s2']]);
   expect(requests[1].usedStarts).toContain('자료를');
+  expect(requests[1].revisions?.[0].id).toBe('s2');
 });
 
-test('일부 미생성 행을 다시 시도하고 나머지 평어를 보존한다', async ({ page }) => {
+test('일부 미생성 행을 자동으로 다시 시도하고 나머지 평어를 보존한다', async ({ page }) => {
   const evidence = await setup(page, { failGeneration: true });
   await uploadPlan(page); await uploadGrades(page); await finishGrades(page);
   await page.getByRole('button', { name: '학급 평어 생성' }).click();
-  const retry = page.getByRole('button', { name: '미생성·실패 1명 다시 시도' });
-  await expect(retry).toBeVisible();
+  await expect(page.getByRole('button', { name: '전체 평어 검토 완료' })).toBeEnabled();
   const valid = page.getByRole('row').filter({ has: page.getByRole('rowheader', { name: /1번 가상동명/ }) }).getByText(/표를 살펴/);
   const original = await valid.innerText();
-  await retry.click();
-  await expect(page.getByRole('button', { name: '전체 평어 검토 완료' })).toBeEnabled();
   await expect(valid).toHaveText(original);
   expect(evidence.calls.filter((call) => call.action === 'generate-class')).toHaveLength(2);
+});
+
+test('분량이 부족한 학생만 자동 보완하고 허용 범위를 안내한다', async ({ page }, info) => {
+  const evidence = await setup(page, { shortGeneration: true });
+  await uploadPlan(page); await uploadGrades(page); await finishGrades(page);
+  await page.getByRole('combobox', { name: '목표 분량' }).selectOption('300');
+  await expect(page.getByRole('combobox', { name: '목표 분량' })).toHaveText(/200자 \(180~220자\).*300자 \(270~330자\).*400자 \(360~440자\)/);
+  await page.screenshot({ path: info.outputPath('length-options.png'), fullPage: true });
+  await page.getByRole('button', { name: '학급 평어 생성' }).click();
+  await expect(page.getByRole('button', { name: '전체 평어 검토 완료' })).toBeEnabled();
+  const requests = evidence.calls.filter((call) => call.action === 'generate-class').map((call) => call.input as ClassCommentInput);
+  expect(requests).toHaveLength(2);
+  expect(requests[1].groups.flatMap((group) => group.ids)).toEqual(['s2']);
+  expect(requests[1].revisions?.[0].reason).toContain('270~330자');
+  await page.screenshot({ path: info.outputPath('length-results.png'), fullPage: true });
+});
+
+test('재작성 한도를 넘긴 중복은 검토 완료와 저장을 막는다', async ({ page }, info) => {
+  const evidence = await setup(page, { alwaysDuplicate: true });
+  await uploadPlan(page); await uploadGrades(page); await finishGrades(page);
+  await page.getByRole('button', { name: '학급 평어 생성' }).click();
+  await expect(page.getByText(/자동 재작성을 마치지 못했습니다/)).toBeVisible();
+  await expect(page.getByRole('button', { name: '전체 평어 검토 완료' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '검토 완료 평어 Excel 저장' })).toHaveCount(0);
+  expect(evidence.calls.filter((call) => call.action === 'generate-class')).toHaveLength(3);
+  await capture(page, info, 'repair-exhausted');
 });
 
 test('성적표 첫 행의 위치와 관계없이 1번 학생의 수정 성적을 결과에 반영한다', async ({ page }) => {
