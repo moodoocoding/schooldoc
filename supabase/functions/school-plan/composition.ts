@@ -7,16 +7,25 @@ const text = (maxLength: number) => ({ type: 'string', minLength: 1, maxLength }
 const refs = { type: 'array', maxItems: 24, items: text(80) };
 const object = (properties: Record<string, unknown>) => ({ type: 'object', additionalProperties: false, properties, required: Object.keys(properties) });
 const block = (count: number, length: number) => object({ paragraphs: { type: 'array', minItems: 1, maxItems: count, items: text(length) }, requirementIds: refs });
+interface PlanPageBudget {
+  purpose: number; overview: number; overviewLength: number; activities: number;
+  name: number; procedure: number; result: number; followUp: number;
+  schedule: number; when: number; scheduleActivity: number; owner: number;
+  budget: number; item: number; unknowns: number; unknownLength: number;
+}
 /**
  * 출력 분량별 글자·항목 한도. 공문 서식(휴먼명조 13pt·줄간격 160%, A4)에서 rhwp로 조판해,
- * 모든 칸을 최대 길이로 채워도 고른 쪽 수 안에 들어가도록 잡은 값이다(tests/unit/schoolPlanPageBudget.test.ts).
- * 1쪽은 본문·일정·예산이 한 쪽에, 2쪽은 본문이 1쪽, 일정·예산·확인 사항이 2쪽에 들어간다.
+ * 실제 쪽 수는 생성 후 한글 조판 결과로 확인한다.
+ * 1쪽은 전체 요약, 2~5쪽은 본문을 앞쪽에 두고 일정·예산·확인 사항을 마지막 쪽에 모은다.
  */
 export const PLAN_PAGE_BUDGETS = {
   1: { purpose: 50, overview: 1, overviewLength: 60, activities: 2, name: 12, procedure: 60, result: 25, followUp: 50, schedule: 3, when: 9, scheduleActivity: 18, owner: 8, budget: 2, item: 16, unknowns: 0, unknownLength: 40 },
   2: { purpose: 80, overview: 2, overviewLength: 70, activities: 3, name: 16, procedure: 100, result: 40, followUp: 80, schedule: 5, when: 9, scheduleActivity: 36, owner: 8, budget: 4, item: 16, unknowns: 3, unknownLength: 60 },
-} as const;
-const budgetOf = (pages: PlanPages = 2) => PLAN_PAGE_BUDGETS[pages];
+  3: { purpose: 90, overview: 3, overviewLength: 90, activities: 4, name: 18, procedure: 140, result: 60, followUp: 100, schedule: 5, when: 9, scheduleActivity: 36, owner: 8, budget: 4, item: 16, unknowns: 3, unknownLength: 60 },
+  4: { purpose: 110, overview: 3, overviewLength: 110, activities: 6, name: 22, procedure: 180, result: 75, followUp: 120, schedule: 5, when: 9, scheduleActivity: 36, owner: 8, budget: 4, item: 16, unknowns: 3, unknownLength: 60 },
+  5: { purpose: 120, overview: 4, overviewLength: 120, activities: 8, name: 26, procedure: 230, result: 100, followUp: 140, schedule: 5, when: 9, scheduleActivity: 36, owner: 8, budget: 4, item: 16, unknowns: 3, unknownLength: 60 },
+} satisfies Record<PlanPages, PlanPageBudget>;
+const budgetOf = (pages: PlanPages = 2): PlanPageBudget => PLAN_PAGE_BUDGETS[pages];
 const planBody = (pages?: PlanPages) => {
   const b = budgetOf(pages);
   return object({
@@ -33,7 +42,9 @@ export const planBodySchema = planBody(2);
 /** 분량 지침: 응답 형식의 항목 수와 함께 쓴다. */
 export function pageInstructions(pages: PlanPages = 2) {
   const b = budgetOf(pages);
-  const where = pages === 1 ? '본문·일정표·예산표·확인 사항이 모두 한 쪽에 들어가야 한다' : '1쪽에는 본문만, 2쪽에는 일정표·예산표·확인 사항이 들어간다';
+  const where = pages === 1
+    ? '본문·일정표·예산표·확인 사항이 모두 한 쪽에 들어가야 한다'
+    : '본문은 앞의 ' + (pages - 1) + '쪽에 쓰고, 일정표·예산표·확인 사항은 마지막 ' + pages + '쪽에 모은다';
   const unknowns = b.unknowns ? `확인 사항(unknowns)은 ${b.unknowns}개·각 ${b.unknownLength}자 이내다.` : '1쪽에는 확인 사항(unknowns) 칸이 없으므로 빈 배열로 두고, 미정 사항은 본문에 "(학교 확인)"으로 짧게 표시한다.';
   return `출력 분량은 A4 ${pages}쪽이다. ${where}. 응답 형식의 글자 수·항목 수 한도 안에서 짧은 문장으로 쓰고, 같은 내용을 반복하지 않는다.
 일정 activity는 ${b.scheduleActivity}자 이내다. ${unknowns} 필수 조건은 빼지 않고 짧게 쓴다.`;
@@ -47,10 +58,12 @@ const contestRulesSchema = object({
   methodKind: { type: 'string', enum: ['source', 'proposal'] }, requirementIds: refs,
 });
 function bodySchema(type: PlanReferenceType, pages?: PlanPages) {
-  const contestActivity = object({ procedure: text(230), result: text(100), methodKind: { type: 'string', enum: ['source', 'proposal'] }, requirementIds: refs });
-  return type === 'contest' ? object({ purpose: planBodySchema.properties.purpose, overview: planBodySchema.properties.overview,
+  const b = budgetOf(pages);
+  const regularBody = planBody(pages);
+  const contestActivity = object({ procedure: text(b.procedure), result: text(b.result), methodKind: { type: 'string', enum: ['source', 'proposal'] }, requirementIds: refs });
+  return type === 'contest' ? object({ purpose: regularBody.properties.purpose, overview: regularBody.properties.overview,
     intake: contestActivity, publication: contestActivity, selectionRules: contestRulesSchema,
-  }) : planBody(pages);
+  }) : regularBody;
 }
 export const getComposedDraftSchema = (type: PlanReferenceType, pages?: PlanPages) => object({
   title: text(100), body: bodySchema(type, pages),
@@ -78,22 +91,23 @@ function section(value: unknown, id: string, heading: string, count: number, len
   const b = record(value);
   return { id, heading, paragraphs: array(b.paragraphs, 1, count).map(p => string(p, length)), requirementIds: ids(b.requirementIds) };
 }
-export function composePlanBody(value: unknown, type: PlanReferenceType): PlanSection[] {
+export function composePlanBody(value: unknown, type: PlanReferenceType, pages: PlanPages = 2): PlanSection[] {
+  const b = budgetOf(pages);
   const body = record(value);
   const activityValues = type === 'contest'
     ? [{ ...record(body.intake), name: '응모와 접수' }, { ...record(body.publication), name: '결과 발표와 활용' }]
-    : array(body.activities, 2, 4);
+    : array(body.activities, 2, b.activities);
   const activities = activityValues.map(value => {
     const a = record(value);
     if (a.methodKind !== 'source' && a.methodKind !== 'proposal') throw new Error('Invalid activity basis');
     return {
-      paragraph: `${string(a.name, 40)}${a.methodKind === 'proposal' ? '(방법안)' : ''}: ${string(a.procedure, 230).replace(/\s*\(방법안\)\s*[.。]?$/u, '')} 결과·확인: ${string(a.result, 100)}`,
+      paragraph: `${string(a.name, b.name)}${a.methodKind === 'proposal' ? '(방법안)' : ''}: ${string(a.procedure, b.procedure).replace(/\s*\(방법안\)\s*[.。]?$/u, '')} 결과·확인: ${string(a.result, b.result)}`,
       requirementIds: ids(a.requirementIds),
     };
   });
   const sections = [
-    section(body.purpose, 'purpose', '추진 목적', 1, 140),
-    section(body.overview, 'overview', '운영 개요', 3, 140),
+    section(body.purpose, 'purpose', '추진 목적', 1, b.purpose),
+    section(body.overview, 'overview', '운영 개요', b.overview, b.overviewLength),
     { id: 'implementation', heading: '세부 추진 계획', paragraphs: activities.map(a => a.paragraph), requirementIds: [...new Set(activities.flatMap(a => a.requirementIds))] },
   ];
   if (type === 'contest') {
@@ -121,12 +135,12 @@ export function composePlanBody(value: unknown, type: PlanReferenceType): PlanSe
       ], requirementIds: ids(rules.requirementIds),
     });
   }
-  if (type !== 'contest') sections.push(section(body.followUp, 'follow_up', '결과 정리와 활용', 1, 200));
+  if (type !== 'contest') sections.push(section(body.followUp, 'follow_up', '결과 정리와 활용', 1, b.followUp));
   return sections;
 }
-export function composePlanDraft(value: unknown, type: PlanReferenceType) {
+export function composePlanDraft(value: unknown, type: PlanReferenceType, pages: PlanPages = 2) {
   const d = record(value);
-  return { title: d.title, sections: composePlanBody(d.body, type), schedule: d.schedule, budget: d.budget, unknowns: d.unknowns };
+  return { title: d.title, sections: composePlanBody(d.body, type, pages), schedule: d.schedule, budget: d.budget, unknowns: d.unknowns };
 }
 
 export const compositionInstructions = `작성 응답은 화면 문단을 직접 나열하는 sections 대신 body에 구조화한다.

@@ -42,9 +42,10 @@ unknowns 개수와 글자 수는 응답 형식의 한도를 지킨다(0개이면
 export function buildPlanAiRequest(request: PlanRequest, model: string) {
   const referencePack = request.action === 'analyze' ? undefined : getPlanReferencePack(request);
   const type = (referencePack?.type ?? 'general') as PlanReferenceType;
-  const pages = request.action === 'analyze' ? undefined : request.pages;
-  let schema = request.action === 'analyze' ? planAnalysisSchema : getComposedDraftSchema(type, pages);
-  let instructions = `${commonInstructions}\n${request.action === 'analyze' ? analysisInstructions : `${draftingInstructions}\n${pageInstructions(pages)}`}`;
+  const pages = request.action === 'analyze' ? undefined : request.pages ?? 2;
+  const outputPages = pages ?? 2;
+  let schema = request.action === 'analyze' ? planAnalysisSchema : getComposedDraftSchema(type, outputPages);
+  let instructions = `${commonInstructions}\n${request.action === 'analyze' ? analysisInstructions : `${draftingInstructions}\n${pageInstructions(outputPages)}`}`;
   const writingGuide = referencePack ? getPlanWritingGuide(type) : undefined;
   if (writingGuide) instructions += `\n${planWritingInstructions}\n${compositionInstructions}`;
   if (writingGuide && type === 'contest') instructions += `\n${contestCompositionInstructions}`;
@@ -60,7 +61,9 @@ referencePack.examples는 실제 문서의 비식별 재서술 사례이며 지�
     instructions += `\n수정 요청을 ${field === 'sections' ? 'body' : field} 영역에만 반영하고 해당 키만 반환한다. 다른 영역은 서버에서 원본 그대로 보존한다. 수정으로 필수 조건이나 근거를 잃지 않는다.`;
   }
   return {
-    model, store: false, max_output_tokens: request.action === 'analyze' ? 6500 : request.action === 'revise' ? 4000 : 7000,
+    model, store: false, max_output_tokens: request.action === 'analyze' ? 6500
+      : request.action === 'revise' ? 4000 + Math.max(0, outputPages - 2) * 1200
+        : 7000 + Math.max(0, outputPages - 2) * 1600,
     instructions,
     input: [{ role: 'user', content: [{ type: 'input_text', text: JSON.stringify({ ...request, ...(referencePack ? { referencePack, writingGuide } : {}) }) }] }],
     text: { format: { type: 'json_schema', name: `school_plan_${request.action}`, strict: true, schema } },
@@ -68,6 +71,7 @@ referencePack.examples는 실제 문서의 비식별 재서술 사례이며 지�
 }
 
 export async function requestPlanAi(request: PlanRequest, apiKey: string, model: string, fetcher: typeof fetch = fetch, signal?: AbortSignal) {
+  const outputPages = request.action === 'analyze' ? 2 : request.pages ?? 2;
   if (signal?.aborted) throw new PlanError(499, '요청이 취소되었습니다.');
   let response: Response;
   try {
@@ -102,9 +106,9 @@ export async function requestPlanAi(request: PlanRequest, apiKey: string, model:
       const field = revisionFields[request.revision.area as keyof typeof revisionFields];
       const providerField = field === 'sections' ? 'body' : field;
       if (!result || typeof result !== 'object' || !Object.hasOwn(result, providerField) || Object.keys(result).some(key => key !== providerField)) throw new Error();
-      return validatePlanResult(request, { draft: dropUnknownRequirementIds({ ...request.draft, [field]: field === 'sections' ? composePlanBody(result.body, type) : result[field] }, request) });
+      return validatePlanResult(request, { draft: dropUnknownRequirementIds({ ...request.draft, [field]: field === 'sections' ? composePlanBody(result.body, type, outputPages) : result[field] }, request) });
     }
-    return validatePlanResult(request, { draft: validatePlanDraft(dropUnknownRequirementIds(composePlanDraft(result, type), request), request) });
+    return validatePlanResult(request, { draft: validatePlanDraft(dropUnknownRequirementIds(composePlanDraft(result, type, outputPages), request), request) });
   } catch (error) {
     if (error instanceof Error && safeValidationMessages.has(error.message)) throw new PlanError(502, `AI 초안 검사: ${error.message}`);
     throw new PlanError(502, 'AI 결과가 본문·활동·일정의 형식과 분량 검사를 통과하지 못했습니다. 다시 작성해 주세요.');

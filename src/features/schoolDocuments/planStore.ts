@@ -1,11 +1,11 @@
-import { validatePlanAnalysis, validatePlanDraft, validatePlanSources, type PlanAnalysis, type PlanConditions, type PlanDraft, type PlanSource } from '../../../supabase/functions/_shared/schoolPlan';
+import { isPlanPages, validatePlanAnalysis, validatePlanDraft, validatePlanSources, type PlanAnalysis, type PlanConditions, type PlanDraft, type PlanPages, type PlanSource } from '../../../supabase/functions/_shared/schoolPlan';
 import { validatePlanReferenceChoice, type PlanReferenceChoice } from '../../../supabase/functions/_shared/schoolPlanReferences';
 
 export interface PlanState {
   version: 1; step: number; sourceMode: 'files' | 'paste' | 'none'; pasted: string;
   sources: PlanSource[]; analysis: PlanAnalysis | null; answers: Record<string, string>;
   conditions: PlanConditions; draft: PlanDraft | null; draftContext: string;
-  questionPage: number; consent: boolean; title: string; pages: 1 | 2;
+  questionPage: number; consent: boolean; title: string; pages: PlanPages;
   referenceType: PlanReferenceChoice;
 }
 export const emptyPlanState = (): PlanState => ({ version: 1, step: 0, sourceMode: 'files', pasted: '', sources: [], analysis: null, answers: {}, conditions: { topic: '', timing: '', budget: null }, draft: null, draftContext: '', questionPage: 0, consent: false, title: '', pages: 2, referenceType: 'auto' });
@@ -16,7 +16,7 @@ export function loadPlanState(ownerId: string, storage: Pick<Storage, 'getItem' 
   try {
     raw = storage.getItem(key); if (!raw) return { state: emptyPlanState(), warning: '' };
     const s = JSON.parse(raw) as PlanState;
-    if (s.version !== 1 || !Number.isInteger(s.step) || s.step < 0 || s.step > 5 || !['files', 'paste', 'none'].includes(s.sourceMode) || typeof s.pasted !== 'string' || s.pasted.length > 40000 || typeof s.consent !== 'boolean' || ![1, 2].includes(s.pages) || typeof s.title !== 'string' || s.title.length > 100 || !Number.isInteger(s.questionPage) || s.questionPage < 0 || s.questionPage > 2) throw new Error();
+    if (s.version !== 1 || !Number.isInteger(s.step) || s.step < 0 || s.step > 5 || !['files', 'paste', 'none'].includes(s.sourceMode) || typeof s.pasted !== 'string' || s.pasted.length > 40000 || typeof s.consent !== 'boolean' || !isPlanPages(s.pages) || typeof s.title !== 'string' || s.title.length > 100 || !Number.isInteger(s.questionPage) || s.questionPage < 0 || s.questionPage > 2) throw new Error();
     const sources = validatePlanSources(s.sources);
     const analysis = s.analysis === null ? null : validatePlanAnalysis(s.analysis, sources);
     if (!s.conditions || typeof s.conditions.topic !== 'string' || s.conditions.topic.length > 100 || typeof s.conditions.timing !== 'string' || s.conditions.timing.length > 200 || (s.conditions.budget !== null && (!Number.isSafeInteger(s.conditions.budget) || s.conditions.budget < 0 || s.conditions.budget > 100000000))) throw new Error();
