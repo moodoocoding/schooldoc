@@ -25,7 +25,7 @@ export interface OfficialFormatProfile {
   /** 2타(한글 1자) 들여쓰기 기준 크기. */
   indentUnit: number;
   numbered: MarkerScheme;
-  /** 4단계 이상 개조식을 허용하는 문서만 둔다. */
+  /** 4단계 이상에서 특수기호(□ ○ - ㆍ) 체계를 쓰는 문서만 둔다. 편람 규칙 제2조제1항 단서의 "필요한 경우"다. */
   gaejosik?: MarkerScheme;
   table: { body: TextStyle; head: TextStyle & { fill: string } };
   ratio: number; spacing: number;
@@ -36,7 +36,7 @@ export interface OfficialDocumentKindInfo { label: string; profile: OfficialForm
 const pt = (value: number) => Math.round(value * 100);
 const style = (font: string, size: number, lineSpacing: number, bold = false): TextStyle => ({ font, size, bold, lineSpacing });
 /**
- * 교육부 개조식 실측값을 본문 크기에 맞춰 비례로 줄인다(◦ 15pt → 본문 크기). 크기는 0.5pt 단위로 반올림한다.
+ * 교육부 개조식 실측값을 본문 크기에 맞춰 비례로 줄인다(○ 단계 15pt → 본문 크기). 크기는 0.5pt 단위로 반올림한다.
  * 간격은 실측 문서의 과반에서 실제로 띄운 경우만 쓴다.
  */
 function moeGaejosik(bodySize: number): MarkerScheme {
@@ -66,16 +66,22 @@ export const ATTACHMENT_PROFILE: OfficialFormatProfile = {
     gapBefore: (previous, next) => next === 'l1' && previous !== 'title' ? pt(6) : 0,
     after: pt(2), tableAfter: pt(4),
   },
-  gaejosik: moeGaejosik(BODY),
   table: { body: style('휴먼명조', pt(12), 130), head: { ...style('휴먼명조', pt(12), 130, true), fill: '#e6e6e6' } },
   ratio: 100, spacing: 0, page: A4,
 };
+/**
+ * 붙임 보고서: 계획서와 같은 바탕에 4단계 이상이면 특수기호 체계(□ ○ - ㆍ)를 쓴다.
+ * 기호는 편람(규칙 제2조제1항 단서)을, 글꼴·크기·간격은 교육부 보고서 실측값을 따른다.
+ */
+export const REPORT_PROFILE: OfficialFormatProfile = { ...ATTACHMENT_PROFILE, gaejosik: moeGaejosik(BODY) };
 /** 문서 종류 목록. 새 공문서는 여기에 서식과 분량을 등록하고, 내용은 각 기능의 변환기가 문서 모델로 만든다. */
 export const OFFICIAL_DOCUMENT_KINDS: Record<OfficialDocumentKind, OfficialDocumentKindInfo> = {
-  'attachment-plan': { label: '붙임 계획서', profile: ATTACHMENT_PROFILE, pageOptions: [1, 2] },
+  // 운영계획서는 항상 편람 기본 번호 체계(1. 가. 1) 가) …)로 출력한다.
+  'attachment-plan': { label: '붙임 계획서', profile: ATTACHMENT_PROFILE, pageOptions: [1, 2, 3, 4, 5] },
+  'attachment-report': { label: '붙임 보고서', profile: REPORT_PROFILE, pageOptions: [1, 2, 3, 4, 5] },
 };
 export const profileOf = (document: OfficialDocument) => OFFICIAL_DOCUMENT_KINDS[document.kind].profile;
-/** 계층이 4단계 이상이면 개조식(□ ◦ - ※), 그 미만이면 편람 번호 체계를 쓴다. */
+/** 특수기호 체계를 허용하는 문서에서 계층이 4단계 이상이면 □ ○ - ㆍ, 그 미만이면 편람 번호 체계를 쓴다. */
 export const usesGaejosik = (depth: number) => depth >= 4;
 /** 이 문서가 개조식으로 출력되는지(개조식을 허용하는 문서 종류이고 4단계 이상). */
 export const isGaejosik = (document: OfficialDocument) => !!profileOf(document).gaejosik && usesGaejosik(itemDepth(document.body));
@@ -97,9 +103,9 @@ export function profileFonts(profile: OfficialFormatProfile): string[] {
 }
 export const lineKey = (line: OfficialLine): LineKey => line.kind === 'title' ? 'title' : line.kind === 'table' ? 'table' : line.kind === 'note' ? 'ref' : `l${Math.min(line.level, 4)}` as LineKey;
 
-/** 편람 항목기호(1. → 가. → 1) → 가) → (1) → (가) → ① → ㉮, 편람 51쪽), 그리고 4단계 이상 문서의 개조식 체계. */
+/** 편람 항목기호(1. → 가. → 1) → 가) → (1) → (가) → ① → ㉮, 편람 51쪽)와 단서의 특수기호(□, ○, -, ㆍ). ※는 항목이 아닌 참고 표시다. */
 export const OFFICIAL_MARKERS = ['n.', 'k.', 'n)', 'k)', '(n)', '(k)', 'c', 'h'] as const;
-export const DEEP_MARKERS = ['□', '◦', '-', '※'] as const;
+export const DEEP_MARKERS = ['□', '○', '-', 'ㆍ'] as const;
 const KOREAN_ORDER = '가나다라마바사아자차카타파하';
 // 하 다음은 거, 너, 더 … → 고, 노 … 처럼 단모음 순으로 이어 간다(편람 51쪽). 값은 ㅏ에서 각 모음까지의 음절 간격이다.
 const VOWEL_STEPS = [0, 4, 8, 13, 18, 20].map(n => n * 28);
@@ -108,7 +114,7 @@ const koreanMarker = (index: number) => {
   return String.fromCharCode(KOREAN_ORDER.charCodeAt(index % KOREAN_ORDER.length) + VOWEL_STEPS[Math.min(round, VOWEL_STEPS.length - 1)]);
 };
 
-/** level(1부터)의 index번째(0부터) 항목 기호. 개조식이면 □ ◦ - ※를 쓴다. */
+/** level(1부터)의 index번째(0부터) 항목 기호. 특수기호 체계면 □ ○ - ㆍ를 쓴다. */
 export function officialMarker(level: number, index: number, gaejosik: boolean): string {
   if (gaejosik) return DEEP_MARKERS[Math.min(level, DEEP_MARKERS.length) - 1];
   const pattern = OFFICIAL_MARKERS[(level - 1) % OFFICIAL_MARKERS.length];
@@ -144,7 +150,7 @@ export function bodyLines(nodes: OfficialNode[], gaejosik: boolean, nested: bool
   const lines: OfficialLine[] = [];
   const walk = (list: OfficialNode[], level: number) => {
     let index = 0;
-    // 편람 52~53쪽: 항목이 하나뿐이면 항목 기호를 붙이지 않는다(□ ◦ - ※ 개조식은 기호를 유지한다).
+    // 편람 52~53쪽: 항목이 하나뿐이면 항목 기호를 붙이지 않는다(특수기호 체계는 기호를 유지한다).
     const single = !gaejosik && list.filter(n => n.kind === 'item').length === 1;
     for (const node of list) {
       if (node.kind === 'item') {

@@ -30,7 +30,7 @@ for (const pages of PLAN_PAGE_OPTIONS) test(pages + '쪽 목표의 내용이 실
     const reopened = new HwpDocument(checkedHwpxExport(doc));
     try {
       const text = (JSON.parse(reopened.getTextFileText()) as string).replace(/\s/g, '');
-      for (const s of draft.sections) for (const p of s.paragraphs) expect(text).toContain(p.replace(/\s/g, ''));
+      for (const s of draft.sections) for (const p of s.paragraphs) for (const line of p.split('\n')) expect(text).toContain(line.replace(/\s/g, ''));
     } finally { reopened.free(); }
   } finally { doc.free(); }
 });
