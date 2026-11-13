@@ -37,9 +37,12 @@ describe('문서 점검', () => {
     expect(children).toEqual(['연수를 운영한다.', '사례를 나눈다.', '11. 2.부터 운영한다.', '○○부 자료를 참고한다.']);
     expect(issues.filter(i => i.fixed)).toHaveLength(2);
   });
-  test('편람 번호 문서는 서술형 문장을 허용하고, 개조식(4단계 이상)은 명사형·두괄식 한 문장을 점검한다', () => {
+  test('편람 번호 문서는 서술형 문장을 허용하고, 붙임 보고서의 개조식(4단계 이상)은 명사형·두괄식 한 문장을 점검한다', () => {
     expect(checkOfficialDocument(doc([item('목적', [item('연수를 운영한다.')])])).issues).toEqual([]);
-    const deep = doc([item('현황을 점검함. 개선안을 마련함.', [item('연수를 운영한다.', [item('세부', [item('참고')])])])]);
+    const body = [item('현황을 점검함. 개선안을 마련함.', [item('연수를 운영한다.', [item('세부', [item('참고')])])])];
+    // 운영계획서는 4단계여도 편람 번호 체계이므로 서술형을 허용한다.
+    expect(checkOfficialDocument(doc(body)).issues).toEqual([]);
+    const deep = { ...doc(body), kind: 'attachment-report' as const };
     expect(checkOfficialDocument(deep).issues.map(i => [i.where, i.message.split(/[(:]/)[0]])).toEqual([['본문 1', '□ 항목은 두괄식 한 문장으로 씁니다'], ['본문 1 > 1', '개조식은 명사형으로 끝냅니다']]);
   });
   test('긴 제목·빈 내용·24시각제·금액 병기를 알린다', () => {

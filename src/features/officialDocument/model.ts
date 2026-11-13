@@ -15,9 +15,9 @@ export interface OfficialTable { kind: 'table'; columns: OfficialTableColumn[]; 
 export interface OfficialNote { kind: 'note'; text: string }
 export type OfficialNode = OfficialItem | OfficialTable | OfficialNote;
 
-export type OfficialDocumentKind = 'attachment-plan';
+export type OfficialDocumentKind = 'attachment-plan' | 'attachment-report';
 /** 붙임 계획서·보고서: 제목과 본문 항목. 기안문 두문·결문은 K-에듀파인이 만들므로 다루지 않는다. */
-export interface AttachmentDocument { kind: 'attachment-plan'; title: string; body: OfficialNode[] }
+export interface AttachmentDocument { kind: 'attachment-plan' | 'attachment-report'; title: string; body: OfficialNode[] }
 export type OfficialDocument = AttachmentDocument;
 
 export const item = (text: string, children?: OfficialNode[], options: { pageBreakBefore?: boolean } = {}): OfficialItem => ({ kind: 'item', text, ...(children?.length ? { children } : {}), ...options });

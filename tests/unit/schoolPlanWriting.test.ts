@@ -56,7 +56,7 @@ test('5쪽 요청에 짧은 응답이 오면 부족 이유를 보내 한 번 보
   expect(quota).toHaveBeenCalledTimes(1);
   const retry = JSON.parse(fetcher.mock.calls[1][1].body);
   const data = JSON.parse(retry.input[0].content[0].text);
-  expect(data.correction.issues.join(' ')).toContain('4100');
+  expect(data.correction.issues.join(' ')).toContain(String(PLAN_PAGE_BUDGETS[5].minBodyChars));
   expect(data.conditions).toEqual(base.conditions);
   expect(data.pages).toBe(5);
 });

@@ -30,9 +30,10 @@ describe('계획서 OpenAI 연결', () => {
     const result = await requestPlanAi(drafting, 'fixture', 'fixture', async () => completed(authoredDraft));
     expect(result.draft).toMatchObject({ title: draft.title, schedule: draft.schedule, budget: draft.budget, unknowns: draft.unknowns });
     const activities = result.draft!.sections.find(s => s.id === 'activities')!;
-    expect(activities.paragraphs).toHaveLength(2);
+    expect(activities.paragraphs).toHaveLength(authoredDraft.body.activities.length);
     for (const [i, activity] of authoredDraft.body.activities.entries()) {
-      expect(activities.paragraphs[i]).toContain(activity.procedure);
+      for (const step of activity.steps) expect(activities.paragraphs[i]).toContain(`\n    ${step}`);
+      expect(activities.paragraphs[i]).toContain('\n  운영 방법\n');
       expect(activities.paragraphs[i]).toContain(activity.result);
       expect(activities.paragraphs[i]).toContain('(방법안)');
     }
@@ -41,7 +42,7 @@ describe('계획서 OpenAI 연결', () => {
     await expect(requestPlanAi(analyze, 'fixture', 'fixture', async () => completed({ ...analysis, requirements: [{ ...analysis.requirements[0], quote: '공문에 없는 문구' }] }))).rejects.toMatchObject({ status: 502 });
   });
   test('진행 절차·결과물이 없는 활동은 완성된 초안으로 받지 않는다', async () => {
-    for (const override of [{ procedure: '' }, { result: '' }, { methodKind: 'confirmed-by-teacher' }]) {
+    for (const override of [{ steps: [] }, { steps: ['한 단계만 있음'] }, { result: '' }, { methodKind: 'confirmed-by-teacher' }]) {
       const invalid = { ...authoredDraft, body: { ...authoredDraft.body, activities: [{ ...authoredDraft.body.activities[0], ...override }, authoredDraft.body.activities[1]] } };
       await expect(requestPlanAi(drafting, 'fixture', 'fixture', async () => completed(invalid))).rejects.toMatchObject({ status: 502 });
     }
@@ -50,7 +51,7 @@ describe('계획서 OpenAI 연결', () => {
     await expect(requestPlanAi(drafting, 'fixture', 'fixture', async () => completed(draft))).rejects.toMatchObject({ status: 502 });
   });
   test('공문 분석에 없는 근거 ID(참고 사례 ID·지어낸 ID)는 초안을 실패시키지 않고 지운다', async () => {
-    const forged = { ...authoredDraft, body: { ...authoredDraft.body, activities: [{ ...authoredDraft.body.activities[0], requirementIds: ['r2', 'training-01', 'made-up'] }, authoredDraft.body.activities[1]] },
+    const forged = { ...authoredDraft, body: { ...authoredDraft.body, activities: [{ ...authoredDraft.body.activities[0], requirementIds: ['r2', 'training-01', 'made-up'] }, ...authoredDraft.body.activities.slice(1)] },
       schedule: authoredDraft.schedule.map((row, i) => i ? row : { ...row, requirementIds: [...row.requirementIds, 'program-01'] }) };
     const result = await requestPlanAi(drafting, 'fixture', 'fixture', async () => completed(forged));
     const ids = [...result.draft!.sections, ...result.draft!.schedule, ...result.draft!.budget].flatMap(row => row.requirementIds);

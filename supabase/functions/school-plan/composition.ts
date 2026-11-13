@@ -1,9 +1,11 @@
 import type { PlanPages, PlanSection } from '../_shared/schoolPlan.ts';
 import type { PlanReferenceType } from '../_shared/schoolPlanReferences.ts';
 import { PLAN_AUTHORING_PROFILES } from './authoringProfiles.ts';
+import { ITEM_INDENT, paragraphPlainText } from '../_shared/planItems.ts';
 
-// The provider writes activity procedures and outputs separately. The client
-// keeps its existing PlanDraft contract, saved drafts and editable HWPX path.
+// The provider writes each activity as ordered steps and an output. The server
+// stores them as one indented paragraph (see planItems.ts) so saved drafts,
+// manual editing and the HWPX writer keep a single text contract.
 const text = (maxLength: number) => ({ type: 'string', minLength: 1, maxLength });
 const refs = { type: 'array', maxItems: 24, items: text(80) };
 const object = <T extends Record<string, unknown>>(properties: T) => ({ type: 'object', additionalProperties: false, properties, required: Object.keys(properties) });
@@ -11,7 +13,7 @@ const block = (count: number, length: number) => object({ paragraphs: { type: 'a
 interface PlanPageBudget {
   minActivities: number; minBodyChars: number; targetBodyChars: number; followUpCount: number; effects: number; effectLength: number;
   purpose: number; overview: number; overviewLength: number; activities: number;
-  name: number; procedure: number; result: number; followUp: number;
+  name: number; steps: number; stepLength: number; result: number; followUp: number;
   schedule: number; when: number; scheduleActivity: number; owner: number;
   budget: number; item: number; unknowns: number; unknownLength: number;
 }
@@ -19,14 +21,14 @@ interface PlanPageBudget {
  * 출력 분량별 글자·항목 한도. 공문 서식(휴먼명조 13pt·줄간격 160%, A4)에서 rhwp로 조판해,
  * 실제 쪽 수는 생성 후 한글 조판 결과로 확인한다.
  * 쪽수마다 내용의 깊이와 목표 분량을 늘린다. 빈 페이지로 분량을 맞추지 않는다.
- * 일반 유형은 별도 후속 목차가 없으므로 활동 절차 한도로 목표 분량을 담는다(3~5쪽 절차 280~340자).
+ * 활동의 운영 방법은 단계(steps) 수×단계 길이로 정한다. 일반 유형은 별도 후속 목차가 없으므로 3~5쪽 단계 한도를 넉넉히 둔다.
  */
 export const PLAN_PAGE_BUDGETS = {
-  1: { minActivities: 2, minBodyChars: 250, targetBodyChars: 400, followUpCount: 1, effects: 2, effectLength: 40, purpose: 65, overview: 1, overviewLength: 70, activities: 2, name: 16, procedure: 75, result: 32, followUp: 60, schedule: 3, when: 18, scheduleActivity: 28, owner: 15, budget: 2, item: 24, unknowns: 1, unknownLength: 50 },
-  2: { minActivities: 2, minBodyChars: 850, targetBodyChars: 1200, followUpCount: 2, effects: 2, effectLength: 60, purpose: 110, overview: 2, overviewLength: 120, activities: 4, name: 24, procedure: 180, result: 65, followUp: 150, schedule: 5, when: 30, scheduleActivity: 65, owner: 30, budget: 4, item: 50, unknowns: 3, unknownLength: 80 },
-  3: { minActivities: 4, minBodyChars: 1800, targetBodyChars: 2300, followUpCount: 3, effects: 3, effectLength: 70, purpose: 150, overview: 3, overviewLength: 180, activities: 5, name: 28, procedure: 280, result: 75, followUp: 200, schedule: 6, when: 30, scheduleActivity: 80, owner: 30, budget: 5, item: 50, unknowns: 3, unknownLength: 80 },
-  4: { minActivities: 6, minBodyChars: 2900, targetBodyChars: 3400, followUpCount: 3, effects: 3, effectLength: 80, purpose: 180, overview: 3, overviewLength: 220, activities: 7, name: 28, procedure: 340, result: 75, followUp: 220, schedule: 7, when: 30, scheduleActivity: 80, owner: 30, budget: 6, item: 50, unknowns: 3, unknownLength: 80 },
-  5: { minActivities: 8, minBodyChars: 4100, targetBodyChars: 4600, followUpCount: 4, effects: 3, effectLength: 90, purpose: 200, overview: 4, overviewLength: 240, activities: 8, name: 28, procedure: 340, result: 75, followUp: 240, schedule: 8, when: 30, scheduleActivity: 80, owner: 30, budget: 6, item: 50, unknowns: 3, unknownLength: 80 },
+  1: { minActivities: 2, minBodyChars: 250, targetBodyChars: 400, followUpCount: 1, effects: 2, effectLength: 40, purpose: 65, overview: 1, overviewLength: 70, activities: 2, name: 16, steps: 2, stepLength: 40, result: 32, followUp: 60, schedule: 3, when: 18, scheduleActivity: 28, owner: 15, budget: 2, item: 24, unknowns: 1, unknownLength: 50 },
+  2: { minActivities: 2, minBodyChars: 750, targetBodyChars: 1050, followUpCount: 2, effects: 2, effectLength: 60, purpose: 110, overview: 2, overviewLength: 120, activities: 4, name: 24, steps: 3, stepLength: 60, result: 65, followUp: 150, schedule: 5, when: 30, scheduleActivity: 65, owner: 30, budget: 4, item: 50, unknowns: 3, unknownLength: 80 },
+  3: { minActivities: 4, minBodyChars: 1800, targetBodyChars: 2300, followUpCount: 3, effects: 3, effectLength: 70, purpose: 150, overview: 3, overviewLength: 180, activities: 5, name: 28, steps: 3, stepLength: 90, result: 75, followUp: 200, schedule: 6, when: 30, scheduleActivity: 80, owner: 30, budget: 5, item: 50, unknowns: 3, unknownLength: 80 },
+  4: { minActivities: 6, minBodyChars: 2900, targetBodyChars: 3400, followUpCount: 3, effects: 3, effectLength: 80, purpose: 180, overview: 3, overviewLength: 220, activities: 7, name: 28, steps: 4, stepLength: 85, result: 75, followUp: 220, schedule: 7, when: 30, scheduleActivity: 80, owner: 30, budget: 6, item: 50, unknowns: 3, unknownLength: 80 },
+  5: { minActivities: 8, minBodyChars: 3600, targetBodyChars: 4080, followUpCount: 4, effects: 3, effectLength: 90, purpose: 200, overview: 4, overviewLength: 240, activities: 8, name: 28, steps: 4, stepLength: 85, result: 75, followUp: 240, schedule: 8, when: 30, scheduleActivity: 80, owner: 30, budget: 6, item: 50, unknowns: 3, unknownLength: 80 },
 } satisfies Record<PlanPages, PlanPageBudget>;
 const budgetOf = (pages: PlanPages = 2): PlanPageBudget => PLAN_PAGE_BUDGETS[pages];
 const planBody = (pages?: PlanPages) => {
@@ -35,7 +37,7 @@ const planBody = (pages?: PlanPages) => {
     purpose: block(1, b.purpose),
     overview: block(b.overview, b.overviewLength),
     activities: { type: 'array', minItems: b.minActivities, maxItems: b.activities, items: object({
-      name: text(b.name), procedure: text(b.procedure), result: text(b.result),
+      name: text(b.name), steps: { type: 'array', minItems: 2, maxItems: b.steps, items: text(b.stepLength) }, result: text(b.result),
       methodKind: { type: 'string', enum: ['source', 'proposal'] }, requirementIds: refs,
     }) },
     followUp: block(b.followUpCount, b.followUp),
@@ -95,6 +97,10 @@ function array(value: unknown, min: number, max: number): unknown[] {
 }
 const ids = (value: unknown) => array(value, 0, 24).map(v => string(v, 80));
 const fragment = (value: string) => value.replace(/[.。]+$/u, '');
+const oneLine = (value: string) => value.replace(/\s+/g, ' ');
+/** 활동 하나: 가. 활동명 → 1) 운영 방법 → 가) 단계…, 2) 결과물. 하위 항목은 줄을 바꿔 2칸씩 들여 쓴다. */
+const activityParagraph = (name: string, steps: string[], result: string) =>
+  [oneLine(name), `${ITEM_INDENT}운영 방법`, ...steps.map(step => `${ITEM_INDENT}${ITEM_INDENT}${step}`), `${ITEM_INDENT}결과물: ${result}`].join('\n');
 function section(value: unknown, id: string, heading: string, count: number, length: number): PlanSection {
   const b = record(value);
   return { id, heading, paragraphs: array(b.paragraphs, 1, count).map(p => string(p, length)), requirementIds: ids(b.requirementIds) };
@@ -112,7 +118,8 @@ export function composePlanBody(value: unknown, type: PlanReferenceType, pages: 
       const a = record(value);
       if (a.methodKind !== 'source' && a.methodKind !== 'proposal') throw new Error('Invalid activity basis');
       return {
-        paragraph: `${string(a.name, b.name)}${a.methodKind === 'proposal' ? '(방법안)' : ''}: ${string(a.procedure, b.procedure).replace(/\s*\(방법안\)\s*[.。]?$/u, '')} 결과·확인: ${string(a.result, b.result)}`,
+        paragraph: activityParagraph(`${string(a.name, b.name)}${a.methodKind === 'proposal' ? '(방법안)' : ''}`,
+          array(a.steps, 2, b.steps).map(v => oneLine(string(v, b.stepLength)).replace(/\s*\(방법안\)\s*[.。]?$/u, '')), oneLine(string(a.result, b.result))),
         requirementIds: ids(a.requirementIds),
       };
     });
@@ -153,7 +160,7 @@ export function composePlanDraft(value: unknown, type: PlanReferenceType, pages:
 /** New generation only: previously saved drafts remain valid and editable. */
 export function planDepthIssues(sections: PlanSection[], type: PlanReferenceType, pages: PlanPages): string[] {
   const b = budgetOf(pages);
-  const chars = sections.reduce((n, s) => n + s.paragraphs.reduce((m, p) => m + p.length, 0), 0);
+  const chars = sections.reduce((n, s) => n + s.paragraphs.reduce((m, p) => m + paragraphPlainText(p).length, 0), 0);
   const issues: string[] = [];
   if (chars < b.minBodyChars) issues.push(`본문 ${chars}자: ${pages}쪽 목표에 필요한 최소 ${b.minBodyChars}자보다 부족함. 유형별 실행 절차·역할·자료·확인 방법을 보완할 것`);
   const normalized = sections.flatMap(s => s.paragraphs).map(p => p.replace(/[\s\p{P}]/gu, ''));
@@ -166,8 +173,8 @@ export function planDepthIssues(sections: PlanSection[], type: PlanReferenceType
 }
 
 export const compositionInstructions = `응답의 body는 유형별 지침과 스키마의 키로 작성한다. 서버가 같은 유형의 실제 목차로 조립한다.
-목적·개요·후속·기대 효과 항목은 paragraphs와 requirementIds를 갖는다. 기대 효과(body.effects)는 문서의 마지막 목차다. 핵심 실행 항목은 name·procedure·result·methodKind·requirementIds를 가진 활동 배열이다.
-procedure는 진행 주체가 어떤 자료와 순서로 무엇을 하는지, result는 남길 구체적인 산출물이나 관찰·점검할 행동이다. 두 필드에서 같은 말을 반복하지 않는다.
+목적·개요·후속·기대 효과 항목은 paragraphs와 requirementIds를 갖는다. 기대 효과(body.effects)는 문서의 마지막 목차다. 핵심 실행 항목은 name·steps·result·methodKind·requirementIds를 가진 활동 배열이다.
+steps는 운영 방법을 진행 순서대로 나눈 단계다. 각 단계는 누가 어떤 자료로 무엇을 하는지 한 문장으로 쓰고, 단계마다 다른 행동을 쓴다. result는 남길 구체적인 산출물이나 관찰·점검할 행동이다. steps와 result에서 같은 말을 반복하지 않는다. 기호·번호는 쓰지 않는다(서버가 편람 번호를 붙인다).
 methodKind는 공문에 해당 진행 방법까지 명시된 경우만 source, AI가 방법을 구체화하면 proposal이다. 서버가 proposal 활동에 '(방법안)'을 붙인다. 원문의 대상·날짜·의무는 방법 제안을 이유로 바꾸지 않는다.
 그 외 문단도 새로 제안한 방법에만 '(안)'을 붙인다. body의 각 항목·활동에는 반영한 실제 requirementIds만 연결한다.
 unknowns는 문서에 출력하지 않고 교사의 검토 화면에만 보인다. 미정 사실은 본문 해당 자리에도 확정처럼 쓰지 않는다. 운영 방법을 제안해야 한다면 실제 초안으로 작성한다. unknowns에 '양식 마련 여부 확인', '내용 확정 후 계획 수립'처럼 방금 작성해야 할 일을 미루지 않는다.

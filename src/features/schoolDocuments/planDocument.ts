@@ -1,5 +1,6 @@
 import { planBudgetTotal, type PlanConditions, type PlanDraft, type PlanPages } from '../../../supabase/functions/_shared/schoolPlan';
 import { EFFECTS_KEY } from '../../../supabase/functions/school-plan/authoringProfiles';
+import { parseParagraphItems, type PlanItemNode } from '../../../supabase/functions/_shared/planItems';
 import { draftBodyText } from '../officialDocument/draftBody';
 import { checkOfficialDocument, normalizeDates, officialAmount, type OfficialCheck } from '../officialDocument/lint';
 import { item, note, table, type OfficialDocument } from '../officialDocument/model';
@@ -18,7 +19,9 @@ export function planToOfficialDocument(draft: PlanDraft, title: string, _pages: 
       note(`합계 ${officialAmount(planBudgetTotal(draft))}. 단가와 배분은 제안이며 집행 기준·실제 견적 확인 필요`),
     ]
     : [note('예산 없음 또는 미정: 금액 확정 후 집행 기준에 따라 확인')];
-  const section = (s: PlanDraft['sections'][number]) => item(s.heading, s.paragraphs.map(p => item(p)));
+  // 문단 안의 들여 쓴 줄은 하위 항목이다(가. 활동 → 1) 운영 방법 → 가) 단계).
+  const node = (n: PlanItemNode): ReturnType<typeof item> => item(n.text, n.children.map(node));
+  const section = (s: PlanDraft['sections'][number]) => item(s.heading, s.paragraphs.map(p => node(parseParagraphItems(p))));
   return {
     kind: 'attachment-plan',
     title: title.trim(),

@@ -9,6 +9,7 @@ import { checkedPlanDocument, planToOfficialDocument } from '../../src/features/
 import { authoredDraft, context, draft } from '../fixtures/schoolPlan';
 import { composePlanDraft } from '../../supabase/functions/school-plan/composition';
 import { validatePlanDraft } from '../../supabase/functions/_shared/schoolPlan';
+import { parseParagraphItems } from '../../supabase/functions/_shared/planItems';
 
 const assets = 'src/features/officialDocument/assets/';
 const read = (name: string) => readFileSync(`${assets}fonts/${name}`);
@@ -21,6 +22,21 @@ const fonts: OfficialFonts = {
 beforeAll(async () => { await init({ module_or_path: readFileSync('node_modules/@rhwp/core/rhwp_bg.wasm') }); });
 
 describe('운영계획서 초안 → 공문 문서 모델', () => {
+  test('활동은 편람 번호로 가. 활동 → 1) 운영 방법 → 가) 단계, 2) 결과물까지 펼친다', () => {
+    const composed = validatePlanDraft(composePlanDraft(authoredDraft, 'general', 2), context);
+    const lines = layoutOfficialDocument(planToOfficialDocument(composed, composed.title, 2)).flatMap(l => l.kind === 'table' ? [] : [l.text]);
+    const first = authoredDraft.body.activities[0];
+    const at = lines.indexOf('가. 개별 읽기 기록(방법안)');
+    expect(lines.slice(at, at + 6)).toEqual(['가. 개별 읽기 기록(방법안)', '1) 운영 방법', ...first.steps.map((step, i) => `${'가나다'[i]}) ${step}`), `2) 결과물: ${first.result}`]);
+    expect(lines.join('\n')).not.toMatch(/[□◦○]/);
+  });
+  test('들여 쓴 줄은 하위 항목, 들여쓰지 않은 줄바꿈은 이어지는 글로 읽는다', () => {
+    expect(parseParagraphItems('활동\n  방법\n    단계 하나\n    단계 둘\n이어지는 글\n  결과')).toEqual({ text: '활동', children: [
+      { text: '방법', children: [{ text: '단계 하나', children: [] }, { text: '단계 둘 이어지는 글', children: [] }] },
+      { text: '결과', children: [] },
+    ] });
+    expect(parseParagraphItems('예전 문단')).toEqual({ text: '예전 문단', children: [] });
+  });
   test('기대 효과는 소요 예산 뒤 마지막 목차이고, 학교 확인 사항은 문서에 넣지 않는다', () => {
     const composed = validatePlanDraft(composePlanDraft(authoredDraft, 'general', 2), context);
     expect(composed.sections.map(s => s.heading)).not.toContain('결과 활용');
@@ -116,7 +132,7 @@ describe('실제 rhwp WASM의 계획서 생성·보존', () => {
       const reopened = new HwpDocument(checkedHwpxExport(doc));
       try {
         const text = JSON.parse(reopened.getTextFileText()) as string;
-        for (const section of composed.sections) for (const p of section.paragraphs) expect(text).toContain(p);
+        for (const section of composed.sections) for (const p of section.paragraphs) for (const line of p.split('\n')) expect(text).toContain(line.trim());
         expect(text).toContain('적합성(50점):');
         expect(text).toContain('만점 합계 100점');
         expect(text).toContain('적합성 → 의미');
