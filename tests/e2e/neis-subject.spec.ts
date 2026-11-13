@@ -1,3 +1,7 @@
+import { classAssessmentOrder, validateClassOutput } from '../../supabase/functions/_shared/neisClassComments';
+import type { ClassCommentInput } from '../../supabase/functions/_shared/neisClassComments';
+import { fitCommentLengthForTest } from '../fixtures/neisCommentLength';
+import { MAX_CLASS_ATTEMPTS } from '../../supabase/functions/_shared/neisClassGeneration';
 import { readFileSync } from 'node:fs';
 import { test, expect, type Locator, type Page, type TestInfo } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
@@ -69,7 +73,7 @@ const csv = (count = 3) =>
 
 async function setup(
   page: Page,
-  options: { failGeneration?: boolean; delayGeneration?: boolean; failPlan?: boolean } = {},
+  options: { failGeneration?: boolean; delayGeneration?: boolean; failPlan?: boolean; shortGeneration?: boolean; duplicateGeneration?: boolean; alwaysDuplicate?: boolean; streamGeneration?: boolean } = {},
 ) {
   const calls: Record<string, unknown>[] = [];
   const errors: string[] = [];
@@ -94,9 +98,20 @@ async function setup(
       getSession: async () => ({data:{session:user?{user}:null},error:null}),
       onAuthStateChange: fn => {listener=fn;return {data:{subscription:{unsubscribe(){}}}};},
     }, functions: { invoke: async (name, options) => {
-      const response = await fetch('/__neis-fixture', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(options.body),signal:options.signal});
+      const response = await fetch('/__neis-fixture', {method:'POST',headers:{'Content-Type':'application/json',...options.headers},body:JSON.stringify(options.body),signal:options.signal});
       if (!response.ok) return {data:null,error:{context:response}};
-      return {data:await response.json(),error:null};
+      const payload = await response.json();
+      if (${Boolean(options.streamGeneration)} && options.body.action === 'generate-class') {
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({ start(controller) {
+          const send = event => controller.enqueue(encoder.encode('data: ' + JSON.stringify(event) + '\\n\\n'));
+          const rows = payload.result.rows.toSorted((a, b) => Number(a.id.slice(1)) - Number(b.id.slice(1)));
+          send({type:'row',row:rows[0]});
+          window.__neisReleaseRows = () => { rows.slice(1).forEach(row => send({type:'row',row})); send({type:'done'}); controller.close(); };
+        } });
+        return {data:new Response(stream,{headers:{'Content-Type':'text/event-stream'}}),error:null};
+      }
+      return {data:payload,error:null};
     } } };
   `,
     }),
@@ -113,23 +128,48 @@ async function setup(
       await route.fulfill({ json: { result: plan } });
       return;
     }
-    if (body.action === 'generate') {
+    if (body.action === 'generate-class') {
       generationCalls++;
       if (options.delayGeneration) await new Promise((resolve) => setTimeout(resolve, 1200));
-      if (options.failGeneration && generationCalls === 2) {
-        await route.fulfill({ status: 422, json: { error: '가상 근거 검증 실패' } });
-        return;
-      }
+      const input = body.input as ClassCommentInput;
+      const starts = ['표를', '계산에서는', '주어진', '곱하는', '문제에서', '자리값에', '값의', '두 소수를', '조건대로', '수식을', '차례대로', '결과를', '숫자를', '곱셈식을', '기호를'];
+      const details = [
+        [
+          "자료의 각 값을 빠짐없이 살펴 합계를 낸 뒤 자료의 개수로 나누어 평균값을 구하고, 구한 값이 자료 전체를 대표한다는 의미를 계산 과정과 연결해 설명함. 표에 제시된 수와 문제의 조건을 함께 읽어 필요한 값을 찾아 식으로 나타냄.",
+          "두 소수를 곱하는 식에서 각 숫자의 자리값과 소수점의 위치를 살피며 정해진 순서에 따라 계산함. 자연수의 곱셈과 소수의 곱셈이 연결되는 부분을 식에서 확인하고, 계산한 값을 문제의 조건에 맞게 적어 답을 나타냄."
+        ],
+        [
+          "각 자료의 크기를 확인하여 더한 값을 자료의 수로 나누고 주어진 수들의 평균을 구함. 표의 행과 열에 적힌 수를 읽어 계산에 필요한 자료를 고르며, 합계와 평균을 구분해 수식에 알맞은 수를 넣고 결과를 기록함.",
+          "자리값에 따라 소수를 바르게 적고 두 수를 곱하는 계산을 순서에 맞게 수행함. 계산식에서 숫자와 소수점이 놓이는 위치를 확인하며 곱셈 결과를 써 보고, 문제에 제시된 수와 구한 값을 비교해 답의 형태를 맞추어 나타냄."
+        ],
+        [
+          "평균값을 이용해 문제의 조건을 해석하고 자료에서 필요한 수를 골라 계산하여 답을 구함. 전체 자료의 합계와 개수 사이의 관계를 이해하여 평균을 구하는 식을 세우고, 계산 과정에 사용한 수가 무엇을 뜻하는지 자료와 연결해 설명함.",
+          "곱하는 두 수를 자리에 맞게 쓰고 소수의 곱셈을 계산하여 결과를 나타냄. 각 계산 단계에서 얻은 숫자를 순서대로 기록하며 소수점의 위치를 확인하고, 주어진 식과 계산 결과를 함께 살펴 문제에서 요구한 답을 완성함."
+        ]
+      ];
+      const shortDetails = [
+        ['자료에 제시된 수를 모두 더하고 자료의 개수로 나누어 평균값을 구하며, 구한 값과 주어진 조건을 연결해 문제의 답을 나타냄.', '두 소수의 자리값을 확인하고 곱셈을 순서대로 계산하며, 소수점의 위치를 살펴 구한 값을 주어진 식에 알맞은 형태로 기록함.'],
+        ['각 자료의 크기를 읽고 필요한 수를 골라 합계를 구하며, 더한 값을 자료의 수로 나누어 간단한 자료의 평균을 식으로 나타냄.', '소수를 자리에 맞게 적고 두 수를 곱하는 과정을 차례대로 수행하며, 계산 단계에서 나온 숫자와 소수점의 위치를 하나씩 확인함.'],
+        ['문제의 조건에 맞는 자료를 찾아 평균을 구하는 식을 세우며, 합계와 개수를 활용한 계산 결과를 자료의 내용과 연결해 설명함.', '곱하는 수와 곱해지는 수의 자리값을 살펴 소수의 곱셈을 수행하며, 문제에서 요구하는 답을 구해 계산 결과를 바르게 제시함.'],
+      ];
+      const rows = input.groups.flatMap((group) => group.ids.map((id) => ({
+        id, sentences: classAssessmentOrder(id, input.evaluations.length).map((assessmentId, sentenceIndex) => {
+          const index = assessmentId - 1;
+          const grade = group.grades[index];
+          const offset = Number(id.slice(1)) - 1;
+          const repeated = (options.alwaysDuplicate || (options.duplicateGeneration && generationCalls === 1)) && (offset === 0 || offset === 2) && sentenceIndex === 0;
+          const start = repeated ? '자료를' : starts[(offset * 2 + index + (generationCalls > 1 ? 6 : 0)) % starts.length];
+          const criterion = input.evaluations[index].rubrics[grade]!;
+          const opening = !repeated && offset === 2 && index === 0 && grade === 'high' ? '문제에서 필요한 평균을 계산해 해결함.'
+            : `${start} 살펴 ${criterion.replace(/한다\.$/, '함.').replace(/구한다\.$/, '구함.')}`;
+          if (options.shortGeneration && offset === 2 && generationCalls === 1) return { a: index + 1, t: opening };
+          const content = input.length === 200 ? shortDetails : details;
+          const text = `${opening} ${content[offset % content.length][index % 2]}`;
+          return { a: index + 1, t: input.evaluations.length === 1 ? fitCommentLengthForTest(text, input.length) : text };
+        }),
+      })));
       await route.fulfill({
-        json: {
-          result: {
-            sentences: body.input.evidence.map((e: { assessmentId: string; criterion: string }) => ({
-              assessmentId: e.assessmentId,
-              evidenceQuote: e.criterion,
-              text: e.criterion.replace(/한다\.$/, '함.').replace(/구한다\.$/, '구함.'),
-            })),
-          },
-        },
+        json: { result: validateClassOutput(rows.length ? { rows: options.failGeneration && generationCalls <= MAX_CLASS_ATTEMPTS ? rows.filter((row) => row.id !== 's3') : rows } : { rows: [] }, input) },
       });
       return;
     }
@@ -175,14 +215,14 @@ async function uploadPlan(
     await pickSubject(page, '수학');
   }
 }
-async function uploadGrades(page: Page, count = 3) {
+async function uploadGrades(page: Page, count = 3, waitForCompletion = true) {
   await expect(page.getByRole('heading', { name: '수학 평가 2개' })).toBeVisible();
   await page
     .getByLabel('나이스 성적 파일', { exact: true })
     .setInputFiles({ name: '가상_성적.csv', mimeType: 'text/csv', buffer: csv(count) });
   await page.getByRole('button', { name: '평어 만들기', exact: true }).click();
   await expect(page.getByRole('heading', { name: '수학 평어 결과' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '중단', exact: true })).toHaveCount(0);
+  if (waitForCompletion) await expect(page.getByRole('button', { name: '중단', exact: true })).toHaveCount(0);
 }
 const studentList = (page: Page) => page.getByRole('list', { name: '학생별 평어 목록' }).locator(':scope > li');
 async function capture(page: Page, info: TestInfo, name: string) {
@@ -217,7 +257,7 @@ for (const [label, width] of [
     await capture(page, info, 'plan-summary');
     await uploadGrades(page);
     // 확인 버튼 없이 바로 결과가 나오고, 빈 성적 학생만 생성하지 않는다.
-    expect(evidence.calls.filter((c) => c.action === 'generate')).toHaveLength(2);
+    expect(evidence.calls.filter((c) => c.action === 'generate-class')).toHaveLength(1);
     await expect(page.getByRole('group', { name: '평어 현황' })).toContainText('완성2명');
     await expect(page.getByRole('group', { name: '평어 현황' })).toContainText('확인 필요1명');
     await expect(page.getByLabel('1번 가상동명 평어', { exact: true })).toHaveValue(/평균을 활용하여/);
@@ -236,8 +276,8 @@ for (const [label, width] of [
     await expect(page.getByText('확인이 필요한 학생이 없습니다.')).toBeVisible();
     await page.getByRole('radio', { name: '전체 3' }).click();
     await capture(page, info, 'results-complete');
-    expect(evidence.calls.filter((c) => c.action === 'generate')).toHaveLength(3);
-    expect(JSON.stringify(evidence.calls.filter((c) => c.action === 'generate'))).not.toContain('가상동명');
+    expect(evidence.calls.filter((c) => c.action === 'generate-class')).toHaveLength(2);
+    expect(JSON.stringify(evidence.calls.filter((c) => c.action === 'generate-class'))).not.toContain('가상동명');
 
     const downloadEvent = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Excel 저장', exact: true }).click();
@@ -301,16 +341,16 @@ test('생성 실패만 다시 시도하고 연결을 바꾸면 다시 생성을 
   await expect(page.getByText('생성 실패', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: '미생성·실패 1명 다시 시도' }).click();
   await expect(page.getByText('생성 실패', { exact: true })).toHaveCount(0);
-  expect(evidence.calls.filter((c) => c.action === 'generate')).toHaveLength(3);
+  expect(evidence.calls.filter((c) => c.action === 'generate-class')).toHaveLength(MAX_CLASS_ATTEMPTS + 1);
   await page.getByText('자동으로 정리한 내용').click();
   await page.getByLabel('소수 곱셈 열에 연결할 평가').selectOption('');
   await expect(page.getByText('연결 못 함 · 평어에서 제외')).toBeVisible();
   await page.getByRole('button', { name: '바뀐 내용으로 다시 생성' }).click();
   await expect(page.getByRole('button', { name: '바뀐 내용으로 다시 생성' })).toHaveCount(0);
-  const last = evidence.calls.filter((c) => c.action === 'generate').at(-1) as {
-    input: { evidence: unknown[] };
+  const last = evidence.calls.filter((c) => c.action === 'generate-class').at(-1) as {
+    input: { evaluations: unknown[] };
   };
-  expect(last.input.evidence).toHaveLength(1);
+  expect(last.input.evaluations).toHaveLength(1);
   expect(evidence.errors).toEqual([]);
 });
 
@@ -377,8 +417,8 @@ async function hangulPlan(format: 'hwp' | 'hwpx') {
       sectionIdx: 0, paraIdx: 1, charOffset: doc.getParagraphLength(0, 1),
       rowCount: 3, colCount: 2, colWidths: [18000, 25000], treatAsChar: true,
     })));
-    const { task, standardCode, rubrics } = plan.assessments[0];
-    const cells = [task, standardCode, `◎ ${rubrics.high}`, `○ ${rubrics.middle}`, `△ ${rubrics.low}`, '평가기준'];
+    const { task, standardCode, standard, rubrics } = plan.assessments[0];
+    const cells = [task, standardCode, `◎ ${rubrics.high}`, `○ ${rubrics.middle}`, `△ ${rubrics.low}`, standard];
     cells.forEach((text, i) => doc.insertTextInCell(0, table.paraIdx, table.controlIdx, i, 0, 0, text));
     return Buffer.from(format === 'hwp' ? doc.exportHwp() : doc.exportHwpx());
   } finally {
@@ -511,7 +551,9 @@ test('최대 60명 결과도 모두 표시하며 확인 필요를 가리지 않�
   await uploadPlan(page);
   await uploadGrades(page, 60);
   await expect(studentList(page)).toHaveCount(60);
-  await expect(page.getByRole('radio', { name: '확인 필요 1' })).toBeVisible();
+  // 큰 명단에서는 반복한 모의 평어도 검증에 걸린다. 빈 성적과 생성 실패를 함께 표시한다.
+  await expect(page.getByRole('radio', { name: /^확인 필요 [1-9]\d*$/ })).toBeVisible();
+  await expect(studentList(page).nth(1)).toContainText('성적 확인 필요');
   await capture(page, info, 'classroom-60');
 });
 
@@ -530,4 +572,52 @@ async function pickSubject(page: Page, subject: string) {
   const radio = page.getByRole('radio', { name: new RegExp(`^${subject}`) });
   await radio.locator('xpath=..').click();
   await expect(radio).toBeChecked();
+}
+
+for (const [name, option] of [['분량 부족', 'shortGeneration'], ['시작 표현 중복', 'duplicateGeneration']] as const) {
+  test(name + ' 학생만 자동 보완하고 통과한 평어를 보존한다', async ({ page }, info) => {
+    const evidence = await setup(page, { [option]: true });
+    await uploadPlan(page);
+    await page.getByRole('radio', { name: '300자 (270~330자)' }).focus();
+    await page.getByRole('radio', { name: '300자 (270~330자)' }).press('Space');
+    await expect(page.getByText('공백과 문장부호를 포함해 선택 분량의 ±10%로 작성합니다.')).toBeVisible();
+    await capture(page, info, 'length-options');
+    await uploadGrades(page);
+    await expect(page.getByLabel('3번 가상아주긴이름학생 평어', { exact: true })).toBeVisible();
+    const calls = evidence.calls.filter(c => c.action === 'generate-class').map(c => c.input as ClassCommentInput);
+    expect(calls).toHaveLength(2);
+    expect(calls[1].groups.flatMap(g => g.ids)).toEqual(['s3']);
+    expect(calls[1].priorSentences?.length).toBeGreaterThan(0);
+    if (option === 'shortGeneration') expect(calls[1].revisions?.[0].reason).toContain('270~330자');
+    else expect(calls[1].revisions?.[0].reason).toContain('시작과 겹칩니다');
+    for (const id of ['1번 가상동명', '3번 가상아주긴이름학생']) {
+      const text = await page.getByLabel(id + ' 평어', { exact: true }).inputValue();
+      expect(Array.from(text).length).toBeGreaterThanOrEqual(270);
+      expect(Array.from(text).length).toBeLessThanOrEqual(330);
+    }
+    await capture(page, info, 'repaired-results');
+  });
+}
+
+test('학급 스트림의 첫 학생을 먼저 표시하고 나머지 학생을 이어 받는다', async ({ page }) => {
+  const evidence = await setup(page, { streamGeneration: true });
+  await uploadPlan(page); await uploadGrades(page, 3, false);
+  await expect(page.getByLabel('1번 가상동명 평어', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('3번 가상아주긴이름학생 평어', { exact: true })).toHaveCount(0);
+  await page.evaluate(() => (window as unknown as { __neisReleaseRows: () => void }).__neisReleaseRows());
+  await expect(page.getByLabel('3번 가상아주긴이름학생 평어', { exact: true })).toBeVisible();
+  expect(evidence.calls.filter(c => c.action === 'generate-class')).toHaveLength(1);
+});
+
+for (const format of ['hwp', 'hwpx'] as const) {
+  test(format + ' 성적표도 변환 지면과 원본 다운로드를 제공한다', async ({ page }) => {
+    await setup(page); await uploadPlan(page);
+    await page.getByLabel('나이스 성적 파일', { exact: true }).setInputFiles({ name: '가상성적.' + format, mimeType: 'application/octet-stream', buffer: await hangulPlan(format) });
+    await page.getByRole('button', { name: '평어 만들기', exact: true }).click();
+    await expect(page.getByRole('heading', { name: '수학 평어 결과' })).toBeVisible();
+    await page.getByText('자동으로 정리한 내용').click();
+    await page.getByText('성적표 원본 보기', { exact: true }).click();
+    await expect(page.getByRole('img', { name: '가상성적.' + format + ' 1쪽 변환 지면' })).toBeVisible();
+    await expect(page.getByRole('link', { name: '원본 파일 다운로드' })).toHaveAttribute('download', '가상성적.' + format);
+  });
 }

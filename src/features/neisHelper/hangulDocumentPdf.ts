@@ -1,9 +1,9 @@
 import fontUrl from '../officialDocument/assets/fonts/NanumGothic-Regular.ttf?url';
 import { NEIS_MAX_FILE_BYTES } from '../../../supabase/functions/_shared/neisHelper';
-import type { HangulPage, HangulRequest, HangulResponse } from './hangulPlan.worker';
+import type { HangulPage, HangulRequest, HangulResponse } from './hangulDocument.worker';
 
 const conversionError = '한글 문서의 지면을 만들지 못했습니다. 다시 시도하거나 PDF로 저장해 올려 주세요.';
-const sizeError = '변환한 PDF가 10MB를 넘습니다. 평가계획을 나누거나 PDF로 저장해 올려 주세요.';
+const sizeError = '변환한 PDF가 10MB를 넘습니다. 한글 문서를 나누거나 PDF로 저장해 올려 주세요.';
 // Leave room for the searchable text, embedded font, and PDF structure.
 const imageBudget = Math.floor(NEIS_MAX_FILE_BYTES * 0.85);
 
@@ -84,9 +84,9 @@ async function renderPage(canvas: HTMLCanvasElement, page: HangulPage, font: str
   }
 }
 
-export async function convertHangulPlan(file: File, signal: AbortSignal) {
+export async function convertHangulToPdf(file: File, signal: AbortSignal) {
   signal.throwIfAborted();
-  const worker = new Worker(new URL('./hangulPlan.worker.ts', import.meta.url), { type: 'module' });
+  const worker = new Worker(new URL('./hangulDocument.worker.ts', import.meta.url), { type: 'module' });
   const timeout = AbortSignal.timeout(90_000);
   const active = AbortSignal.any([signal, timeout]);
   const canvas = document.createElement('canvas');

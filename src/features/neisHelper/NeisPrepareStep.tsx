@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { AlertTriangle, Check } from 'lucide-react';
-import { assessmentProblems, GRADE_LABELS } from '../../../supabase/functions/_shared/neisHelper';
+import { assessmentProblems, commentLengthRange, GRADE_LABELS } from '../../../supabase/functions/_shared/neisHelper';
 import type { Assessment, AssessmentPlan, NeisGrade } from '../../../supabase/functions/_shared/neisHelper';
 import { planSubjects, subjectKey } from './autoPipeline';
 import { GRADE_ACCEPT } from './subjectFiles';
@@ -225,7 +225,7 @@ export function NeisPrepareStep({
             onSelect={onGradeFiles}
           />
           <p className="text-sm leading-6 text-slate-600">
-            한 학급의 번호·이름·수행평가 성적이 있는 XLSX·CSV·PDF · 10MB까지. XLS는 XLSX로 다시 저장해
+            한 학급의 번호·이름·수행평가 성적이 있는 XLSX·CSV·PDF·HWP·HWPX · 10MB까지. XLS는 XLSX로 다시 저장해
             주세요.
           </p>
           <fieldset>
@@ -246,13 +246,14 @@ export function NeisPrepareStep({
                     disabled={disabled}
                     onChange={() => onLength(length)}
                   />
-                  {length}자 내외
+                  {length}자 ({commentLengthRange(length).min}~{commentLengthRange(length).max}자)
                 </label>
               ))}
             </div>
+            <p className="mt-2 text-sm text-slate-600">공백과 문장부호를 포함해 선택 분량의 ±10%로 작성합니다.</p>
           </fieldset>
           <p className="rounded-lg bg-blue-50 p-4 text-sm leading-6 text-blue-900">
-            XLSX·CSV는 이 브라우저에서 읽습니다. PDF 성적표는 원본을 OpenAI로 전송해 읽습니다. 평어를
+            XLSX·CSV는 이 브라우저에서 읽습니다. PDF 성적표는 원본을, HWP·HWPX는 변환한 PDF를 OpenAI로 전송해 읽습니다. 평어를
             만들 때는 평가기준과 학생별 수준만 보내고 번호·이름은 보내지 않습니다.
           </p>
         </section>

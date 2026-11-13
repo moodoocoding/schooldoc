@@ -2,15 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useTeacherAuth } from '../../auth/teacherAuth';
-import { GRADE_LABELS } from '../../../supabase/functions/_shared/neisHelper';
+import { GRADE_LABELS, SKIP_COLUMN } from '../../../supabase/functions/_shared/neisHelper';
 import type {
   Assessment,
   AssessmentPlan,
   GradeBook,
   NeisGrade,
 } from '../../../supabase/functions/_shared/neisHelper';
-import { analyzeGradePdf, analyzePlan, generateComment } from './subjectApi';
-import { checkFile, exportComments, readGradeSheets } from './subjectFiles';
+import { analyzeGradeDocument, analyzePlan, generateClassComments } from './subjectApi';
+import { checkFile, exportComments, isPdfOrHangul, readGradeSheets } from './subjectFiles';
+import { buildClassRequest } from './classWorkflow';
 import {
   assessmentsFor,
   autoLinkColumns,
@@ -18,7 +19,6 @@ import {
   pickGradeBook,
   planSubjects,
   PlanSubjectMismatch,
-  runLimited,
   studentEvidence,
   studentProblems,
   studentRows,
@@ -26,7 +26,7 @@ import {
 } from './autoPipeline';
 import type { ColumnLink } from './autoPipeline';
 import { emptySubjectDraft, readSubjectDraft, saveSubjectDraft } from './subjectDraft';
-import type { CommentDraft, PlanMode, SubjectDraft, SubjectPhase } from './subjectDraft';
+import type { PlanMode, SubjectDraft, SubjectPhase } from './subjectDraft';
 import { primaryClass, secondaryClass } from './SubjectSteps';
 import { NeisPlanStep } from './NeisPlanStep';
 import { NeisPrepareStep } from './NeisPrepareStep';
@@ -50,8 +50,6 @@ const phases: Record<SubjectPhase, { index: number; title: string; description: 
   },
 };
 const phaseLabels = ['평가계획', '교과·성적', '평어 결과'];
-const GENERATION_CONCURRENCY = 3;
-const STOP_ALL = /한도|로그인|서버 설정|연결하지 못/;
 
 export function SubjectWorkspace() {
   const { user } = useTeacherAuth();
@@ -165,7 +163,7 @@ export function SubjectWorkspace() {
       planMode: mode,
       subject: mode === 'subject' ? chosen : subjects.length === 1 ? subjects[0].subject : '',
       phase: 'prepare',
-      gradeFile: null,
+      gradeFile: null, gradePdf: null,
       book: null,
       links: {},
       results: {},
@@ -210,53 +208,42 @@ export function SubjectWorkspace() {
     }));
   }
   async function readBook(file: File, signal: AbortSignal) {
-    if (/\.pdf$/i.test(file.name)) return { book: await analyzeGradePdf(file, signal), sheet: '' };
+    if (isPdfOrHangul(file)) return { ...await analyzeGradeDocument(file, signal), sheet: '' };
     const sheets = await readGradeSheets(file);
     if (!sheets.length) throw new Error('성적표가 있는 시트를 찾지 못했습니다.');
-    return pickGradeBook(sheets);
+    return { ...pickGradeBook(sheets), gradePdf: null };
   }
   async function generateFor(
     ids: string[],
-    source: { book: GradeBook; links: Record<string, ColumnLink> },
+    source: { book: GradeBook; links: Record<string, ColumnLink>; results?: SubjectDraft['results'] },
     signal: AbortSignal,
     current: () => boolean,
   ) {
     const blocked = studentProblems(source.book, source.links, assessments);
     const targets = source.book.students.filter((s) => ids.includes(s.id) && !blocked.get(s.id)?.length);
     if (!targets.length) return;
-    if (!usableColumns(source.book, source.links, assessments).length)
+    const columns = usableColumns(source.book, source.links, assessments);
+    if (!columns.length)
       throw new Error('평어에 쓸 평가가 연결되지 않았습니다. 성적 열과 평가 연결을 확인해 주세요.');
-    let done = 0;
-    let stoppedBy = '';
-    setProgress({ done, total: targets.length });
-    await runLimited(targets, GENERATION_CONCURRENCY, async (target, stop) => {
-      if (!current()) return stop();
-      let row: CommentDraft;
-      try {
-        const generated = await generateComment(
-          {
-            subject: draft.subject,
-            length: draft.length,
-            evidence: studentEvidence(source.book, target, source.links, assessments),
-          },
-          signal,
-        );
-        row = { generated, text: generated.sentences.map((s) => s.text).join(' '), error: '' };
-      } catch (e) {
-        if (!current()) return stop();
-        const message = e instanceof Error ? e.message : '평어를 만들지 못했습니다.';
-        row = { text: '', generated: null, error: message };
-        if (STOP_ALL.test(message)) {
-          stoppedBy = `${target.number}번에서 멈췄습니다. 만든 평어는 유지되며 나머지는 다시 시도할 수 있습니다. ${message}`;
-          stop();
-        }
-      }
-      if (!current()) return stop();
-      setDraft((prev) => ({ ...prev, results: { ...prev.results, [target.id]: row } }));
-      setProgress({ done: ++done, total: targets.length });
+    const usableIds = new Set(columns.map(({ column }) => column.id));
+    const mappings = Object.fromEntries(source.book.columns.map((column) => [
+      column.id, usableIds.has(column.id) ? source.links[column.id].assessmentId : SKIP_COLUMN,
+    ]));
+    const { input, idMap } = buildClassRequest(draft.subject, draft.length, source.book, targets, assessments, mappings, {}, source.results ?? draft.results);
+    const received = new Set<string>();
+    setProgress({ done: 0, total: targets.length });
+    await generateClassComments(input, signal, (row) => {
+      const id = idMap.get(row.id);
+      if (!id || !current()) return;
+      received.add(id);
+      setDraft((prev) => ({ ...prev, results: { ...prev.results, [id]: {
+        generated: row.comment ?? prev.results[id]?.generated ?? null,
+        text: row.comment ? row.comment.sentences.map((s) => s.text).join(' ') : prev.results[id]?.text ?? '',
+        error: row.error || (row.comment ? '' : '이 학생의 평어가 응답에 없습니다.'),
+      } } }));
+      setProgress({ done: received.size, total: targets.length });
     });
-    if (stoppedBy && current()) setError(stoppedBy);
-    else if (current() && targets.length === source.book.students.filter((s) => !blocked.get(s.id)?.length).length)
+    if (current() && targets.length === source.book.students.filter((s) => !blocked.get(s.id)?.length).length)
       patch({ stale: false });
   }
   async function makeComments() {
@@ -268,9 +255,9 @@ export function SubjectWorkspace() {
       const nextBook = studentRows(read.book);
       if (!nextBook.students.length) throw new Error('성적표에서 학생을 찾지 못했습니다.');
       const links = autoLinkColumns(nextBook, assessments);
-      patch({ book: nextBook, gradeSheet: read.sheet, links, results: {}, stale: false, phase: 'results' });
+      patch({ book: nextBook, gradeSheet: read.sheet, gradePdf: read.gradePdf, links, results: {}, stale: false, phase: 'results' });
       setBusy('평어를 만들고 있습니다.');
-      await generateFor(nextBook.students.map((s) => s.id), { book: nextBook, links }, signal, current);
+      await generateFor(nextBook.students.map((s) => s.id), { book: nextBook, links, results: {} }, signal, current);
     });
   }
 
@@ -348,7 +335,7 @@ export function SubjectWorkspace() {
     patch({
       phase: 'prepare',
       subject: draft.planMode === 'whole' ? '' : draft.subject,
-      gradeFile: null,
+      gradeFile: null, gradePdf: null,
       gradeSheet: '',
       book: null,
       links: {},
@@ -436,11 +423,11 @@ export function SubjectWorkspace() {
             mode={draft.planMode}
             assessments={assessments}
             disabled={!!busy}
-            onSubject={(subject) => patch({ subject, gradeFile: null, book: null, links: {}, results: {} })}
+            onSubject={(subject) => patch({ subject, gradeFile: null, gradePdf: null, book: null, links: {}, results: {} })}
             onEdit={editAssessment}
             onGradeFiles={(files) => {
               const file = pickFile(files, 'grades');
-              if (file) patch({ gradeFile: file, book: null, links: {}, results: {} });
+              if (file) patch({ gradeFile: file, gradePdf: null, book: null, links: {}, results: {} });
             }}
             onLength={(length) => patch({ length })}
             onRestart={() => {

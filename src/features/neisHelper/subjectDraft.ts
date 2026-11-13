@@ -13,6 +13,14 @@ export interface CommentDraft {
   text: string;
   generated: GeneratedComment | null;
   error: string;
+  reviewed?: boolean;
+}
+export interface AssessmentWorksheet {
+  file: File;
+  convertedFile: File | null;
+  text: string;
+  taskContext: string;
+  warning: string;
 }
 export interface SubjectDraft {
   phase: SubjectPhase;
@@ -23,6 +31,7 @@ export interface SubjectDraft {
   plan: AssessmentPlan | null;
   subject: string;
   gradeFile: File | null;
+  gradePdf: File | null;
   gradeSheet: string;
   book: GradeBook | null;
   links: Record<string, ColumnLink>;
@@ -40,6 +49,7 @@ export const emptySubjectDraft = (): SubjectDraft => ({
   plan: null,
   subject: '',
   gradeFile: null,
+  gradePdf: null,
   gradeSheet: '',
   book: null,
   links: {},

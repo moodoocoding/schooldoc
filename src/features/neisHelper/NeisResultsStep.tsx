@@ -3,6 +3,7 @@ import { AlertTriangle, Check, RotateCw } from 'lucide-react';
 import {
   assessmentProblems,
   countComment,
+  commentLengthRange,
   GRADE_LABELS,
   normalizeGrade,
   repeatedCommentIds,
@@ -18,6 +19,7 @@ import type { SubjectDraft } from './subjectDraft';
 import { AssessmentList } from './NeisPrepareStep';
 import { NeisSourcePreview } from './NeisSourcePreview';
 import { inputClass, primaryClass, secondaryClass } from './SubjectSteps';
+import { isPdfOrHangul } from './subjectFiles';
 
 const SKIP = '';
 const methodText: Record<LinkMethod, string> = {
@@ -204,12 +206,12 @@ export function NeisResultsStep({
               })}
             </ul>
           </div>
-          {draft.gradeFile && /\.pdf$/i.test(draft.gradeFile.name) && (
+          {draft.gradeFile && isPdfOrHangul(draft.gradeFile) && (
             <details className="rounded-lg border border-slate-200 p-3">
               <summary className="min-h-[44px] cursor-pointer content-center text-sm font-semibold text-blue-700">
                 성적표 원본 보기
               </summary>
-              <NeisSourcePreview key={draft.gradeFile.name} file={draft.gradeFile} allowPageSelection />
+              <NeisSourcePreview key={draft.gradeFile.name} file={draft.gradeFile} convertedFile={draft.gradePdf} allowPageSelection />
             </details>
           )}
           {!!unlinked.length && (
@@ -359,8 +361,8 @@ export function NeisResultsStep({
                             {counts.characters}자 · {counts.bytes}바이트
                           </span>
                         ) : null}
-                        {result?.text && counts.characters < draft.length * 0.75 && (
-                          <span>근거가 적어 목표 {draft.length}자보다 짧습니다.</span>
+                        {result?.text && (counts.characters < commentLengthRange(draft.length).min || counts.characters > commentLengthRange(draft.length).max) && (
+                          <span>선택한 분량의 범위({commentLengthRange(draft.length).min}~{commentLengthRange(draft.length).max}자)를 벗어났습니다.</span>
                         )}
                         {repeats.has(student.id) && (
                           <span className="font-semibold text-amber-900">다른 학생과 같은 문장이 있습니다.</span>

@@ -8,6 +8,7 @@ export type HangulRequest = { file: File } | { index: number };
 export type HangulResponse = { count: number } | { page: HangulPage } | { error: string };
 
 let doc: HwpDocument | undefined;
+
 self.onmessage = async ({ data }: MessageEvent<HangulRequest>) => {
   try {
     if ('file' in data) {
