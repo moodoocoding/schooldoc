@@ -35,9 +35,9 @@ describe('운영계획서 초안 → 공문 문서 모델', () => {
     expect(text).toContain('※ 합계 금200,000원(금이십만원). 단가와 배분은 제안이며 집행 기준·실제 견적 확인 필요');
     expect(text.join('\n')).not.toMatch(/\[초안\]|AI 작성/);
   });
-  test('2쪽 출력만 일정 목차 앞에서 쪽을 나눈다', () => {
+  test('희망 쪽 수가 늘어도 강제 쪽 나눔으로 빈 지면을 만들지 않는다', () => {
     const breaks = (pages: 1 | 2) => planToOfficialDocument(draft, draft.title, pages).body.flatMap(n => n.kind === 'item' && n.pageBreakBefore ? [n.text] : []);
-    expect(breaks(2)).toEqual(['세부추진 일정(안)']);
+    expect(breaks(2)).toEqual([]);
     expect(breaks(1)).toEqual([]);
   });
   test('저장 전 공문 표기 점검: 가상 초안은 고칠 점이 없고, 본문에 넣은 기호·날짜는 정리한다', () => {
@@ -94,7 +94,7 @@ describe('실제 rhwp WASM의 계획서 생성·보존', () => {
   test('새 활동 구조와 공모전의 배점·동점 기준을 실제 HWPX에 빠짐없이 보존한다', () => {
     const composed = validatePlanDraft(composePlanDraft({ ...authoredDraft, body: {
       purpose: authoredDraft.body.purpose, overview: authoredDraft.body.overview,
-      intake: authoredDraft.body.activities[0], publication: { ...authoredDraft.body.activities[1], requirementIds: ['r2', 'r3'] },
+      intake: authoredDraft.body.activities, publication: { ...authoredDraft.body.followUp, requirementIds: ['r2', 'r3'] },
       selectionRules: { criteria: [{ name: '적합성', check: '주제에 어울리는지 확인한다.', maxScore: 50 }, { name: '의미', check: '뜻이 분명한지 확인한다.', maxScore: 50 }],
         evaluationMethod: '합산 점수가 높은 순으로 선정한다.', exclusions: ['부적절한 표현이 포함된 작품'],
         tieBreakPriority: ['적합성', '의미'], finalTie: '함께 논의하고 선정 이유를 기록한다.', methodKind: 'proposal', requirementIds: ['r2'] },

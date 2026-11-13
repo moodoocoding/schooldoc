@@ -13,5 +13,5 @@ Deno.serve(createPlanHandler({
   consumeQuota: userId => consumePlanQuota(userId, (key, seconds, max) => db.rpc('consume_registry_rate_limit', {
     p_request_key: key, p_window_seconds: seconds, p_max_requests: max,
   })),
-  run: (request, signal) => requestPlanAi(request, Deno.env.get('OPENAI_API_KEY')!, Deno.env.get('SCHOOL_PLAN_AI_MODEL')?.trim() || 'gpt-4.1-mini', fetch, signal),
+  run: (request, signal, beforeRetry) => requestPlanAi(request, Deno.env.get('OPENAI_API_KEY')!, Deno.env.get('SCHOOL_PLAN_AI_MODEL')?.trim() || 'gpt-4.1-mini', fetch, signal, beforeRetry),
 }));

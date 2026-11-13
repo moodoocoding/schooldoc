@@ -64,7 +64,7 @@ export function validatePlanResult(request: PlanRequest, result: { analysis?: Pl
 interface Dependencies {
   authorize: (req: Request) => Promise<string>;
   consumeQuota: (userId: string) => Promise<boolean>;
-  run: (request: PlanRequest, signal?: AbortSignal) => Promise<{ analysis?: PlanAnalysis; draft?: PlanDraft }>;
+  run: (request: PlanRequest, signal?: AbortSignal, beforeRetry?: () => Promise<void>) => Promise<{ analysis?: PlanAnalysis; draft?: PlanDraft }>;
 }
 // Transport is injected. This core never sends source text to an external API.
 export function createPlanHandler(deps: Dependencies) {
@@ -77,7 +77,9 @@ export function createPlanHandler(deps: Dependencies) {
       const request = await readPlanRequest(req);
       if (!await deps.consumeQuota(userId)) throw new PlanError(429, '계획서 AI 요청 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.');
       let result;
-      try { result = validatePlanResult(request, await deps.run(request, req.signal)); }
+      try { result = validatePlanResult(request, await deps.run(request, req.signal, async () => {
+        if (!await deps.consumeQuota(userId)) throw new PlanError(429, '계획서 AI 요청 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.');
+      })); }
       catch (error) { if (error instanceof PlanError) throw error; throw new PlanError(502, '생성 결과가 공문 근거·예산·문서 형식 검사를 통과하지 못했습니다. 다시 작성해 주세요.'); }
       return new Response(JSON.stringify(result), { headers });
     } catch (error) {
