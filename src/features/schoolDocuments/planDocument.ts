@@ -1,4 +1,5 @@
 import { planBudgetTotal, type PlanConditions, type PlanDraft, type PlanPages } from '../../../supabase/functions/_shared/schoolPlan';
+import { EFFECTS_KEY } from '../../../supabase/functions/school-plan/authoringProfiles';
 import { draftBodyText } from '../officialDocument/draftBody';
 import { checkOfficialDocument, normalizeDates, officialAmount, type OfficialCheck } from '../officialDocument/lint';
 import { item, note, table, type OfficialDocument } from '../officialDocument/model';
@@ -17,15 +18,17 @@ export function planToOfficialDocument(draft: PlanDraft, title: string, _pages: 
       note(`합계 ${officialAmount(planBudgetTotal(draft))}. 단가와 배분은 제안이며 집행 기준·실제 견적 확인 필요`),
     ]
     : [note('예산 없음 또는 미정: 금액 확정 후 집행 기준에 따라 확인')];
+  const section = (s: PlanDraft['sections'][number]) => item(s.heading, s.paragraphs.map(p => item(p)));
   return {
     kind: 'attachment-plan',
     title: title.trim(),
     body: [
-      ...draft.sections.map(section => item(section.heading, section.paragraphs.map(p => item(p)))),
+      ...draft.sections.filter(s => s.id !== EFFECTS_KEY).map(section),
       // 본문과 표는 자연스럽게 이어 조판한다. 빈 페이지나 강제 나눔으로 희망 분량을 채우지 않는다.
       item('세부추진 일정(안)', draft.schedule.length ? [table([{ label: '시기', width: 11600 }, { label: '활동', width: 23500 }, { label: '담당', width: 13000 }], draft.schedule.map(s => [s.when, s.activity, s.owner]))] : []),
       item('소요 예산(안)', budget),
-      ...(draft.unknowns.length ? [item('학교 확인 사항', draft.unknowns.map(note))] : []),
+      // 기대 효과는 예산 뒤 마지막 목차다. 학교 확인 사항(unknowns)은 문서에 넣지 않고 검토 화면에만 보여 준다.
+      ...draft.sections.filter(s => s.id === EFFECTS_KEY).map(section),
     ],
   };
 }

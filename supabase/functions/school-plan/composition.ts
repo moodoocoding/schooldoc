@@ -9,7 +9,7 @@ const refs = { type: 'array', maxItems: 24, items: text(80) };
 const object = <T extends Record<string, unknown>>(properties: T) => ({ type: 'object', additionalProperties: false, properties, required: Object.keys(properties) });
 const block = (count: number, length: number) => object({ paragraphs: { type: 'array', minItems: 1, maxItems: count, items: text(length) }, requirementIds: refs });
 interface PlanPageBudget {
-  minActivities: number; minBodyChars: number; targetBodyChars: number; followUpCount: number;
+  minActivities: number; minBodyChars: number; targetBodyChars: number; followUpCount: number; effects: number; effectLength: number;
   purpose: number; overview: number; overviewLength: number; activities: number;
   name: number; procedure: number; result: number; followUp: number;
   schedule: number; when: number; scheduleActivity: number; owner: number;
@@ -19,13 +19,14 @@ interface PlanPageBudget {
  * 출력 분량별 글자·항목 한도. 공문 서식(휴먼명조 13pt·줄간격 160%, A4)에서 rhwp로 조판해,
  * 실제 쪽 수는 생성 후 한글 조판 결과로 확인한다.
  * 쪽수마다 내용의 깊이와 목표 분량을 늘린다. 빈 페이지로 분량을 맞추지 않는다.
+ * 일반 유형은 별도 후속 목차가 없으므로 활동 절차 한도로 목표 분량을 담는다(3~5쪽 절차 280~340자).
  */
 export const PLAN_PAGE_BUDGETS = {
-  1: { minActivities: 2, minBodyChars: 250, targetBodyChars: 400, followUpCount: 1, purpose: 65, overview: 1, overviewLength: 70, activities: 2, name: 16, procedure: 75, result: 32, followUp: 60, schedule: 3, when: 18, scheduleActivity: 28, owner: 15, budget: 2, item: 24, unknowns: 1, unknownLength: 50 },
-  2: { minActivities: 2, minBodyChars: 850, targetBodyChars: 1200, followUpCount: 2, purpose: 110, overview: 2, overviewLength: 120, activities: 4, name: 24, procedure: 180, result: 65, followUp: 150, schedule: 5, when: 30, scheduleActivity: 65, owner: 30, budget: 4, item: 50, unknowns: 3, unknownLength: 80 },
-  3: { minActivities: 4, minBodyChars: 1800, targetBodyChars: 2300, followUpCount: 3, purpose: 150, overview: 3, overviewLength: 180, activities: 5, name: 28, procedure: 230, result: 75, followUp: 200, schedule: 6, when: 30, scheduleActivity: 80, owner: 30, budget: 5, item: 50, unknowns: 3, unknownLength: 80 },
-  4: { minActivities: 6, minBodyChars: 2900, targetBodyChars: 3400, followUpCount: 3, purpose: 180, overview: 3, overviewLength: 220, activities: 7, name: 28, procedure: 260, result: 75, followUp: 220, schedule: 7, when: 30, scheduleActivity: 80, owner: 30, budget: 6, item: 50, unknowns: 3, unknownLength: 80 },
-  5: { minActivities: 8, minBodyChars: 4100, targetBodyChars: 4600, followUpCount: 4, purpose: 200, overview: 4, overviewLength: 240, activities: 8, name: 28, procedure: 260, result: 75, followUp: 240, schedule: 8, when: 30, scheduleActivity: 80, owner: 30, budget: 6, item: 50, unknowns: 3, unknownLength: 80 },
+  1: { minActivities: 2, minBodyChars: 250, targetBodyChars: 400, followUpCount: 1, effects: 2, effectLength: 40, purpose: 65, overview: 1, overviewLength: 70, activities: 2, name: 16, procedure: 75, result: 32, followUp: 60, schedule: 3, when: 18, scheduleActivity: 28, owner: 15, budget: 2, item: 24, unknowns: 1, unknownLength: 50 },
+  2: { minActivities: 2, minBodyChars: 850, targetBodyChars: 1200, followUpCount: 2, effects: 2, effectLength: 60, purpose: 110, overview: 2, overviewLength: 120, activities: 4, name: 24, procedure: 180, result: 65, followUp: 150, schedule: 5, when: 30, scheduleActivity: 65, owner: 30, budget: 4, item: 50, unknowns: 3, unknownLength: 80 },
+  3: { minActivities: 4, minBodyChars: 1800, targetBodyChars: 2300, followUpCount: 3, effects: 3, effectLength: 70, purpose: 150, overview: 3, overviewLength: 180, activities: 5, name: 28, procedure: 280, result: 75, followUp: 200, schedule: 6, when: 30, scheduleActivity: 80, owner: 30, budget: 5, item: 50, unknowns: 3, unknownLength: 80 },
+  4: { minActivities: 6, minBodyChars: 2900, targetBodyChars: 3400, followUpCount: 3, effects: 3, effectLength: 80, purpose: 180, overview: 3, overviewLength: 220, activities: 7, name: 28, procedure: 340, result: 75, followUp: 220, schedule: 7, when: 30, scheduleActivity: 80, owner: 30, budget: 6, item: 50, unknowns: 3, unknownLength: 80 },
+  5: { minActivities: 8, minBodyChars: 4100, targetBodyChars: 4600, followUpCount: 4, effects: 3, effectLength: 90, purpose: 200, overview: 4, overviewLength: 240, activities: 8, name: 28, procedure: 340, result: 75, followUp: 240, schedule: 8, when: 30, scheduleActivity: 80, owner: 30, budget: 6, item: 50, unknowns: 3, unknownLength: 80 },
 } satisfies Record<PlanPages, PlanPageBudget>;
 const budgetOf = (pages: PlanPages = 2): PlanPageBudget => PLAN_PAGE_BUDGETS[pages];
 const planBody = (pages?: PlanPages) => {
@@ -38,6 +39,7 @@ const planBody = (pages?: PlanPages) => {
       methodKind: { type: 'string', enum: ['source', 'proposal'] }, requirementIds: refs,
     }) },
     followUp: block(b.followUpCount, b.followUp),
+    effects: block(b.effects, b.effectLength),
   });
 };
 export const planBodySchema = planBody(2);
@@ -102,8 +104,8 @@ export function composePlanBody(value: unknown, type: PlanReferenceType, pages: 
   const body = record(value);
   const sections: PlanSection[] = PLAN_AUTHORING_PROFILES[type].sections.map(s => {
     if (s.role !== 'activities') {
-      const count = s.role === 'purpose' ? 1 : s.role === 'overview' ? b.overview : b.followUpCount;
-      const length = s.role === 'purpose' ? b.purpose : s.role === 'overview' ? b.overviewLength : b.followUp;
+      const count = s.role === 'purpose' ? 1 : s.role === 'overview' ? b.overview : s.role === 'effects' ? b.effects : b.followUpCount;
+      const length = s.role === 'purpose' ? b.purpose : s.role === 'overview' ? b.overviewLength : s.role === 'effects' ? b.effectLength : b.followUp;
       return section(body[s.key], s.key, s.heading, count, length);
     }
     const activities = array(body[s.key], 1, b.activities).map(value => {
@@ -132,7 +134,7 @@ export function composePlanBody(value: unknown, type: PlanReferenceType, pages: 
     // truncate Korean words; six criteria still fit the four-paragraph contract.
     const criteriaParagraphs: string[] = [];
     for (let i = 0; i < criteria.length; i += 3) criteriaParagraphs.push(`평가 항목: ${criteria.slice(i, i + 3).map(c => `${c.name}${c.maxScore === null ? '' : `(${c.maxScore}점)`}: ${fragment(c.check)}`).join('; ')}.`);
-    sections.splice(sections.length - 1, 0, {
+    sections.splice(sections.findIndex(s => s.id === 'publication'), 0, {
       id: 'selection_rules', heading: `심사·선정 세부 기준${rules.methodKind === 'proposal' ? '(안)' : ''}`,
       paragraphs: [
         ...criteriaParagraphs,
@@ -164,11 +166,11 @@ export function planDepthIssues(sections: PlanSection[], type: PlanReferenceType
 }
 
 export const compositionInstructions = `응답의 body는 유형별 지침과 스키마의 키로 작성한다. 서버가 같은 유형의 실제 목차로 조립한다.
-목적·개요·후속 항목은 paragraphs와 requirementIds를 갖는다. 핵심 실행 항목은 name·procedure·result·methodKind·requirementIds를 가진 활동 배열이다.
+목적·개요·후속·기대 효과 항목은 paragraphs와 requirementIds를 갖는다. 기대 효과(body.effects)는 문서의 마지막 목차다. 핵심 실행 항목은 name·procedure·result·methodKind·requirementIds를 가진 활동 배열이다.
 procedure는 진행 주체가 어떤 자료와 순서로 무엇을 하는지, result는 남길 구체적인 산출물이나 관찰·점검할 행동이다. 두 필드에서 같은 말을 반복하지 않는다.
 methodKind는 공문에 해당 진행 방법까지 명시된 경우만 source, AI가 방법을 구체화하면 proposal이다. 서버가 proposal 활동에 '(방법안)'을 붙인다. 원문의 대상·날짜·의무는 방법 제안을 이유로 바꾸지 않는다.
 그 외 문단도 새로 제안한 방법에만 '(안)'을 붙인다. body의 각 항목·활동에는 반영한 실제 requirementIds만 연결한다.
-운영 방법을 제안해야 한다면 실제 초안으로 작성한다. unknowns에 '양식 마련 여부 확인', '내용 확정 후 계획 수립'처럼 방금 작성해야 할 일을 미루지 않는다.
+unknowns는 문서에 출력하지 않고 교사의 검토 화면에만 보인다. 미정 사실은 본문 해당 자리에도 확정처럼 쓰지 않는다. 운영 방법을 제안해야 한다면 실제 초안으로 작성한다. unknowns에 '양식 마련 여부 확인', '내용 확정 후 계획 수립'처럼 방금 작성해야 할 일을 미루지 않는다.
 budget은 사용 가능한 상한을 채우는 표가 아니다. 필요한 품목의 단위와 수량을 알 수 있으면 해당 산출식을 제안하고, 품목별 산출 자체가 불가능하면 빈 배열과 확인 사유를 반환한다. 인쇄비·재료비 총액을 임의로 각각 1회로 나눠 예산 전액을 소진하지 않는다.`;
 
 export const contestCompositionInstructions = `이번 유형은 공모전이다. body.intake는 활동 배열이고 body.publication은 paragraphs·requirementIds를 갖는다. intake는 응모자가 작성할 항목과 접수·누락 확인 방법, publication은 결과 수합·발표 기한·공개 범위·선정작 활용을 적는다. 심사는 selectionRules에만 작성해 서로 다른 규칙이 중복되지 않게 한다.

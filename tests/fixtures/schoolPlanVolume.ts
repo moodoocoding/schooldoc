@@ -7,14 +7,16 @@ import { PLAN_PAGE_BUDGETS } from '../../supabase/functions/school-plan/composit
 const measuredText = (length: number, label: string) => (label + ' 참여 학생은 자료에서 중요한 내용을 찾아 기록하고 짝과 비교한다. 담당 교사는 어려운 부분을 확인하여 안내 자료를 보완한다.'.repeat(10)).slice(0, length);
 export function volumeFixture(pages: PlanPages, type: PlanReferenceType = 'general') {
   const b = PLAN_PAGE_BUDGETS[pages];
-  const capacity = b.purpose + b.overview * b.overviewLength + b.activities * (b.procedure + b.result + 30) + b.followUpCount * b.followUp;
-  const ratio = b.targetBodyChars / capacity;
+  const followUp = PLAN_AUTHORING_PROFILES[type].sections.some(s => s.role === 'followUp') ? b.followUpCount * b.followUp : 0;
+  const capacity = b.purpose + b.overview * b.overviewLength + b.activities * (b.procedure + b.result + 30) + followUp + b.effects * b.effectLength;
+  const ratio = Math.min(1, b.targetBodyChars / capacity);
   const content = (max: number, label: string) => measuredText(Math.max(label.length, Math.floor(max * ratio)), label);
   const roles = {
     purpose: { paragraphs: [content(b.purpose, '활동 목적:')], requirementIds: [] },
     overview: { paragraphs: Array.from({ length: b.overview }, (_, i) => content(b.overviewLength, `운영 조건 ${i + 1}:`)), requirementIds: [] },
     activities: Array.from({ length: b.activities }, (_, i) => ({ name: `실행 단계 ${i + 1}`, procedure: content(b.procedure, `과제 ${i + 1}의 절차:`), result: content(b.result, `확인 ${i + 1}:`), methodKind: 'proposal', requirementIds: [] })),
     followUp: { paragraphs: Array.from({ length: b.followUpCount }, (_, i) => content(b.followUp, `후속 확인 ${i + 1}:`)), requirementIds: [] },
+    effects: { paragraphs: Array.from({ length: b.effects }, (_, i) => content(b.effectLength, `기대 효과 ${i + 1}:`)), requirementIds: [] },
   };
   const body: Record<string, unknown> = Object.fromEntries(PLAN_AUTHORING_PROFILES[type].sections.map(s => [s.key, structuredClone(roles[s.role])]));
   if (type === 'contest') body.selectionRules = {

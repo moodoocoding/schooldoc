@@ -21,7 +21,18 @@ const fonts: OfficialFonts = {
 beforeAll(async () => { await init({ module_or_path: readFileSync('node_modules/@rhwp/core/rhwp_bg.wasm') }); });
 
 describe('운영계획서 초안 → 공문 문서 모델', () => {
-  test('AI 표시 없이 제목·목차·문단·일정·예산·확인 사항을 트리로 담는다', () => {
+  test('기대 효과는 소요 예산 뒤 마지막 목차이고, 학교 확인 사항은 문서에 넣지 않는다', () => {
+    const composed = validatePlanDraft(composePlanDraft(authoredDraft, 'general', 2), context);
+    expect(composed.sections.map(s => s.heading)).not.toContain('결과 활용');
+    const document = planToOfficialDocument(composed, composed.title, 2);
+    const headings = document.body.flatMap(n => n.kind === 'item' ? [n.text] : []);
+    expect(headings.slice(-3)).toEqual(['세부추진 일정(안)', '소요 예산(안)', '기대 효과']);
+    const json = JSON.stringify(document);
+    expect(json).not.toContain('확인 사항');
+    expect(composed.unknowns.length).toBeGreaterThan(0);
+    for (const u of composed.unknowns) expect(json).not.toContain(u);
+  });
+  test('AI 표시 없이 제목·목차·문단·일정·예산을 트리로 담는다', () => {
     const document = planToOfficialDocument(draft, draft.title, 2);
     expect(document).toMatchObject({ kind: 'attachment-plan', title: draft.title });
     const text = layoutOfficialDocument(document).flatMap(l => l.kind === 'table' ? [] : [l.text]);
@@ -69,7 +80,7 @@ describe('실제 rhwp WASM의 계획서 생성·보존', () => {
       expect((xml.match(/<hp:tbl\b/g) ?? []).length).toBe(2);
       const reopened = new HwpDocument(bytes);
       try {
-        expect(reopened.pageCount()).toBe(pages);
+        expect(reopened.pageCount()).toBeLessThanOrEqual(pages);
         const text = JSON.parse(reopened.getTextFileText()) as string;
         for (const section of plan.sections) for (const p of section.paragraphs) expect(text).toContain(p);
         for (const row of plan.schedule) expect(text).toContain(row.activity);
@@ -94,7 +105,7 @@ describe('실제 rhwp WASM의 계획서 생성·보존', () => {
   test('새 활동 구조와 공모전의 배점·동점 기준을 실제 HWPX에 빠짐없이 보존한다', () => {
     const composed = validatePlanDraft(composePlanDraft({ ...authoredDraft, body: {
       purpose: authoredDraft.body.purpose, overview: authoredDraft.body.overview,
-      intake: authoredDraft.body.activities, publication: { ...authoredDraft.body.followUp, requirementIds: ['r2', 'r3'] },
+      intake: authoredDraft.body.activities, publication: { ...authoredDraft.body.effects, requirementIds: ['r2', 'r3'] }, effects: authoredDraft.body.effects,
       selectionRules: { criteria: [{ name: '적합성', check: '주제에 어울리는지 확인한다.', maxScore: 50 }, { name: '의미', check: '뜻이 분명한지 확인한다.', maxScore: 50 }],
         evaluationMethod: '합산 점수가 높은 순으로 선정한다.', exclusions: ['부적절한 표현이 포함된 작품'],
         tieBreakPriority: ['적합성', '의미'], finalTie: '함께 논의하고 선정 이유를 기록한다.', methodKind: 'proposal', requirementIds: ['r2'] },

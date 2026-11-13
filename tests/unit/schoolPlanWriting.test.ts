@@ -90,7 +90,8 @@ test('서버도 자동 보완의 사용량을 추가로 차감하고 실패 시 
   expect(fetcher).toHaveBeenCalledTimes(1);
 });
 
-test('부족한 실제 쪽 수를 숨기지 않고 마지막 쪽의 단순 여백은 경고하지 않는다', () => {
-  expect(pageVolumeIssues({ fills: [.8, .4], bodyPages: 2 }, 5)[0].message).toContain('짧은 2쪽');
+test('선택한 쪽 수보다 짧거나 마지막 쪽이 덜 찬 것은 알리지 않고, 넘칠 때만 알린다', () => {
+  expect(pageVolumeIssues({ fills: [.8, .4], bodyPages: 2 }, 5)).toEqual([]);
   expect(pageVolumeIssues({ fills: [.8, .4], bodyPages: 2 }, 2)).toEqual([]);
+  expect(pageVolumeIssues({ fills: [.9, .9, .3], bodyPages: 3 }, 2)[0].message).toContain('1쪽 많은 3쪽');
 });
