@@ -1,4 +1,4 @@
-import { PLAN_COMMON_REVIEW, PLAN_REFERENCE_VERSION, resolvePlanReference } from '../_shared/schoolPlanReferences.ts';
+import { PLAN_REFERENCE_VERSION, resolvePlanReference } from '../_shared/schoolPlanReferences.ts';
 import type { PlanContext } from '../_shared/schoolPlan.ts';
 
 // Human-readable adaptations of reviewed documents, not quotations or approved templates.
@@ -57,8 +57,6 @@ export function getPlanReferencePack(context: PlanContext) {
   return {
     version: PLAN_REFERENCE_VERSION, type: profile.id, label: profile.label,
     provenance: '실제 작성 문서의 구조·내용을 비식별 요약·재서술한 사례. 원문 인용 또는 승인된 표준 서식이 아님.',
-    outline: profile.outline, writing: profile.writing,
-    review: [...PLAN_COMMON_REVIEW, ...profile.review],
     examples: profile.cases.map(c => ({ ...c, ...examples[c.id] })),
   };
 }

@@ -1,6 +1,7 @@
 import { supabase } from '../../utils/supabaseClient';
 import { isVerifiedPreviewAdmin } from '../../../supabase/functions/_shared/previewAccess';
-import { validatePlanAnalysis, validatePlanDraft, type PlanRequest, type PlanAnalysis, type PlanDraft } from '../../../supabase/functions/_shared/schoolPlan';
+import { validatePlanDocument } from '../../../supabase/functions/_shared/planDocumentV2';
+import { validatePlanAnalysis, type PlanRequest, type PlanAnalysis, type PlanDraft } from '../../../supabase/functions/_shared/schoolPlan';
 
 export async function runPlanAi(request: PlanRequest, signal?: AbortSignal, consent = false): Promise<{ analysis?: PlanAnalysis; draft?: PlanDraft }> {
   if (!consent) throw new Error('AI 전송 안내를 확인하고 동의한 뒤 진행해 주세요.');
@@ -12,7 +13,7 @@ export async function runPlanAi(request: PlanRequest, signal?: AbortSignal, cons
   const { data, error } = await supabase.functions.invoke('school-plan', {
     // Called only after the wizard's explicit, source-specific transmission consent.
     body: { ...request, consent: true },
-    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(110_000)]) : AbortSignal.timeout(110_000),
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(150_000)]) : AbortSignal.timeout(150_000),
   });
   signal?.throwIfAborted();
   if (error) {
@@ -23,5 +24,5 @@ export async function runPlanAi(request: PlanRequest, signal?: AbortSignal, cons
     throw new Error(message);
   }
   if (request.action === 'analyze') return { analysis: validatePlanAnalysis(data?.analysis, request.sources) };
-  return { draft: validatePlanDraft(data?.draft, request) };
+  return { draft: validatePlanDocument(data?.draft, request) };
 }

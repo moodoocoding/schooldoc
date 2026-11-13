@@ -1,31 +1,24 @@
 import type { PlanPages } from '../../supabase/functions/_shared/schoolPlan';
-import type { PlanReferenceType } from '../../supabase/functions/_shared/schoolPlanReferences';
-import { PLAN_AUTHORING_PROFILES } from '../../supabase/functions/school-plan/authoringProfiles';
-import { PLAN_PAGE_BUDGETS } from '../../supabase/functions/school-plan/composition';
+import type { PlanDocumentV2 } from '../../supabase/functions/_shared/planDocumentV2';
+import { PLAN_PAGE_TARGETS } from '../../supabase/functions/school-plan/prompt';
 
 // Synthetic Korean text measures layout/transport, not live model quality.
-const measuredText = (length: number, label: string) => (label + ' 참여 학생은 자료에서 중요한 내용을 찾아 기록하고 짝과 비교한다. 담당 교사는 어려운 부분을 확인하여 안내 자료를 보완한다.'.repeat(10)).slice(0, length);
-export function volumeFixture(pages: PlanPages, type: PlanReferenceType = 'general') {
-  const b = PLAN_PAGE_BUDGETS[pages];
-  const followUp = PLAN_AUTHORING_PROFILES[type].sections.some(s => s.role === 'followUp') ? b.followUpCount * b.followUp : 0;
-  const capacity = b.purpose + b.overview * b.overviewLength + b.activities * (b.steps * b.stepLength + b.result + 30) + followUp + b.effects * b.effectLength;
-  const ratio = Math.min(1, b.targetBodyChars / capacity);
-  const content = (max: number, label: string) => measuredText(Math.max(label.length, Math.floor(max * ratio)), label);
-  const roles = {
-    purpose: { paragraphs: [content(b.purpose, '활동 목적:')], requirementIds: [] },
-    overview: { paragraphs: Array.from({ length: b.overview }, (_, i) => content(b.overviewLength, `운영 조건 ${i + 1}:`)), requirementIds: [] },
-    activities: Array.from({ length: b.activities }, (_, i) => ({ name: `실행 단계 ${i + 1}`, steps: Array.from({ length: b.steps }, (_, j) => content(b.stepLength, `과제 ${i + 1}의 ${j + 1}단계:`)), result: content(b.result, `확인 ${i + 1}:`), methodKind: 'proposal', requirementIds: [] })),
-    followUp: { paragraphs: Array.from({ length: b.followUpCount }, (_, i) => content(b.followUp, `후속 확인 ${i + 1}:`)), requirementIds: [] },
-    effects: { paragraphs: Array.from({ length: b.effects }, (_, i) => content(b.effectLength, `기대 효과 ${i + 1}:`)), requirementIds: [] },
-  };
-  const body: Record<string, unknown> = Object.fromEntries(PLAN_AUTHORING_PROFILES[type].sections.map(s => [s.key, structuredClone(roles[s.role])]));
-  if (type === 'contest') body.selectionRules = {
-    criteria: [{ name: '적합성', check: '학교생활의 목적에 맞는 내용을 담았는지 확인', maxScore: 60 }, { name: '표현력', check: '제안의 의미를 이해하기 쉽게 표현했는지 확인', maxScore: 40 }],
-    evaluationMethod: '항목별 평가를 합산하여 높은 점수순으로 선정한다.', exclusions: ['다른 사람의 작품을 그대로 제출한 경우'],
-    tieBreakPriority: ['적합성', '표현력'], finalTie: '심사자가 작품의 근거를 함께 검토하고 선정 이유를 기록한다.', methodKind: 'proposal', requirementIds: [],
-  };
-  return { title: '가상 학교 활동 운영계획', body,
-    schedule: [{ when: '운영 전(안)', activity: '참여 안내와 자료 준비', owner: '담당 교사(안)', requirementIds: [] }, { when: '운영 중(안)', activity: '활동 실행과 결과 확인', owner: '담당 교사(안)', requirementIds: [] }],
-    budget: [], unknowns: [],
+const measuredText = (length: number, label: string) => (label + ' 참여 학생은 자료에서 중요한 내용을 찾아 기록하고 짝과 비교함. 담당 교사는 어려운 부분을 확인하여 안내 자료를 보완함.'.repeat(10)).slice(0, length);
+/** 쪽 수별 목표 분량만큼 채운 가상 v2 계획서(표 제외 본문 기준). */
+export function volumeFixture(pages: PlanPages): PlanDocumentV2 {
+  const target = PLAN_PAGE_TARGETS[pages].bodyChars;
+  const plans = Math.min(5, pages + 1), details = pages >= 3 ? 4 : pages === 1 ? 2 : 3, few = pages === 1;
+  // 목적 8%·개요 12%·방침 12%·기대 효과 8%, 나머지 60%를 세부 추진 계획에 배정한다.
+  const detail = Math.floor((target * 0.6) / plans / details) - 6;
+  return {
+    schemaVersion: '2.0', title: '가상 학교 활동 운영계획',
+    purpose: (few ? [1] : [1, 2]).map(i => measuredText(Math.floor(target * 0.04), `목적 ${i}:`)),
+    overview: { period: '2026. 3. 2.∼7. 17.', target: '전교 학생', venue: '각 학급 교실', summary: measuredText(Math.min(280, Math.floor(target * 0.12) - 30), '내용:') },
+    policies: (few ? [1, 2] : [1, 2, 3]).map(i => measuredText(Math.floor(target * 0.04), `방침 ${i}:`)),
+    detailedPlans: Array.from({ length: plans }, (_, i) => ({ subTitle: `실행 과제 ${i + 1}`, details: Array.from({ length: details }, (_, j) => measuredText(detail, `방법 ${j + 1}:`)) })),
+    schedule: [{ step: '준비', task: '참여 안내와 자료 준비', date: '3월 첫째 주', owner: '담당 교사' }, { step: '운영', task: '활동 실행과 결과 확인', date: '3∼7월', owner: '담당 교사' }],
+    budget: [],
+    expectedEffects: [1, 2].map(i => measuredText(Math.floor(target * 0.04), `효과 ${i}:`)),
+    meta: { requirementIds: [], unknowns: [], budgetStatus: 'confirmed_none' },
   };
 }

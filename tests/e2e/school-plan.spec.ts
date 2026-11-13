@@ -8,7 +8,7 @@ import { authorizePlanRequest, createPlanHandler } from '../../supabase/function
 import { requestPlanAi } from '../../supabase/functions/school-plan/openai';
 import { PLAN_REFERENCE_VERSION } from '../../supabase/functions/_shared/schoolPlanReferences';
 
-async function setup(page: Page, options: { questions?: number; failure?: boolean; anonymous?: boolean; realClient?: boolean; teacher?: boolean; unconfirmed?: boolean } = {}) {
+async function setup(page: Page, options: { questions?: number; failure?: boolean; anonymous?: boolean; realClient?: boolean; teacher?: boolean; unconfirmed?: boolean; draft?: typeof draft } = {}) {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   page.on('close', () => expect(errors).toEqual([]));
   // Local transport and authentication substitutes; no provider or remote data.
@@ -30,8 +30,8 @@ async function setup(page: Page, options: { questions?: number; failure?: boolea
     const request = route.request().postDataJSON();
     if (options.failure) { await route.fulfill({ status: 503, json: { error: 'offline' } }); return; }
     if (request.action === 'analyze') await route.fulfill({ json: { analysis: { ...analysis, questions: Array.from({ length: options.questions ?? 0 }, (_, i) => ({ id: `q${i}`, label: `추가 확인 ${i + 1}`, hint: '시험 조건' })) } } });
-    else if (request.action === 'revise') await route.fulfill({ json: { draft: { ...draft, schedule: draft.schedule.map((s, i) => i ? s : { ...s, when: '10월 셋째 주(안)' }) } } });
-    else await route.fulfill({ json: { draft } });
+    else if (request.action === 'revise') await route.fulfill({ json: { draft: { ...draft, schedule: draft.schedule.map((s, i) => i ? s : { ...s, date: '10월 셋째 주(안)' }) } } });
+    else await route.fulfill({ json: { draft: options.draft ?? draft } });
   });
   await page.goto('/tools/school-documents');
 }
@@ -71,15 +71,15 @@ test('유형 자동 추천과 비식별 사례를 실제 요청 코어에 연결
     authorize: async () => 'fixture-admin', consumeQuota: async () => true,
     run: (request, signal) => requestPlanAi(request, 'fixture-key', 'fixture-model', async (_url, init) => {
       const payload = JSON.parse(String(init?.body));
-      const data = JSON.parse(payload.input[0].content[0].text);
+      const data = JSON.parse(payload.input.at(-1).content[0].text);
       if (request.action === 'analyze') expect(data.referencePack).toBeUndefined();
       else {
-        expect(data.referencePack.type).toBe('student-program');
+        expect(payload.input[0].content[0].text).toContain('# 유형: 학생 교육활동·행사');
         expect(data.referencePack.examples.map((e: { id: string }) => e.id)).toEqual(['program-01', 'program-02']);
         expect(data.referenceVersion).toBe(PLAN_REFERENCE_VERSION);
         referenceChecked = true;
       }
-      return new Response(JSON.stringify({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(request.action === 'analyze' ? analysis : { ...authoredDraft, body: { purpose: authoredDraft.body.purpose, participation: authoredDraft.body.overview, learningActivities: authoredDraft.body.activities, feedback: { ...authoredDraft.body.effects, paragraphs: ['담당 교사가 학생의 기록과 작품 나눔 자료를 취합하여 11월 9일까지 결과를 제출하고, 공개 자료에서는 개인정보를 제외한다(안).', '학생이 친구의 기록을 읽으며 새로 알게 된 점을 돌아보고, 담임교사는 학생의 관심을 다음 읽기 활동 안내에 반영한다(안).'] }, effects: authoredDraft.body.effects } }) }] }] }));
+      return new Response(JSON.stringify({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(request.action === 'analyze' ? analysis : authoredDraft) }] }] }));
     }, signal),
   });
   await page.route('**/__test_school_plan', async route => {
@@ -148,7 +148,7 @@ test('공문 → 근거 → 조건 → 초안 수정 → HWPX와 새로고침', 
   const files = unzipSync(await readFile('test-results/school-plan/browser-2page.hwpx'));
   expect(strFromU8(files.mimetype)).toBe('application/hwp+zip');
   const xml = strFromU8(files['Contents/section0.xml']);
-  expect(xml).toContain('학생이 직접 고른 책'); expect(xml).toContain('11월 9일까지');
+  expect(xml).toContain('학생이 직접 고른 책'); expect(xml).toContain('11. 9.까지');
   expect((xml.match(/<hp:tbl\b/g) ?? []).length).toBe(2);
   await expect(page.getByRole('img', { name: '운영계획서 1쪽 지면' })).toBeVisible();
   await decisions(page);
@@ -172,7 +172,7 @@ test('공문 → 근거 → 조건 → 초안 수정 → HWPX와 새로고침', 
   await page.screenshot({ path: 'test-results/school-plan/save-mobile.png', fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByText('문서 본문 읽기', { exact: true }).click();
-  await expect(page.getByText('시기: 10월 마지막 주', { exact: false })).toBeVisible();
+  await expect(page.getByText('시기: 2026. 10. 26.', { exact: false })).toBeVisible();
   const accessibility = await new AxeBuilder({ page }).include('main').withTags(['wcag2a', 'wcag2aa']).analyze();
   expect(accessibility.violations).toEqual([]);
   await page.getByText('문서 본문 읽기', { exact: true }).click();
@@ -220,7 +220,7 @@ test('모바일·키보드·접근성·200% 화면 밀도를 확인한다', asyn
   await page.getByRole('button', { name: 'AI 수정안 보기' }).click();
   await expect(page.getByRole('heading', { name: '수정안 비교', exact: true })).toBeVisible(); await decisions(page);
   await page.getByRole('button', { name: '기존 초안 유지' }).click();
-  await expect(review(page)).toContainText('10월 마지막 주');
+  await expect(review(page)).toContainText('2026. 10. 26.');
   await page.setViewportSize({ width: 683, height: 450 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: 'test-results/school-plan/review-zoom-equivalent.png', fullPage: true });
@@ -237,7 +237,7 @@ test('HWPX 원고는 문단 위치와 전체 내용으로 읽고 스캔 PDF를 �
     const bytes = await exportPlanHwpx(d, { title: d.title, pages: 2 });
     return { source: extractHwpxSource(bytes, '자체 생성.hwpx', 'testSource'), bytes: [...bytes] };
   });
-  expect(actual.source.parts.map(p => p.text).join('\n')).toContain('11월 9일까지');
+  expect(actual.source.parts.map(p => p.text).join('\n')).toContain('11. 9.까지');
   expect(actual.source.parts.every(p => p.label.includes('문단'))).toBe(true);
   const { writeFile } = await import('node:fs/promises'); await writeFile('test-results/school-plan/browser-2page.hwpx', Buffer.from(actual.bytes));
   await page.getByRole('button', { name: '다음', exact: true }).click();
@@ -279,7 +279,7 @@ test('제목을 지우면 이전 파일 저장을 막고, 다시 쓰면 지면�
   await expect(page.getByRole('img', { name: /쪽 지면/ })).toHaveCount(0);
   await page.getByLabel('문서 제목', { exact: true }).fill('수정한 제목');
   await expect(page.getByRole('button', { name: 'HWPX 저장', exact: true })).toBeEnabled();
-  await expect(review(page)).toContainText(draft.sections[0].paragraphs[0]);
+  await expect(review(page)).toContainText(draft.purpose[0]);
   await page.getByRole('button', { name: '이전', exact: true }).click();
   await expect(page.getByRole('heading', { name: '운영 정보', exact: true })).toBeVisible();
 });
@@ -347,7 +347,7 @@ test('실제 클라이언트 → 서버 코어 → Responses 요청 → 초안·
       const payload = JSON.parse(String(init?.body)); providerCalls.push(payload);
       expect(payload.store).toBe(false); expect(payload.text.format.strict).toBe(true);
       expect(payload.input[0].content.every((c: { type: string }) => c.type === 'input_text')).toBe(true);
-      const result = request.action === 'analyze' ? analysis : request.action === 'draft' ? { ...authoredDraft, body: { purpose: authoredDraft.body.purpose, participation: authoredDraft.body.overview, learningActivities: authoredDraft.body.activities, feedback: { ...authoredDraft.body.effects, paragraphs: ['담당 교사가 학생의 기록과 작품 나눔 자료를 취합하여 11월 9일까지 결과를 제출하고, 공개 자료에서는 개인정보를 제외한다(안).', '학생이 친구의 기록을 읽으며 새로 알게 된 점을 돌아보고, 담임교사는 학생의 관심을 다음 읽기 활동 안내에 반영한다(안).'] }, effects: authoredDraft.body.effects } } : { schedule: draft.schedule.map((s, i) => i ? s : { ...s, when: '10월 셋째 주(안)' }) };
+      const result = request.action === 'analyze' ? analysis : request.action === 'draft' ? authoredDraft : { schedule: draft.schedule.map((s, i) => i ? s : { ...s, date: '10월 셋째 주(안)' }), meta: draft.meta };
       return new Response(JSON.stringify({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(result) }] }] }));
     }, signal),
   });
@@ -391,4 +391,26 @@ test('실제 클라이언트의 서버 한도 오류는 입력을 보존하고 �
   await expect(page.getByRole('alert')).toContainText('한도');
   await expect(page.getByLabel('공문과 붙임 본문')).toHaveValue(sourceText);
   expect(modelCalled).toBe(false); await decisions(page);
+});
+
+test('검토 화면은 저장을 막는 문제·경고·확정 필요·제안을 나눠 보이고, 막는 문제가 있으면 HWPX 저장을 끈다', async ({ page }) => {
+  // 가상 초안: 금액이 단가×수량과 다르고(저장 막음), 근거 없는 시상(경고), (안) 제안이 섞여 있다.
+  const problem = { ...draft,
+    detailedPlans: [...draft.detailedPlans, { subTitle: '마무리', details: ['우수 기록 학생 시상', '짝 활동: 친구와 기록 바꿔 읽기(안)'] }],
+    budget: [{ ...draft.budget[0], total: 60000 }, draft.budget[1]] };
+  await setup(page, { draft: problem }); await source(page); await generate(page);
+  const checks = page.getByRole('region', { name: '검토할 점' });
+  await expect(checks.getByRole('heading', { name: '저장 전 고칠 점 1건' })).toBeVisible();
+  await expect(checks).toContainText('단가×수량(50,000원)과 다릅니다');
+  await expect(checks.getByRole('heading', { name: /검증 경고/ })).toBeVisible();
+  await expect(checks).toContainText("'시상'");
+  await expect(checks.getByRole('heading', { name: '확정 필요 1건' })).toBeVisible();
+  await expect(checks.getByRole('heading', { name: '제안 사항(승인 전) 1건' })).toBeVisible();
+  await expect(page.getByRole('img', { name: /운영계획서 .*쪽 지면/ }).first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('button', { name: 'HWPX 저장', exact: true })).toBeDisabled();
+  await page.screenshot({ path: 'test-results/school-plan/review-issues-desktop.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: 'test-results/school-plan/review-issues-mobile.png', fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect((await new AxeBuilder({ page }).include('main').withTags(['wcag2a', 'wcag2aa']).analyze()).violations).toEqual([]);
 });

@@ -1,4 +1,5 @@
 import { PLAN_REFERENCE_VERSION, validatePlanReferenceChoice, type PlanReferenceChoice } from './schoolPlanReferences.ts';
+import type { PlanDocumentV2 } from './planDocumentV2.ts';
 // Browser and Edge Function share the same bounded, source-grounded contract.
 export interface PlanSourcePart { id: string; label: string; text: string }
 export interface PlanSource { id: string; name: string; parts: PlanSourcePart[] }
@@ -12,8 +13,11 @@ export interface PlanAnalysis {
   budgetLimit: { amount: number; requirementId: string } | null;
 }
 export interface PlanConditions { topic: string; timing: string; budget: number | null }
+/** 현재 초안 형식. 정의는 planDocumentV2.ts. */
+export type PlanDraft = PlanDocumentV2;
+/** 2026-11-14 이전(v1) 초안: AI가 정한 목차(sections). 읽기·보존만 한다. */
 export interface PlanSection { id: string; heading: string; paragraphs: string[]; requirementIds: string[] }
-export interface PlanDraft {
+export interface PlanDraftV1 {
   title: string; sections: PlanSection[];
   schedule: { when: string; activity: string; owner: string; requirementIds: string[] }[];
   budget: { item: string; unitPrice: number; quantity: number; requirementIds: string[] }[];
@@ -31,7 +35,7 @@ export type PlanPages = typeof PLAN_PAGE_OPTIONS[number];
 export const isPlanPages = (value: unknown): value is PlanPages => typeof value === 'number' && PLAN_PAGE_OPTIONS.includes(value as PlanPages);
 export type PlanRequest = { action: 'analyze'; sources: PlanSource[] }
   | ({ action: 'draft' } & PlanContext)
-  | ({ action: 'revise'; draft: PlanDraft; revision: { area: string; instruction: string } } & PlanContext);
+  | ({ action: 'revise'; draft: PlanDraft; revision: { area: 'body' | 'schedule' | 'budget'; instruction: string } } & PlanContext);
 
 export const PLAN_LIMITS = { files: 3, sourceChars: 40000, parts: 150, partChars: 8000, fileBytes: 10 * 1024 * 1024 };
 export const PLAN_PROFILE = { id: 'operating-plan', version: 1, name: '운영계획서' } as const;
@@ -103,50 +107,22 @@ export function validatePlanContext(value: unknown): PlanContext {
     ...(c.referenceVersion === undefined ? {} : { referenceVersion: PLAN_REFERENCE_VERSION }),
     ...(c.pages === undefined ? {} : { pages: c.pages as PlanPages }) };
 }
-/**
- * AI가 붙인 근거 ID 중 공문 분석에 없는 것(참고 사례 ID, 지어낸 ID)은 버린다.
- * 확인하지 않은 근거를 남기지 않으면서도 초안 전체를 실패시키지 않는다. 필수 요구사항 연결 검사는 validatePlanDraft가 그대로 한다.
- */
-export function dropUnknownRequirementIds<T>(draft: T, context: Pick<PlanContext, 'analysis'>): T {
-  if (!draft || typeof draft !== 'object') return draft;
-  const known = new Set(context.analysis?.requirements.map(r => r.id) ?? []);
-  const clean = (rows: unknown) => Array.isArray(rows) ? rows.map(row => row && typeof row === 'object' && Array.isArray((row as { requirementIds?: unknown }).requirementIds)
-    ? { ...row, requirementIds: (row as { requirementIds: unknown[] }).requirementIds.filter(id => typeof id === 'string' && known.has(id)) } : row) : rows;
-  const d = draft as Record<string, unknown>;
-  return { ...d, sections: clean(d.sections), schedule: clean(d.schedule), budget: clean(d.budget) } as T;
-}
-export const planBudgetTotal = (draft: Pick<PlanDraft, 'budget'>) => draft.budget.reduce((sum, b) => sum + b.unitPrice * b.quantity, 0);
-export function validatePlanDraft(value: unknown, context: PlanContext): PlanDraft {
-  const d = obj(value), known = new Set(context.analysis?.requirements.map(r => r.id) ?? []);
-  const refs = (v: unknown) => list(v, 24).map(v => { const result = id(v); if (!known.has(result)) fail('초안에 확인하지 않은 공문 근거가 있습니다.'); return result; });
-  const sections = list(d.sections, 6).map(v => { const s = obj(v); const paragraphs = list(s.paragraphs, 8).map(v => text(v, 600)); if (!paragraphs.length) fail(); return { id: id(s.id), heading: text(s.heading, 40), paragraphs, requirementIds: refs(s.requirementIds) }; });
-  if (sections.length < 2) fail('초안 본문이 부족합니다. 다시 작성해 주세요.');
-  unique(sections.map(s => s.id));
-  const schedule = list(d.schedule, 8).map(v => { const s = obj(v); return { when: text(s.when, 80), activity: text(s.activity, 180), owner: text(s.owner, 60), requirementIds: refs(s.requirementIds) }; });
-  if (!schedule.length) fail('세부추진 일정이 없습니다. 다시 작성해 주세요.');
-  const budget = list(d.budget, 6).map(v => { const b = obj(v); if (!Number.isSafeInteger(b.quantity) || Number(b.quantity) < 1 || Number(b.quantity) > 10000) fail(); return { item: text(b.item, 80), unitPrice: money(b.unitPrice), quantity: Number(b.quantity), requirementIds: refs(b.requirementIds) }; });
-  const result = { title: text(d.title, 100), sections, schedule, budget, unknowns: list(d.unknowns, 9).map(v => text(v, 200)) };
-  const total = planBudgetTotal(result);
-  if (!Number.isSafeInteger(total) || total > 100_000_000) fail('예산 합계가 허용 범위를 넘습니다.');
-  if ((context.conditions.budget === null || context.conditions.budget === 0) && budget.length) fail('예산이 미정이거나 없는 계획에는 임의의 금액표를 만들 수 없습니다.');
-  if (context.conditions.budget !== null && total > context.conditions.budget) fail('초안의 예산안이 학교 예산을 넘습니다. 다시 작성해 주세요.');
-  if (context.analysis?.budgetLimit && total > context.analysis.budgetLimit.amount) fail('초안의 예산안이 공문 상한을 넘습니다.');
-  const covered = new Set([...sections, ...schedule, ...budget].flatMap(s => s.requirementIds));
-  if (context.analysis?.requirements.some(r => r.kind === 'required' && !covered.has(r.id))) fail('공문의 필수 요구사항을 초안에 모두 연결하지 못했습니다. 다시 작성해 주세요.');
-  return result;
+export const legacyPlanBudgetTotal = (draft: Pick<PlanDraftV1, 'budget'>) => draft.budget.reduce((sum, b) => sum + b.unitPrice * b.quantity, 0);
+/** 이전(v1) 초안을 보존용으로 읽는다. 형식만 확인하고 다시 검증·변환하지 않는다. */
+export function validateLegacyPlanDraft(value: unknown): PlanDraftV1 {
+  const d = obj(value);
+  const sections = list(d.sections, 8).map(v => { const s = obj(v); return { id: text(s.id, 80), heading: text(s.heading, 40), paragraphs: list(s.paragraphs, 10).map(v => text(v, 2500)), requirementIds: list(s.requirementIds, 24).map(v => text(v, 80)) }; });
+  const schedule = list(d.schedule, 8).map(v => { const s = obj(v); return { when: text(s.when, 80), activity: text(s.activity, 180), owner: text(s.owner, 60), requirementIds: list(s.requirementIds, 24).map(v => text(v, 80)) }; });
+  const budget = list(d.budget, 6).map(v => { const b = obj(v); return { item: text(b.item, 80), unitPrice: money(b.unitPrice), quantity: Number.isSafeInteger(b.quantity) ? Number(b.quantity) : fail(), requirementIds: list(b.requirementIds, 24).map(v => text(v, 80)) }; });
+  return { title: text(d.title, 100), sections, schedule, budget, unknowns: list(d.unknowns, 9).map(v => text(v, 200)) };
 }
 export const planContextKey = (context: PlanContext) => JSON.stringify(context);
 
-const string = { type: 'string' }, strings = { type: 'array', items: string };
+const string = { type: 'string' };
 const object = (properties: Record<string, unknown>) => ({ type: 'object', additionalProperties: false, properties, required: Object.keys(properties) });
 const array = (properties: Record<string, unknown>) => ({ type: 'array', items: object(properties) });
 export const planAnalysisSchema = object({ title: string, summary: string,
   requirements: array({ id: string, text: string, kind: { type: 'string', enum: ['required', 'recommended', 'example'] }, sourceId: string, partId: string, quote: string }),
   questions: array({ id: string, label: string, hint: string }),
   budgetLimit: { anyOf: [object({ amount: { type: 'integer' }, requirementId: string }), { type: 'null' }] },
-});
-export const planDraftSchema = object({ title: string,
-  sections: array({ id: string, heading: string, paragraphs: strings, requirementIds: strings }),
-  schedule: array({ when: string, activity: string, owner: string, requirementIds: strings }),
-  budget: array({ item: string, unitPrice: { type: 'integer' }, quantity: { type: 'integer' }, requirementIds: strings }), unknowns: strings,
 });

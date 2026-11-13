@@ -1,11 +1,12 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import templateUrl from '../officialDocument/assets/blank.hwpx?url';
-import { planBudgetTotal, type PlanDraft, type PlanPages } from '../../../supabase/functions/_shared/schoolPlan';
+import { legacyPlanBudgetTotal, type PlanDraft, type PlanDraftV1, type PlanPages } from '../../../supabase/functions/_shared/schoolPlan';
 
 const HP = 'http://www.hancom.co.kr/hwpml/2011/paragraph';
 const HH = 'http://www.hancom.co.kr/hwpml/2011/head';
 interface Block { text: string; kind: 'title' | 'heading' | 'body' }
-export function planOutputBlocks(draft: PlanDraft, title: string): Block[] {
+/** 이전(v1) 초안 전용 비교 출력기. */
+export function planOutputBlocks(draft: PlanDraftV1, title: string): Block[] {
   const blocks: Block[] = [{ text: `[초안] ${title}`, kind: 'title' }, { text: 'AI 작성 초안 · 일정·담당·단가와 학교 확인 사항 검토 후 사용', kind: 'body' }];
   draft.sections.forEach((s, i) => {
     blocks.push({ text: `${i + 1}. ${s.heading}`, kind: 'heading' });
@@ -15,7 +16,7 @@ export function planOutputBlocks(draft: PlanDraft, title: string): Block[] {
   draft.schedule.forEach((s, i) => blocks.push({ text: `${i + 1}) ${s.when} · ${s.activity}\n   담당: ${s.owner}`, kind: 'body' }));
   blocks.push({ text: `${draft.sections.length + 2}. 예산안`, kind: 'heading' });
   draft.budget.forEach((b, i) => blocks.push({ text: `${i + 1}) ${b.item}: ${b.unitPrice.toLocaleString('ko-KR')}원 × ${b.quantity} = ${(b.unitPrice * b.quantity).toLocaleString('ko-KR')}원`, kind: 'body' }));
-  blocks.push({ text: draft.budget.length ? `합계 ${planBudgetTotal(draft).toLocaleString('ko-KR')}원 · 단가와 배분은 제안이며 집행 기준·실제 견적 확인 필요` : '예산 없음 또는 미정: 금액 확정 후 집행 기준에 따라 확인', kind: 'body' });
+  blocks.push({ text: draft.budget.length ? `합계 ${legacyPlanBudgetTotal(draft).toLocaleString('ko-KR')}원 · 단가와 배분은 제안이며 집행 기준·실제 견적 확인 필요` : '예산 없음 또는 미정: 금액 확정 후 집행 기준에 따라 확인', kind: 'body' });
   if (draft.unknowns.length) { blocks.push({ text: '학교 확인 사항', kind: 'heading' }); draft.unknowns.forEach(u => blocks.push({ text: `※ ${u}`, kind: 'body' })); }
   return blocks;
 }
@@ -52,7 +53,7 @@ function parseXml(bytes: Uint8Array) {
 }
 const first = (root: Document | Element, name: string) => root.getElementsByTagNameNS('*', name)[0];
 // Preserved as a comparison baseline; production never silently falls back to this writer.
-export async function exportLegacyPlanHwpx(draft: PlanDraft, options: { title: string; pages: 1 | 2; template?: Uint8Array }): Promise<Uint8Array<ArrayBuffer>> {
+export async function exportLegacyPlanHwpx(draft: PlanDraftV1, options: { title: string; pages: 1 | 2; template?: Uint8Array }): Promise<Uint8Array<ArrayBuffer>> {
   const title = options.title.trim();
   if (!title || title.length > 100 || [...title].some(c => c.charCodeAt(0) < 32)) throw new Error('문서 제목을 100자 이내로 확인해 주세요.');
   const blocks = planOutputBlocks(draft, title), pageBreak = paginatePlanBlocks(blocks, options.pages);
