@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, FileText, LoaderCircle } from 'lucide-react';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import { useNavigate } from 'react-router-dom';
 import { isVerifiedPreviewAdmin } from '../../../supabase/functions/_shared/previewAccess';
-import { planContextKey, validatePlanAnalysis, validatePlanContext, validatePlanDraft, validatePlanSources, type PlanContext, type PlanRequest, type PlanSource } from '../../../supabase/functions/_shared/schoolPlan';
+import { isPlanPages, PLAN_PAGE_OPTIONS, planContextKey, validatePlanAnalysis, validatePlanContext, validatePlanDraft, validatePlanSources, type PlanContext, type PlanRequest, type PlanSource } from '../../../supabase/functions/_shared/schoolPlan';
 import { importPlanSource, PLAN_SOURCE_ACCEPT, splitPlanSourceText } from './planSourceImport';
 import { loadPlanState, savePlanState, type PlanState } from './planStore';
 import { runPlanAi } from './planApi';
@@ -57,6 +57,7 @@ function PlanWizard({ ownerId }: {
     const heading = useRef<HTMLHeadingElement>(null);
     const questionHeading = useRef<HTMLHeadingElement>(null);
     const context: PlanContext = { sources: state.sources, analysis: state.analysis, answers: state.answers, conditions: state.conditions, referenceType: state.referenceType, referenceVersion: PLAN_REFERENCE_VERSION, pages: state.pages };
+    const selectedReference = PLAN_REFERENCE_PROFILES.find(profile => profile.id === state.referenceType);
     const current = !!state.draft && state.draftContext === planContextKey(context);
     const patch = (value: Partial<PlanState>) => { setState(s => ({ ...s, ...value })); };
     const go = (step: number) => { setError(''); setEdit(null); setCandidate(null); patch({ step }); };
@@ -169,7 +170,27 @@ function PlanWizard({ ownerId }: {
       <h2 ref={heading} tabIndex={-1} id="plan-step-heading" className="mb-2 text-xl font-bold outline-none">{title}</h2>
       {error && <p role="alert" className="my-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-900">{error}</p>}
       {busy ? <div role="status" className="py-10 text-center"><LoaderCircle aria-hidden="true" className="mx-auto mb-4 h-8 w-8 animate-spin text-[#0F6CBD]"/><p className="font-bold">{busy}</p><p className="mt-2 text-sm text-slate-600">단계를 나가도 기존 입력과 초안은 유지됩니다.</p><button type="button" className={`${secondary} mt-6`} onClick={() => { controller.current?.abort(); controller.current = null; setBusy(''); }}>작업 취소</button></div> : <>
-      {!edit && state.step === 0 && <><p className="mb-6 leading-7 text-slate-600">운영계획서의 분량을 먼저 정합니다. AI가 이 분량에 맞춰 초안을 씁니다.</p><div className="space-y-6"><Field label="출력 분량"><select className={input} value={state.pages} onChange={e => patch({ pages: Number(e.target.value) as 1 | 2 })}><option value={1}>1쪽</option><option value={2}>2쪽 (본문 1쪽, 일정·예산 1쪽)</option></select></Field><Field label="운영계획 유형"><select className={input} value={state.referenceType} onChange={e => patch({ referenceType: validatePlanReferenceChoice(e.target.value) })}><option value="auto">공문·주제에 맞게 자동</option>{PLAN_REFERENCE_PROFILES.map(profile => <option key={profile.id} value={profile.id}>{profile.label}</option>)}</select></Field></div>{footer('다음', () => go(1))}</>}
+      {!edit && state.step === 0 && <><p className="mb-6 leading-7 text-slate-600">운영계획서의 희망 분량과 유형을 정합니다. AI 초안은 선택한 쪽 수를 목표로 작성합니다.</p><div className="space-y-6">
+        <Field label="출력 분량">
+          <select className={input} value={state.pages} onChange={e => { const pages = Number(e.target.value); if (isPlanPages(pages)) patch({ pages }); }}>
+            {PLAN_PAGE_OPTIONS.map(pages => <option key={pages} value={pages}>{pages}쪽</option>)}
+          </select>
+          <span className="mt-2 block font-normal leading-6 text-slate-600">{state.pages === 1 ? '본문·일정·예산을 한 쪽에 담는 요약형입니다.' : '본문 ' + (state.pages - 1) + '쪽과 일정·예산 1쪽을 목표로 구성합니다. 실제 쪽 수는 저장 전 지면 미리보기에서 확인해 주세요.'}</span>
+        </Field>
+        <Field label="운영계획 유형">
+          <select className={input} value={state.referenceType} onChange={e => patch({ referenceType: validatePlanReferenceChoice(e.target.value) })}>
+            <option value="auto">공문·주제에 맞게 자동</option>{PLAN_REFERENCE_PROFILES.map(profile => <option key={profile.id} value={profile.id}>{profile.label}</option>)}
+          </select>
+          <span className="mt-2 block font-normal leading-6 text-slate-600">{state.referenceType === 'auto' ? '사업명과 공문 제목에서 유형을 추천하고, 구분이 어려우면 일반 운영 기준을 적용합니다.' : '선택한 유형의 개요·작성 지침과 검토 기준을 초안에 반영합니다.'}</span>
+          <details className="mt-2 rounded-lg bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">
+            <summary className="min-h-11 cursor-pointer py-2 font-bold">{state.referenceType === 'auto' ? '자동 추천 기준 보기' : '선택한 유형의 작성 기준 보기'}</summary>
+            {selectedReference ? <>
+              <p className="mt-2"><strong>작성 지침:</strong> {selectedReference.writing}</p>
+              <p className="mt-2"><strong>권장 구성:</strong> {selectedReference.outline.join(' → ')}</p>
+            </> : <p className="mt-2">사업명과 공문 제목을 기준으로 8개 유형을 추천합니다. 분류하기 어려우면 일반 운영 기준을 사용합니다.</p>}
+          </details>
+        </Field>
+      </div>{footer('다음', () => go(1))}</>}
       {!edit && state.step === 1 && <><p className="mb-6 leading-7 text-slate-600">관련 공문과 붙임을 함께 추가해 주세요. 이름·연락처 등 불필요한 개인정보는 먼저 지워 주세요.</p><div className="space-y-6"><Field label="공문 입력 방식"><select className={input} value={state.sourceMode} onChange={e => { patch({ sourceMode: e.target.value as PlanState['sourceMode'], consent: false }); setFiles([]); }}><option value="files">파일 추가</option><option value="paste">본문 붙여 넣기</option><option value="none">자료 없이 자체 계획 작성</option></select></Field>{state.sourceMode === 'files' && <Field label="공문·붙임 파일"><input className={input} type="file" multiple accept={PLAN_SOURCE_ACCEPT} onChange={e => { setFiles([...e.target.files ?? []]); patch({ consent: false }); }}/><span className="mt-2 block text-sm font-normal leading-6 text-slate-600">PDF·HWP·HWPX·UTF-8 TXT · 최대 3개, 파일당 10MB · PDF 10쪽, 한글 20쪽 이내. 스캔 PDF는 OCR이 필요합니다.</span></Field>}{state.sourceMode === 'paste' && <Field label="공문과 붙임 본문"><textarea className={input} rows={9} maxLength={40000} value={state.pasted} onChange={e => patch({ pasted: e.target.value, consent: false })}/></Field>}{state.sourceMode === 'files' && !files.length && state.sources.length > 0 && <p className="rounded-lg bg-slate-50 p-3 text-sm leading-6">보존된 추출 본문: {state.sources.map(s => s.name).join(', ')}. 새 파일을 고르면 교체됩니다.</p>}<label className="flex items-start gap-3 text-sm leading-6 text-slate-700" data-decision><input className="mt-1 h-5 w-5 shrink-0" type="checkbox" checked={state.consent} onChange={e => patch({ consent: e.target.checked })}/><span>공문에서 추출한 본문·입력 조건·초안을 OpenAI에 전송하여 분석·작성하는 데 동의합니다. 원본 파일은 전송하지 않습니다.</span></label></div>{footer(state.sourceMode === 'none' ? '운영 정보 입력' : '공문 분석', () => void analyze(), !state.consent, () => go(0))}</>}
       {!edit && state.step === 2 && <>
         <p className="mb-5 leading-7 text-slate-600">{state.analysis?.summary}</p>

@@ -1,6 +1,6 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import templateUrl from '../officialDocument/assets/blank.hwpx?url';
-import { planBudgetTotal, type PlanDraft } from '../../../supabase/functions/_shared/schoolPlan';
+import { planBudgetTotal, type PlanDraft, type PlanPages } from '../../../supabase/functions/_shared/schoolPlan';
 
 const HP = 'http://www.hancom.co.kr/hwpml/2011/paragraph';
 const HH = 'http://www.hancom.co.kr/hwpml/2011/head';
@@ -106,7 +106,7 @@ export async function exportLegacyPlanHwpx(draft: PlanDraft, options: { title: s
   return zipSync({ mimetype: [strToU8('application/hwp+zip'), { level: 0 }], ...Object.fromEntries(Object.entries(files).filter(([name]) => name !== 'mimetype')) });
 }
 
-export async function exportPlanHwpx(draft: PlanDraft, options: { title: string; pages: 1 | 2; signal?: AbortSignal }): Promise<Uint8Array<ArrayBuffer>> {
+export async function exportPlanHwpx(draft: PlanDraft, options: { title: string; pages: PlanPages; signal?: AbortSignal }): Promise<Uint8Array<ArrayBuffer>> {
   const [{ runRhwp }, { planToOfficialDocument }] = await Promise.all([import('../officialDocument/rhwpClient'), import('./planDocument')]);
   return (await runRhwp({ action: 'render', document: planToOfficialDocument(draft, options.title, options.pages) }, options.signal)).bytes;
 }

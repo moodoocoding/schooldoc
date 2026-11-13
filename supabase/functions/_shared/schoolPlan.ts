@@ -26,7 +26,9 @@ export interface PlanContext {
   /** 처음에 고른 출력 분량. AI가 이 분량에 맞춰 쓴다. */
   pages?: PlanPages;
 }
-export type PlanPages = 1 | 2;
+export const PLAN_PAGE_OPTIONS = [1, 2, 3, 4, 5] as const;
+export type PlanPages = typeof PLAN_PAGE_OPTIONS[number];
+export const isPlanPages = (value: unknown): value is PlanPages => typeof value === 'number' && PLAN_PAGE_OPTIONS.includes(value as PlanPages);
 export type PlanRequest = { action: 'analyze'; sources: PlanSource[] }
   | ({ action: 'draft' } & PlanContext)
   | ({ action: 'revise'; draft: PlanDraft; revision: { area: string; instruction: string } } & PlanContext);
@@ -94,7 +96,7 @@ export function validatePlanContext(value: unknown): PlanContext {
   const budget = conditions.budget === null ? null : money(conditions.budget);
   if (budget !== null && analysis?.budgetLimit && budget > analysis.budgetLimit.amount) fail('학교 예산이 공문에서 확인한 상한을 넘습니다. 예산을 확인해 주세요.');
   const referenceType = c.referenceType === undefined ? undefined : validatePlanReferenceChoice(c.referenceType);
-  if (c.pages !== undefined && c.pages !== 1 && c.pages !== 2) fail('출력 분량을 확인해 주세요.');
+  if (c.pages !== undefined && !isPlanPages(c.pages)) fail('출력 분량을 확인해 주세요.');
   if (c.referenceVersion !== undefined && c.referenceVersion !== PLAN_REFERENCE_VERSION) fail('작성 기준이 갱신되었습니다. 입력을 보존한 뒤 화면을 새로고침해 주세요.');
   return { sources, analysis, answers, conditions: { topic: text(conditions.topic, 100), timing: text(conditions.timing, 200, true), budget },
     ...(referenceType === undefined ? {} : { referenceType }),
@@ -117,7 +119,7 @@ export const planBudgetTotal = (draft: Pick<PlanDraft, 'budget'>) => draft.budge
 export function validatePlanDraft(value: unknown, context: PlanContext): PlanDraft {
   const d = obj(value), known = new Set(context.analysis?.requirements.map(r => r.id) ?? []);
   const refs = (v: unknown) => list(v, 24).map(v => { const result = id(v); if (!known.has(result)) fail('초안에 확인하지 않은 공문 근거가 있습니다.'); return result; });
-  const sections = list(d.sections, 6).map(v => { const s = obj(v); const paragraphs = list(s.paragraphs, 4).map(v => text(v, 400)); if (!paragraphs.length) fail(); return { id: id(s.id), heading: text(s.heading, 40), paragraphs, requirementIds: refs(s.requirementIds) }; });
+  const sections = list(d.sections, 6).map(v => { const s = obj(v); const paragraphs = list(s.paragraphs, 8).map(v => text(v, 400)); if (!paragraphs.length) fail(); return { id: id(s.id), heading: text(s.heading, 40), paragraphs, requirementIds: refs(s.requirementIds) }; });
   if (sections.length < 2) fail('초안 본문이 부족합니다. 다시 작성해 주세요.');
   unique(sections.map(s => s.id));
   const schedule = list(d.schedule, 8).map(v => { const s = obj(v); return { when: text(s.when, 80), activity: text(s.activity, 180), owner: text(s.owner, 60), requirementIds: refs(s.requirementIds) }; });
