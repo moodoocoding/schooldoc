@@ -22,6 +22,8 @@ import { PublicClassroomRolesPage } from './features/classroomRoles/PublicClassr
 import { ClassMissionsWorkspace } from './features/classMissions/ClassMissionsWorkspace';
 import { PublicClassMissionsPage } from './features/classMissions/PublicClassMissionsPage';
 import { NeisHelperPage } from './features/neisHelper/NeisHelperPage';
+import { BehaviorWorkspace } from './features/neisHelper/BehaviorWorkspace';
+import { clearBehaviorDraftUnless } from './features/neisHelper/behaviorState';
 import { SubjectWorkspace } from './features/neisHelper/SubjectWorkspace';
 import { clearNeisDraftUnless } from './features/neisHelper/subjectDraft';
 import { SchoolDocumentsWorkspace } from './features/schoolDocuments/SchoolDocumentsWorkspace';
@@ -41,6 +43,7 @@ function AdminApp() {
   const { settings: appearance } = useAppearanceSettings();
   const canUseReceiptBooks = canAccessClassBudgetReceipts(user);
   useEffect(() => { clearNeisDraftUnless(user?.id ?? ''); }, [user?.id]);
+  useEffect(() => { clearBehaviorDraftUnless(user?.id ?? ''); }, [user?.id]);
 
   // 관리자 전용 도구의 공개 범위는 아래 공통 필터에서 구분한다.
   const allToolsMap: Record<string, SchoolTool> = {
@@ -155,7 +158,7 @@ function AdminApp() {
   const isReceiptBooksRoute = location.pathname.startsWith('/tools/receipts');
   const isClassroomRolesRoute = location.pathname.startsWith('/tools/classroom-roles');
   const isClassMissionsRoute = location.pathname.startsWith('/tools/class-missions');
-  const isNeisHelperRoute = ['/tools/neis-helper', '/tools/neis-helper/subject'].includes(location.pathname) && Boolean(visibleToolsMap['neis-comments']);
+  const isNeisHelperRoute = ['/tools/neis-helper', '/tools/neis-helper/subject', '/tools/neis-helper/behavior'].includes(location.pathname) && Boolean(visibleToolsMap['neis-comments']);
   const isSchoolDocumentsRoute = location.pathname.startsWith('/tools/school-documents');
   const isRoleAssignmentRoute = /^\/tools\/classroom-roles\/(assign|rotate)$/.test(location.pathname);
 
@@ -237,7 +240,7 @@ function AdminApp() {
               : isSpecialRoomsRoute ? <SpecialRoomsWorkspace />
               : isDataCollectRoute ? <DataCollectWorkspace />
               : isClassMissionsRoute ? <ClassMissionsWorkspace />
-              : isNeisHelperRoute ? location.pathname.endsWith('/subject') ? <SubjectWorkspace key={user?.id} /> : <NeisHelperPage />
+              : isNeisHelperRoute ? location.pathname.endsWith('/subject') ? <SubjectWorkspace key={user?.id} /> : location.pathname.endsWith('/behavior') ? <BehaviorWorkspace key={user?.id} /> : <NeisHelperPage />
               : isClassroomRolesRoute ? <Routes><Route path="/tools/classroom-roles/*" element={<ClassroomRolesWorkspace />} /></Routes>
               : !authLoading && canUseReceiptBooks ? <ReceiptBooksWorkspace key={user?.id} />
                 : <section className="mx-auto max-w-xl border-y border-[#DCE3EA] bg-white px-6 py-16 text-center">

@@ -32,6 +32,7 @@ const SHELL_ROUTES = [
   ['학급 미션', '/tools/class-missions'],
   ['Neis Helper', '/tools/neis-helper'],
   ['교과 평어 작성', '/tools/neis-helper/subject'],
+  ['행동특성 작성', '/tools/neis-helper/behavior'],
 ] as const;
 
 const measureBottom = async (page: Page) => page.evaluate(() => {

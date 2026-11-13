@@ -198,7 +198,7 @@ for (const [label, width, zoom] of [['desktop', 1366, 1], ['mobile', 390, 1], ['
     await expect(page.getByRole('heading', { name: 'Neis Helper', exact: true })).toBeVisible();
     if (zoom > 1) await page.evaluate(value => { document.documentElement.style.zoom = String(value); }, zoom);
     for (const name of ['교과학습발달상황(세특)', '행동특성 및 발달상황', '창체 누가기록 및 특기·적성', '학교스포츠클럽 특기사항']) {
-      const implemented = name === '교과학습발달상황(세특)';
+      const implemented = name === '교과학습발달상황(세특)' || name === '행동특성 및 발달상황';
       const button = page.getByRole('button', { name: `${name}. ${implemented ? '평어 작성 시작' : '개발 예정'}`, exact: true });
       await expect(button).toBeVisible();
       if (implemented) await expect(button).toBeEnabled();
