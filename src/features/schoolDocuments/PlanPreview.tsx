@@ -1,15 +1,35 @@
-import { planBudgetTotal, type PlanAnalysis, type PlanDraft } from '../../../supabase/functions/_shared/schoolPlan';
+import { legacyPlanBudgetTotal, type PlanDraft, type PlanDraftV1 } from '../../../supabase/functions/_shared/schoolPlan';
+import { planBudgetRowAmount, planBudgetSum } from '../../../supabase/functions/_shared/planDocumentV2';
+import { STANDARD_PLAN_TEMPLATE } from './planDocument';
+
 const won = (value: number) => `${value.toLocaleString('ko-KR')}원`;
-export function PlanPreview({ draft, analysis }: {
-    draft: PlanDraft;
-    analysis: PlanAnalysis | null;
-}) {
-    const refs = (ids: string[]) => ids.length > 0 ? <p className="mt-2 text-xs leading-5 text-slate-600">공문 근거: {ids.map(id => analysis?.requirements.find(r => r.id === id)?.text).filter(Boolean).join(' · ')}</p> : <p className="mt-2 text-xs text-slate-600">학교 입력 조건을 바탕으로 작성한 제안</p>;
-    return <article aria-label="운영계획서 초안" className="space-y-7 break-words rounded-xl border border-slate-200 bg-white p-5 sm:p-8">
-    <div><p className="mb-2 text-sm font-bold text-amber-800">AI 작성 초안 · 학교 확인 전</p><h2 className="text-xl font-bold leading-relaxed text-slate-900">{draft.title}</h2></div>
-    {draft.sections.map((section, index) => <section key={section.id}><h3 className="mb-3 text-base font-bold">{index + 1}. {section.heading}</h3><div className="space-y-2 text-[15px] leading-7 text-slate-800">{section.paragraphs.map((p, i) => <p key={i} className="whitespace-pre-wrap">{p}</p>)}</div>{refs(section.requirementIds)}</section>)}
-    <section><h3 className="mb-3 text-base font-bold">세부추진 일정안</h3><div className="space-y-3">{draft.schedule.map((s, i) => <div key={i} className="rounded-lg bg-slate-50 p-4 text-sm leading-6"><p className="font-bold">{s.when}</p><p>{s.activity}</p><p className="text-slate-600">담당: {s.owner}</p>{refs(s.requirementIds)}</div>)}</div></section>
-    <section><h3 className="mb-3 text-base font-bold">예산안</h3>{draft.budget.length ? <><ul className="space-y-3">{draft.budget.map((b, i) => <li key={i} className="text-sm leading-6"><p className="flex flex-wrap justify-between gap-x-4"><span>{b.item} · {won(b.unitPrice)} × {b.quantity}</span><strong>{won(b.unitPrice * b.quantity)}</strong></p>{refs(b.requirementIds)}</li>)}</ul><p className="mt-4 border-t border-slate-200 pt-3 text-right font-bold">합계 {won(planBudgetTotal(draft))}</p><p className="mt-2 text-sm leading-6 text-slate-600">단가와 배분은 제안입니다. 실제 견적과 집행 가능 항목을 확인해 주세요.</p></> : <p className="text-sm leading-6 text-slate-600">예산이 없거나 미정이어서 금액표를 만들지 않았습니다.</p>}</section>
-    {draft.unknowns.length > 0 && <section className="rounded-lg border border-amber-200 bg-amber-50 p-4"><h3 className="font-bold text-amber-950">학교에서 확인할 사항</h3><ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-amber-950">{draft.unknowns.map((u, i) => <li key={i}>{u}</li>)}</ul></section>}
+const h = 'mb-2 text-base font-bold';
+const List = ({ items }: { items: string[] }) => <ul className="list-disc space-y-1 pl-5">{items.map((t, i) => <li key={i}>{t}</li>)}</ul>;
+
+/** 수정안 비교용 본문 미리보기. 목차 이름·순서는 문서 출력과 같은 표준 서식을 쓴다. */
+export function PlanPreview({ draft }: { draft: PlanDraft }) {
+  const t = STANDARD_PLAN_TEMPLATE.headings, o = draft.overview;
+  const overview = ([['기간', o.period], ['대상', o.target], ['장소', o.venue], ['내용', o.summary]] as const).filter(([, v]) => v);
+  return <article aria-label="운영계획서 초안" className="space-y-6 break-words rounded-xl border border-slate-200 bg-white p-5 text-[15px] leading-7 text-slate-800 sm:p-8">
+    <h2 className="text-xl font-bold leading-relaxed text-slate-900">{draft.title}</h2>
+    <section><h3 className={h}>1. {t.purpose}</h3><List items={draft.purpose}/></section>
+    <section><h3 className={h}>2. {t.overview}</h3>{overview.length ? <List items={overview.map(([k, v]) => `${k}: ${v}`)}/> : <p className="text-slate-600">미정</p>}</section>
+    <section><h3 className={h}>3. {t.policies}</h3>{draft.policies.length ? <List items={draft.policies}/> : <p className="text-slate-600">없음</p>}</section>
+    <section><h3 className={h}>4. {t.detailedPlans}</h3><div className="space-y-3">{draft.detailedPlans.map((p, i) => <div key={i}><p className="font-bold">{p.subTitle}</p><List items={p.details}/></div>)}
+      {draft.schedule.length > 0 && <div><p className="font-bold">{STANDARD_PLAN_TEMPLATE.scheduleHeading}</p><List items={draft.schedule.map(s => `${s.step} · ${s.task} · ${s.date ?? '시기 미정'} · ${s.owner ?? '담당 미정'}`)}/></div>}</div></section>
+    <section><h3 className={h}>5. {t.budget}</h3>{draft.meta.budgetStatus === 'specified' && draft.budget.length
+      ? <><List items={draft.budget.map(b => { const a = planBudgetRowAmount(b); return `${b.item}(${b.spec}) ${a === null ? '금액 미정' : won(a)}`; })}/><p className="mt-2 font-bold">합계 {won(planBudgetSum(draft))}</p></>
+      : <p>{draft.meta.budgetStatus === 'confirmed_none' ? '비예산' : '예산 미정(검토 필요)'}</p>}</section>
+    <section><h3 className={h}>6. {t.expectedEffects}</h3><List items={draft.expectedEffects}/></section>
   </article>;
+}
+
+/** 이전(v1) 형식 초안. 보존한 원문을 그대로 보여 준다. */
+export function LegacyPlanPreview({ draft }: { draft: PlanDraftV1 }) {
+  return <div className="space-y-5 break-words text-[15px] leading-7 text-slate-800">
+    <h3 className="text-lg font-bold">{draft.title}</h3>
+    {draft.sections.map((s, i) => <section key={s.id}><h4 className="font-bold">{i + 1}. {s.heading}</h4>{s.paragraphs.map((p, j) => <p key={j} className="whitespace-pre-wrap">{p}</p>)}</section>)}
+    {draft.schedule.length > 0 && <section><h4 className="font-bold">일정</h4><List items={draft.schedule.map(s => `${s.when} · ${s.activity} · ${s.owner}`)}/></section>}
+    {draft.budget.length > 0 && <section><h4 className="font-bold">예산</h4><List items={draft.budget.map(b => `${b.item} ${won(b.unitPrice * b.quantity)}`)}/><p className="font-bold">합계 {won(legacyPlanBudgetTotal(draft))}</p></section>}
+  </div>;
 }

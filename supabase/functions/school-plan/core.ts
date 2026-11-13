@@ -1,4 +1,5 @@
-import { validatePlanAnalysis, validatePlanContext, validatePlanDraft, validatePlanSources, type PlanAnalysis, type PlanDraft, type PlanRequest } from '../_shared/schoolPlan.ts';
+import { PLAN_REVISION_FIELDS, validatePlanDocument } from '../_shared/planDocumentV2.ts';
+import { validatePlanAnalysis, validatePlanContext, validatePlanSources, type PlanAnalysis, type PlanDraft, type PlanRequest } from '../_shared/schoolPlan.ts';
 import { isVerifiedPreviewAdmin, type PreviewAccessUser } from '../_shared/previewAccess.ts';
 
 export class PlanError extends Error {
@@ -45,7 +46,7 @@ export async function readPlanRequest(req: Request): Promise<PlanRequest> {
     const context = validatePlanContext(body);
     if (body.action === 'draft') return { action: 'draft', ...context };
     if (body.action === 'revise') {
-      const draft = validatePlanDraft(body.draft, context), revision = body.revision;
+      const draft = validatePlanDocument(body.draft, context), revision = body.revision;
       if (!revision || !['body', 'schedule', 'budget'].includes(revision.area) || typeof revision.instruction !== 'string' || !revision.instruction.trim() || revision.instruction.length > 1000) throw new Error('수정할 영역과 요청을 확인해 주세요.');
       return { action: 'revise', ...context, draft, revision: { area: revision.area, instruction: revision.instruction } };
     }
@@ -54,9 +55,10 @@ export async function readPlanRequest(req: Request): Promise<PlanRequest> {
 }
 export function validatePlanResult(request: PlanRequest, result: { analysis?: PlanAnalysis; draft?: PlanDraft }) {
   if (request.action === 'analyze') return { analysis: validatePlanAnalysis(result.analysis, request.sources) };
-  const draft = validatePlanDraft(result.draft, request);
+  const draft = validatePlanDocument(result.draft, request);
   if (request.action === 'revise') {
-    const stable = request.revision.area === 'body' ? ['title', 'schedule', 'budget', 'unknowns'] as const : request.revision.area === 'schedule' ? ['title', 'sections', 'budget', 'unknowns'] as const : ['title', 'sections', 'schedule', 'unknowns'] as const;
+    const changed: readonly string[] = PLAN_REVISION_FIELDS[request.revision.area];
+    const stable = (Object.keys(draft) as (keyof PlanDraft)[]).filter(key => !changed.includes(key));
     if (stable.some(key => JSON.stringify(draft[key]) !== JSON.stringify(request.draft[key]))) throw new PlanError(502, '선택하지 않은 영역이 변경되어 수정안을 반영하지 않았습니다. 다시 요청해 주세요.');
   }
   return { draft };
@@ -64,7 +66,7 @@ export function validatePlanResult(request: PlanRequest, result: { analysis?: Pl
 interface Dependencies {
   authorize: (req: Request) => Promise<string>;
   consumeQuota: (userId: string) => Promise<boolean>;
-  run: (request: PlanRequest, signal?: AbortSignal, beforeRetry?: () => Promise<void>) => Promise<{ analysis?: PlanAnalysis; draft?: PlanDraft }>;
+  run: (request: PlanRequest, signal?: AbortSignal) => Promise<{ analysis?: PlanAnalysis; draft?: PlanDraft }>;
 }
 // Transport is injected. This core never sends source text to an external API.
 export function createPlanHandler(deps: Dependencies) {
@@ -77,9 +79,7 @@ export function createPlanHandler(deps: Dependencies) {
       const request = await readPlanRequest(req);
       if (!await deps.consumeQuota(userId)) throw new PlanError(429, '계획서 AI 요청 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.');
       let result;
-      try { result = validatePlanResult(request, await deps.run(request, req.signal, async () => {
-        if (!await deps.consumeQuota(userId)) throw new PlanError(429, '계획서 AI 요청 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.');
-      })); }
+      try { result = validatePlanResult(request, await deps.run(request, req.signal)); }
       catch (error) { if (error instanceof PlanError) throw error; throw new PlanError(502, '생성 결과가 공문 근거·예산·문서 형식 검사를 통과하지 못했습니다. 다시 작성해 주세요.'); }
       return new Response(JSON.stringify(result), { headers });
     } catch (error) {
