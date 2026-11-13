@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import { PLAN_REFERENCE_PROFILES, PLAN_REFERENCE_VERSION, resolvePlanReference } from '../../supabase/functions/_shared/schoolPlanReferences';
-import { planContextKey, validatePlanContext, validatePlanDraft } from '../../supabase/functions/_shared/schoolPlan';
+import { planContextKey, validatePlanContext } from '../../supabase/functions/_shared/schoolPlan';
+import { checkPlanDocument, validatePlanDocument } from '../../supabase/functions/_shared/planDocumentV2';
 import { getPlanReferencePack } from '../../supabase/functions/school-plan/references';
-import { getPlanWritingGuide } from '../../supabase/functions/school-plan/writingGuide';
 import { buildPlanAiRequest } from '../../supabase/functions/school-plan/openai';
 import { readPlanRequest } from '../../supabase/functions/school-plan/core';
 import { emptyPlanState, loadPlanState } from '../../src/features/schoolDocuments/planStore';
@@ -23,7 +23,6 @@ describe('운영계획 유형과 실제 사례 연결', () => {
     expect(pack.examples.length).toBeGreaterThan(0);
     expect(pack.examples.length).toBeLessThanOrEqual(2);
     expect(pack.examples.every(e => e.adaptedExcerpt && e.caution && e.structure.length)).toBe(true);
-    expect(pack.review).toHaveLength(6);
     expect(pack.version).toBe(PLAN_REFERENCE_VERSION);
   });
   test('교사 주제·수동 유형을 우선하고 긴 붙임 속 단어로 분류하지 않는다', () => {
@@ -36,7 +35,7 @@ describe('운영계획 유형과 실제 사례 연결', () => {
   test('실제 사례가 없는 유형은 명시적인 공통 기준으로 처리한다', () => {
     const pack = getPlanReferencePack({ ...context, referenceType: 'general' });
     expect(pack.examples).toEqual([]);
-    expect(pack.writing).toContain('사례를 참고했다고 주장하지 않는다');
+    expect(buildPlanAiRequest({ action: 'draft', ...context, referenceType: 'general' }, 'fixture').instructions).not.toContain('## 참고 사례');
   });
   test('공문 분석에는 과거 사례를 넣지 않고 초안과 부분 수정에만 연결한다', () => {
     const analyzed = buildPlanAiRequest({ action: 'analyze', sources }, 'fixture');
@@ -44,11 +43,12 @@ describe('운영계획 유형과 실제 사례 연결', () => {
     expect(JSON.parse(analyzed.input[0].content[0].text)).not.toHaveProperty('writingGuide');
     for (const request of [{ action: 'draft' as const, ...context }, { action: 'revise' as const, ...context, draft, revision: { area: 'schedule', instruction: '기간 조정' } }]) {
       const built = buildPlanAiRequest(request, 'fixture');
-      const data = JSON.parse(built.input[0].content[0].text);
+      const data = JSON.parse(built.input[1].content[0].text);
       expect(data.referencePack.examples).toHaveLength(2);
       expect(data.sources).toEqual(sources);
-      expect(built.instructions).toContain('현재 공문과 학교 입력을 사례보다 우선');
-      expect(built.instructions).toContain('사례 ID는 requirementIds에 절대 넣지 않는다');
+      expect(built.instructions).toContain('공문에 명시된 강제 조건을 최우선');
+      expect(built.instructions).toContain('사례 속 인명·날짜·배점·금액·활동을 이번 사업의 사실로 복제하지 않는다');
+      expect(Object.keys(data.referencePack)).toEqual(['examples']);
       expect(data.referencePack.examples.some((e: { id: string }) => e.id === 'contest-01')).toBe(false);
     }
   });
@@ -71,7 +71,9 @@ describe('운영계획 유형과 실제 사례 연결', () => {
     expect(restored.state.step).toBe(4);
   });
   test('사례 ID를 공문 근거로 위장한 초안은 거부한다', () => {
-    expect(() => validatePlanDraft({ ...draft, sections: [{ ...draft.sections[0], requirementIds: ['program-01'] }, ...draft.sections.slice(1)] }, context)).toThrow('확인하지 않은 공문 근거');
+    const forged = validatePlanDocument({ ...draft, meta: { ...draft.meta, requirementIds: ['program-01'] } }, context);
+    expect(forged.meta.requirementIds).toEqual([]);
+    expect(checkPlanDocument(forged, context).filter(i => i.level === 'block').length).toBeGreaterThan(0);
   });
   test('저장된 초안의 잘못된 유형은 렌더링 오류 대신 복구 사본으로 보존한다', () => {
     const state = { ...emptyPlanState(), draft, step: 4, draftContext: JSON.stringify({ ...context, referenceType: 'corrupted', referenceVersion: PLAN_REFERENCE_VERSION }) };
@@ -88,21 +90,15 @@ describe('운영계획 유형과 실제 사례 연결', () => {
     expect(text).not.toMatch(/\b20\d{2}[.년/-]|\d[\d,]*\s*원|0\d{1,2}-\d{3,4}-\d{4}|[\w.-]+@[\w.-]+|G:[/\\]|내 드라이브|\.hwpx?\b/);
     expect(packs.every(p => p.examples.every(e => e.adaptedExcerpt.length < 500))).toBe(true);
   });
-  test('유형별 가상 작성 예문은 실제 사례와 분리하며 현재 공문·학교 조건을 바꾸지 않는다', () => {
-    const topics = new Set<string>();
+  test('유형마다 해당 사례만 보내고 현재 공문·학교 조건을 바꾸지 않는다', () => {
     for (const profile of PLAN_REFERENCE_PROFILES) {
       const request = { action: 'draft' as const, ...context, referenceType: profile.id as NonNullable<typeof context.referenceType> };
-      const payload = JSON.parse(buildPlanAiRequest(request, 'fixture').input[0].content[0].text);
-      expect(payload.writingGuide).toEqual(getPlanWritingGuide(profile.id as Parameters<typeof getPlanWritingGuide>[0]));
-      expect(payload.writingGuide.provenance).toContain('가상 예문');
+      const payload = JSON.parse(buildPlanAiRequest(request, 'fixture').input[1].content[0].text);
+      expect(payload).not.toHaveProperty('writingGuide');
       expect(payload.referencePack.examples.map((e: { id: string }) => e.id)).toEqual(profile.cases.map(c => c.id));
       expect(payload.sources).toEqual(context.sources);
       expect(payload.analysis).toEqual(context.analysis);
       expect(payload.conditions).toEqual(context.conditions);
-      expect(JSON.stringify(payload.writingGuide.example)).not.toMatch(/requirementIds|\b20\d{2}[.년/-]|\d[\d,]*\s*원|[\w.-]+@[\w.-]+|G:[/\\]/);
-      topics.add(payload.writingGuide.example.topic);
     }
-    // Each type has its own example, including a generic fallback without real cases.
-    expect(topics.size).toBe(PLAN_REFERENCE_PROFILES.length);
   });
 });

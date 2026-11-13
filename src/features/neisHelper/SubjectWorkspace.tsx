@@ -373,7 +373,7 @@ export function SubjectWorkspace() {
       </div>
       <div>
         <p className="text-sm font-bold text-blue-700">
-          교과학습발달상황(세특){draft.subject ? ` · ${draft.subject}` : ''}
+          성취수준 및 특기사항{draft.subject ? ` · ${draft.subject}` : ''}
         </p>
         <ol aria-label="작성 단계" className="mt-4 grid grid-cols-3 gap-2">
           {phaseLabels.map((label, i) => (

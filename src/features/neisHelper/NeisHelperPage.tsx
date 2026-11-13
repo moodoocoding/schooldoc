@@ -3,7 +3,7 @@ import { ToolHeaderBadge, ToolListHeader } from '../../components/ToolListHeader
 import { useNavigate } from 'react-router-dom';
 
 const features = [
-  { name: '교과학습발달상황(세특)', description: '교과별 학습 과정과 성취를 기록합니다.', Icon: BookOpen },
+  { name: '성취수준 및 특기사항', description: '교과별 학습 과정과 성취를 기록합니다.', Icon: BookOpen },
   { name: '행동특성 및 발달상황', description: '학생의 생활 모습과 성장 과정을 기록합니다.', Icon: Sprout },
   {
     name: '창체 누가기록 및 특기·적성',

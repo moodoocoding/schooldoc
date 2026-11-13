@@ -1,5 +1,5 @@
 import type { Assessment, NeisGrade } from '../../../supabase/functions/_shared/neisHelper';
-import { GRADE_LABELS } from '../../../supabase/functions/_shared/neisHelper';
+import { GRADE_LABELS, NEIS_MAX_TASK_CONTEXT } from '../../../supabase/functions/_shared/neisHelper';
 import { NeisSourcePreview } from './NeisSourcePreview';
 
 export const inputClass =
@@ -92,6 +92,17 @@ export function AssessmentReview({
                 />
               </label>
             ))}
+            <label className="block text-sm font-semibold text-slate-800">
+              수업·평가 과정과 채점 요소
+              <textarea
+                aria-label="수업·평가 과정과 채점 요소"
+                className={`${inputClass} mt-2`}
+                rows={4}
+                maxLength={NEIS_MAX_TASK_CONTEXT}
+                value={assessment.taskDetails ?? ''}
+                onChange={(e) => onChange({ ...assessment, taskDetails: e.target.value })}
+              />
+            </label>
           </div>
         </details>
         {!!assessment.warnings.length && (

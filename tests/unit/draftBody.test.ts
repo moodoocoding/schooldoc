@@ -41,8 +41,8 @@ describe('운영계획서 기안 본문', () => {
     ].join('\n'));
   });
   test('시기·예산이 없으면 "붙임과 같이", 받침 없는 제목은 "를", 예산 0이면 "없음"', () => {
-    const noBudget = { ...draft, budget: [] };
+    const noBudget = { ...draft, budget: [], meta: { ...draft.meta, budgetStatus: 'unconfirmed' as const } };
     expect(planDraftBody(noBudget, '가상 행사', { topic: '가상 행사', timing: '', budget: null }, false)).toBe('「가상 행사」를 붙임과 같이 수립하여 시행하고자 합니다.\n\n붙임  가상 행사 1부.  끝.');
-    expect(planDraftBody(noBudget, '가상 행사', { topic: '가상 행사', timing: '', budget: 0 }, false)).toContain('소요 예산: 없음');
+    expect(planDraftBody({ ...noBudget, meta: { ...noBudget.meta, budgetStatus: 'confirmed_none' } }, '가상 행사', { topic: '가상 행사', timing: '', budget: 0 }, false)).toContain('소요 예산: 비예산');
   });
 });

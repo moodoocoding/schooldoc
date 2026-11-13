@@ -1,4 +1,5 @@
-import { isPlanPages, validatePlanAnalysis, validatePlanDraft, validatePlanSources, type PlanAnalysis, type PlanConditions, type PlanDraft, type PlanPages, type PlanSource } from '../../../supabase/functions/_shared/schoolPlan';
+import { isPlanPages, validateLegacyPlanDraft, validatePlanAnalysis, validatePlanSources, type PlanAnalysis, type PlanConditions, type PlanDraft, type PlanDraftV1, type PlanPages, type PlanSource } from '../../../supabase/functions/_shared/schoolPlan';
+import { isPlanDocumentV2, validatePlanDocument } from '../../../supabase/functions/_shared/planDocumentV2';
 import { validatePlanReferenceChoice, type PlanReferenceChoice } from '../../../supabase/functions/_shared/schoolPlanReferences';
 
 export interface PlanState {
@@ -7,6 +8,8 @@ export interface PlanState {
   conditions: PlanConditions; draft: PlanDraft | null; draftContext: string;
   questionPage: number; consent: boolean; title: string; pages: PlanPages;
   referenceType: PlanReferenceChoice;
+  /** 이전(v1) 형식 초안. 자동 변환하지 않고 보존해 읽기만 한다. 새 초안을 만들어도 지우지 않는다. */
+  legacyDraft?: PlanDraftV1 | null;
 }
 export const emptyPlanState = (): PlanState => ({ version: 1, step: 0, sourceMode: 'files', pasted: '', sources: [], analysis: null, answers: {}, conditions: { topic: '', timing: '', budget: null }, draft: null, draftContext: '', questionPage: 0, consent: false, title: '', pages: 2, referenceType: 'auto' });
 export const planStorageKey = (ownerId: string) => `schooldoc:school-plan:v1:${ownerId}`;
@@ -23,15 +26,19 @@ export function loadPlanState(ownerId: string, storage: Pick<Storage, 'getItem' 
     if (!s.answers || typeof s.answers !== 'object' || Object.values(s.answers).some(v => typeof v !== 'string' || v.length > 500) || typeof s.draftContext !== 'string') throw new Error();
     // Keep an earlier draft when inputs change; validate it against the context
     // it was actually generated from, not the teacher's newly edited conditions.
-    let draft = null;
-    if (s.draft) {
+    let draft: PlanDraft | null = null;
+    let legacyDraft = s.legacyDraft ? validateLegacyPlanDraft(s.legacyDraft) : null;
+    if (s.draft && isPlanDocumentV2(s.draft)) {
       const draftContext = JSON.parse(s.draftContext);
       if (draftContext.referenceType !== undefined) validatePlanReferenceChoice(draftContext.referenceType);
-      draft = validatePlanDraft(s.draft, draftContext);
+      draft = validatePlanDocument(s.draft, draftContext);
+    } else if (s.draft) {
+      // v1 목차는 의미가 제각각이라 6대 목차로 기계 변환하지 않는다. 원본을 보존하고 새 초안 작성을 안내한다.
+      legacyDraft = validateLegacyPlanDraft(s.draft);
     }
     const referenceType = validatePlanReferenceChoice(s.referenceType ?? 'auto');
     // 예전 6단계 저장(초안 검토 4, 저장 5)은 합쳐진 검토·저장(4)으로 연다.
-    return { state: { ...s, sources, analysis, draft, referenceType, step: s.step >= 4 && !draft ? 3 : Math.min(s.step, 4) }, warning: '' };
+    return { state: { ...s, sources, analysis, draft, legacyDraft, referenceType, step: s.step >= 4 && !draft ? 3 : Math.min(s.step, 4) }, warning: '' };
   } catch {
     try { if (raw) storage.setItem(`${key}:recovery`, raw); } catch { return { state: emptyPlanState(), warning: '이전 초안을 읽거나 보존하지 못했습니다. 자동 저장을 사용하지 말고 브라우저 저장 공간을 확인해 주세요.' }; }
     return { state: emptyPlanState(), warning: '읽지 못한 이전 기록은 이 기기의 복구용 사본으로 보존했습니다. 새 초안으로 시작합니다.' };

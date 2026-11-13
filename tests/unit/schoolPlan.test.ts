@@ -1,7 +1,8 @@
 import { describe, expect, test, vi } from 'vitest';
-import { planBudgetTotal, validatePlanAnalysis, validatePlanContext, validatePlanDraft, validatePlanSources } from '../../supabase/functions/_shared/schoolPlan';
+import { validatePlanAnalysis, validatePlanContext, validatePlanSources } from '../../supabase/functions/_shared/schoolPlan';
+import { checkPlanDocument, planBudgetSum, validatePlanDocument } from '../../supabase/functions/_shared/planDocumentV2';
 import { authorizePlanRequest, createPlanHandler, PlanError, readPlanRequest, validatePlanResult } from '../../supabase/functions/school-plan/core';
-import { analysis, context, draft, sources } from '../fixtures/schoolPlan';
+import { analysis, context, draft, legacyDraft, sources } from '../fixtures/schoolPlan';
 import { loadPlanState, savePlanState, emptyPlanState, planStorageKey } from '../../src/features/schoolDocuments/planStore';
 import { paginatePlanBlocks, planOutputBlocks } from '../../src/features/schoolDocuments/planHwpx';
 import { readHwpxArchive } from '../../src/features/schoolDocuments/planSourceImport';
@@ -18,24 +19,26 @@ describe('계획서 근거·예산·출력 계약', () => {
   });
   test('실제 인용과 요구사항 연결이 있는 초안만 받는다', () => {
     expect(validatePlanAnalysis(analysis, sources)).toEqual(analysis);
-    expect(validatePlanDraft(draft, context)).toEqual(draft);
-    expect(planBudgetTotal(draft)).toBe(200000);
+    expect(validatePlanDocument(draft, context)).toEqual(draft);
+    expect(planBudgetSum(draft)).toBe(200000);
+    expect(checkPlanDocument(draft, context).filter(i => i.level === 'block' || i.level === 'warn')).toEqual([]);
     expect(() => validatePlanAnalysis({ ...analysis, requirements: [{ ...analysis.requirements[0], quote: '공문에 없는 인용' }] }, sources)).toThrow(/원문/);
-    expect(() => validatePlanDraft({ ...draft, sections: draft.sections.map(s => ({ ...s, requirementIds: [] })), schedule: [], budget: [] }, context)).toThrow();
-    const missing = { ...draft, sections: draft.sections.filter(s => s.id !== 'report'), schedule: draft.schedule.filter(s => !s.requirementIds.includes('r3')) };
-    expect(() => validatePlanDraft(missing, context)).toThrow(/필수/);
-    expect(() => validatePlanDraft({ ...draft, schedule: [{ ...draft.schedule[0], requirementIds: ['fabricated'] }] }, context)).toThrow(/근거/);
+    expect(() => validatePlanDocument({ ...draft, detailedPlans: [] }, context)).toThrow();
+    const missing = { ...draft, meta: { ...draft.meta, requirementIds: ['r1', 'r2', 'r4'] } };
+    expect(checkPlanDocument(missing, context)).toContainEqual(expect.objectContaining({ level: 'block', message: expect.stringContaining('11월 9일까지 결과 제출') }));
+    expect(validatePlanDocument({ ...draft, meta: { ...draft.meta, requirementIds: ['r1', 'fabricated'] } }, context).meta.requirementIds).toEqual(['r1']);
   });
   test('원문 금액과 다른 상한·초과 예산·미정인 예산표를 거부한다', () => {
     expect(() => validatePlanAnalysis({ ...analysis, budgetLimit: { amount: 500000, requirementId: 'r4' } }, sources)).toThrow(/금액/);
     expect(() => validatePlanContext({ ...context, conditions: { ...context.conditions, budget: 300001 } })).toThrow(/상한/);
-    expect(() => validatePlanDraft(draft, { ...context, conditions: { ...context.conditions, budget: 100000 } })).toThrow(/학교 예산/);
-    for (const budget of [0, null]) expect(() => validatePlanDraft(draft, { ...context, conditions: { ...context.conditions, budget } })).toThrow(/금액표/);
-    expect(() => validatePlanDraft({ ...draft, budget: [{ ...draft.budget[0], unitPrice: 3.14 }] }, context)).toThrow();
+    const blocks = (budget: number | null) => checkPlanDocument(draft, { ...context, conditions: { ...context.conditions, budget } }).filter(i => i.level === 'block').map(i => i.message).join(' ');
+    expect(blocks(100000)).toContain('학교 예산');
+    expect(blocks(0)).toContain('비예산');
+    expect(() => validatePlanDocument({ ...draft, budget: [{ ...draft.budget[0], unitPrice: 3.14 }] }, context)).toThrow();
   });
   test('선택하지 않은 영역을 바꾼 수정안은 반영하지 않는다', () => {
     const req = { action: 'revise', ...context, draft, revision: { area: 'schedule', instruction: '준비를 앞당겨 주세요.' } } as const;
-    const revised = { ...draft, schedule: draft.schedule.map((s, i) => i ? s : { ...s, when: '10월 셋째 주(안)' }) };
+    const revised = { ...draft, schedule: draft.schedule.map((s, i) => i ? s : { ...s, date: '10월 셋째 주(안)' }) };
     expect(validatePlanResult(req, { draft: revised })).toEqual({ draft: revised });
     expect(() => validatePlanResult(req, { draft: { ...revised, title: '다른 제목' } })).toThrow(/선택하지 않은/);
   });
@@ -69,7 +72,7 @@ describe('계획서 근거·예산·출력 계약', () => {
     expect(failed.status).toBe(502); expect(await failed.text()).not.toContain('private-document-and-key');
   });
   test('내용을 지우거나 글자를 줄이지 않고 쪽 수 한계를 알린다', () => {
-    const blocks = planOutputBlocks(draft, draft.title);
+    const blocks = planOutputBlocks(legacyDraft, legacyDraft.title);
     expect(blocks.map(b => b.text).join('\n')).toContain('합계 200,000원');
     expect(paginatePlanBlocks(blocks, 2)).toBeGreaterThan(2);
     expect(() => paginatePlanBlocks([...blocks, ...blocks, ...blocks, ...blocks], 2)).toThrow(/2쪽/);

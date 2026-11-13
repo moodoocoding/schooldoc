@@ -180,7 +180,9 @@ describe('NEIS 평가 근거와 성적 무결성', () => {
     expect(() => validateGeneratedComment({ sentences: [sentences[0]] }, input)).toThrow('빠진');
   });
   test('공백·한글·CRLF·이모지 분량을 코드로 계산하고 공통 문장을 표시한다', () => {
-    expect(countComment('가 A\r\n😀')).toEqual({ characters: 5, bytes: 11 });
+    // 나이스 기준: 한글 3, 영문·공백 1, 엔터 1바이트.
+    expect(countComment('가 A\r\n😀')).toEqual({ characters: 5, bytes: 10 });
+    expect(countComment('가나\n1a')).toEqual({ characters: 5, bytes: 9 });
     const repeated = repeatedCommentIds([
       { id: 'a', text: '주어진 자료를 활용하여 평균을 구함.' },
       { id: 'b', text: '주어진 자료를 활용하여 평균을 구함. 다른 내용을 설명함.' },

@@ -107,7 +107,7 @@ export interface ExportCommentRow {
 export async function exportComments(subject: string, rows: ExportCommentRow[], signal?: AbortSignal) {
   const cell = (value: string) => ({ type: String, value, format: '@', wrap: true });
   const sheet = [
-    ['번호', '이름', '성적', '평어', '글자 수(공백 포함)', '바이트(줄바꿈 2)', '평가 근거'].map(cell),
+    ['번호', '이름', '성적', '평어', '글자 수(공백 포함)', '바이트(나이스 기준)', '평가 근거'].map(cell),
     ...rows.map((row) => {
       const counts = countComment(row.text);
       return [

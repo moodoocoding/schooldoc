@@ -3,8 +3,8 @@ import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import init, { HwpDocument } from '@rhwp/core';
 import { writeOfficialDocument, checkedHwpxExport, type OfficialFonts } from '../../src/features/officialDocument/rhwpWriter';
 import { planToOfficialDocument } from '../../src/features/schoolDocuments/planDocument';
-import { composePlanDraft, planDepthIssues } from '../../supabase/functions/school-plan/composition';
-import { PLAN_PAGE_OPTIONS, validatePlanDraft } from '../../supabase/functions/_shared/schoolPlan';
+import { validatePlanDocument } from '../../supabase/functions/_shared/planDocumentV2';
+import { PLAN_PAGE_OPTIONS } from '../../supabase/functions/_shared/schoolPlan';
 import { volumeFixture } from '../fixtures/schoolPlanVolume';
 const assets = 'src/features/officialDocument/assets/';
 const font = (name: string) => readFileSync(assets + 'fonts/' + name);
@@ -15,9 +15,7 @@ const fonts: OfficialFonts = {
 };
 beforeAll(async () => { await init({ module_or_path: readFileSync('node_modules/@rhwp/core/rhwp_bg.wasm') }); });
 for (const pages of PLAN_PAGE_OPTIONS) test(pages + '쪽 목표의 내용이 실제 지면과 HWPX에 보존된다', () => {
-  const provider = volumeFixture(pages);
-  const draft = validatePlanDraft(composePlanDraft(provider, 'general', pages), { sources: [], analysis: null, answers: {}, conditions: { topic: '가상 활동', timing: '', budget: 0 } });
-  expect(planDepthIssues(draft.sections, 'general', pages)).toEqual([]);
+  const draft = validatePlanDocument(volumeFixture(pages), { analysis: null });
   const doc = new HwpDocument(readFileSync(assets + 'blank.hwpx'));
   try {
     const volume = writeOfficialDocument(doc, planToOfficialDocument(draft, draft.title, pages), fonts);
@@ -30,7 +28,8 @@ for (const pages of PLAN_PAGE_OPTIONS) test(pages + '쪽 목표의 내용이 실
     const reopened = new HwpDocument(checkedHwpxExport(doc));
     try {
       const text = (JSON.parse(reopened.getTextFileText()) as string).replace(/\s/g, '');
-      for (const s of draft.sections) for (const p of s.paragraphs) for (const line of p.split('\n')) expect(text).toContain(line.replace(/\s/g, ''));
+      for (const p of draft.detailedPlans) for (const line of [p.subTitle, ...p.details]) expect(text).toContain(line.replace(/\s/g, ''));
+      for (const line of [...draft.purpose, ...draft.policies, ...draft.expectedEffects]) expect(text).toContain(line.replace(/\s/g, ''));
     } finally { reopened.free(); }
   } finally { doc.free(); }
 });
