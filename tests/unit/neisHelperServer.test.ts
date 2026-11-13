@@ -182,6 +182,17 @@ describe('Neis Helper 서버 인증·비용·응답 경계', () => {
     });
     expect((await createNeisHandler(generated)(request(generate))).status).toBe(422);
   });
+  test('PDF 분석의 영역 필드를 요청하고 브라우저 응답까지 보존한다', async () => {
+    const body = buildNeisAiRequest({ action: 'plan', data: 'test' }, 'm');
+    expect(body.text.format.schema).toMatchObject({ properties: { assessments: { items: {
+      properties: { domain: { type: 'string' } }, required: expect.arrayContaining(['domain']),
+    } } } });
+    const response = await createNeisHandler(deps({ analyze: async () => ({
+      ...plan, assessments: plan.assessments.map((a) => ({ ...a, domain: '자료와 가능성' })),
+    }) }))(request());
+    expect(response.status).toBe(200);
+    expect((await response.json()).result.assessments[0].domain).toBe('자료와 가능성');
+  });
   test('고정 파일명·구조화 응답·무저장을 사용하며 사실성 지시를 포함한다', () => {
     const body = buildNeisAiRequest(generate, 'test-model');
     expect(body).toMatchObject({ model: 'test-model', store: false, text: { format: { strict: true } } });

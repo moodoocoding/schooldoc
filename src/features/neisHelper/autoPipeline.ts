@@ -104,13 +104,13 @@ export function studentRows(book: GradeBook): GradeBook {
   };
 }
 
-export type LinkMethod = 'exact' | 'similar' | 'order' | 'manual' | 'none';
+export type LinkMethod = 'exact' | 'domain' | 'similar' | 'order' | 'manual' | 'none';
 export interface ColumnLink {
   assessmentId: string;
   method: LinkMethod;
 }
 const comparable = (s: string) =>
-  s.normalize('NFKC').replace(/[\s()[\]{}.,·:;'"‘’“”\-_/]/gu, '').toLowerCase();
+  s.replace(/[·ㆍ∙・]/gu, '').normalize('NFKC').replace(/[\s()[\]{}.,:;'"‘’“”\-_/]/gu, '').toLowerCase();
 function bigrams(s: string) {
   const grams = new Map<string, number>();
   for (let i = 0; i < s.length - 1; i++) {
@@ -136,27 +136,39 @@ const SIMILAR_THRESHOLD = 0.5;
 
 /**
  * 성적 열을 평가에 자동으로 연결한다. 한 평가에는 한 열만 연결한다.
- * 제목이 하나도 맞지 않고 열 수와 평가 수가 같을 때만 순서로 연결하며, 결과 화면에 그 사실을 표시한다.
+ * 원문의 영역을 먼저 구분하고, 고유한 영역은 해당 평가로 연결한다. 같은 영역에 여러 평가가 있으면 추측하지 않는다.
+ * 영역이 없는 이전 분석 결과에서만 기존 순서 연결을 유지하고, 결과 화면에 그 사실을 표시한다.
  */
 export function autoLinkColumns(book: GradeBook, assessments: Assessment[]): Record<string, ColumnLink> {
-  const candidates = book.columns.flatMap((column) =>
-    assessments.flatMap((assessment) => {
+  const candidates = book.columns.flatMap((column) => {
+    const label = comparable(column.label);
+    const domains = assessments.filter((assessment) => label && comparable(assessment.domain ?? '') === label);
+    if (domains.length) {
+      const uniqueColumn = book.columns.filter((other) => comparable(other.label) === label).length === 1;
+      return domains.length === 1 && uniqueColumn
+        ? [{ column: column.id, assessment: domains[0].id, score: 1, rank: 2, method: 'domain' as LinkMethod }]
+        : [];
+    }
+    return assessments.flatMap((assessment) => {
       const score = Math.max(
         labelSimilarity(column.label, assessment.task),
         labelSimilarity(column.label, assessment.standardCode) >= 0.9 ? 0.9 : 0,
       );
-      return score >= SIMILAR_THRESHOLD ? [{ column: column.id, assessment: assessment.id, score }] : [];
-    }),
-  );
-  candidates.sort((a, b) => b.score - a.score);
+      return score >= SIMILAR_THRESHOLD
+        ? [{ column: column.id, assessment: assessment.id, score, rank: score === 1 ? 3 : 1,
+          method: (score === 1 ? 'exact' : 'similar') as LinkMethod }]
+        : [];
+    });
+  });
+  candidates.sort((a, b) => b.rank - a.rank || b.score - a.score);
   const links: Record<string, ColumnLink> = {};
   const used = new Set<string>();
   for (const c of candidates) {
     if (links[c.column] || used.has(c.assessment)) continue;
-    links[c.column] = { assessmentId: c.assessment, method: c.score === 1 ? 'exact' : 'similar' };
+    links[c.column] = { assessmentId: c.assessment, method: c.method };
     used.add(c.assessment);
   }
-  if (!used.size && book.columns.length === assessments.length)
+  if (!used.size && !assessments.some((a) => a.domain?.trim()) && book.columns.length === assessments.length)
     book.columns.forEach((column, i) => {
       links[column.id] = { assessmentId: assessments[i].id, method: 'order' };
     });

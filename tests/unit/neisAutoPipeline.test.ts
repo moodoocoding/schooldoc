@@ -85,6 +85,46 @@ describe('평가계획 두 방식', () => {
 });
 
 describe('성적표 자동 정리', () => {
+  test('영역 머리글을 과제명과 혼동하지 않고 원문의 영역 관계로 연결한다', () => {
+    const assessments = [
+      item('reading', '국어', '작품을 감상하고 자신의 생각 나누기', { domain: '읽기' }),
+      item('writing', '국어', '학급 누리집을 활용해 글 쓰기', { domain: '쓰기' }),
+      item('speaking', '국어', '의견을 제시하고 토의하기', { domain: '듣기ㆍ말하기' }),
+    ];
+    const grades = book(['듣기·말하기', '쓰기', '읽기'], [['1', '가상학생', '◎', '○', '△']]);
+    const links = autoLinkColumns(grades, assessments);
+    expect(Object.values(links)).toEqual([
+      { assessmentId: 'speaking', method: 'domain' },
+      { assessmentId: 'writing', method: 'domain' },
+      { assessmentId: 'reading', method: 'domain' },
+    ]);
+    expect(studentEvidence(grades, grades.students[0], links, assessments).map((e) => [e.assessmentId, e.grade]))
+      .toEqual([['speaking', 'high'], ['writing', 'middle'], ['reading', 'low']]);
+  });
+  test('같은 영역의 평가가 여럿이면 부분 문자열이나 순서로 하나를 고르지 않는다', () => {
+    const assessments = [
+      item('a', '국어', '소개하는 글 쓰기', { domain: '쓰기' }),
+      item('b', '국어', '의견을 나타내는 글 쓰기', { domain: '쓰기' }),
+    ];
+    const links = autoLinkColumns(book(['쓰기', '수행2'], []), assessments);
+    expect(Object.values(links).every((link) => link.method === 'none')).toBe(true);
+  });
+  test('같은 영역의 성적 열이 여러 개일 때 원문 과제명이 있는 열을 우선한다', () => {
+    const assessments = [item('a', '국어', '소개하는 글 쓰기', { domain: '쓰기' })];
+    const links = autoLinkColumns(book(['쓰기', '소개하는 글 쓰기'], []), assessments);
+    expect(links['column-2']).toEqual({ assessmentId: 'a', method: 'exact' });
+    expect(links['column-1'].method).toBe('none');
+    const duplicate = autoLinkColumns(book(['쓰기', '쓰기'], []), assessments);
+    expect(Object.values(duplicate).every((link) => link.method === 'none')).toBe(true);
+  });
+  test('한 영역에 여러 평가가 있어도 구체적인 다단 머리글은 각 과제에 연결한다', () => {
+    const assessments = [
+      item('a', '국어', '소개하는 글 쓰기', { domain: '쓰기' }),
+      item('b', '국어', '의견을 나타내는 글 쓰기', { domain: '쓰기' }),
+    ];
+    const links = autoLinkColumns(book(['쓰기 / 의견을 나타내는 글 쓰기', '쓰기 / 소개하는 글 쓰기'], []), assessments);
+    expect([links['column-1'].assessmentId, links['column-2'].assessmentId]).toEqual(['b', 'a']);
+  });
   test('번호·이름 제목 행이 있는 시트를 찾는다', () => {
     const picked = pickGradeBook([
       { sheet: '안내', data: [['나이스 내려받기 안내']] },
