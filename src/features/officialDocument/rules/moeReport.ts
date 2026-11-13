@@ -4,7 +4,8 @@
  * 출처: UpstageAI/korean-report-hwpx (MIT, Copyright (c) 2026 Upstage)
  *   korean_report_hwpx/rules_report/교육부.json, 커밋 210b864e4afba5144e3cbc87f9c0211d589e1746
  *   교육부 보도자료의 참고·붙임 보고서 34건, 378개 문단에서 측정한 값이다. 라이선스: ./korean-report-hwpx.LICENSE
- * SchoolDoc에서 쓰는 단계(□ ◦ - ※)·간격·표 머리·제목 값만 옮겼다. 크기는 pt, 간격은 앞 줄과 사이의 pt다.
+ * SchoolDoc에서 쓰는 단계별 글꼴·크기·간격·표 머리·제목 값만 옮겼다. 크기는 pt, 간격은 앞 줄과 사이의 pt다.
+ * mark는 실측 문서의 기호 기록이며, 출력 기호는 편람 표기(□ ○ - ㆍ, 참고 ※)를 따른다(format.ts DEEP_MARKERS).
  */
 export interface MeasuredLevel { mark: string; font: string; pt: number; line: number; samples: number }
 export interface MeasuredGap { pt: number; samples: number; none: number }

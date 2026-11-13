@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import init, { HwpDocument } from '@rhwp/core';
 import { strFromU8, unzipSync } from 'fflate';
 import { item, itemDepth, note, table, type OfficialDocument } from '../../src/features/officialDocument/model';
-import { ATTACHMENT_PROFILE, layoutOfficialDocument, markerHang, officialMarker } from '../../src/features/officialDocument/format';
+import { layoutOfficialDocument, markerHang, officialMarker, REPORT_PROFILE } from '../../src/features/officialDocument/format';
 import { checkedHwpxExport, writeOfficialDocument, type OfficialFonts } from '../../src/features/officialDocument/rhwpWriter';
 
 const assets = 'src/features/officialDocument/assets/';
@@ -27,9 +27,9 @@ const shallow: OfficialDocument = {
 };
 
 describe('항목 기호와 배치', () => {
-  test('계층이 4단계 미만이면 편람 순서, 4단계 이상이면 □ → ◦ → - → ※', () => {
+  test('편람 번호 8단계, 특수기호 체계는 편람 표기 □ → ○ → - → ㆍ', () => {
     expect([1, 2, 3, 4, 5, 6, 7, 8].map(level => officialMarker(level, 1, false))).toEqual(['2.', '나.', '2)', '나)', '(2)', '(나)', '②', '㉯']);
-    expect([1, 2, 3, 4].map(level => officialMarker(level, 0, true))).toEqual(['□', '◦', '-', '※']);
+    expect([1, 2, 3, 4].map(level => officialMarker(level, 0, true))).toEqual(['□', '○', '-', 'ㆍ']);
   });
   test('하 다음 항목은 거, 너 … 순으로 이어 간다', () => {
     expect([13, 14, 15, 28].map(i => officialMarker(2, i, false))).toEqual(['하.', '거.', '너.', '고.']);
@@ -46,9 +46,11 @@ describe('항목 기호와 배치', () => {
     ]);
     expect(lines.filter(l => l.kind === 'item' && l.heading).map(l => l.kind !== 'table' && l.text)).toEqual(['1. 목적', '2. 운영 방법', '3. 예산']);
   });
-  test('4단계 문서는 같은 트리를 □ ◦ - ※로 펼친다', () => {
-    const deep: OfficialDocument = { kind: 'attachment-plan', title: '가상 문서', body: [item('추진 배경', [item('현황', [item('세부', [item('참고')])])])] };
-    expect(layoutOfficialDocument(deep).slice(1).map(l => l.kind !== 'table' && l.text)).toEqual(['□ 추진 배경', '◦ 현황', '- 세부', '※ 참고']);
+  test('운영계획서는 4단계 이상이어도 편람 번호 체계를 쓰고, 붙임 보고서만 □ ○ - ㆍ로 펼친다', () => {
+    const body = [item('추진 배경', [item('현황', [item('세부', [item('참고')]), item('추가')]), item('과제')]), item('추진 계획')];
+    const text = (kind: OfficialDocument['kind']) => layoutOfficialDocument({ kind, title: '가상 문서', body }).slice(1).map(l => l.kind !== 'table' && l.text);
+    expect(text('attachment-plan')).toEqual(['1. 추진 배경', '가. 현황', '1) 세부', '참고', '2) 추가', '나. 과제', '2. 추진 계획']);
+    expect(text('attachment-report')).toEqual(['□ 추진 배경', '○ 현황', '- 세부', 'ㆍ 참고', '- 추가', '○ 과제', '□ 추진 계획']);
   });
 });
 
@@ -79,12 +81,12 @@ describe('rhwp HWPX 출력', () => {
       expect((section.match(/<hp:tbl\b/g) ?? []).length).toBe(1);
     } finally { doc.free(); }
   });
-  test('4단계 개조식은 교육부 실측 서식을 본문 크기에 비례해 쓴다(□ HY헤드라인M, ◦·- 휴먼명조, ※ 맑은 고딕)', () => {
-    expect(ATTACHMENT_PROFILE.gaejosik.levels.map(l => [l.font, l.size, l.lineSpacing])).toEqual([['HY헤드라인M', 1300, 160], ['휴먼명조', 1300, 160], ['휴먼명조', 1300, 180], ['맑은 고딕', 1050, 160]]);
-    // 실측 문서 과반에서 띄운 간격만 쓴다: ◦ 다음 □ 9pt → 13/15 비례 7.5pt, □ 다음 ◦는 붙인다.
-    expect(ATTACHMENT_PROFILE.gaejosik.gapBefore('l2', 'l1')).toBe(800);
-    expect(ATTACHMENT_PROFILE.gaejosik.gapBefore('l1', 'l2')).toBe(0);
-    const deep: OfficialDocument = { kind: 'attachment-plan', title: '가상 개선 보고', body: [item('현황 점검 결과를 공유함', [item('참여 학급 확대 필요', [item('세부 일정 조정', [item('학교 사정 반영')])])]), item('다음 단계를 준비함', [item('설문 실시')])] };
+  test('붙임 보고서의 4단계 특수기호 체계는 교육부 실측 서식을 본문 크기에 비례해 쓴다(□ HY헤드라인M, ○·- 휴먼명조, 넷째 맑은 고딕)', () => {
+    expect(REPORT_PROFILE.gaejosik!.levels.map(l => [l.font, l.size, l.lineSpacing])).toEqual([['HY헤드라인M', 1300, 160], ['휴먼명조', 1300, 160], ['휴먼명조', 1300, 180], ['맑은 고딕', 1050, 160]]);
+    // 실측 문서 과반에서 띄운 간격만 쓴다: ○ 단계 다음 □ 9pt → 13/15 비례 7.5pt, □ 다음 ◦는 붙인다.
+    expect(REPORT_PROFILE.gaejosik!.gapBefore('l2', 'l1')).toBe(800);
+    expect(REPORT_PROFILE.gaejosik!.gapBefore('l1', 'l2')).toBe(0);
+    const deep: OfficialDocument = { kind: 'attachment-report', title: '가상 개선 보고', body: [item('현황 점검 결과를 공유함', [item('참여 학급 확대 필요', [item('세부 일정 조정', [item('학교 사정 반영')])])]), item('다음 단계를 준비함', [item('설문 실시')])] };
     const doc = new HwpDocument(readFileSync(`${assets}blank.hwpx`));
     try {
       writeOfficialDocument(doc, deep, fonts);

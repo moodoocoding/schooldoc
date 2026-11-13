@@ -38,7 +38,7 @@ export function PlanOutput({ draft, title, pages, current, conditions, related, 
     catch { setCopy({ body: draftBody, ok: false }); }
   };
   // 자동으로 고친 표기는 지면에 이미 반영되므로, 교사가 확인할 것만 보여 준다. 분량은 지면을 만든 뒤 더한다.
-  const issues = checked ? [...checked.issues.filter(i => !i.fixed), ...(preview?.key === key ? pageVolumeIssues(preview.volume, pages) : [])] : [];
+  const issues = checked ? [...checked.issues.filter(i => !i.fixed), ...(preview?.key === key ? pageVolumeIssues(preview.volume, pages) : []), ...draft.unknowns.map(message => ({ where: '학교 확인', message, fixed: false }))] : [];
   useEffect(() => {
     const c = new AbortController(); active.current = c;
     let urls: string[] = [];

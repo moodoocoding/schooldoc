@@ -119,7 +119,7 @@ export const planBudgetTotal = (draft: Pick<PlanDraft, 'budget'>) => draft.budge
 export function validatePlanDraft(value: unknown, context: PlanContext): PlanDraft {
   const d = obj(value), known = new Set(context.analysis?.requirements.map(r => r.id) ?? []);
   const refs = (v: unknown) => list(v, 24).map(v => { const result = id(v); if (!known.has(result)) fail('초안에 확인하지 않은 공문 근거가 있습니다.'); return result; });
-  const sections = list(d.sections, 6).map(v => { const s = obj(v); const paragraphs = list(s.paragraphs, 8).map(v => text(v, 400)); if (!paragraphs.length) fail(); return { id: id(s.id), heading: text(s.heading, 40), paragraphs, requirementIds: refs(s.requirementIds) }; });
+  const sections = list(d.sections, 6).map(v => { const s = obj(v); const paragraphs = list(s.paragraphs, 8).map(v => text(v, 600)); if (!paragraphs.length) fail(); return { id: id(s.id), heading: text(s.heading, 40), paragraphs, requirementIds: refs(s.requirementIds) }; });
   if (sections.length < 2) fail('초안 본문이 부족합니다. 다시 작성해 주세요.');
   unique(sections.map(s => s.id));
   const schedule = list(d.schedule, 8).map(v => { const s = obj(v); return { when: text(s.when, 80), activity: text(s.activity, 180), owner: text(s.owner, 60), requirementIds: refs(s.requirementIds) }; });

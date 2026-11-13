@@ -104,12 +104,11 @@ export function checkOfficialDocument(document: OfficialDocument): OfficialCheck
 }
 
 /**
- * 실제 쪽 수와 희망 분량의 차이를 알린다(저장은 막지 않는다).
- * 단순히 마지막 쪽이 덜 찬 것은 경고하지 않는다.
+ * 선택한 쪽 수를 실제로 넘을 때만 알린다(저장은 막지 않는다).
+ * 덜 찬 쪽이나 짧은 결과는 교사에게 방해가 되므로 알리지 않는다.
  */
 export function pageVolumeIssues(volume: PageVolume | undefined, targetPages?: number): OfficialIssue[] {
   if (!volume || !volume.fills.length) return [];
-  if (!targetPages || volume.fills.length === targetPages) return [];
-  if (volume.fills.length < targetPages) return [{ where: '분량', message: `선택한 ${targetPages}쪽보다 짧은 ${volume.fills.length}쪽입니다. 본문 수정에서 실행 절차·역할·점검 방법을 구체화하거나 그대로 저장할 수 있습니다.`, fixed: false }];
+  if (!targetPages || volume.fills.length <= targetPages) return [];
   return [{ where: '분량', message: `선택한 ${targetPages}쪽보다 ${volume.fills.length - targetPages}쪽 많은 ${volume.fills.length}쪽입니다. 본문·일정 수정으로 줄이거나 그대로 저장할 수 있습니다.`, fixed: false }];
 }

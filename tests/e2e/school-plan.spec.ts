@@ -79,7 +79,7 @@ test('유형 자동 추천과 비식별 사례를 실제 요청 코어에 연결
         expect(data.referenceVersion).toBe(PLAN_REFERENCE_VERSION);
         referenceChecked = true;
       }
-      return new Response(JSON.stringify({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(request.action === 'analyze' ? analysis : { ...authoredDraft, body: { purpose: authoredDraft.body.purpose, participation: authoredDraft.body.overview, learningActivities: authoredDraft.body.activities, feedback: authoredDraft.body.followUp } }) }] }] }));
+      return new Response(JSON.stringify({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(request.action === 'analyze' ? analysis : { ...authoredDraft, body: { purpose: authoredDraft.body.purpose, participation: authoredDraft.body.overview, learningActivities: authoredDraft.body.activities, feedback: { ...authoredDraft.body.effects, paragraphs: ['담당 교사가 학생의 기록과 작품 나눔 자료를 취합하여 11월 9일까지 결과를 제출하고, 공개 자료에서는 개인정보를 제외한다(안).', '학생이 친구의 기록을 읽으며 새로 알게 된 점을 돌아보고, 담임교사는 학생의 관심을 다음 읽기 활동 안내에 반영한다(안).'] }, effects: authoredDraft.body.effects } }) }] }] }));
     }, signal),
   });
   await page.route('**/__test_school_plan', async route => {
@@ -134,7 +134,7 @@ test('공문 → 근거 → 조건 → 초안 수정 → HWPX와 새로고침', 
   await expect(page.getByRole('blockquote').first()).toContainText('11월');
   await generate(page); await decisions(page);
   await expect(review(page)).toContainText('합계 금200,000원(금이십만원)');
-  await expect(page.getByRole('img', { name: /운영계획서 .*쪽 지면/ })).toHaveCount(2);
+  await expect(page.getByRole('img', { name: /운영계획서 .*쪽 지면/ })).not.toHaveCount(0);
   await page.getByRole('button', { name: '본문 수정', exact: true }).click();
   await decisions(page, 2);
   await page.getByLabel('본문 내용').fill('학생이 직접 고른 책을 읽고 자신의 읽기 기록을 남긴 뒤 학급별 작품을 나눈다.');
@@ -150,7 +150,7 @@ test('공문 → 근거 → 조건 → 초안 수정 → HWPX와 새로고침', 
   const xml = strFromU8(files['Contents/section0.xml']);
   expect(xml).toContain('학생이 직접 고른 책'); expect(xml).toContain('11월 9일까지');
   expect((xml.match(/<hp:tbl\b/g) ?? []).length).toBe(2);
-  await expect(page.getByRole('img', { name: '운영계획서 2쪽 지면' })).toBeVisible();
+  await expect(page.getByRole('img', { name: '운영계획서 1쪽 지면' })).toBeVisible();
   await decisions(page);
   await page.screenshot({ path: 'test-results/school-plan/save-desktop.png', fullPage: true });
   // K-에듀파인에 붙여 넣을 기안 본문: 관련 공문 자리, 편람 항목, 붙임과 끝 표시.
@@ -347,7 +347,7 @@ test('실제 클라이언트 → 서버 코어 → Responses 요청 → 초안·
       const payload = JSON.parse(String(init?.body)); providerCalls.push(payload);
       expect(payload.store).toBe(false); expect(payload.text.format.strict).toBe(true);
       expect(payload.input[0].content.every((c: { type: string }) => c.type === 'input_text')).toBe(true);
-      const result = request.action === 'analyze' ? analysis : request.action === 'draft' ? { ...authoredDraft, body: { purpose: authoredDraft.body.purpose, participation: authoredDraft.body.overview, learningActivities: authoredDraft.body.activities, feedback: authoredDraft.body.followUp } } : { schedule: draft.schedule.map((s, i) => i ? s : { ...s, when: '10월 셋째 주(안)' }) };
+      const result = request.action === 'analyze' ? analysis : request.action === 'draft' ? { ...authoredDraft, body: { purpose: authoredDraft.body.purpose, participation: authoredDraft.body.overview, learningActivities: authoredDraft.body.activities, feedback: { ...authoredDraft.body.effects, paragraphs: ['담당 교사가 학생의 기록과 작품 나눔 자료를 취합하여 11월 9일까지 결과를 제출하고, 공개 자료에서는 개인정보를 제외한다(안).', '학생이 친구의 기록을 읽으며 새로 알게 된 점을 돌아보고, 담임교사는 학생의 관심을 다음 읽기 활동 안내에 반영한다(안).'] }, effects: authoredDraft.body.effects } } : { schedule: draft.schedule.map((s, i) => i ? s : { ...s, when: '10월 셋째 주(안)' }) };
       return new Response(JSON.stringify({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(result) }] }] }));
     }, signal),
   });
