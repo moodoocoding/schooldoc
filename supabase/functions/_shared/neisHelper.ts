@@ -10,6 +10,10 @@ export interface Assessment {
   standard: string;
   task: string;
   rubrics: Record<NeisGrade, string>;
+  /** 평가 시기 원문(예: 10월). 이전 분석 결과에는 없을 수 있다. */
+  period?: string;
+  /** 수행평가 기준안·평가지에서 정리한 수업·평가 방법, 채점 요소, 평가지 문항. 학생별 사실이 아니다. */
+  taskDetails?: string;
   sourcePage: number | null;
   warnings: string[];
 }
@@ -42,6 +46,10 @@ export interface CommentEvidence {
   task: string;
   grade: NeisGrade;
   criterion: string;
+  /** 평가지·채점 요소. 서버 검증에서 근거 문장으로 함께 사용한다. */
+  context?: string;
+  /** 앞 시기 평가보다 높은 성취를 보인 평가. 향상·성장 표현을 허용한다. */
+  rising?: boolean;
 }
 export interface CommentInput {
   subject: string;
@@ -102,6 +110,8 @@ export function validatePlan(value: unknown): AssessmentPlan {
         middle: text(item.rubrics.middle, 2000),
         low: text(item.rubrics.low, 2000),
       },
+      ...(item.period === undefined ? {} : { period: text(item.period, 40) }),
+      ...(item.taskDetails === undefined ? {} : { taskDetails: text(item.taskDetails, NEIS_MAX_TASK_CONTEXT) }),
       sourcePage: page as number | null,
       warnings: array(item.warnings, 10).map((w) => text(w, 500)),
     };
@@ -271,10 +281,14 @@ export function validateGeneratedComment(value: unknown, input: CommentInput, st
     if (!sentence.text || !evidence || sentence.evidenceQuote !== evidence.criterion)
       throw new Error('평어와 평가 근거의 연결을 확인하지 못했습니다. 다시 생성해 주세요.');
     // 연결 ID만으로 의미 정확성을 보증할 수 없다. 자주 발생하는 근거 없는 추정은 추가로 차단한다.
+    const basis = `${evidence.criterion}\n${evidence.context ?? ''}`;
     const inferredClaims = [/어려[움워운웠우]/u, /미흡/u, /부족/u, /도움|도와/u, /노력/u,
-      /향상/u, /성장/u, /발전/u, /리더십/u, /자기\s*주도/u, /적극/u, /흥미/u, /자신감/u];
-    if (inferredClaims.some((claim) => claim.test(sentence.text) && !claim.test(evidence.criterion)))
+      /리더십/u, /자기\s*주도/u, /적극/u, /흥미/u, /자신감/u];
+    if (inferredClaims.some((claim) => claim.test(sentence.text) && !claim.test(basis)))
       throw new Error('평가기준에 없는 어려움·도움·태도 등의 표현이 포함되었습니다. 다시 생성해 주세요.');
+    // 향상·성장은 시기 순서상 성적이 오른 평가에서만 쓴다.
+    if (/향상|성장|발전/u.test(sentence.text) && !evidence.rising && !/향상|성장|발전/u.test(basis))
+      throw new Error('앞 시기보다 성적이 오른 평가에서만 향상·성장 표현을 쓸 수 있습니다. 다시 생성해 주세요.');
     const statement = sentence.text.replace(/[.!?。]+$/u, '').trimEnd();
     const last = statement.charCodeAt(statement.length - 1);
     if (strictStyle && (bannedStyle.test(statement) || /[*_`]/u.test(statement) || !(last >= 0xac00 && last <= 0xd7a3) || (last - 0xac00) % 28 !== 16))
@@ -289,12 +303,37 @@ export function validateGeneratedComment(value: unknown, input: CommentInput, st
     throw new Error('생성 결과에 빠진 평가가 있습니다. 다시 생성해 주세요.');
   return { sentences };
 }
+/** 나이스 기준: 한글 3Byte, 영문·숫자 1Byte, 엔터 1Byte(2026 기재요령 참고자료 07). */
 export function countComment(textValue: string) {
   const normalized = textValue.replace(/\r\n?/g, '\n');
   return {
     characters: Array.from(normalized).length,
-    bytes: new TextEncoder().encode(normalized).length + (normalized.match(/\n/g)?.length ?? 0),
+    bytes: new TextEncoder().encode(normalized).length,
   };
+}
+
+/** 기재요령의 서술형 표기·기재 금지 사항 중 문자열로 확인할 수 있는 것만 알린다. 의미 판단은 교사가 한다. */
+const RECORD_SYMBOLS = /[◎○◌△●•▪■□◆◇★☆※→⇒①-⑳㉠-㉭"“”'‘’「」『』<>《》#*_`~|]/u;
+const RECORD_NUMBERING = /(?:^|\n)\s*(?:\d{1,2}[.)]|[가나다라마바사아자차카타파하][.)]|-)\s/u;
+const RECORD_BANNED: [RegExp, string][] = [
+  [/대회|수상|입상|금상|은상|동상|장려상|최우수상|우수상|표창/u, '대회·수상'],
+  [/인증\s*시험|자격증|급수|토익|토플|TOEIC|TOEFL|HSK|JLPT/iu, '인증시험·자격증'],
+  [/방과\s*후/u, '방과후학교'],
+  [/K-?MOOC|KOCW|MOOC/iu, '온라인 공개강좌'],
+  [/학원|과외|사교육/u, '사교육'],
+  [/해외|어학\s*연수|유학/u, '해외 활동'],
+  [/부모님의?\s*직업|아버지의?\s*직업|어머니의?\s*직업/u, '부모 직업'],
+  [/장학/u, '장학'],
+];
+const ALLOWED_ENGLISH = new Set(['CEO', 'PD', 'UCC', 'IT', 'POP', 'CF', 'TV', 'PAPS', 'SNS', 'PPT', 'AI', 'CD', 'DVD', 'PC', 'USB', 'QR', 'URL']);
+export function recordTextProblems(textValue: string): string[] {
+  const problems: string[] = [];
+  if (RECORD_SYMBOLS.test(textValue)) problems.push('특수문자');
+  if (RECORD_NUMBERING.test(textValue)) problems.push('문단 번호');
+  for (const [pattern, label] of RECORD_BANNED) if (pattern.test(textValue)) problems.push(label);
+  const english = (textValue.match(/[A-Za-z]{2,}/g) ?? []).filter((word) => !ALLOWED_ENGLISH.has(word.toUpperCase()));
+  if (english.length) problems.push('영문 표기');
+  return [...new Set(problems)];
 }
 export function commentLengthRange(target: CommentInput['length']) {
   return { min: Math.ceil(target * 0.9), max: Math.floor(target * 1.1) };
@@ -304,7 +343,7 @@ export function validateCommentLength(comment: GeneratedComment, target: Comment
   const { min, max } = commentLengthRange(target);
   if (characters < min || characters > max) {
     const correction = characters < min
-      ? `목표 ${target}자에 맞추어 약 ${target - characters}자 보완하세요. 기존 평가기준의 기능·방법·결과를 구체적으로 풀어 쓰고 새로운 사실이나 반복 문구를 추가하지 마세요.`
+      ? `목표 ${target}자에 맞추어 약 ${target - characters}자 보완하세요. 평가 과제에서 수행한 과정과 성취 특성을 보완하고, 성취기준 문장을 되풀이하거나 새로운 사실·반복 문구를 추가하지 마세요.`
       : `목표 ${target}자에 맞추어 약 ${characters - target}자 줄이세요. 모든 평가의 핵심 내용과 자연스러운 문장을 유지해 주세요.`;
     throw new Error(`현재 공백 포함 ${characters}자입니다. 선택한 ${target}자의 허용 범위는 ${min}~${max}자입니다. ${correction}`);
   }

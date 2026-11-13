@@ -15,11 +15,18 @@ import { generateClassWithRepairs } from '../../../supabase/functions/_shared/ne
 import { checkFile, isHangulFile } from './subjectFiles';
 import { reconcileSourcePages } from './sourcePages';
 
+/** 시험 배포에서만 neis-helper-* 이름의 별도 함수를 쓴다. 다른 함수 이름은 허용하지 않는다. */
+export function neisFunctionName(configured: unknown): string {
+  const name = typeof configured === 'string' ? configured.trim() : '';
+  return /^neis-helper(?:-[a-z0-9]+)*$/.test(name) ? name : 'neis-helper';
+}
+const NEIS_FUNCTION = neisFunctionName(import.meta.env.VITE_NEIS_FUNCTION);
+
 async function invoke(body: Record<string, unknown>, signal: AbortSignal, stream = false): Promise<unknown> {
   if (!supabase) throw new Error('서버 연결이 필요합니다. 로그인 후 다시 시도해 주세요.');
   const { data: auth } = await supabase.auth.getSession();
   if (!auth.session) throw new Error('로그인 후 다시 시도해 주세요.');
-  const { data, error } = await supabase.functions.invoke('neis-helper', {
+  const { data, error } = await supabase.functions.invoke(NEIS_FUNCTION, {
     body,
     ...(stream ? { headers: { Accept: 'text/event-stream' } } : {}),
     signal: AbortSignal.any([signal, AbortSignal.timeout(body.action === 'generate-class' ? 150_000 : 125_000)]),

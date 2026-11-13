@@ -63,6 +63,7 @@ export function AssessmentList({
                   </span>
                   <span className="mt-0.5 block break-all text-sm text-slate-600">
                     {item.standardCode || '성취기준 코드 없음'}
+                    {item.period?.trim() ? ` · ${item.period.trim()}` : ''}
                     {problems.length ? ` · 입력 필요: ${problems.join(', ')}` : ''}
                   </span>
                 </span>
@@ -94,6 +95,12 @@ export function AssessmentList({
                           <dd className="break-keep">{item.rubrics[grade]}</dd>
                         </div>
                       ))}
+                      <div>
+                        <dt className="font-semibold">수업·평가 과정과 채점 요소</dt>
+                        <dd className="whitespace-pre-line break-keep">
+                          {item.taskDetails?.trim() || '평가계획에서 찾지 못했습니다. 평가기준만으로 작성합니다.'}
+                        </dd>
+                      </div>
                     </dl>
                     <LazyDetails
                       summaryClassName="min-h-[44px] cursor-pointer content-center font-semibold text-blue-700"

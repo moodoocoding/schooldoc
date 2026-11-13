@@ -9,9 +9,13 @@ export function reconcileSourcePages(plan: AssessmentPlan, pageTexts: string[]):
   return {
     ...plan,
     assessments: plan.assessments.map((assessment) => {
-      const evidence = [assessment.task, assessment.standardCode, assessment.standard, ...Object.values(assessment.rubrics)]
-        .map(comparable);
-      const matches = evidence.every(Boolean)
+      // 성취기준이 여러 개면 표 안에서 코드와 본문이 떨어져 있을 수 있어 하나씩 확인한다.
+      const required = [assessment.task, assessment.standardCode, assessment.standard, ...Object.values(assessment.rubrics)];
+      const evidence = [
+        assessment.task, ...assessment.standardCode.split(/[,，、]/u), ...assessment.standard.split(/\[[^\]]*\]/u),
+        ...Object.values(assessment.rubrics),
+      ].map(comparable).filter(Boolean);
+      const matches = required.every((text) => comparable(text))
         ? pages.flatMap((page, index) => evidence.every((text) => page.includes(text)) ? [index + 1] : [])
         : [];
       const warning = matches.length === 0
@@ -31,9 +35,9 @@ export function reconcileSourcePages(plan: AssessmentPlan, pageTexts: string[]):
 export function matchWorksheet(text: string, assessmentId: string, assessments: Assessment[]) {
   const body = comparable(text);
   const matches = assessments.filter((assessment) => {
-    const code = comparable(assessment.standardCode);
+    const codes = assessment.standardCode.split(/[,，、]/u).map(comparable).filter(Boolean);
     const task = comparable(assessment.task);
-    return (code && body.includes(code)) || (task.length >= 4 && body.includes(task));
+    return codes.some((code) => body.includes(code)) || (task.length >= 4 && body.includes(task));
   });
   const compact = text.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
   if (!compact) return { taskContext: '', warning: '텍스트를 읽지 못했습니다. 지면에서 문항을 확인해 주세요.' };

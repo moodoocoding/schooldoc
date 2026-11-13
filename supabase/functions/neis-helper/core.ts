@@ -8,7 +8,7 @@ import {
   validateCommentLength,
 } from '../_shared/neisHelper.ts';
 import type { CommentInput } from '../_shared/neisHelper.ts';
-import { classAssessmentOrder, createClassOutputValidator, validateClassInput, validateClassOutput } from '../_shared/neisClassComments.ts';
+import { classAssessmentOrder, createClassOutputValidator, risingEvaluations, validateClassInput, validateClassOutput } from '../_shared/neisClassComments.ts';
 import type { ClassCommentEvent, ClassCommentInput } from '../_shared/neisClassComments.ts';
 import { createClassRowReader } from '../_shared/neisClassRows.ts';
 import { readJsonEvents } from '../_shared/neisEvents.ts';
@@ -128,6 +128,8 @@ export const planSchema = object({
       standard: string,
       task: string,
       rubrics: object({ high: string, middle: string, low: string }),
+      period: string,
+      taskDetails: string,
       sourcePage: { type: ['integer', 'null'] },
       warnings: strings,
     }),
@@ -157,7 +159,9 @@ const untrusted = untrustedInputInstruction;
 const planInstruction = `${untrusted}
 초등학교 평가계획의 요약 표에서 모든 교과의 평가 항목을 한 번씩 추출한다. 뒤에 반복되는 개별 평가지는 같은 평가로 중복 추가하지 않는다.
 각 평가의 영역(예: 듣기·말하기, 읽기, 쓰기)을 domain에 원문 그대로 보존한다. 영역·성취기준·평가요소·수준별 기준은 같은 평가의 행 관계를 유지한다. 병합된 영역 셀은 그 셀에 속한 평가 행에만 적용한다. 영역이 원문에 없으면 추측하지 말고 빈 문자열로 둔다.
-성취기준 코드와 본문은 원문 그대로 각각 보존한다. 과제는 평가요소를 사용한다. ◎·○·△의 평가기준을 서로 바꾸거나 합치지 말고 high·middle·low에 원문으로 넣는다.
+성취기준 코드와 본문은 원문 그대로 각각 보존한다. 한 평가에 성취기준이 여러 개면 코드는 standardCode에 원문 순서대로 쉼표로 구분해 모두 넣고, 본문은 standard에 "[코드] 본문" 형식으로 모두 넣는다. 일부만 남기지 않는다. 과제는 평가요소를 사용한다. ◎·○·△의 평가기준을 서로 바꾸거나 합치지 말고 high·middle·low에 원문으로 넣는다.
+period에는 평가 시기 원문(예: 10월, 3~4월)을 넣고 없으면 빈 문자열로 둔다.
+taskDetails에는 이 평가에서 실제로 진행한 과제의 과정과 채점 요소를 한국어 명사구 위주로 간결하게 정리한다(400자 이내). 요약 표의 수업·평가 방법 칸과, 뒤쪽에 같은 평가의 수행평가 기준안·채점 기준표·평가지(활동지)·체크리스트가 있으면 그 내용을 함께 사용한다. 평가 유형(보고서·토의·서술형 등), 학생이 수행하는 단계, 채점 기준의 항목, 평가지 문항을 담는다. 예시 답안의 구체적인 내용, 점수 배점 숫자, 학생 이름은 넣지 않는다. 자료가 없으면 빈 문자열로 둔다. 다른 평가의 내용을 섞지 않는다.
 각 항목의 원본 PDF 쪽 번호를 sourcePage로 반환한다(1부터). 연도·학년·학기는 보이는 대로 반환하고 모르면 빈 문자열로 둔다.
 성취기준·과제·기준이 비거나 모순되면 내용을 만들지 말고 해당 값을 빈 문자열로 두고 warnings에 교사가 확인할 부분을 한국어로 적는다.
 평가 단계가 3단계가 아니면 임의로 3단계로 바꾸지 않는다. 수준 기준은 빈 값과 warnings로 반환한다. 학생 이름이나 무관한 개인정보는 출력하지 않는다.`;
@@ -177,9 +181,13 @@ export function selectNeisAiModel(action: NeisRequest['action'], settings: { mod
 export function buildNeisAiRequest(request: NeisRequest, model: string) {
   if (request.action === 'generate-class') {
     const { groups, ...context } = request.input;
-    const students = groups.flatMap((group) => group.ids.map((id) => ({
-      id, grades: group.grades, order: classAssessmentOrder(id, context.evaluations.length),
-    })))
+    const students = groups.flatMap((group) => {
+      const rising = risingEvaluations(context.evaluations, group.grades);
+      return group.ids.map((id) => ({
+        id, grades: group.grades, order: classAssessmentOrder(id, context.evaluations.length),
+        ...(rising.length ? { rising } : {}),
+      }));
+    })
       .toSorted((a, b) => Number(a.id.slice(1)) - Number(b.id.slice(1)));
     const count = students.length;
     return {

@@ -10,6 +10,8 @@ export interface ClassEvaluation {
   task: string;
   rubrics: Partial<Record<NeisGrade, string>>;
   taskContext?: string;
+  /** 평가 시기 원문(예: 10월). 향상 판단에만 사용한다. */
+  period?: string;
 }
 export interface ClassCommentInput {
   subject: string;
@@ -37,6 +39,24 @@ export function classAssessmentOrder(id: string, evaluationCount: number): numbe
     (start + direction * index + evaluationCount) % evaluationCount + 1);
 }
 
+const rank: Record<NeisGrade, number> = { low: 0, middle: 1, high: 2 };
+/** 평가 시기의 첫 달. 학년도 순서(3월 시작)로 비교하도록 1·2월은 13·14로 둔다. */
+function periodMonth(period: string | undefined): number | null {
+  const month = Number(period?.match(/(\d{1,2})\s*월/u)?.[1]);
+  if (!Number.isInteger(month) || month < 1 || month > 12) return null;
+  return month < 3 ? month + 12 : month;
+}
+/**
+ * 앞 시기 평가보다 성적이 오른 평가의 위치(1부터). 모든 평가의 시기를 읽을 수 있을 때만 판단한다.
+ * 같은 달의 평가끼리는 비교하지 않는다.
+ */
+export function risingEvaluations(evaluations: Pick<ClassEvaluation, 'period'>[], grades: NeisGrade[]): number[] {
+  const months = evaluations.map((evaluation) => periodMonth(evaluation.period));
+  if (months.some((month) => month === null)) return [];
+  return grades.flatMap((grade, index) =>
+    grades.some((earlier, other) => months[other]! < months[index]! && rank[earlier] < rank[grade]) ? [index + 1] : []);
+}
+
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(inputError);
   return value as Record<string, unknown>;
@@ -60,6 +80,7 @@ export function validateClassInput(raw: unknown): ClassCommentInput {
       standardCode: text(row.standardCode, 200), standard: text(row.standard, 2000), task: text(row.task, 1000),
       rubrics: Object.fromEntries(levels.flatMap((level) => rubrics[level] === undefined ? [] : [[level, text(rubrics[level], 2000)]])),
       ...(row.taskContext ? { taskContext: text(row.taskContext, NEIS_MAX_TASK_CONTEXT) } : {}),
+      ...(row.period ? { period: text(row.period, 40) } : {}),
     };
   });
   const studentIds = new Set<string>();
@@ -108,8 +129,10 @@ export function createClassOutputValidator(input: ClassCommentInput) {
     if (typeof id !== 'string' || !grades || seen.has(id))
       throw new Error('생성된 평어의 학생 연결이 잘못되었습니다. 다시 시도해 주세요.');
     seen.add(id);
+    const rising = new Set(risingEvaluations(input.evaluations, grades));
     const evidence = input.evaluations.map((item, index) => ({
       ...item, assessmentId: String(index + 1), grade: grades[index], criterion: item.rubrics[grades[index]] ?? '',
+      context: item.taskContext ?? '', rising: rising.has(index + 1),
     }));
     let rejectedText = '';
     try {

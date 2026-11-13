@@ -363,7 +363,7 @@ test('중단 후 내부 이동은 결과를 보존하고 로그아웃은 늦은 
   await page.getByRole('button', { name: '평어 만들기', exact: true }).click();
   await page.getByRole('button', { name: '중단', exact: true }).click();
   await page.getByRole('button', { name: 'Neis Helper', exact: true }).click();
-  await page.getByRole('button', { name: '교과학습발달상황(세특). 평어 작성 시작', exact: true }).click();
+  await page.getByRole('button', { name: '성취수준 및 특기사항. 평어 작성 시작', exact: true }).click();
   await expect(page.getByRole('heading', { name: '수학 평어 결과' })).toBeVisible();
   await page.getByRole('button', { name: /미생성·실패 \d명 다시 시도/ }).click();
   await page.evaluate(() => (window as unknown as { __neisLogout: () => void }).__neisLogout());
@@ -563,7 +563,7 @@ test('수정한 평어는 다른 화면에 다녀와도 유지된다', async ({ 
   await uploadGrades(page);
   await page.getByLabel('3번 가상아주긴이름학생 평어', { exact: true }).fill('교사가 고친 평어임.');
   await page.getByRole('button', { name: 'Neis Helper', exact: true }).click();
-  await page.getByRole('button', { name: '교과학습발달상황(세특). 평어 작성 시작', exact: true }).click();
+  await page.getByRole('button', { name: '성취수준 및 특기사항. 평어 작성 시작', exact: true }).click();
   await expect(page.getByLabel('3번 가상아주긴이름학생 평어', { exact: true })).toHaveValue('교사가 고친 평어임.');
 });
 
