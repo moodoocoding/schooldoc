@@ -286,9 +286,17 @@ export function validateGeneratedComment(value: unknown, input: CommentInput, st
       /리더십/u, /자기\s*주도/u, /적극/u, /흥미/u, /자신감/u];
     if (inferredClaims.some((claim) => claim.test(sentence.text) && !claim.test(basis)))
       throw new Error('평가기준에 없는 어려움·도움·태도 등의 표현이 포함되었습니다. 다시 생성해 주세요.');
-    // 향상·성장은 시기 순서상 성적이 오른 평가에서만 쓴다.
-    if (/향상|성장|발전/u.test(sentence.text) && !evidence.rising && !/향상|성장|발전/u.test(basis))
-      throw new Error('앞 시기보다 성적이 오른 평가에서만 향상·성장 표현을 쓸 수 있습니다. 다시 생성해 주세요.');
+    // 향상·성장은 같은 영역에서 시기 순서상 성적이 오른 평가에서만 쓴다.
+    if (/향상|성장|발전|나아[짐졌지]|앞선\s*시기|이전\s*시기|이전보다/u.test(sentence.text) && !evidence.rising && !/향상|성장|발전/u.test(basis))
+      throw new Error('같은 영역의 앞 시기보다 성적이 오른 평가에서만 향상·성장 표현을 쓸 수 있습니다. 다시 생성해 주세요.');
+    if (/(?:연습|보완|노력)이\s*필요|기대[됨된]|처음에는|학기\s*초/u.test(sentence.text))
+      throw new Error('부족한 점·전망·성장 서사 표현은 쓰지 않습니다. 확인된 수행만 긍정적으로 다시 써 주세요.');
+    // 중·하 수준에는 평가기준에 없는 상 수준 수식어를 쓰지 않는다.
+    if (evidence.grade !== 'high') {
+      const strong = sentence.text.match(/정확(?:히|하게)|능숙|체계적|뛰어|우수|탁월|돋보|막힘\s*없/u)?.[0];
+      if (strong && !basis.includes(strong))
+        throw new Error(`중·하 수준 평가에 상 수준 표현 '${strong}'이 있습니다. 해당 수준의 평가기준에 맞게 담백하게 다시 써 주세요.`);
+    }
     const statement = sentence.text.replace(/[.!?。]+$/u, '').trimEnd();
     const last = statement.charCodeAt(statement.length - 1);
     if (strictStyle && (bannedStyle.test(statement) || /[*_`]/u.test(statement) || !(last >= 0xac00 && last <= 0xd7a3) || (last - 0xac00) % 28 !== 16))

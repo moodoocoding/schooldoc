@@ -13,6 +13,7 @@ import type { ClassCommentEvent, ClassCommentInput } from '../_shared/neisClassC
 import { createClassRowReader } from '../_shared/neisClassRows.ts';
 import { readJsonEvents } from '../_shared/neisEvents.ts';
 import { classCommentInstruction, commentLengthInstruction, singleStudentCommentInstruction, untrustedInputInstruction } from './commentPrompts.ts';
+import { subjectExampleBlock } from './subjectExamples.ts';
 
 export class NeisError extends Error {
   status: number;
@@ -192,7 +193,8 @@ export function buildNeisAiRequest(request: NeisRequest, model: string) {
     const count = students.length;
     return {
       model, store: false,
-      instructions: `${classCommentInstruction}\n\n${commentLengthInstruction(request.input.length, request.input.evaluations.length)}`,
+      instructions: [classCommentInstruction, subjectExampleBlock(request.input.subject),
+        commentLengthInstruction(request.input.length, request.input.evaluations.length)].filter(Boolean).join('\n\n'),
       input: [{ role: 'user', content: [{ type: 'input_text', text: JSON.stringify({ ...context, studentCount: count, students }) }] }],
       text: { format: { type: 'json_schema', name: 'neis_class', strict: true, schema: object({ rows: {
         type: 'array', minItems: count, maxItems: count,

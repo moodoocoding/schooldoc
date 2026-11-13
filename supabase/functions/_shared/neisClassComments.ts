@@ -12,6 +12,8 @@ export interface ClassEvaluation {
   taskContext?: string;
   /** 평가 시기 원문(예: 10월). 향상 판단에만 사용한다. */
   period?: string;
+  /** 평가 영역 원문(예: 쓰기). 같은 영역끼리만 향상을 판단한다. */
+  domain?: string;
 }
 export interface ClassCommentInput {
   subject: string;
@@ -46,15 +48,18 @@ function periodMonth(period: string | undefined): number | null {
   if (!Number.isInteger(month) || month < 1 || month > 12) return null;
   return month < 3 ? month + 12 : month;
 }
+const domainKey = (domain: string | undefined) => (domain ?? '').normalize('NFKC').replace(/[\s·.,ㆍ・]/gu, '');
 /**
- * 앞 시기 평가보다 성적이 오른 평가의 위치(1부터). 모든 평가의 시기를 읽을 수 있을 때만 판단한다.
- * 같은 달의 평가끼리는 비교하지 않는다.
+ * 같은 영역의 앞 시기 평가보다 성적이 오른 평가의 위치(1부터).
+ * 영역이나 시기를 읽지 못한 평가, 같은 달의 평가끼리는 비교하지 않는다.
  */
-export function risingEvaluations(evaluations: Pick<ClassEvaluation, 'period'>[], grades: NeisGrade[]): number[] {
+export function risingEvaluations(evaluations: Pick<ClassEvaluation, 'period' | 'domain'>[], grades: NeisGrade[]): number[] {
   const months = evaluations.map((evaluation) => periodMonth(evaluation.period));
-  if (months.some((month) => month === null)) return [];
+  const domains = evaluations.map((evaluation) => domainKey(evaluation.domain));
   return grades.flatMap((grade, index) =>
-    grades.some((earlier, other) => months[other]! < months[index]! && rank[earlier] < rank[grade]) ? [index + 1] : []);
+    months[index] !== null && domains[index] && grades.some((earlier, other) =>
+      domains[other] === domains[index] && months[other] !== null && months[other]! < months[index]! &&
+      rank[earlier] < rank[grade]) ? [index + 1] : []);
 }
 
 function object(value: unknown): Record<string, unknown> {
@@ -81,6 +86,7 @@ export function validateClassInput(raw: unknown): ClassCommentInput {
       rubrics: Object.fromEntries(levels.flatMap((level) => rubrics[level] === undefined ? [] : [[level, text(rubrics[level], 2000)]])),
       ...(row.taskContext ? { taskContext: text(row.taskContext, NEIS_MAX_TASK_CONTEXT) } : {}),
       ...(row.period ? { period: text(row.period, 40) } : {}),
+      ...(row.domain ? { domain: text(row.domain, 200) } : {}),
     };
   });
   const studentIds = new Set<string>();

@@ -58,11 +58,13 @@ export function buildClassRequest(
       // 교사가 따로 넣은 평가지가 있으면 우선하고, 없으면 평가계획에서 정리한 과정·채점 요소를 쓴다.
       const taskContext = worksheets[evaluation.id]?.taskContext.trim() || evaluation.taskDetails?.trim();
       const period = evaluation.period?.trim();
+      const domain = evaluation.domain?.trim();
       return {
         standardCode: evaluation.standardCode, standard: evaluation.standard, task: evaluation.task,
         rubrics: Object.fromEntries([...activeGrades].map((grade) => [grade, evaluation.rubrics[grade]])),
         ...(taskContext ? { taskContext } : {}),
         ...(period ? { period } : {}),
+        ...(domain ? { domain } : {}),
       };
     }),
     groups: gradeGroups,

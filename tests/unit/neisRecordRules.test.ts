@@ -57,14 +57,40 @@ describe('평가계획의 시기와 과정·채점 요소', () => {
 });
 
 describe('시기 순서상 오른 성적', () => {
-  test('앞 시기보다 높은 평가만 찾는다', () => {
-    const evaluations = [{ period: '10월' }, { period: '11월' }, { period: '12월' }];
+  test('같은 영역의 앞 시기보다 높은 평가만 찾는다', () => {
+    const evaluations = [{ period: '10월', domain: '쓰기' }, { period: '11월', domain: '쓰기' }, { period: '12월', domain: '쓰 기' }];
     expect(risingEvaluations(evaluations, ['middle', 'high', 'high'])).toEqual([2, 3]);
     expect(risingEvaluations(evaluations, ['high', 'middle', 'low'])).toEqual([]);
-    expect(risingEvaluations([{ period: '3~4월' }, { period: '1월' }], ['low', 'middle'])).toEqual([2]);
+    expect(risingEvaluations([{ period: '3~4월', domain: '읽기' }, { period: '1월', domain: '읽기' }], ['low', 'middle'])).toEqual([2]);
   });
-  test('시기를 모르면 판단하지 않는다', () => {
-    expect(risingEvaluations([{ period: '' }, { period: '11월' }], ['low', 'high'])).toEqual([]);
+  test('다른 영역끼리는 비교하지 않는다', () => {
+    const evaluations = [{ period: '10월', domain: '쓰기' }, { period: '11월', domain: '듣기·말하기' }, { period: '12월', domain: '문법' }];
+    expect(risingEvaluations(evaluations, ['middle', 'high', 'high'])).toEqual([]);
+  });
+  test('시기나 영역을 모르면 판단하지 않는다', () => {
+    expect(risingEvaluations([{ period: '', domain: '쓰기' }, { period: '11월', domain: '쓰기' }], ['low', 'high'])).toEqual([]);
+    expect(risingEvaluations([{ period: '10월' }, { period: '11월' }], ['low', 'high'])).toEqual([]);
+  });
+  test('중·하 수준의 상 수준 수식어와 부족·전망 표현을 거절한다', () => {
+    const input: CommentInput = { subject: '국어', length: 200, evidence: [{
+      assessmentId: '1', standardCode: '[4국03-02]', standard: '글을 쓴다.', task: '보고서 쓰기', grade: 'middle', criterion: rubrics.middle,
+    }] };
+    const say = (text: string) => validateGeneratedComment({ sentences: [{ text, assessmentId: '1', evidenceQuote: rubrics.middle }] }, input);
+    expect(() => say('자료를 정확히 정리함.')).toThrow('상 수준 표현');
+    expect(() => say('자료를 정리하는 능력이 돋보임.')).toThrow('상 수준 표현');
+    expect(() => say('자료를 정리하는 연습이 필요함.')).toThrow('부족한 점');
+    expect(() => say('자료를 정리하며 정리하는 방법을 익힘.')).not.toThrow();
+    expect(() => validateGeneratedComment({ sentences: [{ text: '자료를 정확하게 정리함.', assessmentId: '1', evidenceQuote: rubrics.high }] },
+      { ...input, evidence: [{ ...input.evidence[0], grade: 'high', criterion: rubrics.high }] })).not.toThrow();
+  });
+  test('학급 요청에 해당 교과 문체 예시만 넣는다', () => {
+    const base: ClassCommentInput = { subject: '국어', length: 200,
+      evaluations: [{ standardCode: 'A', standard: '가', task: '보고서 쓰기', rubrics: { high: rubrics.high } }],
+      groups: [{ ids: ['s1'], grades: ['high'] }] };
+    const korean = buildNeisAiRequest({ action: 'generate-class', input: base }, 'model') as { instructions: string };
+    expect(korean.instructions).toContain('국어 문체 예시');
+    const science = buildNeisAiRequest({ action: 'generate-class', input: { ...base, subject: '과학' } }, 'model') as { instructions: string };
+    expect(science.instructions).not.toContain('문체 예시 —');
   });
   test('향상 표현은 오른 평가에서만 통과한다', () => {
     const input: CommentInput = { subject: '국어', length: 200, evidence: [{
@@ -78,8 +104,8 @@ describe('시기 순서상 오른 성적', () => {
     const input: ClassCommentInput = {
       subject: '국어', length: 200,
       evaluations: [
-        { standardCode: 'A', standard: '가', task: '보고서 쓰기', rubrics: { middle: rubrics.middle }, period: '10월', taskContext: '조사 방법을 밝힘.' },
-        { standardCode: 'B', standard: '나', task: '편지 쓰기', rubrics: { high: rubrics.high }, period: '12월' },
+        { standardCode: 'A', standard: '가', task: '보고서 쓰기', rubrics: { middle: rubrics.middle }, period: '10월', domain: '쓰기', taskContext: '조사 방법을 밝힘.' },
+        { standardCode: 'B', standard: '나', task: '편지 쓰기', rubrics: { high: rubrics.high }, period: '12월', domain: '쓰기' },
       ],
       groups: [{ ids: ['s1'], grades: ['middle', 'high'] }],
     };
