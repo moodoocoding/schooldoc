@@ -4,6 +4,8 @@ export const GRADE_LABELS: Record<NeisGrade, string> = { high: '◎', middle: '�
 export interface Assessment {
   id: string;
   subject: string;
+  /** 평가계획에 명시된 영역. 이전 분석 결과에는 없을 수 있다. */
+  domain?: string;
   standardCode: string;
   standard: string;
   task: string;
@@ -91,6 +93,7 @@ export function validatePlan(value: unknown): AssessmentPlan {
     return {
       id: `assessment-${i + 1}`,
       subject: text(item.subject, 80),
+      ...(item.domain === undefined ? {} : { domain: text(item.domain, 200) }),
       standardCode: text(item.standardCode, 200),
       standard: text(item.standard, 2000),
       task: text(item.task, 1000),

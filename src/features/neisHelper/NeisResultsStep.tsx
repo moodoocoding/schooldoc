@@ -24,6 +24,7 @@ import { isPdfOrHangul } from './subjectFiles';
 const SKIP = '';
 const methodText: Record<LinkMethod, string> = {
   exact: '제목 일치',
+  domain: '평가계획의 영역 일치',
   similar: '비슷한 제목',
   order: '순서로 연결 · 확인 필요',
   manual: '직접 선택',

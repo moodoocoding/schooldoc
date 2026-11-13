@@ -56,6 +56,14 @@ const book = () =>
 const mapping = { 'column-1': assessment.id, 'column-2': second.id };
 
 describe('NEIS 평가 근거와 성적 무결성', () => {
+  test('평가계획의 명시된 영역을 보존하며 영역이 없는 기존 결과도 읽는다', () => {
+    const value = { year: '2026', schoolGrade: '5학년', semester: '2학기', assessments: [assessment] };
+    expect(validatePlan(value).assessments[0].domain).toBeUndefined();
+    expect(validatePlan({ ...value, assessments: [{ ...assessment, domain: ' 자료와 가능성 ' }] })
+      .assessments[0].domain).toBe('자료와 가능성');
+    expect(() => validatePlan({ ...value, assessments: [{ ...assessment, domain: 123 }] })).toThrow();
+    expect(() => validatePlan({ ...value, assessments: [{ ...assessment, domain: '가'.repeat(201) }] })).toThrow();
+  });
   test('빈 중간 칸과 동명이인을 그대로 보존한다', () => {
     const parsed = validateGradeBook({
       context: '',

@@ -123,6 +123,7 @@ export const planSchema = object({
     type: 'array',
     items: object({
       subject: string,
+      domain: string,
       standardCode: string,
       standard: string,
       task: string,
@@ -155,6 +156,7 @@ export const classCommentSchema = object({
 const untrusted = untrustedInputInstruction;
 const planInstruction = `${untrusted}
 초등학교 평가계획의 요약 표에서 모든 교과의 평가 항목을 한 번씩 추출한다. 뒤에 반복되는 개별 평가지는 같은 평가로 중복 추가하지 않는다.
+각 평가의 영역(예: 듣기·말하기, 읽기, 쓰기)을 domain에 원문 그대로 보존한다. 영역·성취기준·평가요소·수준별 기준은 같은 평가의 행 관계를 유지한다. 병합된 영역 셀은 그 셀에 속한 평가 행에만 적용한다. 영역이 원문에 없으면 추측하지 말고 빈 문자열로 둔다.
 성취기준 코드와 본문은 원문 그대로 각각 보존한다. 과제는 평가요소를 사용한다. ◎·○·△의 평가기준을 서로 바꾸거나 합치지 말고 high·middle·low에 원문으로 넣는다.
 각 항목의 원본 PDF 쪽 번호를 sourcePage로 반환한다(1부터). 연도·학년·학기는 보이는 대로 반환하고 모르면 빈 문자열로 둔다.
 성취기준·과제·기준이 비거나 모순되면 내용을 만들지 말고 해당 값을 빈 문자열로 두고 warnings에 교사가 확인할 부분을 한국어로 적는다.
@@ -162,6 +164,7 @@ const planInstruction = `${untrusted}
 const gradeInstruction = `${untrusted}
 나이스 수행평가 성적표의 한 학급을 추출한다. context에 원문에 보이는 학년·반·학기·교과를 짧게 담는다.
 columns에는 평가 열의 제목을 원본 순서로 반환하고, students에는 모든 학생의 원본 번호와 이름을 원래 행 순서대로 반환한다.
+다단 머리글에 영역과 평가요소·과제명·성취기준 코드가 함께 있으면 해당 성적 열에 속한 제목들을 함께 보존한다. 영역명만 남겨 구체적인 평가 제목을 버리지 않는다. 원문에 영역명만 있으면 그 영역명을 그대로 반환하고 없는 과제명을 만들지 않는다.
 동명이인을 합치거나 번호를 재부여하지 않는다. 학생의 번호·이름이 없거나 불확실하면 빈 문자열로 둔다.
 grades는 columns와 같은 개수와 순서여야 한다. 원래 기호/문자열을 그대로 쓴다. 빈칸·읽지 못한 칸은 그 자리에 null을 넣는다.
 뒤 성적을 앞 빈칸으로 당기거나 성적을 임의로 보충·평균·상향하지 않는다. 머리글 반복·합계 행은 학생이 아니다.
