@@ -315,7 +315,10 @@ export function validateGeneratedComment(value: unknown, input: CommentInput, st
   if (strictStyle) {
     const praise = joined.match(/돋보|뛰어|우수|탁월/gu)?.length ?? 0;
     const ability = joined.match(/(?:능력|역량|힘)이\s/gu)?.length ?? 0;
-    if (praise > 2 || ability > 2)
+    // 평가 수에 비해 분량이 많으면 평가마다 능력 문장을 허용한다(분량 지침과 같은 기준).
+    const count = input.evidence.length;
+    const limit = Math.round((input.length - count + 1) / count) >= 110 ? Math.max(2, count) : 2;
+    if (praise > limit || ability > limit)
       throw new Error(`'돋보임·뛰어남·우수함'(${praise}회)이나 '능력이 ~'(${ability}회) 표현이 반복됩니다. 교과 능력 문장은 1~2개 평가에만 쓰고, 강점은 수행을 드러내는 서술로 바꿔 다시 써 주세요.`);
   }
   if (input.evidence.some((e) => !sentences.some((s) => s.assessmentId === e.assessmentId)))
@@ -363,7 +366,7 @@ export function validateCommentLength(comment: GeneratedComment, target: Comment
   const { min, max } = commentLengthRange(target);
   if (characters < min || characters > max) {
     const correction = characters < min
-      ? `목표 ${target}자에 맞추어 약 ${target - characters}자 보완하세요. 평가 과제에서 수행한 과정과 성취 특성을 보완하고, 성취기준 문장을 되풀이하거나 새로운 사실·반복 문구를 추가하지 마세요.`
+      ? `목표 ${target}자에 맞추어 약 ${target - characters}자 보완하세요. 평가지의 채점 요소 중 해당 수준이 뒷받침하는 항목, 성취기준별 성취, 과제의 준비·수행·정리 과정을 구체적으로 보완하세요. 성취기준 문장을 되풀이하거나 새로운 사실·칭찬 반복을 추가하지 마세요.`
       : `목표 ${target}자에 맞추어 약 ${characters - target}자 줄이세요. 모든 평가의 핵심 내용과 자연스러운 문장을 유지해 주세요.`;
     throw new Error(`현재 공백 포함 ${characters}자입니다. 선택한 ${target}자의 허용 범위는 ${min}~${max}자입니다. ${correction}`);
   }

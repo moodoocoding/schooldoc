@@ -258,6 +258,13 @@ export function NeisPrepareStep({
               ))}
             </div>
             <p className="mt-2 text-sm text-slate-600">공백과 문장부호를 포함해 선택 분량의 ±10%로 작성합니다.</p>
+            {assessments.length > 0 && draft.length / assessments.length > 150 && (
+              <p className="mt-2 break-keep rounded-lg bg-amber-50 p-3 text-sm leading-6 text-amber-900">
+                {draft.subject} 평가가 {assessments.length}개라 평가 하나에 약 {Math.round(draft.length / assessments.length)}자를
+                씁니다. 평가계획의 과정·채점 요소로 채우지만, 내용이 적으면 같은 말이 늘어지거나 다시 쓰기가 반복될 수
+                있습니다. 평가 {assessments.length}개에는 {assessments.length * 100 <= 200 ? 200 : 300}자 안팎을 권장합니다.
+              </p>
+            )}
           </fieldset>
           <p className="rounded-lg bg-blue-50 p-4 text-sm leading-6 text-blue-900">
             XLSX·CSV는 이 브라우저에서 읽습니다. PDF 성적표는 원본을, HWP·HWPX는 변환한 PDF를 OpenAI로 전송해 읽습니다. 평어를

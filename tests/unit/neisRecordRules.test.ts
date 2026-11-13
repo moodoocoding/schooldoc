@@ -93,6 +93,15 @@ describe('시기 순서상 오른 성적', () => {
     expect(() => say(['気持ち를 전하는 편지를 씀.'])).toThrow('한글이 아닌 문자');
     expect(() => say(['자료를 짜임새 있게 정리함.', '보고서를 쓰는 데 능숙하고 결과를 전달하는 능력이 돋보임.'])).not.toThrow();
   });
+  test('평가 수에 비해 분량이 많으면 채울 재료를 안내하고 능력 문장을 평가마다 허용한다', async () => {
+    const { commentLengthInstruction } = await import('../../supabase/functions/neis-helper/commentPrompts');
+    expect(commentLengthInstruction(300, 2)).toContain('평가 하나에 쓸 분량이 많다');
+    expect(commentLengthInstruction(300, 3)).not.toContain('평가 하나에 쓸 분량이 많다');
+    const evidence = (id: string) => ({ assessmentId: id, standardCode: 'A', standard: '가', task: id, grade: 'high' as const, criterion: rubrics.high });
+    const comment = { sentences: ['1', '2', '3'].map((id) => ({ text: `${id} 자료를 정리하는 능력이 드러남.`, assessmentId: id, evidenceQuote: rubrics.high })) };
+    expect(() => validateGeneratedComment(comment, { subject: '국어', length: 400, evidence: ['1', '2', '3'].map(evidence) }, true)).not.toThrow();
+    expect(() => validateGeneratedComment(comment, { subject: '국어', length: 200, evidence: ['1', '2', '3'].map(evidence) }, true)).toThrow('반복');
+  });
   test('학급 요청에 해당 교과 문체 예시만 넣는다', () => {
     const base: ClassCommentInput = { subject: '국어', length: 200,
       evaluations: [{ standardCode: 'A', standard: '가', task: '보고서 쓰기', rubrics: { high: rubrics.high } }],
