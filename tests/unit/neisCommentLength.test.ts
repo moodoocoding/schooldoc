@@ -75,3 +75,15 @@ test('단일 학생 API도 분량 미달을 성공으로 반환하지 않는다'
   expect(response.status).toBe(422);
   expect((await response.json()).error).toContain('180~220자');
 });
+
+test('학생 생성과 자료 분석 요청에 앱의 출력 토큰 상한을 넣지 않는다', () => {
+  const body = buildNeisAiRequest({ action: 'generate-class', input: {
+    ...input(), groups: [{ ids: ['s1', 's2', 's3', 's4', 's5'], grades: ['high'] }],
+  } }, 'gpt-6-luna');
+  expect(body).not.toHaveProperty('max_output_tokens');
+  expect(buildNeisAiRequest({ action: 'plan', data: 'fixture' }, 'fixture')).not.toHaveProperty('max_output_tokens');
+  expect(buildNeisAiRequest({ action: 'grades', data: 'fixture' }, 'fixture')).not.toHaveProperty('max_output_tokens');
+  expect(buildNeisAiRequest({ action: 'generate', input: {
+    subject: '수학', length: 200, evidence: [{ assessmentId: '1', standardCode: '가상', standard: '평균을 구한다.', task: '평균', grade: 'high', criterion: '자료의 평균을 구한다.' }],
+  } }, 'fixture')).not.toHaveProperty('max_output_tokens');
+});

@@ -74,7 +74,7 @@ describe('평어 중복 차단과 자동 재작성', () => {
     expect(rows.map((row) => row.id)).toEqual(['s1', 's2']);
     expect(rows[0].comment?.sentences[0].text).toBe(first);
   });
-  test('계속 겹쳐도 자동 호출을 세 번에서 멈추고 실패를 유지한다', async () => {
+  test('계속 겹쳐도 자동 호출을 네 번에서 멈추고 실패를 유지한다', async () => {
     const request = vi.fn(async (next, _signal, onRow) => {
       const validator = createClassOutputValidator(next);
       for (const id of next.groups.flatMap((group: { ids: string[] }) => group.ids)) onRow(validator.accept(raw(id, first)));

@@ -1,7 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { mkdir } from "node:fs/promises";
-const evidence = "design/feature-reviews/2026-10-01-data-collect-fix";
+const evidence =
+  process.env.DATA_COLLECT_TEST_EVIDENCE_DIR ??
+  "test-results/data-collect-evidence";
 const pdf = {
   name: "가상자료.pdf",
   mimeType: "application/pdf",
@@ -258,6 +260,17 @@ test("실제 Chrome: 120명 페이지 이동·미제출 필터·마감 연장·�
   ).toBeVisible();
   await page.goto(links.manage);
   await page.getByRole("button", { name: "다시 열기", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByLabel("다시 열 때 기한")
+    .selectOption("none");
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "다시 열기", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "수합 종료", exact: true }),
+  ).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await saveShot(page, "chrome-manage-mobile-first");
   expect(
@@ -391,10 +404,17 @@ test("실제 Chrome: 실제 마감 시각 경과 후 차단되고 연장 시 입
     publicPage.getByRole("heading", { name: "자료 수합이 종료되었습니다" }),
   ).toBeVisible();
   await saveShot(publicPage, "chrome-public-deadline-final");
+  await page.getByRole("button", { name: "다시 열기", exact: true }).click();
   await page
     .getByLabel("새 마감 시각")
     .fill(local(new Date(Date.now() + 86400000)));
-  await page.getByRole("button", { name: "기한 저장", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "다시 열기", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "수합 종료", exact: true }),
+  ).toBeVisible();
   await expect(publicPage.getByLabel("전달 사항")).toHaveValue(
     "기한 중 작성한 메모",
   );
@@ -413,7 +433,7 @@ test("실제 Chrome: 설정 명단 미리보기·취소·반영과 목록 20개 
 }) => {
   await page.goto("/tools/data-collect");
   await expect(
-    page.getByRole("heading", { name: "아직 자료 수합이 없습니다" }),
+    page.getByRole("heading", { name: "수합 중인 항목이 없습니다" }),
   ).toBeVisible();
   await saveShot(page, "chrome-list-empty-final");
   await page.goto("/tools/data-collect/new");

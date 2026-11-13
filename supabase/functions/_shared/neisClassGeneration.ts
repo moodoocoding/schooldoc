@@ -2,10 +2,10 @@ import { commentStyleContext } from './neisHelper.ts';
 import type { ClassCommentInput, ClassCommentRow } from './neisClassComments.ts';
 import { createClassOutputValidator } from './neisClassComments.ts';
 
-export const MAX_CLASS_ATTEMPTS = 3;
+export const MAX_CLASS_ATTEMPTS = 4;
 type RequestClass = (input: ClassCommentInput, signal: AbortSignal, onRow: (row: ClassCommentRow) => void) => Promise<void>;
 
-/** One class request first. Only rejected/missing rows are rewritten, at most twice. */
+/** One class request first. Only rejected/missing rows are rewritten, at most three times. */
 export async function generateClassWithRepairs(
   input: ClassCommentInput, signal: AbortSignal, requestClass: RequestClass, onRow: (row: ClassCommentRow) => void,
 ) {

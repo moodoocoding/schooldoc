@@ -75,6 +75,17 @@ export interface DataCollectionSummary {
   confirmed: number;
   corrected: number;
   submitted: number;
+  purgePending?: boolean;
+}
+
+export type DataCollectionListScope = 'active' | 'archive';
+export interface DataCollectionPurgePreview {
+  revision: string;
+  availableAt: string;
+  pending: boolean;
+  targetCount: number;
+  responseCount: number;
+  fileCount: number;
 }
 export interface DataCollectionCurrentResponse {
   id: string;

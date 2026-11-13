@@ -3,9 +3,12 @@ import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import init, { HwpDocument } from '@rhwp/core';
 import { unzipSync, strFromU8 } from 'fflate';
 import { layoutOfficialDocument } from '../../src/features/officialDocument/format';
+import { pageVolumeIssues } from '../../src/features/officialDocument/lint';
 import { checkedHwpxExport, writeOfficialDocument, type OfficialFonts } from '../../src/features/officialDocument/rhwpWriter';
 import { checkedPlanDocument, planToOfficialDocument } from '../../src/features/schoolDocuments/planDocument';
-import { draft } from '../fixtures/schoolPlan';
+import { authoredDraft, context, draft } from '../fixtures/schoolPlan';
+import { composePlanDraft } from '../../supabase/functions/school-plan/composition';
+import { validatePlanDraft } from '../../supabase/functions/_shared/schoolPlan';
 
 const assets = 'src/features/officialDocument/assets/';
 const read = (name: string) => readFileSync(`${assets}fonts/${name}`);
@@ -60,7 +63,7 @@ describe('실제 rhwp WASM의 계획서 생성·보존', () => {
     const doc = new HwpDocument(readFileSync(`${assets}blank.hwpx`));
     const plan = pages === 1 ? compact : draft;
     try {
-      writeOfficialDocument(doc, planToOfficialDocument(plan, plan.title, pages), pages, fonts);
+      writeOfficialDocument(doc, planToOfficialDocument(plan, plan.title, pages), fonts);
       const bytes = checkedHwpxExport(doc);
       const xml = strFromU8(unzipSync(bytes)['Contents/section0.xml']);
       expect((xml.match(/<hp:tbl\b/g) ?? []).length).toBe(2);
@@ -76,11 +79,37 @@ describe('실제 rhwp WASM의 계획서 생성·보존', () => {
       writeFileSync(`test-results/rhwp-implementation/wasm-${pages}page.hwpx`, bytes);
     } finally { doc.free(); }
   });
-  test('분량 초과 시 내용을 줄이지 않고 저장을 거부한다', () => {
+  test('분량을 넘어도 내용과 글자 크기를 줄이지 않고 만들며, 넘친 쪽 수를 알린다', () => {
     const doc = new HwpDocument(readFileSync(`${assets}blank.hwpx`));
     try {
       const long = { ...draft, sections: draft.sections.map(s => ({ ...s, paragraphs: s.paragraphs.map(p => p.repeat(12)) })) };
-      expect(() => writeOfficialDocument(doc, planToOfficialDocument(long, draft.title, 1), 1, fonts)).toThrow(/1쪽에 담기 어렵습니다/);
+      const volume = writeOfficialDocument(doc, planToOfficialDocument(long, draft.title, 1), fonts);
+      expect(volume.fills.length).toBeGreaterThan(1);
+      const text = JSON.parse(doc.getTextFileText()) as string;
+      expect(text.replace(/\s/g, '')).toContain(long.sections[0].paragraphs[0].replace(/\s/g, ''));
+      expect(pageVolumeIssues(volume, 1)).toEqual([expect.objectContaining({ where: '분량', message: expect.stringContaining('선택한 1쪽보다') })]);
+    } finally { doc.free(); }
+  });
+  // codex/school-plan-composition(af12d44)의 시험을 공통 출력 계층 API로 옮긴 것.
+  test('새 활동 구조와 공모전의 배점·동점 기준을 실제 HWPX에 빠짐없이 보존한다', () => {
+    const composed = validatePlanDraft(composePlanDraft({ ...authoredDraft, body: {
+      purpose: authoredDraft.body.purpose, overview: authoredDraft.body.overview,
+      intake: authoredDraft.body.activities[0], publication: { ...authoredDraft.body.activities[1], requirementIds: ['r2', 'r3'] },
+      selectionRules: { criteria: [{ name: '적합성', check: '주제에 어울리는지 확인한다.', maxScore: 50 }, { name: '의미', check: '뜻이 분명한지 확인한다.', maxScore: 50 }],
+        evaluationMethod: '합산 점수가 높은 순으로 선정한다.', exclusions: ['부적절한 표현이 포함된 작품'],
+        tieBreakPriority: ['적합성', '의미'], finalTie: '함께 논의하고 선정 이유를 기록한다.', methodKind: 'proposal', requirementIds: ['r2'] },
+    } }, 'contest'), context);
+    const doc = new HwpDocument(readFileSync(`${assets}blank.hwpx`));
+    try {
+      writeOfficialDocument(doc, planToOfficialDocument(composed, '가상 공모전 구조 검증', 2), fonts);
+      const reopened = new HwpDocument(checkedHwpxExport(doc));
+      try {
+        const text = JSON.parse(reopened.getTextFileText()) as string;
+        for (const section of composed.sections) for (const p of section.paragraphs) expect(text).toContain(p);
+        expect(text).toContain('적합성(50점):');
+        expect(text).toContain('만점 합계 100점');
+        expect(text).toContain('적합성 → 의미');
+      } finally { reopened.free(); }
     } finally { doc.free(); }
   });
 });

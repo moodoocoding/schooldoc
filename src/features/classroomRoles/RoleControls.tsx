@@ -7,6 +7,23 @@ export const roleInput =
   "mt-1 block min-h-11 w-full rounded-xl border border-[#CBD5E1] bg-white px-3 py-2 text-sm text-[#0F172A] focus:outline-2 focus:outline-[#0F6CBD]";
 export const rolePanel =
   "rounded-2xl border border-[#DCE3EA] bg-white p-5 sm:p-6";
+export function RoleCountGrid({ counts, unit }: {
+  counts: [label: string, value: number][];
+  unit: string;
+}) {
+  return (
+    <dl className={`mt-5 grid ${counts.length === 3 ? "grid-cols-3 gap-2 sm:gap-4" : "grid-cols-2 gap-4 sm:grid-cols-4"}`}>
+      {counts.map(([label, value]) => (
+        <div key={label}>
+          <dt className="text-sm text-[#526174]">{label}</dt>
+          <dd className="mt-1 text-2xl font-extrabold tabular-nums">
+            {value.toLocaleString("ko-KR")}<span className="ml-1 text-sm font-normal">{unit}</span>
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
 export function RoleField({
   label,
   children,

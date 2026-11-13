@@ -1,6 +1,6 @@
 import type { OfficialDocument } from './model';
 import type { RenderedDocument } from './rhwpWriter';
-export type RhwpRequest = { action: 'render'; document: OfficialDocument; maxPages: number } | { action: 'import'; bytes: Uint8Array<ArrayBuffer> };
+export type RhwpRequest = { action: 'render'; document: OfficialDocument } | { action: 'import'; bytes: Uint8Array<ArrayBuffer> };
 export type RhwpResponse = ({ ok: true } & RenderedDocument) | { ok: false; message: string };
 
 /** One worker per operation bounds document lifetime; termination cancels synchronous WASM. */

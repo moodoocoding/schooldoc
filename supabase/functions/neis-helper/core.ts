@@ -179,9 +179,8 @@ export function buildNeisAiRequest(request: NeisRequest, model: string) {
     })))
       .toSorted((a, b) => Number(a.id.slice(1)) - Number(b.id.slice(1)));
     const count = students.length;
-    const budget = count * Math.ceil(request.input.length * 1.25 + request.input.evaluations.length * 20 + 70);
     return {
-      model, store: false, max_output_tokens: Math.min(32_768, Math.max(2400, budget)),
+      model, store: false,
       instructions: `${classCommentInstruction}\n\n${commentLengthInstruction(request.input.length, request.input.evaluations.length)}`,
       input: [{ role: 'user', content: [{ type: 'input_text', text: JSON.stringify({ ...context, studentCount: count, students }) }] }],
       text: { format: { type: 'json_schema', name: 'neis_class', strict: true, schema: object({ rows: {
@@ -197,7 +196,6 @@ export function buildNeisAiRequest(request: NeisRequest, model: string) {
   return {
     model,
     store: false,
-    max_output_tokens: generation ? 6000 : 20000,
     instructions: generation
       ? `${singleStudentCommentInstruction}\n\n${commentLengthInstruction(request.input.length, request.input.evidence.length)}`
       : request.action === 'plan'

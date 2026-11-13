@@ -2,11 +2,16 @@ import { isDataCollectDemoMode } from './dataCollectConfig';
 import {
   createRemoteDataCollection,
   listRemoteDataCollections,
+  deleteRemoteDataCollection,
+  previewRemoteDataCollectionPurge,
+  reopenRemoteDataCollection,
 } from './dataCollectAdminApi';
 import {
   createDataCollection as createLocal,
   getDataCollection as getLocal,
   listDataCollections as listLocal,
+  deleteDataCollection as deleteLocal,
+  reopenDataCollection as reopenLocal,
   subscribeDataCollections,
   updateDataCollectionStatus as updateLocalStatus,
   updateDataCollectionDue as updateLocalDue,
@@ -15,6 +20,7 @@ import type {
   DataCollection,
   DataCollectionDraft,
 } from './types';
+import { isCollectionOpen } from './dataCollectUtils';
 
 export const listDataCollections = async (ownerId: string) =>
   isDataCollectDemoMode ? listLocal(ownerId) : listRemoteDataCollections();
@@ -39,7 +45,9 @@ import {
 import type {
   DataCollectionExport,
   DataCollectionListCursor,
+  DataCollectionListScope,
   DataCollectionOverview,
+  DataCollectionPurgePreview,
   DataCollectionSummary,
   DataCollectionTargetStatus,
 } from './types';
@@ -146,14 +154,20 @@ export const listDataCollectionSummaries = (
   owner: string,
   cursor?: DataCollectionListCursor,
   force = false,
+  scope: DataCollectionListScope = 'active',
 ) =>
   cached(
     owner,
-    'list:' + JSON.stringify(cursor ?? null),
+    'list:' + scope + ':' + JSON.stringify(cursor ?? null),
     async () => {
       if (!isDataCollectDemoMode)
-        return listRemoteDataCollectionSummaries(cursor);
+        return listRemoteDataCollectionSummaries(cursor, scope);
+      const now = new Date();
       const all = listLocal(owner)
+        .filter(
+          (c) =>
+            isCollectionOpen(c.status, c.dueAt, now) === (scope === 'active'),
+        )
         .toSorted(
           (a, b) =>
             b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id),
@@ -174,6 +188,71 @@ export const listDataCollectionSummaries = (
     },
     force,
   );
+
+const archivedDemo = (owner: string, id: string) => {
+  const c = ownDemo(id, owner);
+  if (isCollectionOpen(c.status, c.dueAt))
+    throw new Error('현재 수합 중입니다. 종료한 뒤 다시 시도해 주세요.');
+  return c;
+};
+
+const demoPurgePreview = (c: DataCollection): DataCollectionPurgePreview => ({
+  revision: c.updatedAt,
+  availableAt: c.closedAt || c.dueAt,
+  pending: false,
+  targetCount: c.targets.length,
+  responseCount: c.submissions.length,
+  fileCount:
+    c.submissions.filter((submission) => submission.file).length +
+    Number(Boolean(c.sourceFile)),
+});
+
+export const previewDataCollectionPurge = async (owner: string, id: string) =>
+  isDataCollectDemoMode
+    ? demoPurgePreview(archivedDemo(owner, id))
+    : previewRemoteDataCollectionPurge(id);
+
+export const deleteDataCollection = async (
+  owner: string,
+  id: string,
+  preview: DataCollectionPurgePreview,
+) => {
+  if (isDataCollectDemoMode) {
+    const current = demoPurgePreview(archivedDemo(owner, id));
+    if (
+      current.revision !== preview.revision ||
+      current.targetCount !== preview.targetCount ||
+      current.responseCount !== preview.responseCount ||
+      current.fileCount !== preview.fileCount
+    )
+      throw new Error(
+        '자료가 변경되었습니다. 대상과 수량을 다시 확인해 주세요.',
+      );
+    deleteLocal(id);
+  } else {
+    await deleteRemoteDataCollection(id, preview);
+  }
+  clearDataCollectQueryCache();
+};
+
+export const reopenDataCollection = async (
+  owner: string,
+  id: string,
+  dueAt: string | null,
+) => {
+  if (
+    dueAt !== null &&
+    (!Number.isFinite(Date.parse(dueAt)) || Date.parse(dueAt) <= Date.now())
+  )
+    throw new Error('마감 시각은 현재보다 뒤로 설정해 주세요.');
+  if (isDataCollectDemoMode) {
+    archivedDemo(owner, id);
+    reopenLocal(id, dueAt ?? '');
+  } else {
+    await reopenRemoteDataCollection(id, dueAt);
+  }
+  clearDataCollectQueryCache();
+};
 export const getDataCollectionOverview = (
   owner: string,
   id: string,

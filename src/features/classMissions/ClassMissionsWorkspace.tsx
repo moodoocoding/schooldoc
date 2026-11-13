@@ -7,6 +7,7 @@ import { ClassRosterImporter } from '../classroomRoles/ClassRosterImporter';
 import { qrImageFileName, saveQrImage } from '../../utils/qrImage';
 import { downloadMissionExcel } from './missionExportExcel';
 import { MISSIONS_DEMO_PROFILE_ID, syncMissionSettings } from './missionSettingsSync';
+import { MissionStatisticsPanel } from './MissionStatisticsPanel';
 import {
   checkFor, createMissionBoard, isMissionsDemo, listMissionBoards, missionCounts, missionPurgeCounts, missionPublicUrl, missionRetention,
   missionToday, missionDateLabel, mutateMissionBoard, parseMissionRoster, type CheckStatus, type IssuedCode,
@@ -24,6 +25,8 @@ const statusTone: Record<CheckStatus, string> = {
   unmarked: 'bg-[#F1F5F9] text-[#475569]', reported: 'bg-[#E8F4FF] text-[#0B5B9F]',
   pending: 'bg-[#FFF3D6] text-[#8A5100]', confirmed: 'bg-[#E6F4EA] text-[#126B32]', exempt: 'bg-[#F5F3FF] text-[#6D42A0]',
 };
+const missionTabs = [{ id: 'manage', label: '미션 관리' }, { id: 'statistics', label: '통계' }] as const;
+type MissionTab = (typeof missionTabs)[number]['id'];
 const today = () => missionToday();
 const weekLater = () => missionToday(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
 const emptyInput = (board: MissionBoard): MissionInput => ({ title: '', description: '', startDate: today(), dueDate: weekLater(),
@@ -101,6 +104,7 @@ export function ClassMissionsWorkspace() {
   const [searchParams] = useSearchParams();
   const [selectedBoardId, setSelectedBoardId] = useState(() => searchParams.get('board') ?? '');
   const [selectedMissionId, setSelectedMissionId] = useState(() => searchParams.get('mission') ?? '');
+  const [activeTab, setActiveTab] = useState<MissionTab>('manage');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -127,7 +131,7 @@ export function ClassMissionsWorkspace() {
   const mission = board?.state.missions.find((entry) => entry.id === selectedMissionId) ?? board?.state.missions.at(-1);
   const rosterSignature = board?.state.roster.map((student) => `${student.number} ${student.name}`).join('\n') ?? '';
 
-  const refresh = useCallback(async (manual = false) => {
+  const refresh = useCallback(async (manualTab?: MissionTab) => {
     const request = ++refreshGeneration.current;
     setLoading(true); setError(''); setNotice('');
     try {
@@ -152,7 +156,8 @@ export function ClassMissionsWorkspace() {
       }
       if (request !== refreshGeneration.current) return;
       setBoards(next); setBoardsOwner(user?.id ?? MISSIONS_DEMO_PROFILE_ID);
-      if (manual) setNotice((current) => current || '최신 현황을 불러왔습니다. 작성 중인 내용은 유지됩니다. 확인한 뒤 다시 저장해 주세요.');
+      if (manualTab) setNotice((current) => current || (manualTab === 'statistics'
+        ? '최신 활동 기록을 불러왔습니다.' : '최신 현황을 불러왔습니다. 작성 중인 내용은 유지됩니다. 확인한 뒤 다시 저장해 주세요.'));
       setSelectedBoardId((current) => {
         if (issuedBoardId && next.some((entry) => entry.id === issuedBoardId)) return issuedBoardId;
         if (preferredBoardId && next.some((entry) => entry.id === preferredBoardId) && !current) return preferredBoardId;
@@ -224,14 +229,35 @@ export function ClassMissionsWorkspace() {
 
   if (!user && !isMissionsDemo) return <div className="mx-auto max-w-xl py-20 text-center"><ShieldCheck className="mx-auto h-10 w-10 text-[#94A3B8]" /><h1 className="mt-4 text-xl font-bold">학급 미션은 교사 로그인 후 사용할 수 있습니다</h1><button type="button" className={`${primary} mt-5`} disabled={!configured || authLoading} onClick={() => void signIn('/tools/class-missions')}>{configured ? 'Google 로그인' : '로그인 설정 필요'}</button></div>;
   return <div className="mx-auto w-full max-w-[1400px] space-y-5 pb-16">
-    <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[#DCE3EA] pb-5"><div><p className="text-xs font-bold text-[#0F6CBD]">우리 반의 작은 완료를 한눈에</p><h1 className="mt-1 text-3xl font-extrabold">학급 미션</h1><p className="mt-2 text-sm text-[#526174]">학생의 완료 표시와 교사 확인을 구분해 관리합니다.</p></div><button type="button" className={secondary} onClick={() => void refresh(true)} disabled={loading || busy}><RefreshCw className="h-4 w-4" />새로고침</button></header>
+    <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[#DCE3EA] pb-5"><div><p className="text-xs font-bold text-[#0F6CBD]">우리 반의 작은 완료를 한눈에</p><h1 className="mt-1 text-3xl font-extrabold">학급 미션</h1><p className="mt-2 text-sm text-[#526174]">학생의 완료 표시와 교사 확인을 구분해 관리합니다.</p></div><button type="button" className={secondary} onClick={() => void refresh(activeTab)} disabled={loading || busy}><RefreshCw className="h-4 w-4" />새로고침</button></header>
     {error ? <p role="alert" className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] p-4 text-sm font-semibold text-[#B42318]">{error}</p> : null}
     {notice ? <p role="status" className="rounded-xl border border-[#BBE7C7] bg-[#E6F4EA] p-4 text-sm font-semibold text-[#126B32]">{notice}</p> : null}
-    {loading && board ? <p role="status" className="text-sm text-[#526174]">최신 현황을 불러오는 중… 작성 중인 내용은 유지됩니다.</p> : null}
+    {loading && board ? <p role="status" className="text-sm text-[#526174]">{activeTab === 'statistics' ? '최신 활동을 불러오는 중…' : '최신 현황을 불러오는 중… 작성 중인 내용은 유지됩니다.'}</p> : null}
     {loading && !board ? <p role="status" className={panel}>학급을 불러오는 중…</p> : <>
-      <section className={panel} aria-label="학급 선택"><div className="flex flex-wrap items-end gap-3"><label className="min-w-48 flex-1 text-sm font-bold">학급 선택<select className={`${inputStyle} mt-1.5`} value={board?.id ?? ''} disabled={busy || loading} onChange={(event) => { setSelectedBoardId(event.target.value); setSelectedMissionId(''); }}><option value="" disabled>학급을 선택하세요</option>{visibleBoards.map((entry) => <option key={entry.id} value={entry.id}>{entry.state.className}</option>)}</select></label>{board ? <button type="button" className={secondary} onClick={() => { if (shareDetailsRef.current) { shareDetailsRef.current.open = true; shareDetailsRef.current.scrollIntoView({ block: 'start', behavior: 'smooth' }); shareDetailsRef.current.querySelector('summary')?.focus({ preventScroll: true }); } }}>QR·학생 링크</button> : null}</div></section>
+      <section className={activeTab === 'statistics' ? 'rounded-2xl border border-[#DCE3EA] bg-white p-3 sm:p-5' : panel} aria-label="학급 선택"><div className="flex flex-wrap items-end gap-3"><label className={`min-w-48 flex-1 text-sm font-bold ${activeTab === 'statistics' ? 'max-w-xl' : ''}`}>학급 선택<select className={`${inputStyle} mt-1.5`} value={board?.id ?? ''} disabled={busy || loading} onChange={(event) => { setSelectedBoardId(event.target.value); setSelectedMissionId(''); }}><option value="" disabled>학급을 선택하세요</option>{visibleBoards.map((entry) => <option key={entry.id} value={entry.id}>{entry.state.className}</option>)}</select></label>{board && activeTab === 'manage' ? <button type="button" className={secondary} onClick={() => { if (shareDetailsRef.current) { shareDetailsRef.current.open = true; shareDetailsRef.current.scrollIntoView({ block: 'start', behavior: 'smooth' }); shareDetailsRef.current.querySelector('summary')?.focus({ preventScroll: true }); } }}>QR·학생 링크</button> : null}</div></section>
       {!board ? <section className={panel} aria-label="학급 만들기"><div className="flex flex-wrap items-end gap-3"><label className="min-w-44 flex-1 text-sm font-bold">새 학급 이름<input className={`${inputStyle} mt-1.5`} maxLength={60} value={className} onChange={(event) => setClassName(event.target.value)} placeholder="예: 5학년 2반" /></label><button type="button" className={primary} disabled={busy || !className.trim()} onClick={() => void createBoard()}><Plus className="h-4 w-4" />학급 만들기</button></div></section> : null}
       {!board ? <section className={`${panel} py-16 text-center`}><Users className="mx-auto h-10 w-10 text-[#94A3B8]" /><h2 className="mt-4 text-xl font-bold">학급부터 만들어 주세요</h2><p className="mt-2 text-sm text-[#526174]">학급을 만든 뒤 명단을 등록하고 첫 미션을 발행할 수 있습니다.</p></section> : <>
+        <div role="tablist" aria-label="학급 미션 보기" className="flex gap-1 border-b border-[#DCE3EA]">
+          {missionTabs.map(({ id, label }, index) => <button key={id} id={`mission-tab-${id}`} type="button" role="tab"
+            aria-selected={activeTab === id} aria-controls={`mission-panel-${id}`} tabIndex={activeTab === id ? 0 : -1}
+            onClick={() => setActiveTab(id)} onKeyDown={(event) => {
+              let next: number;
+              if (event.key === 'ArrowRight') next = (index + 1) % missionTabs.length;
+              else if (event.key === 'ArrowLeft') next = (index + missionTabs.length - 1) % missionTabs.length;
+              else if (event.key === 'Home') next = 0;
+              else if (event.key === 'End') next = missionTabs.length - 1;
+              else return;
+              event.preventDefault();
+              setActiveTab(missionTabs[next].id);
+              event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role=tab]')[next]?.focus();
+            }} className={`min-h-11 rounded-t-lg border-b-2 px-5 text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0F6CBD] ${activeTab === id ? 'border-[#0F6CBD] bg-white text-[#0F6CBD]' : 'border-transparent text-[#526174] hover:bg-white'}`}>
+            {label}
+          </button>)}
+        </div>
+        <div id="mission-panel-statistics" role="tabpanel" aria-labelledby="mission-tab-statistics" hidden={activeTab !== 'statistics'}>
+          <MissionStatisticsPanel state={board.state} />
+        </div>
+        <div id="mission-panel-manage" role="tabpanel" aria-labelledby="mission-tab-manage" hidden={activeTab !== 'manage'} className="space-y-5">
         <div className="space-y-5">
           <section className={panel} aria-label="미션 목록"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-extrabold">미션 · {board.state.missions.length}건</h2><button type="button" className={primary} disabled={busy || loading || !board.state.roster.length} onClick={() => openEditor()}><Plus className="h-4 w-4" />새 미션</button></div>
             {board.state.missions.length ? <div className={`mt-4 grid gap-2 ${board.state.missions.length > 1 ? 'sm:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>{[...board.state.missions].reverse().map((item) => { const itemCounts = missionCounts(board.state, item); return <button key={item.id} type="button" aria-current={item.id === mission?.id} disabled={busy || loading} onClick={() => { setSelectedMissionId(item.id); setEditing(null); setStatusFilter('all'); }} className={`min-h-20 w-full rounded-xl border p-4 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0F6CBD] ${item.id === mission?.id ? 'border-[#0F6CBD] bg-[#EFF6FC]' : 'border-[#E2E8F0] hover:border-[#93C5FD]'}`}><span className="flex flex-wrap items-center justify-between gap-2"><strong className="break-words text-sm">{item.title}</strong><span className="text-xs font-bold text-[#526174]">{missionDateLabel(item)}</span></span><span className="mt-2 block text-xs text-[#526174]">{item.dueDate} 마감 · 완료 표시 {itemCounts.reported + itemCounts.pending + itemCounts.confirmed}/{item.targets.length - itemCounts.exempt}명{itemCounts.pending ? ` · 확인 대기 ${itemCounts.pending}명` : ''}</span></button>; })}</div> : <p className="mt-8 text-center text-sm text-[#526174]">아직 미션이 없습니다. 첫 미션을 만들어 주세요.</p>}
@@ -279,6 +305,7 @@ export function ClassMissionsWorkspace() {
           <div className="mt-4 flex flex-wrap gap-2"><button type="button" className={secondary} onClick={() => void copyText(missionPublicUrl(board.publicToken), '학생 링크를 복사했습니다.')}><ClipboardCopy className="h-4 w-4" />링크 복사</button><button type="button" className={secondary} onClick={() => void saveQrImage(qrRef.current, qrImageFileName(board.state.className, '학급미션_QR', '학급미션')).catch((cause) => setError(cause instanceof Error ? cause.message : 'QR을 저장하지 못했습니다.'))}><Download className="h-4 w-4" />QR PNG 저장</button><button type="button" className={secondary} disabled={busy || loading} onClick={() => { if (window.confirm('학생 링크를 다시 발급할까요? 이전 QR과 링크는 사용할 수 없습니다.')) runMutation({ action: 'rotateToken' }); }}>링크 재발급</button></div><div ref={qrRef} className="mt-4 inline-block rounded-xl border border-[#E2E8F0] bg-white p-3"><QRCodeSVG value={missionPublicUrl(board.publicToken)} size={144} includeMargin title={`${board.state.className} 학급 미션 참여 QR 코드`} /></div>
         </section></details>
         <details className={panel}><summary className="min-h-11 cursor-pointer text-sm font-bold">학급 추가</summary><div className="mt-3 flex flex-wrap items-end gap-3"><label className="min-w-44 flex-1 text-sm font-bold">새 학급 이름<input className={`${inputStyle} mt-1.5`} maxLength={60} value={className} onChange={(event) => setClassName(event.target.value)} placeholder="예: 5학년 2반" /></label><button type="button" className={primary} disabled={busy || !className.trim()} onClick={() => void createBoard()}><Plus className="h-4 w-4" />학급 만들기</button></div></details>
+        </div>
       </>}
     </>}
   </div>;

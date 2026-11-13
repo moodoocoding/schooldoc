@@ -3,18 +3,18 @@ import { ArrowLeft, ArrowRight, FileText, LoaderCircle } from 'lucide-react';
 import { useTeacherAuth } from '../../auth/teacherAuth';
 import { useNavigate } from 'react-router-dom';
 import { isVerifiedPreviewAdmin } from '../../../supabase/functions/_shared/previewAccess';
-import { planContextKey, validatePlanAnalysis, validatePlanContext, validatePlanDraft, validatePlanSources, type PlanContext, type PlanRequest, type PlanSource } from '../../../supabase/functions/_shared/schoolPlan';
+import { isPlanPages, PLAN_PAGE_OPTIONS, planContextKey, validatePlanAnalysis, validatePlanContext, validatePlanDraft, validatePlanSources, type PlanContext, type PlanRequest, type PlanSource } from '../../../supabase/functions/_shared/schoolPlan';
 import { importPlanSource, PLAN_SOURCE_ACCEPT, splitPlanSourceText } from './planSourceImport';
 import { loadPlanState, savePlanState, type PlanState } from './planStore';
 import { runPlanAi } from './planApi';
 import { PlanPreview } from './PlanPreview';
 import { PlanOutput } from './PlanOutput';
+import { formatPlanTiming, parsePlanTiming } from './planTiming';
 import { PLAN_REFERENCE_PROFILES, PLAN_REFERENCE_VERSION, validatePlanReferenceChoice } from '../../../supabase/functions/_shared/schoolPlanReferences';
-import { PlanReferenceGuide } from './PlanReferenceGuide';
 const primary = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#0F6CBD] px-5 py-3 text-sm font-bold text-white hover:bg-[#0B5A9E] disabled:cursor-not-allowed disabled:bg-slate-400';
 const secondary = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50';
 const input = 'mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0F6CBD]';
-const steps = ['문서 선택', '공문 추가', '공문 확인', '학교 조건', '초안 검토', '저장'];
+const steps = ['기본 설정', '공문 추가', '공문 확인', '운영 정보', '검토·저장'];
 const kindLabels = { required: '필수', recommended: '권장', example: '예시' };
 function Field({ label, children }: {
     label: string;
@@ -56,8 +56,8 @@ function PlanWizard({ ownerId }: {
     const controller = useRef<AbortController | null>(null);
     const heading = useRef<HTMLHeadingElement>(null);
     const questionHeading = useRef<HTMLHeadingElement>(null);
-    const context: PlanContext = { sources: state.sources, analysis: state.analysis, answers: state.answers, conditions: state.conditions, referenceType: state.referenceType, referenceVersion: PLAN_REFERENCE_VERSION };
-    const draftedContext: PlanContext | null = state.draft && state.draftContext ? JSON.parse(state.draftContext) : null;
+    const context: PlanContext = { sources: state.sources, analysis: state.analysis, answers: state.answers, conditions: state.conditions, referenceType: state.referenceType, referenceVersion: PLAN_REFERENCE_VERSION, pages: state.pages };
+    const selectedReference = PLAN_REFERENCE_PROFILES.find(profile => profile.id === state.referenceType);
     const current = !!state.draft && state.draftContext === planContextKey(context);
     const patch = (value: Partial<PlanState>) => { setState(s => ({ ...s, ...value })); };
     const go = (step: number) => { setError(''); setEdit(null); setCandidate(null); patch({ step }); };
@@ -122,7 +122,7 @@ function PlanWizard({ ownerId }: {
         const analysis = validatePlanAnalysis(result.analysis, sources);
         patch({ sources, analysis, answers: {}, questionPage: 0, step: 2, conditions: { ...state.conditions, topic: state.conditions.topic || analysis.title } });
     });
-    const generate = () => task('공문과 학교 조건으로 초안을 작성하고 있습니다.', async (signal) => {
+    const generate = () => task('공문과 운영 정보로 초안을 작성하고 있습니다.', async (signal) => {
         const checked = validatePlanContext(context);
         const result = await ai({ action: 'draft', ...checked }, signal);
         const draft = validatePlanDraft(result.draft, checked);
@@ -130,7 +130,7 @@ function PlanWizard({ ownerId }: {
     });
     const revise = () => task('선택한 영역의 수정안을 작성하고 있습니다.', async (signal) => {
         if (!state.draft || !edit || !current)
-            throw new Error('학교 조건을 반영한 초안을 먼저 작성해 주세요.');
+            throw new Error('운영 정보를 반영한 초안을 먼저 작성해 주세요.');
         const result = await ai({ action: 'revise', ...validatePlanContext(context), draft: state.draft, revision: { area: edit, instruction } }, signal);
         setCandidate(validatePlanDraft(result.draft, context));
     });
@@ -163,15 +163,35 @@ function PlanWizard({ ownerId }: {
     const footer = (next: string, action: () => void, disabled = false, back?: () => void) => <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5">{back ? <button type="button" className={secondary} onClick={back}><ArrowLeft className="h-4 w-4" aria-hidden="true"/>이전</button> : <span />}<button type="button" className={primary} onClick={action} disabled={disabled}>{next}<ArrowRight className="h-4 w-4" aria-hidden="true"/></button></div>;
     return <div className="mx-auto max-w-5xl pb-8">
     <header className="mb-6"><p className="mb-2 text-sm font-bold text-[#0F6CBD]">학교 문서 작성</p><h1 className="text-2xl font-extrabold text-slate-900">운영계획서</h1><p className="mt-2 text-base leading-7 text-slate-600">공문을 바탕으로 초안을 만들고, 한글에서 편집할 수 있게 저장합니다.</p></header>
-    <ol aria-label="작성 진행" className="mb-6 grid grid-cols-3 gap-2 sm:grid-cols-6">{steps.map((step, index) => <li key={step} aria-current={index === state.step ? 'step' : undefined} className={`rounded-lg px-3 py-3 text-sm font-bold ${index === state.step ? 'bg-[#0F6CBD] text-white' : index < state.step ? 'bg-blue-50 text-blue-900' : 'bg-slate-100 text-slate-600'}`}><span aria-hidden="true">{index + 1}. </span>{step}</li>)}</ol>
+    <ol aria-label="작성 진행" className="mb-6 grid grid-cols-3 gap-2 sm:grid-cols-5">{steps.map((step, index) => <li key={step} aria-current={index === state.step ? 'step' : undefined} className={`rounded-lg px-3 py-3 text-sm font-bold ${index === state.step ? 'bg-[#0F6CBD] text-white' : index < state.step ? 'bg-blue-50 text-blue-900' : 'bg-slate-100 text-slate-600'}`}><span aria-hidden="true">{index + 1}. </span>{step}</li>)}</ol>
     <p className="mb-5 text-sm leading-6 text-slate-600">추출 본문·조건·초안은 로그인 계정별로 이 브라우저에 자동 저장됩니다. 원본 파일은 저장하지 않으며 다른 기기와 동기화되지 않습니다.</p>
     {storageWarning && <p role="status" className="mb-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-950">{storageWarning}</p>}
     <section aria-labelledby="plan-step-heading" className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
       <h2 ref={heading} tabIndex={-1} id="plan-step-heading" className="mb-2 text-xl font-bold outline-none">{title}</h2>
       {error && <p role="alert" className="my-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-900">{error}</p>}
       {busy ? <div role="status" className="py-10 text-center"><LoaderCircle aria-hidden="true" className="mx-auto mb-4 h-8 w-8 animate-spin text-[#0F6CBD]"/><p className="font-bold">{busy}</p><p className="mt-2 text-sm text-slate-600">단계를 나가도 기존 입력과 초안은 유지됩니다.</p><button type="button" className={`${secondary} mt-6`} onClick={() => { controller.current?.abort(); controller.current = null; setBusy(''); }}>작업 취소</button></div> : <>
-      {!edit && state.step === 0 && <><p className="mb-6 leading-7 text-slate-600">작성할 문서를 고릅니다. 첫 버전은 1~2쪽 운영계획서를 지원합니다.</p><div className="space-y-6"><Field label="문서 종류"><select className={input} defaultValue="plan"><option value="plan">계획서 · 운영계획서</option></select></Field><Field label="운영계획 유형"><select className={input} value={state.referenceType} onChange={e => patch({ referenceType: validatePlanReferenceChoice(e.target.value) })}><option value="auto">공문·주제로 자동 추천</option>{PLAN_REFERENCE_PROFILES.map(profile => <option key={profile.id} value={profile.id}>{profile.label}</option>)}</select><span className="mt-2 block font-normal leading-6 text-slate-600">그대로 시작해도 됩니다. 공문과 주제로 작성 기준을 추천하고, 맞는 실제 사례를 AI 초안에 연결합니다.</span></Field></div>{footer('계획서 작성', () => go(1))}</>}
-      {!edit && state.step === 1 && <><p className="mb-6 leading-7 text-slate-600">관련 공문과 붙임을 함께 추가해 주세요. 이름·연락처 등 불필요한 개인정보는 먼저 지워 주세요.</p><div className="space-y-6"><Field label="공문 입력 방식"><select className={input} value={state.sourceMode} onChange={e => { patch({ sourceMode: e.target.value as PlanState['sourceMode'], consent: false }); setFiles([]); }}><option value="files">파일 추가</option><option value="paste">본문 붙여 넣기</option><option value="none">자료 없이 자체 계획 작성</option></select></Field>{state.sourceMode === 'files' && <Field label="공문·붙임 파일"><input className={input} type="file" multiple accept={PLAN_SOURCE_ACCEPT} onChange={e => { setFiles([...e.target.files ?? []]); patch({ consent: false }); }}/><span className="mt-2 block text-sm font-normal leading-6 text-slate-600">PDF·HWP·HWPX·UTF-8 TXT · 최대 3개, 파일당 10MB · PDF 10쪽, 한글 20쪽 이내. 스캔 PDF는 OCR이 필요합니다.</span></Field>}{state.sourceMode === 'paste' && <Field label="공문과 붙임 본문"><textarea className={input} rows={9} maxLength={40000} value={state.pasted} onChange={e => patch({ pasted: e.target.value, consent: false })}/></Field>}{state.sourceMode === 'files' && !files.length && state.sources.length > 0 && <p className="rounded-lg bg-slate-50 p-3 text-sm leading-6">보존된 추출 본문: {state.sources.map(s => s.name).join(', ')}. 새 파일을 고르면 교체됩니다.</p>}<label className="flex items-start gap-3 text-sm leading-6 text-slate-700" data-decision><input className="mt-1 h-5 w-5 shrink-0" type="checkbox" checked={state.consent} onChange={e => patch({ consent: e.target.checked })}/><span>공문에서 추출한 본문·입력 조건·초안을 OpenAI에 전송하여 분석·작성하는 데 동의합니다. 원본 파일은 전송하지 않습니다.</span></label></div>{footer(state.sourceMode === 'none' ? '학교 조건 입력' : '공문 분석', () => void analyze(), !state.consent, () => go(0))}</>}
+      {!edit && state.step === 0 && <><p className="mb-6 leading-7 text-slate-600">운영계획서의 희망 분량과 유형을 정합니다. AI 초안은 선택한 쪽 수를 목표로 작성합니다.</p><div className="space-y-6">
+        <Field label="출력 분량">
+          <select className={input} value={state.pages} onChange={e => { const pages = Number(e.target.value); if (isPlanPages(pages)) patch({ pages }); }}>
+            {PLAN_PAGE_OPTIONS.map(pages => <option key={pages} value={pages}>{pages}쪽</option>)}
+          </select>
+          <span className="mt-2 block font-normal leading-6 text-slate-600">{state.pages === 1 ? '본문·일정·예산을 한 쪽에 담는 요약형입니다.' : '본문 ' + (state.pages - 1) + '쪽과 일정·예산 1쪽을 목표로 구성합니다. 실제 쪽 수는 저장 전 지면 미리보기에서 확인해 주세요.'}</span>
+        </Field>
+        <Field label="운영계획 유형">
+          <select className={input} value={state.referenceType} onChange={e => patch({ referenceType: validatePlanReferenceChoice(e.target.value) })}>
+            <option value="auto">공문·주제에 맞게 자동</option>{PLAN_REFERENCE_PROFILES.map(profile => <option key={profile.id} value={profile.id}>{profile.label}</option>)}
+          </select>
+          <span className="mt-2 block font-normal leading-6 text-slate-600">{state.referenceType === 'auto' ? '사업명과 공문 제목에서 유형을 추천하고, 구분이 어려우면 일반 운영 기준을 적용합니다.' : '선택한 유형의 개요·작성 지침과 검토 기준을 초안에 반영합니다.'}</span>
+          <details className="mt-2 rounded-lg bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">
+            <summary className="min-h-11 cursor-pointer py-2 font-bold">{state.referenceType === 'auto' ? '자동 추천 기준 보기' : '선택한 유형의 작성 기준 보기'}</summary>
+            {selectedReference ? <>
+              <p className="mt-2"><strong>작성 지침:</strong> {selectedReference.writing}</p>
+              <p className="mt-2"><strong>권장 구성:</strong> {selectedReference.outline.join(' → ')}</p>
+            </> : <p className="mt-2">사업명과 공문 제목을 기준으로 8개 유형을 추천합니다. 분류하기 어려우면 일반 운영 기준을 사용합니다.</p>}
+          </details>
+        </Field>
+      </div>{footer('다음', () => go(1))}</>}
+      {!edit && state.step === 1 && <><p className="mb-6 leading-7 text-slate-600">관련 공문과 붙임을 함께 추가해 주세요. 이름·연락처 등 불필요한 개인정보는 먼저 지워 주세요.</p><div className="space-y-6"><Field label="공문 입력 방식"><select className={input} value={state.sourceMode} onChange={e => { patch({ sourceMode: e.target.value as PlanState['sourceMode'], consent: false }); setFiles([]); }}><option value="files">파일 추가</option><option value="paste">본문 붙여 넣기</option><option value="none">자료 없이 자체 계획 작성</option></select></Field>{state.sourceMode === 'files' && <Field label="공문·붙임 파일"><input className={input} type="file" multiple accept={PLAN_SOURCE_ACCEPT} onChange={e => { setFiles([...e.target.files ?? []]); patch({ consent: false }); }}/><span className="mt-2 block text-sm font-normal leading-6 text-slate-600">PDF·HWP·HWPX·UTF-8 TXT · 최대 3개, 파일당 10MB · PDF 10쪽, 한글 20쪽 이내. 스캔 PDF는 OCR이 필요합니다.</span></Field>}{state.sourceMode === 'paste' && <Field label="공문과 붙임 본문"><textarea className={input} rows={9} maxLength={40000} value={state.pasted} onChange={e => patch({ pasted: e.target.value, consent: false })}/></Field>}{state.sourceMode === 'files' && !files.length && state.sources.length > 0 && <p className="rounded-lg bg-slate-50 p-3 text-sm leading-6">보존된 추출 본문: {state.sources.map(s => s.name).join(', ')}. 새 파일을 고르면 교체됩니다.</p>}<label className="flex items-start gap-3 text-sm leading-6 text-slate-700" data-decision><input className="mt-1 h-5 w-5 shrink-0" type="checkbox" checked={state.consent} onChange={e => patch({ consent: e.target.checked })}/><span>공문에서 추출한 본문·입력 조건·초안을 OpenAI에 전송하여 분석·작성하는 데 동의합니다. 원본 파일은 전송하지 않습니다.</span></label></div>{footer(state.sourceMode === 'none' ? '운영 정보 입력' : '공문 분석', () => void analyze(), !state.consent, () => go(0))}</>}
       {!edit && state.step === 2 && <>
         <p className="mb-5 leading-7 text-slate-600">{state.analysis?.summary}</p>
         <div className="mb-6 space-y-3">{state.analysis?.requirements.map(r => {
@@ -191,15 +211,29 @@ function PlanWizard({ ownerId }: {
             <textarea className={input} rows={2} maxLength={500} value={state.answers[q.id] ?? ''} onChange={e => patch({ answers: { ...state.answers, [q.id]: e.target.value } })}/>
             <span className="mt-1 block font-normal leading-6 text-slate-600">{q.hint} 미정이면 비워 두어도 됩니다.</span>
           </Field>)}
-        </div> : <p className="text-sm leading-6 text-slate-600">추가 확인 질문이 없습니다. 다음 단계에서 학교 조건을 입력합니다.</p>}
-        {footer(moreQuestions ? '다음 확인 사항' : '학교 조건으로 계속', nextQuestions, false, () => state.questionPage ? patch({ questionPage: state.questionPage - 1 }) : go(1))}
+        </div> : <p className="text-sm leading-6 text-slate-600">추가 확인 질문이 없습니다. 다음 단계에서 운영 정보를 입력합니다.</p>}
+        {footer(moreQuestions ? '다음 확인 사항' : '운영 정보 입력', nextQuestions, false, () => state.questionPage ? patch({ questionPage: state.questionPage - 1 }) : go(1))}
       </>}
-      {!edit && state.step === 3 && <><p className="mb-6 leading-7 text-slate-600">대략적인 주제·시기·예산이면 충분합니다. 목적과 세부 활동은 AI가 초안으로 작성합니다.</p><div className="space-y-6"><Field label="주제·사업명"><input className={input} maxLength={100} value={state.conditions.topic} onChange={e => patch({ conditions: { ...state.conditions, topic: e.target.value } })} placeholder="예: 우리 학교 독서 주간"/></Field><Field label="행사·운영 시기"><input className={input} maxLength={200} value={state.conditions.timing} onChange={e => patch({ conditions: { ...state.conditions, timing: e.target.value } })} placeholder="예: 11월 중 · 미정이면 비워 두세요"/></Field><Field label="학교 예산(원)"><input className={input} inputMode="numeric" type="number" min={0} max={100000000} step={1} value={state.conditions.budget ?? ''} onChange={e => patch({ conditions: { ...state.conditions, budget: e.target.value === '' ? null : Number(e.target.value) } })} placeholder="미정이면 비워 두세요. 예산이 없으면 0"/>{state.analysis?.budgetLimit && <span className="mt-2 block font-normal text-slate-600">공문에서 확인한 상한: {state.analysis.budgetLimit.amount.toLocaleString('ko-KR')}원</span>}</Field></div><PlanReferenceGuide context={context}/>{footer('AI 초안 작성', () => void generate(), !state.conditions.topic.trim(), () => go(state.analysis ? 2 : 1))}</>}
-      {!edit && state.step === 4 && state.draft && <><p className="mb-5 leading-7 text-slate-600">운영 방향·일정·예산을 차례로 읽어 보세요. 공문 근거와 학교 확인 사항이 함께 표시됩니다.</p>{!current && <p role="alert" className="mb-5 rounded-lg bg-amber-50 p-4 text-sm text-amber-950">입력 조건 또는 작성 기준이 바뀌어 이전 초안을 보여 드립니다. 학교 조건 단계에서 새 초안을 작성해 주세요.</p>}{draftedContext?.referenceVersion === PLAN_REFERENCE_VERSION && <PlanReferenceGuide context={draftedContext} drafted/>}<PlanPreview draft={state.draft} analysis={state.analysis}/><div className="mt-5 grid gap-3 sm:grid-cols-3">{(['body', 'schedule', 'budget'] as const).map(area => <button data-decision type="button" key={area} className={secondary} disabled={!current} onClick={() => startEdit(area)}>{{ body: '본문 수정', schedule: '일정 수정', budget: '예산 수정' }[area]}</button>)}</div>{footer('출력 확인', () => go(5), !current, () => go(3))}</>}
+      {!edit && state.step === 3 && <><p className="mb-6 leading-7 text-slate-600">사업명·기간·예산이면 충분합니다. 목적과 세부 활동은 AI가 초안으로 작성합니다.</p><div className="space-y-6"><Field label="주제·사업명"><input className={input} maxLength={100} value={state.conditions.topic} onChange={e => patch({ conditions: { ...state.conditions, topic: e.target.value } })} placeholder="예: 우리 학교 독서 주간"/></Field><TimingField value={state.conditions.timing} onChange={timing => patch({ conditions: { ...state.conditions, timing } })}/><Field label="예산(원)"><input className={input} inputMode="numeric" type="number" min={0} max={100000000} step={1} value={state.conditions.budget ?? ''} onChange={e => patch({ conditions: { ...state.conditions, budget: e.target.value === '' ? null : Number(e.target.value) } })} placeholder="미정이면 비워 두세요. 예산이 없으면 0"/>{state.analysis?.budgetLimit && <span className="mt-2 block font-normal text-slate-600">공문에서 확인한 상한: {state.analysis.budgetLimit.amount.toLocaleString('ko-KR')}원</span>}</Field></div>{footer('AI 초안 작성', () => void generate(), !state.conditions.topic.trim(), () => go(state.analysis ? 2 : 1))}</>}
+      {!edit && state.step === 4 && state.draft && <PlanOutput draft={state.draft} title={state.title} pages={state.pages} current={current} conditions={state.conditions} related={state.sourceMode !== 'none' && state.sources.length > 0} onTitle={title => patch({ title })} onBack={() => go(3)} actions={<div data-decision role="group" aria-label="초안 수정" className="mt-5 grid gap-3 sm:grid-cols-3">{(['body', 'schedule', 'budget'] as const).map(area => <button type="button" key={area} className={secondary} disabled={!current} onClick={() => startEdit(area)}>{{ body: '본문 수정', schedule: '일정 수정', budget: '예산 수정' }[area]}</button>)}</div>}/>}
       {edit && !candidate && <><p className="mb-5 leading-7 text-slate-600">현재 초안은 수정안을 적용하기 전까지 유지됩니다.</p>{edit === 'body' ? <div className="space-y-5"><Field label="수정할 본문"><select className={input} value={sectionId} onChange={e => { setSectionId(e.target.value); setBodyText(state.draft?.sections.find(s => s.id === e.target.value)?.paragraphs.join('\n\n') ?? ''); }}>{state.draft?.sections.map(s => <option key={s.id} value={s.id}>{s.heading}</option>)}</select></Field><Field label="본문 내용"><textarea className={input} rows={12} value={bodyText} onChange={e => setBodyText(e.target.value)}/><span className="mt-1 block font-normal leading-6 text-slate-600">문단 사이를 한 줄 비웁니다. 공문 요구사항의 의미를 유지해 주세요.</span></Field></div> : <><Field label="AI 수정 요청"><textarea className={input} rows={5} maxLength={1000} value={instruction} onChange={e => setInstruction(e.target.value)} placeholder={edit === 'schedule' ? '예: 준비 기간을 일주일 앞당겨 주세요.' : '예: 인쇄비를 줄이고 활동 재료에 더 배분해 주세요.'}/></Field><p className="mt-3 text-sm leading-6 text-slate-600">수정 요청과 현재 초안을 OpenAI에 전송합니다. 공문 조건과 예산 상한을 유지합니다.</p></>}{footer(edit === 'body' ? '본문 반영' : 'AI 수정안 보기', edit === 'body' ? applyBody : () => void revise(), edit !== 'body' && !instruction.trim(), () => { setEdit(null); setError(''); })}</>}
       {edit && candidate && <><div className="grid gap-5 lg:grid-cols-2"><div><h3 className="mb-3 font-bold">기존 초안</h3>{state.draft && <PlanPreview draft={state.draft} analysis={state.analysis}/>}</div><div><h3 className="mb-3 font-bold">AI 수정안</h3><PlanPreview draft={candidate} analysis={state.analysis}/></div></div><div className="mt-6 flex flex-wrap justify-end gap-3" data-decision><button type="button" className={secondary} onClick={() => { setCandidate(null); setEdit(null); }}>기존 초안 유지</button><button type="button" className={primary} onClick={() => { patch({ draft: candidate }); setCandidate(null); setEdit(null); }}>수정안 적용</button></div></>}
-      {!edit && state.step === 5 && state.draft && <PlanOutput draft={state.draft} title={state.title} pages={state.pages} current={current} conditions={state.conditions} related={state.sourceMode !== 'none' && state.sources.length > 0} onTitle={title => patch({ title })} onPages={pages => patch({ pages })} onBack={() => go(4)}/>}
       </>}
     </section>
   </div>;
+}
+
+/** 운영 기간: 달력에서 시작일·종료일을 고른다. 예전 자유 입력은 그대로 두고 날짜를 고르면 바뀐다. */
+function TimingField({ value, onChange }: { value: string; onChange: (timing: string) => void }) {
+    const parsed = parsePlanTiming(value), range = parsed ?? { start: '', end: '' };
+    const startId = useId(), endId = useId();
+    const set = (next: { start: string; end: string }) => onChange(formatPlanTiming(next));
+    return <fieldset data-decision>
+      <legend className="text-sm font-bold text-slate-800">운영 기간</legend>
+      <div className="mt-2 grid gap-3 sm:grid-cols-2">
+        <div><label htmlFor={startId} className="text-sm text-slate-700">시작일</label><input id={startId} className={input} type="date" value={range.start} onChange={e => set({ start: e.target.value, end: range.end && range.end > e.target.value ? range.end : '' })}/></div>
+        <div><label htmlFor={endId} className="text-sm text-slate-700">종료일</label><input id={endId} className={input} type="date" min={range.start || undefined} disabled={!range.start} value={range.end} onChange={e => set({ start: range.start, end: e.target.value })}/></div>
+      </div>
+      <p className="mt-2 text-sm leading-6 text-slate-600">{parsed ? value ? `문서 표기: ${value}` : '하루 행사는 시작일만 고르고, 미정이면 비워 두세요.' : `이전 입력: ${value} · 날짜를 고르면 바뀝니다.`}</p>
+    </fieldset>;
 }

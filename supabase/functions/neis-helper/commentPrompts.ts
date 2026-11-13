@@ -6,10 +6,16 @@ import type { CommentInput } from '../_shared/neisHelper.ts';
 export function commentLengthInstruction(target: CommentInput['length'], assessmentCount: number) {
   const { min, max } = commentLengthRange(target);
   const perAssessment = Math.round((target - assessmentCount + 1) / assessmentCount);
+  const sentenceCount = Math.max(assessmentCount, Math.round(target / 65));
+  const perSentence = Math.round((target - sentenceCount + 1) / sentenceCount);
+  // 긴 평어는 문장 구성도 계획한다. 짧은 평어는 평가별 핵심을 압축한다.
+  const sentencePlan = target >= 300
+    ? `\n- 전체 약 ${sentenceCount}문장, 문장당 약 ${perSentence}자를 출발점으로 삼는다. 실제 문장 수와 길이는 학생마다 자연스럽게 조절하되 전체 분량은 유지한다.`
+    : '';
   return `[이번 요청의 분량 — 필수 확인]
 - 학생 한 명의 평어 본문 전체를 공백과 문장부호 포함 ${target}자에 가깝게 작성한다. 허용 범위는 ${min}자 이상 ${max}자 이하다.
 - 평가별 글자 수가 아니라 모든 문장을 한 칸씩 띄어 이어 붙인 학생별 평어 전체의 글자 수다. JSON 필드명과 학생 ID는 포함하지 않는다.
-- 이번 요청에는 평가가 ${assessmentCount}개다. 먼저 평가 하나당 약 ${perAssessment}자씩 배분하여 전체 ${target}자 분량을 구성한다. 근거의 양에 따라 평가 사이의 분량은 조절할 수 있다.
+- 이번 요청에는 평가가 ${assessmentCount}개다. 먼저 평가 하나당 약 ${perAssessment}자씩 배분하여 전체 ${target}자 분량을 구성한다. 근거의 양에 따라 평가 사이의 분량은 조절할 수 있다.${sentencePlan}
 - 허용 범위의 경계가 아니라 ${target}자 부근을 목표로 한다. 한글 한 음절, 띄어쓰기 한 칸, 문장부호 하나는 각각 1자다.
 - 간결한 문체를 유지하더라도 ${min}자보다 짧게 요약하지 않는다. 입력 기준에 있는 기능·방법·결과를 구체적으로 풀어 분량을 맞춘다.
 - ${max}자를 넘으면 반복 설명과 군더더기를 줄인다. 글자 수를 맞추려고 새 사실, 억지 수식어, 중복 문장을 넣지 않는다.

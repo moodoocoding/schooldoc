@@ -56,7 +56,7 @@ describe('rhwp HWPX 출력', () => {
   test('붙임 계획서 서식: 휴먼명조 13pt·장평 100%·자간 0%·줄간격 160%, 제목 HY헤드라인M, A4 여백, 내어쓰기', () => {
     const doc = new HwpDocument(readFileSync(`${assets}blank.hwpx`));
     try {
-      writeOfficialDocument(doc, shallow, 1, fonts);
+      writeOfficialDocument(doc, shallow, fonts);
       const files = unzipSync(checkedHwpxExport(doc));
       const header = strFromU8(files['Contents/header.xml']), section = strFromU8(files['Contents/section0.xml']);
       const hangulFaces = header.match(/<hh:fontface lang="HANGUL"[\s\S]*?<\/hh:fontface>/)![0];
@@ -87,7 +87,7 @@ describe('rhwp HWPX 출력', () => {
     const deep: OfficialDocument = { kind: 'attachment-plan', title: '가상 개선 보고', body: [item('현황 점검 결과를 공유함', [item('참여 학급 확대 필요', [item('세부 일정 조정', [item('학교 사정 반영')])])]), item('다음 단계를 준비함', [item('설문 실시')])] };
     const doc = new HwpDocument(readFileSync(`${assets}blank.hwpx`));
     try {
-      writeOfficialDocument(doc, deep, 1, fonts);
+      writeOfficialDocument(doc, deep, fonts);
       const header = strFromU8(unzipSync(checkedHwpxExport(doc))['Contents/header.xml']);
       const hangulFaces = header.match(/<hh:fontface lang="HANGUL"[\s\S]*?<\/hh:fontface>/)![0];
       const faces = new Map([...hangulFaces.matchAll(/<hh:font id="(\d+)" face="([^"]+)"/g)].map(m => [m[1], m[2]]));
@@ -96,15 +96,11 @@ describe('rhwp HWPX 출력', () => {
       expect(header).toMatch(/<hh:lineSpacing type="PERCENT" value="180"/);
     } finally { doc.free(); }
   });
-  test('쪽 나눔은 문서 모델의 표시로만 정하고, 쪽 수를 넘으면 내용을 줄이지 않고 거부한다', () => {
+  test('쪽 나눔은 문서 모델의 표시로만 정하고, 실제 조판 결과로 쪽별 채움을 잰다', () => {
     const split = { ...shallow, body: shallow.body.map((n, i) => i === 2 && n.kind === 'item' ? { ...n, pageBreakBefore: true } : n) };
-    const doc = new HwpDocument(readFileSync(`${assets}blank.hwpx`));
-    try {
-      expect(() => writeOfficialDocument(doc, split, 1, fonts)).toThrow(/1쪽에 담기 어렵습니다/);
-    } finally { doc.free(); }
     const again = new HwpDocument(readFileSync(`${assets}blank.hwpx`));
     try {
-      const volume = writeOfficialDocument(again, split, 2, fonts);
+      const volume = writeOfficialDocument(again, split, fonts);
       expect(again.pageCount()).toBe(2);
       // 실제 조판 결과로 잰 쪽별 채움: 강제 쪽 나눔 전 본문은 1쪽이다.
       expect(volume.bodyPages).toBe(1);

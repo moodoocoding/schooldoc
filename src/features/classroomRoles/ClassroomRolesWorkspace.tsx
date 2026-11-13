@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, Route, Routes, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
@@ -20,6 +20,7 @@ import {
   type RoleState,
 } from "./roleApi";
 import {
+  RoleCountGrid,
   RoleError,
   roleButton,
   rolePanel,
@@ -31,6 +32,7 @@ import { RoleCatalogPage, RoleSettingsPage } from "./RoleConfigurationPages";
 import { RoleHistoryPage } from "./RoleRecordPages";
 import { RolePracticeBoardPage } from "./RolePracticeBoardPage";
 import { RolePosterPrintPage } from "./RolePosterPrintPage";
+import { RolePeriodStatus } from "./RolePeriodStatus";
 export const ROLES_ROOT = "/tools/classroom-roles";
 export type RolePageProps = {
   board: RoleBoard;
@@ -143,8 +145,9 @@ function RolesHome({ board }: { board: RoleBoard }) {
           </p>
         ) : (
           <>
-            <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
-              {[
+            <RoleCountGrid
+              unit="명"
+              counts={[
                 ["했어요", count("done")],
                 ["못했어요", count("not_done")],
                 ["미기록", missing],
@@ -152,22 +155,15 @@ function RolesHome({ board }: { board: RoleBoard }) {
                   "해당 없음",
                   period.students.length - relevant.length + count("exempt"),
                 ],
-              ].map(([label, value]) => (
-                <div key={label}>
-                  <p className="text-sm text-[#526174]">{label}</p>
-                  <p className="mt-1 text-2xl font-extrabold">
-                    {value}
-                    <span className="ml-1 text-sm font-normal">명</span>
-                  </p>
-                </div>
-              ))}
-            </div>
+              ]}
+            />
             <p className="mt-4 text-xs text-[#526174]">
               학생 자기보고 기준 · 미기록은 미실천이 아닙니다.
             </p>
           </>
         )}
       </section>
+      <RolePeriodStatus board={board} today={today} />
       <section aria-label="1인 1역 기능">
         <h2 className="mb-4 text-lg font-bold">1인 1역 기능</h2>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -208,6 +204,11 @@ export function ClassroomRolesWorkspace() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [revision, setRevision] = useState(0);
+  const isPeriodRoute = location.pathname === `${ROLES_ROOT}/period`;
+  const periodTitleRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (isPeriodRoute && board) periodTitleRef.current?.focus();
+  }, [isPeriodRoute, board]);
   useEffect(() => {
     let cancelled = false;
     setBoard(null);
@@ -259,12 +260,14 @@ export function ClassroomRolesWorkspace() {
     ([path]) => location.pathname === `${ROLES_ROOT}/${path}`,
   );
   const isPosterRoute = location.pathname === `${ROLES_ROOT}/print`;
+  const currentTitle = isPeriodRoute ? "운영 기간 실천 현황" : current?.[1];
+  const showHomeLink = currentTitle || isPosterRoute;
   const isAssignment = location.pathname === `${ROLES_ROOT}/assign` || location.pathname === `${ROLES_ROOT}/rotate`;
   const props = board ? { board, busy, save } : null;
   return (
     <div className={`mx-auto space-y-6 ${isAssignment ? 'max-w-6xl lg:max-w-none lg:space-y-0' : 'max-w-6xl'}`}>
-      <header className={`${current ? "space-y-1" : "space-y-3"} ${isAssignment ? 'lg:hidden' : ''}`}>
-        {(current || isPosterRoute) && (
+      <header className={`${currentTitle ? "space-y-1" : "space-y-3"} ${isAssignment ? 'lg:hidden' : ''}`}>
+        {showHomeLink && (
           <Link
             className="inline-flex min-h-11 items-center gap-2 text-sm text-[#526174]"
             to={ROLES_ROOT}
@@ -273,16 +276,20 @@ export function ClassroomRolesWorkspace() {
             1인 1역 홈
           </Link>
         )}
-        {!current && !isPosterRoute && (
+        {!showHomeLink && (
           <p className="text-sm font-semibold text-[#0F6CBD]">
             스스로, 함께 가꾸는 우리 반
           </p>
         )}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-extrabold sm:text-3xl">
-            {isPosterRoute ? "게시판 안내문 인쇄" : current?.[1] ?? (isAssignment ? "배정 관리" : location.pathname === `${ROLES_ROOT}/records` ? "실천 기록" : "1인 1역")}
+          <h1
+            className="text-2xl font-extrabold sm:text-3xl"
+            ref={isPeriodRoute ? periodTitleRef : undefined}
+            tabIndex={isPeriodRoute ? -1 : undefined}
+          >
+            {isPosterRoute ? "게시판 안내문 인쇄" : currentTitle ?? (isAssignment ? "배정 관리" : location.pathname === `${ROLES_ROOT}/records` ? "실천 기록" : "1인 1역")}
           </h1>
-          {board && !current && (
+          {board && !currentTitle && (
             <span className="text-sm text-[#526174]">
               {board.state.settings.title}
             </span>
@@ -329,6 +336,7 @@ export function ClassroomRolesWorkspace() {
           <Route path="roles" element={<RoleCatalogPage {...props} />} />
           <Route path="settings" element={<RoleSettingsPage {...props} />} />
           <Route path="board" element={<RolePracticeBoardPage {...props} />} />
+          <Route path="period" element={<RolePeriodStatus board={props.board} detail />} />
           <Route path="print" element={<RolePosterPrintPage {...props} />} />
           <Route path="records" element={<RoleHistoryPage {...props} />} />
           <Route path="*" element={<RolesHome board={props.board} />} />

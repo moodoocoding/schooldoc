@@ -14,11 +14,13 @@ export function AssessmentReview({
   onChange,
   file,
   convertedFile,
+  editOpen = false,
 }: {
   assessment: Assessment;
   onChange: (item: Assessment) => void;
   file: File | null;
   convertedFile: File | null;
+  editOpen?: boolean;
 }) {
   return (
     <div className="grid items-start gap-6 lg:grid-cols-2">
@@ -38,7 +40,7 @@ export function AssessmentReview({
             </div>
           ))}
         </div>
-        <details className="rounded-lg border border-slate-200 p-4" key={assessment.id}>
+        <details className="rounded-lg border border-slate-200 p-4" key={assessment.id} open={editOpen}>
           <summary className="min-h-[44px] cursor-pointer content-center text-sm font-semibold text-blue-700">
             잘못 읽힌 내용 수정
           </summary>
