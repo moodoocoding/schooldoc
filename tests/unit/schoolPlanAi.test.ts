@@ -6,7 +6,7 @@ import { analysis, authoredDraft, context, draft, sources } from '../fixtures/sc
 import type { PlanRequest } from '../../supabase/functions/_shared/schoolPlan';
 
 const analyze: PlanRequest = { action: 'analyze', sources };
-const drafting: PlanRequest = { action: 'draft', ...context };
+const drafting: PlanRequest = { action: 'draft', ...context, referenceType: 'general' };
 const completed = (value: unknown) => new Response(JSON.stringify({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(value) }] }] }));
 const httpRequest = (body: Record<string, unknown>) => new Request('https://schooldoc.invalid', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
@@ -29,7 +29,7 @@ describe('계획서 OpenAI 연결', () => {
   test('본문 전체를 생성하고 필수 공문 근거와 예산을 검증한다', async () => {
     const result = await requestPlanAi(drafting, 'fixture', 'fixture', async () => completed(authoredDraft));
     expect(result.draft).toMatchObject({ title: draft.title, schedule: draft.schedule, budget: draft.budget, unknowns: draft.unknowns });
-    const activities = result.draft!.sections.find(s => s.id === 'implementation')!;
+    const activities = result.draft!.sections.find(s => s.id === 'activities')!;
     expect(activities.paragraphs).toHaveLength(2);
     for (const [i, activity] of authoredDraft.body.activities.entries()) {
       expect(activities.paragraphs[i]).toContain(activity.procedure);
@@ -70,11 +70,11 @@ describe('계획서 OpenAI 연결', () => {
     expect(schema(one).properties.body.properties.activities.maxItems).toBeLessThanOrEqual(schema(two).properties.body.properties.activities.maxItems);
   });
   test('본문 AI 수정도 활동 구조를 조립하고 기존 일정·예산·확인 사항은 보존한다', async () => {
-    const req: PlanRequest = { action: 'revise', ...context, draft, revision: { area: 'body', instruction: '읽기와 나눔 활동을 구체화해 주세요.' } };
+    const req: PlanRequest = { action: 'revise', ...context, referenceType: 'general', draft, revision: { area: 'body', instruction: '읽기와 나눔 활동을 구체화해 주세요.' } };
     expect(buildPlanAiRequest(req, 'fixture').text.format.schema.required).toEqual(['body']);
     const result = await requestPlanAi(req, 'fixture', 'fixture', async () => completed({ body: authoredDraft.body }));
     expect(result.draft).toMatchObject({ title: draft.title, schedule: draft.schedule, budget: draft.budget, unknowns: draft.unknowns });
-    expect(result.draft!.sections.find(s => s.id === 'implementation')!.paragraphs.join(' ')).toContain(authoredDraft.body.activities[1].result);
+    expect(result.draft!.sections.find(s => s.id === 'activities')!.paragraphs.join(' ')).toContain(authoredDraft.body.activities[1].result);
     await expect(requestPlanAi(req, 'fixture', 'fixture', async () => completed({ body: authoredDraft.body, unknowns: [] }))).rejects.toMatchObject({ status: 502 });
   });
   test('공모전은 실제 심사 기준과 동점 순서를 요구하고 기존 본문 계약으로 출력한다', async () => {
@@ -85,7 +85,7 @@ describe('계획서 OpenAI 연결', () => {
       tieBreakPriority: ['적합성', '의미'], finalTie: '작품별 근거를 함께 논의하고 선정 이유를 기록한다.', methodKind: 'proposal', requirementIds: ['r2'],
     };
     const providerDraft = { ...authoredDraft, body: { purpose: authoredDraft.body.purpose, overview: authoredDraft.body.overview,
-      intake: authoredDraft.body.activities[0], publication: { ...authoredDraft.body.activities[1], requirementIds: ['r2', 'r3'] }, selectionRules } };
+      intake: authoredDraft.body.activities, publication: { ...authoredDraft.body.followUp, requirementIds: ['r2', 'r3'] }, selectionRules } };
     const result = await requestPlanAi(req, 'fixture', 'fixture', async () => completed(providerDraft));
     const section = result.draft!.sections.find(s => s.id === 'selection_rules')!;
     expect(section.paragraphs.join(' ')).toContain('적합성 → 의미');
@@ -117,7 +117,7 @@ describe('계획서 OpenAI 연결', () => {
     await expect(requestPlanAi(drafting, 'fixture', 'fixture', async () => completed(invalid))).rejects.not.toThrow('PRIVATE_SOURCE_MARKER');
   });
   test('일정 수정만 요청해 반환 받고 다른 영역은 서버 원고를 보존한다', async () => {
-    const req: PlanRequest = { action: 'revise', ...context, draft, revision: { area: 'schedule', instruction: '준비를 앞당겨 주세요.' } };
+    const req: PlanRequest = { action: 'revise', ...context, referenceType: 'general', draft, revision: { area: 'schedule', instruction: '준비를 앞당겨 주세요.' } };
     const schedule = draft.schedule.map((s, i) => i ? s : { ...s, when: '10월 셋째 주(안)' });
     expect(buildPlanAiRequest(req, 'fixture').text.format.schema.required).toEqual(['schedule']);
     const result = await requestPlanAi(req, 'fixture', 'fixture', async () => completed({ schedule }));

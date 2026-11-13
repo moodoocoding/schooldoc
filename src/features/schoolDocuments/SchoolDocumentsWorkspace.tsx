@@ -175,7 +175,7 @@ function PlanWizard({ ownerId }: {
           <select className={input} value={state.pages} onChange={e => { const pages = Number(e.target.value); if (isPlanPages(pages)) patch({ pages }); }}>
             {PLAN_PAGE_OPTIONS.map(pages => <option key={pages} value={pages}>{pages}쪽</option>)}
           </select>
-          <span className="mt-2 block font-normal leading-6 text-slate-600">{state.pages === 1 ? '본문·일정·예산을 한 쪽에 담는 요약형입니다.' : '본문 ' + (state.pages - 1) + '쪽과 일정·예산 1쪽을 목표로 구성합니다. 실제 쪽 수는 저장 전 지면 미리보기에서 확인해 주세요.'}</span>
+          <span className="mt-2 block font-normal leading-6 text-slate-600">{state.pages === 1 ? '본문·일정·예산을 한 쪽에 담는 요약형입니다.' : '쪽수가 늘면 유형별 실행 절차·역할·자료·점검 방법을 더 상세하게 작성합니다. 실제 쪽 수는 지면 미리보기에서 확인해 주세요.'}</span>
         </Field>
         <Field label="운영계획 유형">
           <select className={input} value={state.referenceType} onChange={e => patch({ referenceType: validatePlanReferenceChoice(e.target.value) })}>

@@ -7,7 +7,7 @@ import { item, note, table, type OfficialDocument } from '../officialDocument/mo
  * 운영계획서 초안 → 공문 문서 모델. 무엇을 어떤 순서로 쓸지만 정하고,
  * 항목 기호·들여쓰기·글꼴은 공통 출력 계층(officialDocument)이 정한다.
  */
-export function planToOfficialDocument(draft: PlanDraft, title: string, pages: PlanPages): OfficialDocument {
+export function planToOfficialDocument(draft: PlanDraft, title: string, _pages: PlanPages): OfficialDocument {
   if (!title.trim() || title.length > 100 || [...title].some(c => c.charCodeAt(0) < 32)) throw new Error('문서 제목을 100자 이내로 확인해 주세요.');
   const won = (n: number) => `${n.toLocaleString('ko-KR')}원`;
   const budget = draft.budget.length
@@ -22,8 +22,8 @@ export function planToOfficialDocument(draft: PlanDraft, title: string, pages: P
     title: title.trim(),
     body: [
       ...draft.sections.map(section => item(section.heading, section.paragraphs.map(p => item(p)))),
-      // 2~5쪽 출력은 본문을 앞쪽에 두고 일정·예산을 마지막 쪽에서 시작한다.
-      item('세부추진 일정(안)', draft.schedule.length ? [table([{ label: '시기', width: 11600 }, { label: '활동', width: 23500 }, { label: '담당', width: 13000 }], draft.schedule.map(s => [s.when, s.activity, s.owner]))] : [], { pageBreakBefore: pages > 1 }),
+      // 본문과 표는 자연스럽게 이어 조판한다. 빈 페이지나 강제 나눔으로 희망 분량을 채우지 않는다.
+      item('세부추진 일정(안)', draft.schedule.length ? [table([{ label: '시기', width: 11600 }, { label: '활동', width: 23500 }, { label: '담당', width: 13000 }], draft.schedule.map(s => [s.when, s.activity, s.owner]))] : []),
       item('소요 예산(안)', budget),
       ...(draft.unknowns.length ? [item('학교 확인 사항', draft.unknowns.map(note))] : []),
     ],
