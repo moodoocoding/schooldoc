@@ -18,10 +18,10 @@ const request = (body: unknown = { action: 'plan', data: btoa('%PDF-1.7\n') }) =
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer fixture-token' },
     body: JSON.stringify(body),
   });
-test('평어 모델을 문서 분석과 구분하고 기존 명시 설정을 보존한다', () => {
+test('기본 모델은 gpt-6-luna이고, 평어 전용·공통 설정을 보존한다', () => {
   expect(selectNeisAiModel('generate-class')).toBe('gpt-6-luna');
   expect(selectNeisAiModel('generate')).toBe('gpt-6-luna');
-  expect(selectNeisAiModel('plan')).toBe('gpt-4.1-mini');
+  expect(selectNeisAiModel('plan')).toBe('gpt-6-luna');
   expect(selectNeisAiModel('grades', { model: 'global', commentModel: 'writing' })).toBe('global');
   expect(selectNeisAiModel('generate-class', { model: ' global ', commentModel: ' writing ' })).toBe('writing');
   expect(selectNeisAiModel('generate-class', { model: ' global ', commentModel: ' ' })).toBe('global');
