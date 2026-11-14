@@ -47,8 +47,14 @@ test('24명 전체 입력·단일 요청·실시간 행·편집 보존·중복 �
   const errors = await setup(page, 24, true);
   await page.screenshot({ path: `${captureDir}/empty-desktop.png`, fullPage: true });
   await roster(page); await fill(page, 24);
+  const inputView = page.getByRole('button', { name: '특성·메모', exact: true });
+  const resultView = page.getByRole('button', { name: '작성 결과', exact: true });
+  const viewColor = (button: typeof inputView) => button.evaluate((element) => getComputedStyle(element).backgroundColor);
+  expect(await viewColor(inputView)).not.toBe(await viewColor(resultView));
   await page.screenshot({ path: `${captureDir}/input-24-desktop.png`, fullPage: true });
   await page.getByRole('button', { name: '학급 24명 작성', exact: true }).click();
+  expect(await viewColor(inputView)).not.toBe(await viewColor(resultView));
+  await expect(resultView).toHaveAttribute('aria-pressed', 'true');
   const first = page.getByLabel(/^1번 .* 작성 내용$/);
   await expect(first).toHaveValue(/친구의/);
   await expect(page.getByLabel(/^2번 .* 작성 내용$/)).toHaveValue('');
@@ -137,6 +143,8 @@ test('CSV 파일 명단을 가져와 번호순으로 입력한다', async ({ pag
   await setup(page, 0);
   await page.getByRole('button', { name: '파일·붙여넣기로 가져오기', exact: true }).click();
   await page.getByTestId('class-roster-file-input').setInputFiles({ name: 'fictional-roster.csv', mimeType: 'text/csv', buffer: Buffer.from('번호,이름\n3,가상다\n1,가상가\n2,가상나', 'utf8') });
+  await expect(page.getByText('명단과 작성 내용은 현재 탭에서만 보관됩니다.', { exact: false })).toBeVisible();
+  await expect(page.getByText('학생 명단 저장', { exact: false })).toHaveCount(0);
   await page.getByRole('button', { name: '이 명단 적용', exact: true }).click();
   await expect(page.getByTestId('behavior-1')).toContainText('가상가');
   await expect(page.locator('tbody tr').first()).toHaveAttribute('data-testid', 'behavior-1');
