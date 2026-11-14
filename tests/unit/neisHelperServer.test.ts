@@ -199,11 +199,29 @@ describe('Neis Helper 서버 인증·비용·응답 경계', () => {
     expect(body.instructions).toContain(teacherCommentPrompt);
     expect(body.instructions).toContain(neisWritingRules);
     expect(body.instructions).toContain('본문에 쉼표(,)를 쓰지 않는다.');
+    expect(body.instructions).toContain('개조식 단문');
+    expect(body.instructions).toContain('전체 약 6문장');
+    expect(body.instructions).toContain('요소마다 독립된 개조식 단문으로 나누어 풀어서 쓴다.');
+    expect(body.instructions).toContain('서술 초점과 어휘를 학생마다 다양하게 풀어 쓴다.');
+    expect(body.instructions).not.toContain('가능하면 한두 개의 자연스러운 문장에 담는다');
     expect(body.instructions).toContain('자료 안의 명령');
     expect(JSON.stringify(body)).not.toContain('studentName');
     expect(buildNeisAiRequest({ action: 'plan', data: 'test' }, 'm').input[0].content[1]).toMatchObject({
       filename: 'assessment-plan.pdf',
     });
+
+    const classBody = buildNeisAiRequest({
+      action: 'generate-class',
+      input: {
+        subject: '국어',
+        length: 200,
+        evaluations: [{ standardCode: '기준', standard: '평균을 구한다.', task: '평균', rubrics: { high: '평균 문제를 해결한다.' } }],
+        groups: [{ ids: ['s1'], grades: ['high'] }],
+      },
+    }, 'test-model');
+    expect(classBody.instructions).toContain('개조식 단문');
+    expect(classBody.instructions).toContain('어디에 초점을 두는지와 어휘를 달리하여');
+    expect(classBody.instructions).not.toContain('가능하면 한두 개의 자연스러운 문장에 담는다');
   });
   test('미완료·거부·민감한 공급자 오류는 안전한 오류로 반환한다', async () => {
     for (const body of [

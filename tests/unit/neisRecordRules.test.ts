@@ -1,9 +1,11 @@
 import { describe, expect, test } from 'vitest';
-import { recordTextProblems, validateGeneratedComment, validatePlan } from '../../supabase/functions/_shared/neisHelper';
+import { countComment, recordTextProblems, validateCommentLength, validateGeneratedComment, validatePlan } from '../../supabase/functions/_shared/neisHelper';
 import type { CommentInput } from '../../supabase/functions/_shared/neisHelper';
 import { createClassOutputValidator, risingEvaluations } from '../../supabase/functions/_shared/neisClassComments';
 import type { ClassCommentInput } from '../../supabase/functions/_shared/neisClassComments';
 import { buildNeisAiRequest } from '../../supabase/functions/neis-helper/core';
+import { subjectExampleBlock } from '../../supabase/functions/neis-helper/subjectExamples';
+import { teacherCommentPrompt } from '../../supabase/functions/neis-helper/teacherCommentPrompt';
 import { reconcileSourcePages } from '../../src/features/neisHelper/sourcePages';
 import { neisFunctionName } from '../../src/features/neisHelper/subjectApi';
 import { buildClassRequest } from '../../src/features/neisHelper/classWorkflow';
@@ -111,6 +113,41 @@ describe('시기 순서상 오른 성적', () => {
     expect(() => say(['気持ち를 전하는 편지를 씀.'])).toThrow('한글이 아닌 문자');
     expect(() => say(['자료를 짜임새 있게 정리함.', '보고서를 쓰는 데 능숙하고 결과를 전달하는 능력이 돋보임.'])).not.toThrow();
   });
+  test('개조식 문장 수 안내와 교사 원문·국어 문체 예시가 기재요령과 200자 분량 기준을 따른다', async () => {
+    const { commentLengthInstruction } = await import('../../supabase/functions/neis-helper/commentPrompts');
+    const length200 = commentLengthInstruction(200, 1);
+    expect(length200).toContain('문장당 약 30~40자');
+    expect(length200).toContain('전체 약 6문장');
+    expect(length200).toContain('과목별 고정 단계를 억지로 붙이지 말고');
+
+    const teacherExample = teacherCommentPrompt.match(/- 교과평어:\s*(.+)/u)?.[1]?.trim() ?? '';
+    const block = subjectExampleBlock('국어');
+    const subjectExamples: [string, 'high' | 'middle' | 'low'][] = [
+      [block.match(/- 상:\s*(.+)/u)?.[1]?.trim() ?? '', 'high'],
+      [block.match(/- 중:\s*(.+)/u)?.[1]?.trim() ?? '', 'middle'],
+      [block.match(/- 하:\s*(.+)/u)?.[1]?.trim() ?? '', 'low'],
+      [block.match(/- 같은 상 수준을 다른 순서로 쓴 예:\s*(.+)/u)?.[1]?.trim() ?? '', 'high'],
+    ];
+
+    for (const [text, grade] of [[teacherExample, 'high'] as const, ...subjectExamples]) {
+      expect(text).not.toBe('');
+      expect(text).not.toContain(',');
+      expect(recordTextProblems(text)).toEqual([]);
+      const sentences = text.split(/(?<=\.)\s+/u).filter(Boolean);
+      expect(sentences.length).toBeGreaterThanOrEqual(5);
+      expect(sentences.length).toBeLessThanOrEqual(6);
+      expect(countComment(text).characters).toBeGreaterThanOrEqual(180);
+      expect(countComment(text).characters).toBeLessThanOrEqual(220);
+      const criterion = '주장에 알맞은 근거를 마련하고 글의 짜임을 계획하여 고쳐 쓰며 표현한다.';
+      const validated = validateGeneratedComment(
+        { sentences: sentences.map((s) => ({ text: s, assessmentId: '1', evidenceQuote: criterion })) },
+        { subject: '국어', length: 200, evidence: [{ assessmentId: '1', standardCode: '[6국05-04]', standard: criterion, task: '글 쓰기', grade, criterion }] },
+        true,
+      );
+      expect(validateCommentLength(validated, 200).sentences).toHaveLength(sentences.length);
+    }
+  });
+
   test('평가 수에 비해 분량이 많으면 채울 재료를 안내하고 능력 문장을 평가마다 허용한다', async () => {
     const { commentLengthInstruction } = await import('../../supabase/functions/neis-helper/commentPrompts');
     expect(commentLengthInstruction(300, 2)).toContain('평가 하나에 쓸 분량이 많다');
