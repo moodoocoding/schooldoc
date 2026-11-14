@@ -229,6 +229,8 @@ describe('Neis Helper 서버 인증·비용·응답 경계', () => {
     expect(classBody.instructions).toContain('서술 초점(대상·방법·결과)·초등 수준 어휘를 달리한다.');
     expect(classBody.instructions).toContain('관형사형');
     expect(classBody.instructions).toContain('살펴보면');
+    expect(classBody.instructions).toContain('첫 단어를 바꾸려고 띄어 쓸 낱말을 붙여 쓰지 않는다');
+    expect(classBody.instructions).toContain('지시 관형사');
     expect(classBody.instructions).toContain("'~하는 솜씨/능력/힘이 뛰어남/우수함/돋보임'");
     expect(classBody.instructions).not.toContain('가능하면 한두 개의 자연스러운 문장에 담는다');
   });

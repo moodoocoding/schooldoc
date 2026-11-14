@@ -319,6 +319,13 @@ export function validateGeneratedComment(value: unknown, input: CommentInput, st
   const joined = sentences.map((s) => s.text).join(' ');
   if (!sentences.length || joined.length > 3000)
     throw new Error('평어 분량을 확인하지 못했습니다. 다시 생성해 주세요.');
+  // 첫 단어 중복을 피하려고 붙이는 빈 도입구는 프롬프트만으로 남는다. 평어 첫 문장의 앞 네 어절에서만 막는다.
+  if (strictStyle) {
+    const opening = joined.split(/[.!?。]\s/u)[0].split(/\s+/u).slice(0, 4);
+    const intro = opening.find((word) => /^(?:바탕으로|중심으로|앞서)$/u.test(word)) ?? (opening[0] === '살펴보면' ? opening[0] : '');
+    if (intro)
+      throw new Error(`평어 첫 문장을 '${intro}' 같은 도입구로 시작하지 말고 활동이나 대상으로 바로 시작해 주세요.`);
+  }
   // 교사 지침 원문대로 상의 칭찬 표현은 풍부하게 허용하되, 같은 평가어와 '능력이 ~' 틀의 반복은 막는다. 프롬프트 기준(1회)보다 한 번 여유를 둔다.
   if (strictStyle) {
     const praiseWords = joined.match(/돋보|뛰어|우수|탁월/gu) ?? [];
