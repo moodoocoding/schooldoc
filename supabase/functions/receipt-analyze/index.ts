@@ -28,6 +28,6 @@ Deno.serve(createReceiptHandler({
         if (pdf.getPageCount() > 10) throw new ReceiptError(422, 'PDF는 10쪽 이하로 나누어 주세요.');
       } catch (e) { if (e instanceof ReceiptError) throw e; throw new ReceiptError(422, '잠금 또는 손상된 PDF는 분석할 수 없습니다.'); }
     }
-    return requestReceiptAnalysis(upload, Deno.env.get('OPENAI_API_KEY')!, Deno.env.get('RECEIPT_AI_MODEL')?.trim() || 'gpt-4.1-mini');
+    return requestReceiptAnalysis(upload, Deno.env.get('OPENAI_API_KEY')!, Deno.env.get('RECEIPT_AI_MODEL')?.trim() || 'gpt-6-luna');
   },
 }));

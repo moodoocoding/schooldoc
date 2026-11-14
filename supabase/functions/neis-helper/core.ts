@@ -176,7 +176,7 @@ grades는 columns와 같은 개수와 순서여야 한다. 원래 기호/문자�
 여러 학급이 섞이면 번호 중복을 유지한다. 최대 60명, 평가 열 40개. 넘어가면 부분 추출하지 말고 빈 students로 반환한다.`;
 export function selectNeisAiModel(action: NeisRequest['action'], settings: { model?: string; commentModel?: string } = {}): string {
   const writing = action === 'generate' || action === 'generate-class';
-  return (writing ? settings.commentModel?.trim() : '') || settings.model?.trim() || (writing ? 'gpt-6-luna' : 'gpt-4.1-mini');
+  return (writing ? settings.commentModel?.trim() : '') || settings.model?.trim() || 'gpt-6-luna';
 }
 
 export function buildNeisAiRequest(request: NeisRequest, model: string) {

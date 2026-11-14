@@ -9,10 +9,10 @@ import { corePrompt, PLAN_PAGE_TARGETS, PLAN_PROMPT_VERSION, planAnalysisInstruc
 // output, source fragments, stack traces or arbitrary exception messages.
 const safeValidationMessages = new Set(['이전 형식의 초안입니다. 초안을 다시 작성해 주세요.']);
 
-/** 초안 작성·수정은 글솜씨가 중요한 상위 모델, 공문 분석은 빠른 모델을 기본으로 쓴다. */
+/** 기본 모델은 gpt-6-luna. 초안 작성·수정은 SCHOOL_PLAN_WRITING_MODEL을 먼저 본다. */
 export function selectPlanAiModel(action: PlanRequest['action'], settings: { model?: string; writingModel?: string } = {}) {
   const writing = action !== 'analyze';
-  return (writing ? settings.writingModel?.trim() : '') || settings.model?.trim() || (writing ? 'gpt-6-luna' : 'gpt-4.1-mini');
+  return (writing ? settings.writingModel?.trim() : '') || settings.model?.trim() || 'gpt-6-luna';
 }
 
 const message = (role: 'developer' | 'user', text: string) => ({ role, content: [{ type: 'input_text', text }] });
