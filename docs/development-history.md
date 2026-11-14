@@ -359,3 +359,17 @@
 - 이전 sections 초안은 기계 변환하지 않고 `legacyDraft`로 보존해 읽게 한다.
 - 검증: typecheck, oxlint, vitest 전체, school-plan E2E 19개(데모), Deno 정적 검사 통과. T01~T16은 가상 데이터 단위 시험으로 자동화했다.
 - 미검증: 실제 gpt-6-luna 응답 품질·지연 시간·토큰, 실제 v1/v2 문서 비교와 교사 평가, 지정 서식 선택 화면(코드 계층만 있음), 런타임 기능 플래그(되돌리기는 이전 커밋 재배포).
+
+
+## 2026-11-14 학급 전체 행동특성 작성 및 웹 배포 (codex)
+
+- 전용 작업 트리와 `codex/neis-behavior-web` 브랜치에서 구현했다. 기존 작업 트리의 미커밋 자료는 보존하고 최신 main `787f84f`의 교과·운영계획서 변경을 함께 반영했다.
+- 학급 명단을 한 화면에서 번호순으로 보고 학생별 특성·교사 메모를 입력한다. 학급 전체를 한 번 요청하고 학생별 결과가 도착하면 해당 행을 채운다. 200/300/400자 옵션, 전체 표 편집, 복사·Excel 저장을 제공한다.
+- 첫 단어·첫 세 글자·같거나 비슷한 문장을 검사해 해당 학생만 묶어 다시 작성한다. 직접 수정한 문장은 명시적으로 선택했을 때만 덮어쓰며, 중단 시 받은 내용 유지·미완료 재시도·입력 변경 표시를 제공한다.
+- 사용자 원문은 별도 문서로 보존하고, 교사 메모 우선·표현 다양성·명사형·금지 표현·발전 가능성·사실 보존과 2026 초등 기재요령을 충분한 독립 프롬프트에 적용했다. 에듀노트는 재사용 제한이 있어 코드·프롬프트를 복사하지 않았다.
+- 새 `neis-behavior` 함수는 기존 인증·권한·한도 정책을 재사용한다. 명단 이름·번호는 AI 요청에서 제외한다. 보관은 현재 탭 메모리이며 서버 저장을 뜻하지 않는다.
+- UI 세 프로파일과 여섯 AI 모의 관점 검토 후 버튼 고정·6행 본문·명단 교체 취소를 보완했다. 운영 검사에서 발견한 선택 색상 CSS 충돌과 명단 저장 안내도 수정했다.
+- 검증: typecheck, lint(기존 경고 4건), 전체 단위 796개, 행동특성 E2E 6개, 메뉴 E2E 3개, 전체 셸 스크롤, Deno 정적 검사, 웹 빌드 통과. 24/60명 UI와 스트리밍은 모의 검사이며 실제 운영에서는 가상 4명 생성·직접 편집·Excel 파일의 번호순/본문/바이트 일치를 확인했다. 최종 운영 화면에서 앱 콘솔 오류 0건 확인.
+- 웹 적용 확인: Vercel `schooldoc`, 커밋 `42917167b42d6b2c940111418de383907fc997a8`, 배포 `dpl_DCUEJ5dNQ4ShcHroZjr3Emu9jwtz` READY. 운영 주소 https://schooldoc-nine.vercel.app/tools/neis-helper/behavior . 서버 적용 확인: `jhystopaacyfvjxhnpyd`의 `neis-behavior` ACTIVE v2. DB·secrets 변경 없음.
+- GitHub 전용 브랜치에 커밋·push했다. main 병합은 하지 않았다. 포터블은 사용자 지시로 빌드·검사·릴리즈하지 않았고 GitHub Actions 포터블도 실행하지 않았다. 다음 main 웹 배포 전에 이 기능 브랜치를 통합해야 한다.
+- 상세: [프롬프트 설계](neis-behavior-prompt.md), [사용자 원문](neis-behavior-user-prompt.md), [구현·모의 검토](../design/feature-reviews/2026-11-14-neis-behavior/implementation-review.md), [운영 검증과 한계](../design/feature-reviews/2026-11-14-neis-behavior/production-verification.md). 외부 공유 일지가 이 checkout에 없어 기존 로컬 개발일지에 기록했다.
