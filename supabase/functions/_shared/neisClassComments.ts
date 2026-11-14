@@ -1,5 +1,5 @@
 import {
-  NEIS_MAX_STUDENTS, NEIS_MAX_TASK_CONTEXT, NEIS_MAX_TASKS, commentStyleContext, repeatedCommentIds,
+  NEIS_MAX_STUDENTS, NEIS_MAX_TASK_CONTEXT, NEIS_MAX_TASKS, commentStyleContext, countComment, repeatedCommentIds,
   validateCommentStyleContext, validateGeneratedComment, validateCommentLength,
 } from './neisHelper.ts';
 import type { CommentInput, GeneratedComment, NeisGrade } from './neisHelper.ts';
@@ -24,7 +24,11 @@ export interface ClassCommentInput {
   priorSentences?: string[];
   revisions?: { id: string; text: string; reason: string }[];
 }
-export interface ClassCommentRow { id: string; comment: GeneratedComment | null; error: string; rejectedText?: string }
+/**
+ * draft: 근거·표현 검사는 통과하고 다른 학생과의 시작·문장 중복이나 분량만 걸린 평어.
+ * 재작성 기회를 다 쓰면 미생성으로 남기지 않고 이 평어를 결과에 넣는다. 결과 화면이 중복·분량을 다시 표시한다.
+ */
+export interface ClassCommentRow { id: string; comment: GeneratedComment | null; error: string; rejectedText?: string; draft?: GeneratedComment }
 export interface ClassCommentResult { rows: ClassCommentRow[] }
 export type ClassCommentEvent = { type: 'row'; row: ClassCommentRow } | { type: 'done' } | { type: 'error'; message: string };
 
@@ -141,6 +145,7 @@ export function createClassOutputValidator(input: ClassCommentInput) {
       context: item.taskContext ?? '', rising: rising.has(index + 1),
     }));
     let rejectedText = '';
+    let draft: GeneratedComment | undefined;
     try {
       const sentences = list(row.sentences, NEIS_MAX_TASKS).map((item) => {
         const sentence = object(item);
@@ -155,6 +160,9 @@ export function createClassOutputValidator(input: ClassCommentInput) {
         .filter((assessmentId, index, ids) => index === 0 || assessmentId !== ids[index - 1]);
       if (actualOrder.join(',') !== expectedOrder.join(','))
         throw new Error(`배정된 평가 서술 순서(${expectedOrder.join(' → ')})에 맞춰 문장을 구성해 주세요. 성적과 평가의 연결은 유지해 주세요.`);
+      // 여기부터는 다른 학생과의 중복과 분량 검사다. 분량이 크게 벗어나지 않으면 마지막에 경고와 함께 쓸 수 있다.
+      const characters = countComment(rejectedText).characters;
+      if (characters >= input.length * 0.7 && characters <= input.length * 1.3) draft = comment;
       const style = commentStyleContext([rejectedText]);
       const overlappingStarts = style.usedStarts.filter((start) => reservedStarts.has(start));
       if (overlappingStarts.length)
@@ -173,7 +181,7 @@ export function createClassOutputValidator(input: ClassCommentInput) {
       return { id, comment, error: '' };
     } catch (error) {
       return { id, comment: null, error: error instanceof Error ? error.message : '평어를 다시 생성해 주세요.',
-        ...(rejectedText ? { rejectedText } : {}) };
+        ...(rejectedText ? { rejectedText } : {}), ...(draft ? { draft } : {}) };
     }
   }
 

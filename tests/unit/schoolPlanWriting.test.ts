@@ -11,10 +11,10 @@ const base = { sources: [], analysis: null, answers: {}, conditions: { topic: '�
 const request: PlanRequest = { action: 'draft', ...base, pages: 5, referenceType: 'teacher-training' };
 const completed = (data: unknown) => new Response(JSON.stringify({ status: 'completed', usage: { input_tokens: 10, output_tokens: 20 }, output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(data) }] }] }));
 
-test('초안 작성·수정은 상위 모델, 공문 분석은 빠른 모델을 기본으로 쓰고 서버 설정을 우선한다', () => {
+test('모든 작업의 기본 모델은 gpt-6-luna이고 서버 설정을 우선한다', () => {
   expect(selectPlanAiModel('draft')).toBe('gpt-6-luna');
   expect(selectPlanAiModel('revise')).toBe('gpt-6-luna');
-  expect(selectPlanAiModel('analyze')).toBe('gpt-4.1-mini');
+  expect(selectPlanAiModel('analyze')).toBe('gpt-6-luna');
   expect(selectPlanAiModel('draft', { model: 'shared', writingModel: ' writer ' })).toBe('writer');
   expect(selectPlanAiModel('draft', { model: 'shared' })).toBe('shared');
   expect(selectPlanAiModel('analyze', { model: 'shared', writingModel: 'writer' })).toBe('shared');

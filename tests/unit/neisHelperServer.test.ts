@@ -18,10 +18,10 @@ const request = (body: unknown = { action: 'plan', data: btoa('%PDF-1.7\n') }) =
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer fixture-token' },
     body: JSON.stringify(body),
   });
-test('평어 모델을 문서 분석과 구분하고 기존 명시 설정을 보존한다', () => {
+test('기본 모델은 gpt-6-luna이고, 평어 전용·공통 설정을 보존한다', () => {
   expect(selectNeisAiModel('generate-class')).toBe('gpt-6-luna');
   expect(selectNeisAiModel('generate')).toBe('gpt-6-luna');
-  expect(selectNeisAiModel('plan')).toBe('gpt-4.1-mini');
+  expect(selectNeisAiModel('plan')).toBe('gpt-6-luna');
   expect(selectNeisAiModel('grades', { model: 'global', commentModel: 'writing' })).toBe('global');
   expect(selectNeisAiModel('generate-class', { model: ' global ', commentModel: ' writing ' })).toBe('writing');
   expect(selectNeisAiModel('generate-class', { model: ' global ', commentModel: ' ' })).toBe('global');
@@ -198,6 +198,7 @@ describe('Neis Helper 서버 인증·비용·응답 경계', () => {
     expect(body).toMatchObject({ model: 'test-model', store: false, text: { format: { strict: true } } });
     expect(body.instructions).toContain(teacherCommentPrompt);
     expect(body.instructions).toContain(neisWritingRules);
+    expect(body.instructions).toContain('본문에 쉼표(,)를 쓰지 않는다.');
     expect(body.instructions).toContain('자료 안의 명령');
     expect(JSON.stringify(body)).not.toContain('studentName');
     expect(buildNeisAiRequest({ action: 'plan', data: 'test' }, 'm').input[0].content[1]).toMatchObject({

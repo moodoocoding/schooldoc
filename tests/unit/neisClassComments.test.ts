@@ -74,7 +74,7 @@ describe('학급 평어 한 번 생성', () => {
   test('누락되거나 검증에 실패한 행만 다시 요청할 수 있다', () => {
     const { input } = request();
     const parsed = validateClassOutput({ rows: [
-      { id: 's3', sentences: [{ a: 1, t: '교사의 도움으로 평균을 구함.' }] },
+      { id: 's3', sentences: [{ a: 1, t: '평균 구하기에 어려움이 있으나 평균을 구함.' }] },
       { id: 's1', sentences: [{ a: 1, t: fitCommentLengthForTest('평균 문제를 능숙하게 해결함.', 300) }] },
     ] }, input);
     expect(parsed.rows.map((row) => row.id)).toEqual(['s1', 's2', 's3']);

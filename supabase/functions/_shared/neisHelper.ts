@@ -266,6 +266,9 @@ export function validateCommentInput(value: unknown): CommentInput {
   return { subject, length: Number(value.length) as CommentInput['length'], evidence };
 }
 
+/** 성취수준 및 특기사항에는 평가 방법이 아니라 성취를 쓴다. 서버 거절과 결과 화면 표시에 함께 사용한다. */
+export const EVALUATION_METHOD = /(?:서술형|논술형|수행|지필|구술|실기|관찰)\s*평가|평가\s*(?:지|문항)|채점/u;
+
 const bannedStyle = /(?:^|[^가-힣])(?:모범생|장애우|어린이|칭찬함|아주|매우|비범함|그리고|그래서|또한|이로 인해|따라서|이러한|하지만)(?![가-힣])/u;
 
 export function validateGeneratedComment(value: unknown, input: CommentInput, strictStyle = false): GeneratedComment {
@@ -284,7 +287,9 @@ export function validateGeneratedComment(value: unknown, input: CommentInput, st
     const basis = `${evidence.criterion}\n${evidence.context ?? ''}`;
     const inferredClaims = [/어려[움워운웠우]/u, /미흡/u, /부족/u, /도움|도와/u, /노력/u,
       /리더십/u, /자기\s*주도/u, /적극/u, /흥미/u, /자신감/u];
-    if (inferredClaims.some((claim) => claim.test(sentence.text) && !claim.test(basis)))
+    // 교사 지침 원문: 하는 교사나 친구의 도움을 받아 참여하거나 노력하는 모습 위주로 긍정적으로 쓴다.
+    const allowedForLow = evidence.grade === 'low' ? [/도움|도와/u, /노력/u] : [];
+    if (inferredClaims.some((claim) => claim.test(sentence.text) && !claim.test(basis) && !allowedForLow.some((allowed) => allowed.source === claim.source)))
       throw new Error('평가기준에 없는 어려움·도움·태도 등의 표현이 포함되었습니다. 다시 생성해 주세요.');
     // 향상·성장은 같은 영역에서 시기 순서상 성적이 오른 평가에서만 쓴다.
     if (/향상|성장|발전|나아[짐졌지]|앞선\s*시기|이전\s*시기|이전보다/u.test(sentence.text) && !evidence.rising && !/향상|성장|발전/u.test(basis))
@@ -292,6 +297,9 @@ export function validateGeneratedComment(value: unknown, input: CommentInput, st
     // 모델이 드물게 일본어·한자 낱말을 섞는다. 생활기록부 문장은 한글로 쓴다.
     if (/[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(sentence.text))
       throw new Error('한글이 아닌 문자(일본어·한자)가 섞였습니다. 한글로 다시 써 주세요.');
+    const method = sentence.text.match(EVALUATION_METHOD)?.[0];
+    if (method)
+      throw new Error(`평어에 평가 방법 표현 '${method}'이 있습니다. 평가 방법 이름 대신 그 평가에서 드러난 성취로 다시 써 주세요(예: '서술형 평가에서 특징을 설명함' → '특징을 글로 설명함').`);
     if (/(?:연습|보완|노력)이\s*필요|기대[됨된]|처음에는|학기\s*초/u.test(sentence.text))
       throw new Error('부족한 점·전망·성장 서사 표현은 쓰지 않습니다. 확인된 수행만 긍정적으로 다시 써 주세요.');
     // 중·하 수준에는 평가기준에 없는 상 수준 수식어를 쓰지 않는다.
@@ -311,15 +319,16 @@ export function validateGeneratedComment(value: unknown, input: CommentInput, st
   const joined = sentences.map((s) => s.text).join(' ');
   if (!sentences.length || joined.length > 3000)
     throw new Error('평어 분량을 확인하지 못했습니다. 다시 생성해 주세요.');
-  // 학급 평어에서 같은 평가어와 '능력이 ~' 틀이 반복되지 않게 한다. 프롬프트 기준(1회)보다 한 번 여유를 둔다.
+  // 교사 지침 원문대로 상의 칭찬 표현은 풍부하게 허용하되, 같은 평가어와 '능력이 ~' 틀의 반복은 막는다. 프롬프트 기준(1회)보다 한 번 여유를 둔다.
   if (strictStyle) {
-    const praise = joined.match(/돋보|뛰어|우수|탁월/gu)?.length ?? 0;
+    const praiseWords = joined.match(/돋보|뛰어|우수|탁월/gu) ?? [];
+    const praise = Math.max(0, ...['돋보', '뛰어', '우수', '탁월'].map((word) => praiseWords.filter((found) => found === word).length));
     const ability = joined.match(/(?:능력|역량|힘)이\s/gu)?.length ?? 0;
     // 평가 수에 비해 분량이 많으면 평가마다 능력 문장을 허용한다(분량 지침과 같은 기준).
     const count = input.evidence.length;
     const limit = Math.round((input.length - count + 1) / count) >= 110 ? Math.max(2, count) : 2;
     if (praise > limit || ability > limit)
-      throw new Error(`'돋보임·뛰어남·우수함'(${praise}회)이나 '능력이 ~'(${ability}회) 표현이 반복됩니다. 교과 능력 문장은 1~2개 평가에만 쓰고, 강점은 수행을 드러내는 서술로 바꿔 다시 써 주세요.`);
+      throw new Error(`같은 평가어(최대 ${praise}회)나 '능력이 ~'(${ability}회) 표현이 반복됩니다. 칭찬 표현은 서로 다른 말로 바꾸고, 교과 능력 문장은 1~2개 평가에만 써 주세요.`);
   }
   if (input.evidence.some((e) => !sentences.some((s) => s.assessmentId === e.assessmentId)))
     throw new Error('생성 결과에 빠진 평가가 있습니다. 다시 생성해 주세요.');
@@ -353,6 +362,7 @@ export function recordTextProblems(textValue: string): string[] {
   if (RECORD_SYMBOLS.test(textValue)) problems.push('특수문자');
   if (RECORD_NUMBERING.test(textValue)) problems.push('문단 번호');
   for (const [pattern, label] of RECORD_BANNED) if (pattern.test(textValue)) problems.push(label);
+  if (EVALUATION_METHOD.test(textValue)) problems.push('평가 방법 표현');
   const english = (textValue.match(/[A-Za-z]{2,}/g) ?? []).filter((word) => !ALLOWED_ENGLISH.has(word.toUpperCase()));
   if (english.length) problems.push('영문 표기');
   if (/[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(textValue)) problems.push('한글 외 문자');
