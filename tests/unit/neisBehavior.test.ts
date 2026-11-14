@@ -100,9 +100,14 @@ describe('행동특성 자료와 문장 검사', () => {
     expect(behaviorInstruction).toContain('교사의 짧은 판단도 근거로 반영');
     expect(behaviorInstruction).toContain('구체적인 전후 사례·날짜·수치나 별도 관찰 기록을 요구하지 않습니다');
     expect(behaviorInstruction).not.toContain('메모에 실제 전후 변화가 있을 때만');
+    expect(payload.instructions).toContain('메모가 없거나 변화에 대한 언급이 없어도');
+    expect(payload.instructions).toContain('현재 모습이나 미래 가능성만으로 제한하지 않습니다');
+    expect(payload.instructions).toContain('구체적인 변화 이력은 구별');
+    expect(payload.instructions).not.toContain('없는 사건·실적·변화는 추가하지 않습니다');
     expect(behaviorInstruction).toContain('기본값은 약 400자');
     expect(payload.store).toBe(false);
     expect(JSON.parse(payload.input[0].content[0].text).students).toHaveLength(2);
+    expect(JSON.parse(payload.input[0].content[0].text).students[1]).toEqual({ id: 's2', traits: ['끈기'], notes: '' });
   });
 });
 
