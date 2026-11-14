@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, Check, RotateCw } from 'lucide-react';
+import { AlertTriangle, Check, LoaderCircle, RotateCw } from 'lucide-react';
 import {
   assessmentProblems,
   countComment,
@@ -32,7 +32,7 @@ const methodText: Record<LinkMethod, string> = {
   none: '연결 못 함 · 평어에서 제외',
 };
 
-type StudentState = 'done' | 'failed' | 'blocked' | 'pending';
+type StudentState = 'done' | 'failed' | 'blocked' | 'pending' | 'working';
 function studentState(
   draft: SubjectDraft,
   student: GradeStudent,
@@ -50,6 +50,7 @@ export function NeisResultsStep({
   students,
   problems,
   disabled,
+  generatingIds = [],
   onLink,
   onEdit,
   onGrade,
@@ -64,6 +65,8 @@ export function NeisResultsStep({
   students: GradeStudent[];
   problems: Map<string, string[]>;
   disabled: boolean;
+  /** 지금 생성 중이고 아직 결과가 오지 않은 학생. 미생성·실패 대신 만드는 중으로 보인다. */
+  generatingIds?: string[];
   onLink: (columnId: string, assessmentId: string) => void;
   onEdit: (item: Assessment) => void;
   onGrade: (studentId: string, columnIndex: number, grade: NeisGrade) => void;
@@ -78,10 +81,15 @@ export function NeisResultsStep({
   const [attentionIds, setAttentionIds] = useState<string[]>([]);
   const [openEvidence, setOpenEvidence] = useState<string[]>([]);
   const book = draft.book!;
-  const states = new Map(students.map((s) => [s.id, studentState(draft, s, problems)]));
+  const generating = new Set(generatingIds);
+  const states = new Map(students.map((s) => {
+    const state = studentState(draft, s, problems);
+    return [s.id, generating.has(s.id) && (state === 'pending' || state === 'failed') ? 'working' as const : state];
+  }));
   const count = (state: StudentState) => [...states.values()].filter((s) => s === state).length;
   const done = count('done');
-  const attention = students.length - done;
+  const working = count('working');
+  const attention = students.length - done - working;
   const repeats = repeatedCommentIds(
     students.map((s) => ({ id: s.id, text: draft.results[s.id]?.text ?? '' })),
   );
@@ -103,6 +111,7 @@ export function NeisResultsStep({
         <p className={`rounded-xl border p-3 sm:p-4 ${attention ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white'}`}>
           <span className={`block text-sm font-semibold ${attention ? 'text-amber-900' : 'text-slate-600'}`}>확인 필요</span>
           <span className={`text-xl font-bold sm:text-2xl ${attention ? 'text-amber-900' : 'text-slate-900'}`}>{attention}명</span>
+          {working > 0 && <span className="block text-sm text-slate-600">만드는 중 {working}명 제외</span>}
         </p>
         <p className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
           <span className="block break-keep text-sm font-semibold text-slate-600">평어에 쓴 평가</span>
@@ -279,7 +288,7 @@ export function NeisResultsStep({
             return (
               <li
                 key={student.id}
-                className={`flex flex-wrap gap-x-4 gap-y-3 p-4 ${state === 'done' ? '' : 'bg-amber-50/60'}`}
+                className={`flex flex-wrap gap-x-4 gap-y-3 p-4 ${state === 'done' || state === 'working' ? '' : 'bg-amber-50/60'}`}
               >
                 <div className="min-w-0 flex-[0_1_10rem]">
                   <p className="break-keep font-bold text-slate-900 [overflow-wrap:anywhere]">
@@ -287,16 +296,20 @@ export function NeisResultsStep({
                   </p>
                   <p
                     className={`mt-1 inline-flex items-center gap-1 text-sm font-semibold ${
-                      state === 'done' ? 'text-emerald-800' : 'text-amber-900'
+                      state === 'done' ? 'text-emerald-800' : state === 'working' ? 'text-blue-800' : 'text-amber-900'
                     }`}
                   >
                     {state === 'done' ? (
                       <Check className="h-4 w-4" aria-hidden="true" />
+                    ) : state === 'working' ? (
+                      <LoaderCircle className="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" />
                     ) : (
                       <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                     )}
                     {state === 'done'
                       ? '완성'
+                      : state === 'working'
+                        ? '만드는 중'
                       : state === 'blocked'
                         ? '성적 확인 필요'
                         : state === 'failed'
@@ -341,7 +354,7 @@ export function NeisResultsStep({
                   )}
                   {state !== 'blocked' && (
                     <>
-                      {result?.error && (
+                      {result?.error && state !== 'working' && (
                         <p role="alert" className="text-sm text-red-800">
                           {result.error}
                         </p>
@@ -374,15 +387,17 @@ export function NeisResultsStep({
                             기재요령 확인: {recordTextProblems(result.text).join(', ')}
                           </span>
                         )}
-                        <button
-                          type="button"
-                          className="min-h-[44px] font-semibold text-blue-700 underline"
-                          aria-label={`${who} ${result?.text ? '다시 생성' : '생성'}`}
-                          disabled={disabled}
-                          onClick={() => onGenerate([student.id])}
-                        >
-                          {result?.text ? '다시 생성' : '생성'}
-                        </button>
+                        {state !== 'working' && (
+                          <button
+                            type="button"
+                            className="min-h-[44px] font-semibold text-blue-700 underline"
+                            aria-label={`${who} ${result?.text ? '다시 생성' : '생성'}`}
+                            disabled={disabled}
+                            onClick={() => onGenerate([student.id])}
+                          >
+                            {result?.text ? '다시 생성' : '생성'}
+                          </button>
+                        )}
                         {!!evidence.length && (
                           <button
                             type="button"

@@ -31,6 +31,7 @@ import { primaryClass, secondaryClass } from './SubjectSteps';
 import { NeisPlanStep } from './NeisPlanStep';
 import { NeisPrepareStep } from './NeisPrepareStep';
 import { NeisResultsStep } from './NeisResultsStep';
+import { NeisBusyPanel } from './NeisBusyPanel';
 
 const phases: Record<SubjectPhase, { index: number; title: string; description: string }> = {
   plan: {
@@ -58,6 +59,8 @@ export function SubjectWorkspace() {
   const [draft, setDraft] = useState<SubjectDraft>(() => readSubjectDraft(owner));
   const [busy, setBusy] = useState('');
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [lastDone, setLastDone] = useState('');
+  const [generatingIds, setGeneratingIds] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [mismatch, setMismatch] = useState<AssessmentPlan | null>(null);
@@ -109,6 +112,8 @@ export function SubjectWorkspace() {
     const current = () => mounted.current && id === generation.current && !controller.signal.aborted;
     setBusy(label);
     setProgress(null);
+    setLastDone('');
+    setGeneratingIds([]);
     setError('');
     setNotice('');
     try {
@@ -119,6 +124,8 @@ export function SubjectWorkspace() {
       if (mounted.current && id === generation.current) {
         setBusy('');
         setProgress(null);
+        setLastDone('');
+        setGeneratingIds([]);
       }
     }
   }
@@ -127,6 +134,7 @@ export function SubjectWorkspace() {
     request.current?.abort();
     setBusy('');
     setProgress(null);
+    setGeneratingIds([]);
     setNotice('중단했습니다. 이미 만든 평어와 넣은 파일은 유지됩니다.');
   }
   function pickFile(files: FileList | null, kind: 'plan' | 'grades'): File | null {
@@ -232,10 +240,14 @@ export function SubjectWorkspace() {
     const { input, idMap } = buildClassRequest(draft.subject, draft.length, source.book, targets, assessments, mappings, {}, source.results ?? draft.results);
     const received = new Set<string>();
     setProgress({ done: 0, total: targets.length });
+    setGeneratingIds(targets.map((s) => s.id));
     await generateClassComments(input, signal, (row) => {
       const id = idMap.get(row.id);
       if (!id || !current()) return;
       received.add(id);
+      setGeneratingIds((ids) => ids.filter((other) => other !== id));
+      const student = source.book.students.find((s) => s.id === id);
+      if (student && row.comment) setLastDone(`${student.number}번 ${student.name}`);
       setDraft((prev) => ({ ...prev, results: { ...prev.results, [id]: {
         generated: row.comment ?? prev.results[id]?.generated ?? null,
         text: row.comment ? row.comment.sentences.map((s) => s.text).join(' ') : prev.results[id]?.text ?? '',
@@ -399,6 +411,9 @@ export function SubjectWorkspace() {
           <p className="mt-2 break-keep text-sm leading-6 text-slate-600">{meta.description}</p>
         </header>
 
+        {/* 진행 상태는 결과 목록 위에 두고, 아래로 내려 봐도 화면 위쪽에 붙어 보이게 한다. */}
+        {busy && <NeisBusyPanel label={busy} progress={progress} lastDone={lastDone} onCancel={cancel} />}
+
         {draft.phase === 'plan' && (
           <NeisPlanStep
             mode={draft.planMode}
@@ -443,6 +458,7 @@ export function SubjectWorkspace() {
             students={students}
             problems={problems}
             disabled={!!busy}
+            generatingIds={generatingIds}
             onLink={relink}
             onEdit={editAssessment}
             onGrade={setGrade}
@@ -456,30 +472,6 @@ export function SubjectWorkspace() {
           />
         )}
 
-        {busy && (
-          <div className="mt-6 rounded-lg bg-blue-50 p-4">
-            <p role="status" className="font-semibold text-blue-900">
-              {busy}
-              {progress ? ` ${progress.done} / ${progress.total}명` : ''}
-            </p>
-            {progress && (
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-blue-100" aria-hidden="true">
-                <div
-                  className="h-full bg-blue-600 transition-[width]"
-                  style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }}
-                />
-              </div>
-            )}
-            <p className="mt-2 text-sm text-blue-900">잠시 걸릴 수 있습니다. 화면을 열어 둬 주세요.</p>
-            <button
-              type="button"
-              className="mt-2 min-h-[44px] text-sm font-semibold text-blue-800 underline"
-              onClick={cancel}
-            >
-              중단
-            </button>
-          </div>
-        )}
         {error && (
           <div
             role="alert"
