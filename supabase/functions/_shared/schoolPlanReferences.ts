@@ -1,7 +1,7 @@
 import type { PlanContext } from './schoolPlan.ts';
 
 // 유형 목록과 자동 분류만 둔다. 유형별 작성 내용은 school-plan/authoringProfiles.ts, 실제 사례 요약은 school-plan/references.ts에 있다.
-export const PLAN_REFERENCE_VERSION = '2026-11-14.1';
+export const PLAN_REFERENCE_VERSION = '2026-11-14.2';
 export interface PlanReferenceProfile {
   id: string;
   label: string;

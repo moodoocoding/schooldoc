@@ -10,7 +10,7 @@ import { buildPlanAiRequest } from '../../supabase/functions/school-plan/openai'
 import { corePrompt, typeGuide } from '../../supabase/functions/school-plan/prompt';
 import { layoutOfficialDocument } from '../../src/features/officialDocument/format';
 import { planToOfficialDocument, STANDARD_PLAN_TEMPLATE, type PlanTemplate } from '../../src/features/schoolDocuments/planDocument';
-import { applyPlanPartText, planPartText } from '../../src/features/schoolDocuments/planEditText';
+import { applyPlanPartText, PLAN_EDIT_PARTS, planEditLabel, planPartText } from '../../src/features/schoolDocuments/planEditText';
 import { loadPlanState, planStorageKey, emptyPlanState } from '../../src/features/schoolDocuments/planStore';
 import { context as baseContext, draft as base, legacyDraft } from '../fixtures/schoolPlan';
 
@@ -42,10 +42,10 @@ describe('지시문과 응답 형식', () => {
   });
   test('6개 대목차는 서식이 정하고 AI는 목차를 만들지 않는다(sections·items·children 없음)', () => {
     const keys = Object.keys(planDocumentSchema.properties);
-    expect(keys).toEqual(['schemaVersion', 'title', 'purpose', 'overview', 'policies', 'detailedPlans', 'schedule', 'budget', 'expectedEffects', 'meta']);
+    expect(keys).toEqual(['schemaVersion', 'title', 'background', 'purpose', 'overview', 'policies', 'detailedPlans', 'schedule', 'budget', 'expectedEffects', 'meta']);
     expect(JSON.stringify(planDocumentSchema)).not.toMatch(/"(sections|items_tree|children|heading)"/);
     const headings = planToOfficialDocument(base, base.title, 2).body.map(n => n.kind === 'item' ? n.text : '');
-    expect(headings).toEqual(['추진 목적', '운영 개요', '운영 방침', '세부 추진 계획', '소요 예산', '기대 효과']);
+    expect(headings).toEqual(['추진 배경', '추진 목적', '운영 방침', '세부 추진 계획', '소요 예산', '기대 효과']);
   });
 });
 
@@ -53,7 +53,7 @@ describe('T01~T16', () => {
   test('T01 교원 연수(확정 조건): 6대 목차와 일정표, 수업 적용 과제를 강제하지 않는다', () => {
     expect(typeGuide('teacher-training')).toContain('수업 적용은 연수 목적상 필요한 경우에만');
     const lines = text(base).split('\n');
-    expect(lines).toEqual(expect.arrayContaining(['1. 추진 목적', '4. 세부 추진 계획', '마. 추진 일정', '6. 기대 효과']));
+    expect(lines).toEqual(expect.arrayContaining(['1. 추진 배경', '2. 추진 목적', '4. 세부 추진 계획', '가. 운영 개요', '바. 추진 일정', '6. 기대 효과']));
   });
   test('T02 교원 연수(강사·금액 미정): 근거 없는 강사·인원·시수는 확인 대상으로 알린다', () => {
     const d = doc({ detailedPlans: [{ subTitle: '연수 운영', details: ['강사: 외부 전문가 2명 초빙', '운영: 회당 3시간씩 4차시 실시'] }] });
@@ -151,8 +151,8 @@ describe('T01~T16', () => {
 describe('렌더러·편집', () => {
   test('일정은 세부 추진 계획의 마지막 중항목 표, 빈 일정이면 생략하고 기대 효과는 마지막이다', () => {
     const lines = text(base).split('\n');
-    expect(lines.indexOf('마. 추진 일정')).toBeGreaterThan(lines.indexOf('라. 결과 정리'));
-    expect(lines.indexOf('마. 추진 일정')).toBeLessThan(lines.indexOf('5. 소요 예산'));
+    expect(lines.indexOf('바. 추진 일정')).toBeGreaterThan(lines.indexOf('마. 결과 정리'));
+    expect(lines.indexOf('바. 추진 일정')).toBeLessThan(lines.indexOf('5. 소요 예산'));
     expect(text(doc({ schedule: [] }))).not.toContain('추진 일정');
     expect(lines.at(-1)).toMatch(/^나\. /);
     expect(lines.findIndex(l => l === '6. 기대 효과')).toBeGreaterThan(lines.indexOf('5. 소요 예산'));
@@ -225,8 +225,10 @@ describe('운영 검수(2026-11-14)에서 나온 문제', () => {
   });
   test('하위 항목·표가 있는 중항목은 다음 줄과 붙여 쪽 끝에 홀로 남지 않게 한다', () => {
     const lines = layoutOfficialDocument(planToOfficialDocument(base, base.title, 2));
-    const sub = lines.find(l => l.kind === 'item' && l.text === `가. ${base.detailedPlans[0].subTitle}`);
+    const overviewSub = lines.find(l => l.kind === 'item' && l.text === '가. 운영 개요');
+    const sub = lines.find(l => l.kind === 'item' && l.text === `나. ${base.detailedPlans[0].subTitle}`);
     const leaf = lines.find(l => l.kind === 'item' && l.text === `1) ${base.detailedPlans[0].details[0]}`);
+    expect(overviewSub && overviewSub.kind === 'item' && overviewSub.keepWithNext).toBe(true);
     expect(sub && sub.kind === 'item' && sub.keepWithNext).toBe(true);
     expect(leaf && leaf.kind === 'item' && leaf.keepWithNext).toBe(false);
   });
@@ -282,5 +284,138 @@ describe('운영 재검수(2026-11-14)에서 나온 문제', () => {
     expect(corePrompt).toContain('공문이 정한 제출·마감은 다른 단계와 합치지 않고');
     const built = buildPlanAiRequest({ action: 'revise', ...baseContext, referenceType: 'contest', pages: 2, draft: base, revision: { area: 'schedule', instruction: '세 단계로 나눠 주세요.' } }, 'm');
     expect(built.input[0].content[0].text).toContain('제출·마감 행은 합치지 않고 별도 행으로 남긴다');
+  });
+});
+
+describe('추진 배경·운영 개요·문서 점검·편집 보강 회귀', () => {
+  test('6대 목차 순서와 세부 추진 계획 구성을 따르고, background가 없는 구초안도 하위 호환한다', () => {
+    const lines = text(base).split('\n');
+    const order = ['1. 추진 배경', '2. 추진 목적', '3. 운영 방침', '4. 세부 추진 계획', '가. 운영 개요', '나. 사전 준비', '바. 추진 일정', '5. 소요 예산', '6. 기대 효과'];
+    order.forEach((heading, idx) => {
+      expect(lines.indexOf(heading)).toBeGreaterThan(idx === 0 ? 0 : lines.indexOf(order[idx - 1]));
+    });
+
+    const { background: _, ...legacyV2 } = base;
+    const normalized = validatePlanDocument(legacyV2, baseContext);
+    expect(normalized.background).toEqual([]);
+    const rendered = text(normalized);
+    expect(rendered).not.toContain('추진 배경');
+    expect(rendered).toContain('1. 추진 목적');
+    expect(rendered).toContain('3. 세부 추진 계획');
+    expect(rendered).toContain('4. 소요 예산');
+    expect(rendered).toContain('5. 기대 효과');
+  });
+
+  test('운영 개요의 일부 빈 항목은 미정으로 표시해 확인 대상으로 남기고, 4개 모두 null이면 미정 안내 문구를 쓴다', () => {
+    const partial = doc({ overview: { period: '2026. 11. 2.(월)∼11. 6.(금)', target: '전교 학생', venue: null, summary: '미정' } });
+    const renderedPartial = text(partial);
+    expect(renderedPartial).toContain('1) 기간: 2026. 11. 2.(월)∼11. 6.(금)');
+    expect(renderedPartial).toContain('2) 대상: 전교 학생');
+    expect(renderedPartial).toContain('3) 장소: 미정');
+    expect(renderedPartial).toContain('4) 내용: 미정');
+
+    const partialConfirms = levels(checkPlanDocument(partial, { ...baseContext, today: '2026. 10. 26.' }), 'confirm');
+    expect(partialConfirms).toContain('운영 개요(장소): 장소이(가) 정해지지 않았습니다');
+    expect(partialConfirms).toContain('운영 개요(내용): 내용이(가) 정해지지 않았습니다');
+    expect(partialConfirms).not.toContain('운영 개요(기간)');
+    expect(partialConfirms).not.toContain('운영 개요(대상)');
+
+    const allNull = doc({ overview: { period: null, target: null, venue: null, summary: null } });
+    const renderedAllNull = text(allNull);
+    expect(renderedAllNull).toContain('운영 개요 미정(검토 필요)');
+    expect(renderedAllNull).not.toContain('장소: 미정');
+    const allConfirms = levels(checkPlanDocument(allNull, { ...baseContext, today: '2026. 10. 26.' }), 'confirm');
+    for (const label of ['기간', '대상', '장소', '내용']) {
+      expect(allConfirms).toContain(`운영 개요(${label}):`);
+    }
+  });
+
+  test('일정이 1행뿐이면 경고하고, 하루 연수 시간별 진행표 3행은 1행 경고와 시기 중복 확인을 내지 않는다', () => {
+    const oneRow = doc({
+      schedule: [{ step: '연수 운영', task: '교원 디지털 역량 강화 연수 실시', date: '2026. 11. 20.(금) 14:30~16:10', owner: '연수 담당' }],
+    });
+    const oneRowIssues = checkPlanDocument(oneRow, { ...noSource({ topic: '가상 교원 연수' }), today: '2026. 10. 26.' });
+    expect(levels(oneRowIssues, 'warn')).toContain('추진 일정 표가 한 행뿐입니다');
+
+    const hourly = doc({
+      schedule: [
+        { step: '도입', task: '연수 안내 및 사례 공유', date: '14:30~15:00', owner: '강사' },
+        { step: '실습', task: '에듀테크 활용 수업 설계 실습', date: '15:00~15:50', owner: '강사' },
+        { step: '정리', task: '질의응답 및 소감 나눔', date: '15:50~16:10', owner: '연수 담당' },
+      ],
+    });
+    const hourlyIssues = checkPlanDocument(hourly, { ...noSource({ topic: '가상 교원 연수' }), today: '2026. 10. 26.' });
+    expect(levels(hourlyIssues, 'warn')).not.toContain('추진 일정 표가 한 행뿐입니다');
+    expect(levels(hourlyIssues, 'confirm')).not.toContain('여러 단계의 시기가 같습니다');
+  });
+
+  test('추진 목적과 기대 효과의 동일 문장((안) 유무 차이 포함) 및 같은 목차 내 반복은 경고하고, 관례적 짝은 허용한다', () => {
+    const exactSame = doc({
+      purpose: ['학생 스스로 책을 고르는 자기주도적 독서 습관 함양'],
+      expectedEffects: ['학생 스스로 책을 고르는 자기주도적 독서 습관 함양'],
+    });
+    expect(levels(checkPlanDocument(exactSame, { ...baseContext, today: '2026. 10. 26.' }), 'warn')).toContain('추진 목적과 똑같은 문장을 되풀이합니다');
+
+    const sameWithProposal = doc({
+      purpose: ['학생 스스로 책을 고르는 자기주도적 독서 습관 함양'],
+      expectedEffects: ['학생 스스로 책을 고르는 자기주도적 독서 습관 함양(안)'],
+    });
+    expect(levels(checkPlanDocument(sameWithProposal, { ...baseContext, today: '2026. 10. 26.' }), 'warn')).toContain('추진 목적과 똑같은 문장을 되풀이합니다');
+
+    const conventionalPair = doc({
+      purpose: ['디지털 시민성 실천 역량 함양'],
+      expectedEffects: ['디지털 시민성 실천 역량 신장'],
+    });
+    expect(levels(checkPlanDocument(conventionalPair, { ...baseContext, today: '2026. 10. 26.' }), 'warn')).not.toContain('되풀이');
+
+    const sameSectionRepeat = doc({
+      policies: ['학생 개인정보가 드러나지 않도록 사전 점검 실시', '학생 개인정보가 드러나지 않도록 사전 점검 실시'],
+    });
+    expect(levels(checkPlanDocument(sameSectionRepeat, { ...baseContext, today: '2026. 10. 26.' }), 'warn')).toContain('운영 방침과 똑같은 문장을 되풀이합니다');
+  });
+
+  test('today 기준으로 운영 기간이나 일정 마지막 날짜가 과거면 경고하고, 진행 중이거나 오늘 날짜는 경고하지 않는다', () => {
+    const today = '2026. 11. 14.';
+    const past = doc({
+      overview: { ...base.overview, period: '2026. 11. 10.~11. 13.' },
+      schedule: [{ step: '정리', task: '결과 보고', date: '2026. 11. 13.(금)', owner: '담당 교사' }, { step: '보관', task: '자료 정리', date: '2026. 11. 14.(토)', owner: '담당 교사' }],
+    });
+    const pastWarns = checkPlanDocument(past, { ...noSource({ topic: '가상 활동' }), today }).filter(i => i.level === 'warn' && i.message.includes('이미 지난 날짜입니다'));
+    expect(pastWarns.map(i => i.where)).toEqual(['운영 개요(기간)', '추진 일정 1행']);
+
+    const ongoing = doc({
+      overview: { ...base.overview, period: '2026. 11. 10.~11. 20.' },
+      schedule: [
+        { step: '진행', task: '활동 운영', date: '2026. 11. 14.', owner: '담당 교사' },
+        { step: '정리', task: '결과 제출', date: '2026. 11. 20.(금)', owner: '담당 교사' },
+      ],
+    });
+    const ongoingPastWarns = checkPlanDocument(ongoing, { ...noSource({ topic: '가상 활동' }), today }).filter(i => i.level === 'warn' && i.message.includes('이미 지난 날짜입니다'));
+    expect(ongoingPastWarns).toEqual([]);
+  });
+
+  test('background 편집·overview 미정↔null 정규화 및 3계층·시간별 진행표 지시문을 확인한다', () => {
+    expect(PLAN_EDIT_PARTS[0]).toBe('background');
+    expect(planEditLabel('background')).toBe('추진 배경');
+    expect(planPartText(base, 'background')).toBe(base.background[0]);
+    expect(applyPlanPartText(base, 'background', '첫째 배경\n\n둘째 배경\n').background).toEqual(['첫째 배경', '둘째 배경']);
+    expect(applyPlanPartText(base, 'background', '   ').background).toEqual([]);
+
+    const partial = doc({ overview: { period: '2026. 11. 2.', target: null, venue: '다목적실', summary: null } });
+    const overviewText = planPartText(partial, 'overview');
+    expect(overviewText).toBe('기간: 2026. 11. 2.\n대상: 미정\n장소: 다목적실\n내용: 미정');
+    expect(applyPlanPartText(partial, 'overview', overviewText).overview).toEqual(partial.overview);
+    expect(applyPlanPartText(partial, 'overview', '기간: 2026. 11. 2.\n대상: \n장소: 미정\n내용: 연수 운영').overview).toEqual({
+      period: '2026. 11. 2.', target: null, venue: null, summary: '연수 운영',
+    });
+    expect(planPartText(doc({ overview: { period: null, target: null, venue: null, summary: null } }), 'overview')).toBe('');
+
+    expect(corePrompt).toContain('# 우선순위와 사실(3계층 처리)');
+    expect(corePrompt).toContain('[층위 1 서술]');
+    expect(corePrompt).toContain('[층위 2 학교 실행 방법·운영 조건]');
+    expect(corePrompt).toContain('[층위 3 외부 사실 금지]');
+    expect(corePrompt).toContain('최소 3행 이상의 시간별 진행표');
+    const reviseBody = buildPlanAiRequest({ action: 'revise', ...baseContext, draft: base, revision: { area: 'body', instruction: '시간별 진행표를 유지해 주세요.' } }, 'm');
+    expect(reviseBody.input[0].content[0].text).toContain('시간별 진행표(최소 3행 이상) 구성을 유지하고');
   });
 });

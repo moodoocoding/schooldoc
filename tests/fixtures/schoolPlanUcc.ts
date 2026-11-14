@@ -4,6 +4,7 @@ import { draft } from './schoolPlan';
 /** 운영 검수(2026-11-14) 때 가상 공문으로 만든 공모전 초안. 3쪽으로 넘치고 중항목 제목이 쪽 끝에 남던 원고다. 모두 가상 자료다. */
 export const uccDraft: PlanDocumentV2 = { ...draft, ...{
   "title": "2027학년도 학생 디지털 시민성 UCC 공모전 운영 계획",
+  "background": [],
   "purpose": [
     "디지털 예절·개인정보 보호·사이버 언어폭력 예방에 관한 학생의 이해 및 실천 의식 함양",
     "UCC 제작과 공유를 통한 올바른 디지털 소통 문화 확산"
