@@ -35,7 +35,11 @@ export async function generateClassWithRepairs(
     for (const id of pending) if (!received.has(id)) rejected.set(id, { id, comment: null, error: '이 학생의 평어가 응답에 없습니다.' });
     if (!rejected.size) return;
     if (attempt === MAX_CLASS_ATTEMPTS - 1) {
-      for (const row of rejected.values()) onRow({ ...row, error: `${row.error} 자동 재작성을 마치지 못했습니다. 다시 시도해 주세요.` });
+      for (const row of rejected.values()) {
+        // 다른 학생과의 중복·분량만 남은 평어는 비워 두지 않고 결과에 넣는다. 결과 화면이 해당 경고를 표시한다.
+        if (row.draft) onRow({ id: row.id, comment: row.draft, error: '' });
+        else onRow({ ...row, error: `${row.error} 자동 재작성을 마치지 못했습니다. 다시 시도해 주세요.` });
+      }
       return;
     }
     pending = new Set(rejected.keys());

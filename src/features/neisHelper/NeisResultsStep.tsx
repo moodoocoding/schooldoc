@@ -367,7 +367,7 @@ export function NeisResultsStep({
                           <span>선택한 분량의 범위({commentLengthRange(draft.length).min}~{commentLengthRange(draft.length).max}자)를 벗어났습니다.</span>
                         )}
                         {repeats.has(student.id) && (
-                          <span className="font-semibold text-amber-900">다른 학생과 같은 문장이 있습니다.</span>
+                          <span className="font-semibold text-amber-900">다른 학생과 시작이나 문장이 겹칩니다.</span>
                         )}
                         {!!result?.text && recordTextProblems(result.text).length > 0 && (
                           <span className="font-semibold text-amber-900">
