@@ -189,15 +189,20 @@ describe('NEIS 평가 근거와 성적 무결성', () => {
     ]);
     expect([...repeated]).toEqual(['a', 'b']);
   });
-  test('평가기준에 없는 낮은 능력·도움 추정을 차단하고 문장 온점을 보완한다', () => {
+  test('평가기준에 없는 낮은 능력 추정을 차단하고 하 수준만 도움·노력 서술을 허용한다', () => {
     const evidence = buildEvidence(book(), 'student-2', [assessment, second], mapping).slice(0, 1);
     evidence[0].criterion = '간단한 자료의 평균을 구할 수 있다.';
     const input = { subject: '수학', length: 200 as const, evidence };
     const value = (text: string) => ({ sentences: [{
       text, assessmentId: evidence[0].assessmentId, evidenceQuote: evidence[0].criterion,
     }] });
-    for (const text of ['평균 구하기에 어려움이 있으나 기본적인 과정을 수행함.', '교사의 도움으로 평균을 구함.', '평균을 구하려고 노력함.'])
-      expect(() => validateGeneratedComment(value(text), input)).toThrow('평가기준에 없는');
+    const at = (grade: 'high' | 'middle' | 'low') => ({ ...input, evidence: [{ ...evidence[0], grade }] });
+    expect(() => validateGeneratedComment(value('평균 구하기에 어려움이 있으나 기본적인 과정을 수행함.'), at('low'))).toThrow('평가기준에 없는');
+    for (const text of ['교사의 도움으로 평균을 구함.', '평균을 구하려고 노력함.']) {
+      expect(() => validateGeneratedComment(value(text), at('middle'))).toThrow('평가기준에 없는');
+      expect(() => validateGeneratedComment(value(text), at('low'))).not.toThrow();
+    }
+    expect(() => validateGeneratedComment(value('평균을 구하는 연습이 필요함.'), at('low'))).toThrow('부족한 점');
     expect(validateGeneratedComment(value('간단한 자료의 평균을 구함'), input).sentences[0].text).toBe('간단한 자료의 평균을 구함.');
     evidence[0].criterion = '교사의 도움으로 간단한 평균을 구한다.';
     expect(validateGeneratedComment(value('교사의 도움으로 간단한 평균을 구함.'), input).sentences).toHaveLength(1);

@@ -83,8 +83,32 @@ describe('평어 중복 차단과 자동 재작성', () => {
     await generateClassWithRepairs(input(), new AbortController().signal, request, (row) => rows.push(row));
     expect(request).toHaveBeenCalledTimes(MAX_CLASS_ATTEMPTS);
     expect(rows[0].error).toBe('');
-    expect(rows[1]).toMatchObject({ id: 's2', comment: null });
-    expect(rows[1].error).toContain('자동 재작성을 마치지 못했습니다');
+    // 다른 학생과의 중복만 남으면 미생성으로 두지 않고 결과에 넣는다(결과 화면이 중복을 표시한다).
+    expect(rows[1]).toMatchObject({ id: 's2', error: '' });
+    expect(rows[1].comment?.sentences[0].text).toBe(first);
+  });
+  test('근거·표현 검사에 걸리거나 분량이 크게 벗어나면 네 번 뒤에도 실패로 남긴다', async () => {
+    const hard = fitCommentLengthForTest('평균 구하기에 어려움이 있으나 평균을 구함.');
+    for (const text of [hard, '평균을 구함.']) {
+      const request = vi.fn(async (next, _signal, onRow) => {
+        const validator = createClassOutputValidator(next);
+        for (const id of next.groups.flatMap((group: { ids: string[] }) => group.ids)) onRow(validator.accept(raw(id, text)));
+      });
+      const rows: ClassCommentRow[] = [];
+      await generateClassWithRepairs(input(), new AbortController().signal, request, (row) => rows.push(row));
+      expect(request).toHaveBeenCalledTimes(MAX_CLASS_ATTEMPTS);
+      expect(rows.every((row) => row.comment === null && row.error.includes('자동 재작성을 마치지 못했습니다'))).toBe(true);
+    }
+  });
+  test('분량이 조금 벗어난 평어는 마지막에 결과로 넣는다', async () => {
+    const short = fitCommentLengthForTest('계산 과정을 차례대로 정리해 평균을 설명함.', 160);
+    const request = vi.fn(async (next, _signal, onRow) => {
+      const validator = createClassOutputValidator(next);
+      for (const id of next.groups.flatMap((group: { ids: string[] }) => group.ids)) onRow(validator.accept(raw(id, id === 's1' ? first : short)));
+    });
+    const rows: ClassCommentRow[] = [];
+    await generateClassWithRepairs(input(), new AbortController().signal, request, (row) => rows.push(row));
+    expect(rows.find((row) => row.id === 's2')).toMatchObject({ error: '' });
   });
   test('취소와 사용량 오류는 자동으로 재호출하지 않는다', async () => {
     const controller = new AbortController();

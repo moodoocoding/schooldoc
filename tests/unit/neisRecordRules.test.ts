@@ -84,12 +84,30 @@ describe('시기 순서상 오른 성적', () => {
     expect(() => validateGeneratedComment({ sentences: [{ text: '자료를 정확하게 정리함.', assessmentId: '1', evidenceQuote: rubrics.high }] },
       { ...input, evidence: [{ ...input.evidence[0], grade: 'high', criterion: rubrics.high }] })).not.toThrow();
   });
+  test('평가 방법 이름을 거절하고 결과 화면에도 표시한다', () => {
+    const input: CommentInput = { subject: '미술', length: 200, evidence: [{
+      assessmentId: '1', standardCode: '[4미01-03]', standard: '살펴본다.', task: '모양과 특징 살펴보기', grade: 'high', criterion: rubrics.high,
+      context: '서술형 평가: 특징을 글로 설명하기. 채점 기준: 특징 설명, 느낌 표현',
+    }] };
+    const say = (text: string) => validateGeneratedComment({ sentences: [{ text, assessmentId: '1', evidenceQuote: rubrics.high }] }, input);
+    for (const text of ['서술형 평가에서 특징을 설명함.', '수행평가에서 느낌을 나타냄.', '지필 평가에서 답함.', '평가지에 특징을 정리함.', '채점 요소를 갖추어 설명함.'])
+      expect(() => say(text)).toThrow('평가 방법 표현');
+    expect(() => say('글자 모양의 특징을 찾아 글로 설명하고 느낌을 그림으로 나타냄.')).not.toThrow();
+    expect(recordTextProblems('서술형 평가에서 특징을 설명함.')).toContain('평가 방법 표현');
+    expect(recordTextProblems('특징을 글로 설명하고 친구와 감상을 나눔.')).toEqual([]);
+    const request = buildNeisAiRequest({ action: 'generate-class', input: { subject: '미술', length: 200,
+      evaluations: [{ standardCode: 'A', standard: '가', task: '살펴보기', rubrics: { high: rubrics.high } }],
+      groups: [{ ids: ['s1'], grades: ['high'] }] } }, 'model') as { instructions: string };
+    expect(request.instructions).toContain('평가 방법 이름');
+  });
   test('학급 평어에서 평가어와 능력 문장 반복을 거절한다', () => {
     const input: CommentInput = { subject: '국어', length: 200, evidence: [{
       assessmentId: '1', standardCode: '[4국03-02]', standard: '글을 쓴다.', task: '보고서 쓰기', grade: 'high', criterion: rubrics.high,
     }] };
     const say = (texts: string[]) => validateGeneratedComment({ sentences: texts.map((text) => ({ text, assessmentId: '1', evidenceQuote: rubrics.high })) }, input, true);
     expect(() => say(['자료를 정리하는 능력이 돋보임.', '보고서를 쓰는 능력이 뛰어남.', '발표하는 능력이 우수함.'])).toThrow('반복');
+    expect(() => say(['자료 정리가 돋보임.', '보고서 구성이 돋보임.', '발표가 돋보임.'])).toThrow('반복');
+    expect(() => say(['자료 정리가 돋보임.', '보고서를 쓰는 솜씨가 뛰어남.', '발표 내용이 우수하고 막힘이 없음.'])).not.toThrow();
     expect(() => say(['気持ち를 전하는 편지를 씀.'])).toThrow('한글이 아닌 문자');
     expect(() => say(['자료를 짜임새 있게 정리함.', '보고서를 쓰는 데 능숙하고 결과를 전달하는 능력이 돋보임.'])).not.toThrow();
   });
