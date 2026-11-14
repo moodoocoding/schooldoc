@@ -8,6 +8,8 @@ import { applyBehaviorRow, buildBehaviorInput, clearBehaviorDraftUnless, newBeha
 
 const input = () => ({ length: 400 as const, students: [{ id: 's1', traits: ['배려'], notes: '친구 의견을 들은 뒤 자신의 의견을 차분히 설명함.' }, { id: 's2', traits: ['끈기'], notes: '' }], avoid: [] });
 const text = '친구의 의견을 존중하며 서로의 생각을 차분하게 나누는 태도를 지님.';
+// Protocol fixtures meet the requested length; sentence quality is tested with actual model samples.
+const generatedText = Array(10).fill(text).join(' ');
 const sse = (events: unknown[]) => new Response(new ReadableStream({ start(controller) { const encoded = new TextEncoder().encode(events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join('')); for (let i = 0; i < encoded.length; i += 7) controller.enqueue(encoded.slice(i, i + 7)); controller.close(); } }), { headers: { 'Content-Type': 'text/event-stream' } });
 const request = (body: unknown) => new Request('https://example.test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
@@ -33,9 +35,30 @@ describe('행동특성 자료와 문장 검사', () => {
   test('다른 학생 응답이나 중복 응답을 수용하지 않고 누락을 정확히 남긴다', () => {
     const validator = createBehaviorValidator(input());
     expect(() => validator.accept({ id: 's99', text })).toThrow();
-    expect(validator.accept({ id: 's1', text }).error).toBe('');
+    expect(validator.accept({ id: 's1', text: generatedText }).error).toBe('');
     expect(() => validator.accept({ id: 's1', text })).toThrow();
     expect(validator.missing().map((row) => row.id)).toEqual(['s2']);
+  });
+  test.each([[200, 180, 220], [300, 270, 330], [400, 360, 440]] as const)('%i자 생성의 허용 범위 경계를 검사하고 벗어난 본문은 보존한 채 오류로 표시한다', (length, min, max) => {
+    for (const size of [min - 1, min, length, max, max + 1]) {
+      const candidate = '가'.repeat(size - 2) + '함.';
+      const row = createBehaviorValidator({ ...input(), length }).accept({ id: 's1', text: candidate });
+      expect(row.text).toBe(candidate);
+      expect(!!row.error).toBe(size < min || size > max);
+      if (row.error) expect(row.error).toContain(`${min}~${max}자`);
+    }
+    const payload = buildBehaviorAiRequest({ ...input(), length }, 'fixture-model');
+    expect(payload.instructions).toContain(`반드시 ${min}~${max}자 범위`);
+    expect(JSON.parse(payload.input[0].content[0].text).length).toBe(length);
+  });
+  test('400자 선택에 100자 응답이 오면 완료용 정상 행으로 수용하지 않는다', () => {
+    const short = '가'.repeat(98) + '함.';
+    const row = createBehaviorValidator(input()).accept({ id: 's1', text: short });
+    expect(row.text).toBe(short);
+    expect(row.error).toContain('현재 공백 포함 100자');
+    expect(row.error).toContain('360~440자');
+    expect(behaviorInstruction).not.toContain('분량과 표현 다양성보다 사실 보존이 우선');
+    expect(behaviorInstruction).toContain('메모가 짧거나 없다는 이유로 선택 분량을 임의로 줄이지 않습니다');
   });
   test('첫 단어·공백을 제외한 첫 세 글자·동일 문장·유사 문장을 각각 찾는다', () => {
     const pairs = [
@@ -64,7 +87,8 @@ describe('행동특성 자료와 문장 검사', () => {
   });
   test('한 번의 학급 요청에 전체 작성 규칙과 자료를 별도로 담는다', () => {
     const payload = buildBehaviorAiRequest(input(), 'test-model');
-    expect(payload.instructions).toBe(behaviorInstruction);
+    expect(payload.instructions).toContain(behaviorInstruction);
+    expect(payload.instructions).toContain('반드시 360~440자 범위');
     expect(behaviorInstruction).toContain('교사 메모를 최우선');
     expect(behaviorInstruction).toContain('첫 세 글자');
     expect(behaviorInstruction).toContain('이미 관찰된 변화');
@@ -95,12 +119,12 @@ describe('행동특성 서버와 스트리밍', () => {
   });
   test('UTF-8 분할 응답을 한 번의 요청으로 받아 학생 단위로 내보내고 누락을 알린다', async () => {
     let calls = 0;
-    const raw = JSON.stringify({ rows: [{ id: 's1', text }] });
+    const raw = JSON.stringify({ rows: [{ id: 's1', text: generatedText }] });
     const fetcher: typeof fetch = async () => { calls++; return sse([{ type: 'response.output_text.delta', delta: raw.slice(0, 25) }, { type: 'response.output_text.delta', delta: raw.slice(25) }, { type: 'response.completed' }]); };
     const stream = await requestBehaviorStream(input(), 'fixture-key', 'fixture-model', new AbortController().signal, fetcher);
     const events = []; for await (const event of readJsonEvents(stream)) events.push(event);
     expect(calls).toBe(1);
-    expect(events).toEqual([{ type: 'row', row: { id: 's1', text, error: '' } }, { type: 'row', row: { id: 's2', text: '', error: '응답이 누락되었습니다. 다시 요청해 주세요.' } }, { type: 'done' }]);
+    expect(events).toEqual([{ type: 'row', row: { id: 's1', text: generatedText, error: '' } }, { type: 'row', row: { id: 's2', text: '', error: '응답이 누락되었습니다. 다시 요청해 주세요.' } }, { type: 'done' }]);
   });
   test('스트림이 끊기면 먼저 도착한 행을 유지하고 완료로 보고하지 않는다', async () => {
     const fetcher: typeof fetch = async () => sse([{ type: 'response.output_text.delta', delta: `{"rows":[${JSON.stringify({ id: 's1', text })},` }]);

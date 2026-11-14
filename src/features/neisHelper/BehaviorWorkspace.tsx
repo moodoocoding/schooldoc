@@ -68,16 +68,18 @@ export function BehaviorWorkspace() {
     progress.current = { done: 0, total: ids.length }; setProgressText(`0 / ${ids.length}명 작성 중`);
     setDraft((previous) => ({ ...previous, results: true }));
     const received = new Set<string>();
+    const needsReview = new Set<string>();
     try {
       await generateBehavior(input, controller.signal, (row) => {
         if (epoch.current !== current || controller.signal.aborted) return;
         received.add(row.id);
+        if (row.error) needsReview.add(row.id);
         setDraft((previous) => ({ ...previous, entries: applyBehaviorRow(previous.entries, row) }));
         setActive((previous) => previous.filter((id) => id !== row.id));
         progress.current.done++;
         setProgressText(`${progress.current.done} / ${ids.length}명 도착`);
       });
-      if (epoch.current === current) setNotice('작성을 마쳤습니다. 표에서 내용을 바로 수정할 수 있습니다.');
+      if (epoch.current === current) setNotice(needsReview.size ? `${needsReview.size}명은 분량·표현 확인이 필요합니다. 내용을 수정하거나 미완료 학생만 다시 작성하세요.` : '작성을 마쳤습니다. 표에서 내용을 바로 수정할 수 있습니다.');
     } catch (e) {
       if (epoch.current === current) setError(controller.signal.aborted ? '작성을 중단했습니다. 도착한 내용은 유지됩니다.' : (e as Error).message);
     } finally {

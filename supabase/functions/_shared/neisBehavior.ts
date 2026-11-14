@@ -1,4 +1,4 @@
-import { repeatedCommentIds } from './neisHelper.ts';
+import { commentLengthRange, repeatedCommentIds } from './neisHelper.ts';
 
 export type BehaviorLength = 200 | 300 | 400;
 export interface BehaviorStudent { id: string; traits: string[]; notes: string }
@@ -69,6 +69,11 @@ export function createBehaviorValidator(input: BehaviorInput) {
       seen.add(value.id);
       const text = typeof value.text === 'string' ? value.text.trim() : '';
       const issues = behaviorTextIssues(text);
+      if (text) {
+        const characters = behaviorCounts(text).characters;
+        const { min, max } = commentLengthRange(input.length);
+        if (characters < min || characters > max) issues.push(`현재 공백 포함 ${characters}자입니다. 선택한 ${input.length}자의 범위는 ${min}~${max}자입니다. 특성과 메모의 의미를 충분히 풀어 분량에 맞게 다시 작성해 주세요.`);
+      }
       return { id: value.id, text: text.slice(0, 3000), error: issues.join(' ') };
     },
     missing(): BehaviorRow[] { return [...expected].filter((id) => !seen.has(id)).map((id) => ({ id, text: '', error: '응답이 누락되었습니다. 다시 요청해 주세요.' })); },

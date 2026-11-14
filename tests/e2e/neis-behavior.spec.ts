@@ -4,7 +4,7 @@ import { mkdir } from 'node:fs/promises';
 import readXlsx from 'read-excel-file/node';
 
 const captureDir = 'test-results/neis-behavior';
-async function setup(page: Page, count = 24, hold = false) {
+async function setup(page: Page, count = 24, hold = false, shortFirst = false) {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('dialog', (dialog) => dialog.accept());
@@ -18,7 +18,13 @@ async function setup(page: Page, count = 24, hold = false) {
       const encoder=new TextEncoder();
       const stream=new ReadableStream({start(controller){
         const send=event=>controller.enqueue(encoder.encode('data: '+JSON.stringify(event)+'\\n\\n'));
-        const rows=options.body.students.map((s,i)=>({id:s.id,text:window.__behaviorCalls.length===1?'친구의 생각을 경청하며 함께 활동하는 태도를 지님.':String.fromCharCode(0xAC00+Number(s.id.slice(1)))+'장점을 살려 학습 활동에 꾸준히 참여함.',error:''}));
+        const rows=options.body.students.map((s,i)=>{
+          const first=window.__behaviorCalls.length===1;
+          const sentence=first?'친구의 생각을 경청하며 함께 활동하는 태도를 지님.':String.fromCharCode(0xAC00+Number(s.id.slice(1)))+'장점을 살려 학습 활동에 꾸준히 참여함.';
+          // Synthetic protocol fixture, not a model-quality example.
+          const text=${shortFirst}&&first?sentence:Array(Math.ceil((options.body.length*.9+1)/(sentence.length+1))).fill(sentence).join(' ');
+          return {id:s.id,text,error:''};
+        });
         send({type:'row',row:rows[0]});
         const finish=()=>{rows.slice(1).forEach(row=>send({type:'row',row}));send({type:'done'});controller.close();};
         if(${hold}) window.__behaviorRelease=finish; else setTimeout(finish,200);
@@ -156,4 +162,18 @@ test('전체 동일 문장은 Excel로 내보내지 않고 실패를 알린다',
   await expect(page.getByRole('status').filter({ hasText: '2명 완료' })).toBeVisible();
   await page.getByRole('button', { name: 'Excel 저장', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('전체 내용이 같은 학생');
+});
+
+
+test('분량 미달 응답은 표에 보존하고 미완료로 표시한 뒤 해당 학생만 다시 작성한다', async ({ page }) => {
+  await setup(page, 2, false, true); await roster(page); await fill(page, 2);
+  await page.getByRole('button', { name: '학급 2명 작성' }).click();
+  await expect(page.getByTestId('behavior-1')).toContainText('선택한 400자의 범위는 360~440자');
+  await expect(page.getByLabel(/^1번 .* 작성 내용$/)).toHaveValue(/친구의/);
+  await expect(page.getByRole('status').filter({ hasText: '0명 완료' })).toContainText('2명 미완료');
+  await expect(page.getByRole('button', { name: 'Excel 저장', exact: true })).toBeDisabled();
+  await expect(page.getByRole('status').filter({ hasText: '2명은 분량·표현 확인' })).toBeVisible();
+  await page.getByRole('button', { name: '미완료 2명 작성', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: '2명 완료' })).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { __behaviorCalls: unknown[] }).__behaviorCalls.length)).toBe(2);
 });
