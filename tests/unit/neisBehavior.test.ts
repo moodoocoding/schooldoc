@@ -97,7 +97,9 @@ describe('행동특성 자료와 문장 검사', () => {
     expect(payload.instructions).toContain('반드시 360~440자 범위');
     expect(behaviorInstruction).toContain('교사 메모를 최우선');
     expect(behaviorInstruction).toContain('첫 세 글자');
-    expect(behaviorInstruction).toContain('이미 관찰된 변화');
+    expect(behaviorInstruction).toContain('교사의 짧은 판단도 근거로 반영');
+    expect(behaviorInstruction).toContain('구체적인 전후 사례·날짜·수치나 별도 관찰 기록을 요구하지 않습니다');
+    expect(behaviorInstruction).not.toContain('메모에 실제 전후 변화가 있을 때만');
     expect(behaviorInstruction).toContain('기본값은 약 400자');
     expect(payload.store).toBe(false);
     expect(JSON.parse(payload.input[0].content[0].text).students).toHaveLength(2);
