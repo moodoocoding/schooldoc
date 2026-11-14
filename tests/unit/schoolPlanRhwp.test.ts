@@ -4,9 +4,10 @@ import init, { HwpDocument } from '@rhwp/core';
 import { unzipSync, strFromU8 } from 'fflate';
 import { layoutOfficialDocument } from '../../src/features/officialDocument/format';
 import { pageVolumeIssues } from '../../src/features/officialDocument/lint';
-import { checkedHwpxExport, writeOfficialDocument, type OfficialFonts } from '../../src/features/officialDocument/rhwpWriter';
+import { checkedHwpxExport, TITLE_GAP, writeOfficialDocument, type OfficialFonts } from '../../src/features/officialDocument/rhwpWriter';
 import { checkedPlanDocument, planToOfficialDocument } from '../../src/features/schoolDocuments/planDocument';
 import { draft } from '../fixtures/schoolPlan';
+import { uccDraft } from '../fixtures/schoolPlanUcc';
 
 const assets = 'src/features/officialDocument/assets/';
 const read = (name: string) => readFileSync(`${assets}fonts/${name}`);
@@ -87,6 +88,26 @@ describe('실제 rhwp WASM의 계획서 생성·보존', () => {
       mkdirSync('test-results/rhwp-implementation', { recursive: true });
       writeFileSync(`test-results/rhwp-implementation/wasm-${pages}page.hwpx`, bytes);
     } finally { doc.free(); }
+  });
+  test('제목과 첫 목차 사이를 띄우고, 하위 항목이 있는 제목은 쪽 끝에 홀로 남기지 않는다(미리보기·한글 모두)', () => {
+    const doc = new HwpDocument(readFileSync(`${assets}blank.hwpx`));
+    try {
+      const document = planToOfficialDocument(uccDraft, uccDraft.title, 2);
+      writeOfficialDocument(doc, document, fonts);
+      const reopened = new HwpDocument(checkedHwpxExport(doc));
+      try {
+        const page = (p: number, at: number) => (JSON.parse(reopened.getCursorRect(0, p, at)) as { pageIndex: number }).pageIndex;
+        const lines = layoutOfficialDocument(document);
+        expect(reopened.pageCount()).toBe(3);
+        lines.forEach((line, p) => {
+          if (line.kind !== 'item' || !line.keepWithNext || p + 1 >= lines.length) return;
+          expect([line.text, page(p, reopened.getParagraphLength(0, p))]).toEqual([line.text, page(p + 1, 0)]);
+        });
+        const header = strFromU8(unzipSync(checkedHwpxExport(reopened))['Contents/header.xml']);
+        expect(header).toContain('keepWithNext="1"');
+      } finally { reopened.free(); }
+    } finally { doc.free(); }
+    expect(TITLE_GAP).toBeGreaterThanOrEqual(2800);
   });
   test('분량을 넘어도 내용과 글자 크기를 줄이지 않고 만들며, 넘친 쪽 수를 알린다', () => {
     const doc = new HwpDocument(readFileSync(`${assets}blank.hwpx`));

@@ -21,6 +21,8 @@ export function checkedHwpxExport(doc: HwpDocument): Uint8Array<ArrayBuffer> {
 const para = (hwpunit: number) => hwpunit * 2;
 const seven = <T,>(value: T) => Array.from({ length: 7 }, () => value);
 const NO_BORDER = { type: 0, width: 0, color: '#000000' };
+/** 제목과 첫 목차 사이(HWPUNIT, 약 10mm). 제목이 본문에 붙어 보이지 않게 한 줄 남짓 띄운다. */
+export const TITLE_GAP = 2800;
 const noBorders = { borderLeft: NO_BORDER, borderRight: NO_BORDER, borderTop: NO_BORDER, borderBottom: NO_BORDER };
 
 /** 공문 문서 모델을 rhwp의 편집 가능한 문단과 표로 조판한다. 모델 XML을 직접 쓰지 않는다. */
@@ -65,22 +67,23 @@ export function writeOfficialDocument(doc: HwpDocument, document: OfficialDocume
   doc.deleteText(0, 0, 0, doc.getParagraphLength(0, 0));
   doc.setPageDef(0, JSON.stringify(profile.page));
   let previous: LineKey = 'title';
-  const forcedBreaks: number[] = [];
+  const forcedBreaks: number[] = [], keepers: number[] = [];
   lines.forEach((line, index) => {
     const p = index === 0 ? 0 : doc.getParagraphCount(0);
     if (index > 0) doc.insertParagraph(0, p);
     const key = lineKey(line), gapBefore = index === 0 ? 0 : scheme.gapBefore(previous, key);
     previous = key;
     if (line.kind === 'title') {
-      text(p, line.text, profile.title, { alignment: 'center', marginLeft: 0, indent: 0, spacingBefore: 0, spacingAfter: para(1600), keepWithNext: true });
+      text(p, line.text, profile.title, { alignment: 'center', marginLeft: 0, indent: 0, spacingBefore: 0, spacingAfter: para(TITLE_GAP), keepWithNext: true });
     } else if (line.kind === 'item' || line.kind === 'note') {
       if (line.pageBreakBefore) forcedBreaks.push(p);
+      if (line.keepWithNext) keepers.push(p);
       const textStyle = lineStyle(profile, line, gaejosik);
       text(p, line.text, textStyle, {
         alignment: 'justify',
         // 한글 내어쓰기: 첫 줄은 왼쪽 여백에서, 둘째 줄부터 |indent|만큼 더 들어가 내용 첫 글자에 맞춘다.
         marginLeft: para(levelIndent(line.level, profile.indentUnit)), indent: para(-markerHang(line.marker, textStyle.size, textStyle.font)),
-        spacingBefore: para(gapBefore), spacingAfter: para(scheme.after), keepWithNext: line.heading, pageBreakBefore: line.pageBreakBefore,
+        spacingBefore: para(gapBefore), spacingAfter: para(scheme.after), keepWithNext: line.keepWithNext, pageBreakBefore: line.pageBreakBefore,
       });
     } else if (line.kind === 'table') {
       const cells = tableCells(line), widths = line.columns.map(c => c.width);
@@ -96,12 +99,35 @@ export function writeOfficialDocument(doc: HwpDocument, document: OfficialDocume
     }
   });
   doc.reflowLinesegs();
+  keepHeadingsWithNext(doc, keepers);
   // rhwp 텍스트 내보내기는 일부 기호(◦ 등)를 &#9702; 같은 문자 참조로 돌려준다.
   const decode = (value: string) => value.replace(/&#(x[0-9a-f]+|\d+);/gi, (_, n: string) => String.fromCodePoint(n[0].toLowerCase() === 'x' ? parseInt(n.slice(1), 16) : Number(n)));
   const normalize = (value: string) => decode(value).replace(/\s+/g, '');
   const actual = normalize(JSON.parse(doc.getTextFileText()));
   if (expected.some(value => !actual.includes(normalize(value)))) throw new Error('문서 내용 보존 검사에 실패했습니다. 초안을 유지한 채 다시 시도해 주세요.');
   return measurePageVolume(doc, lines.length, forcedBreaks);
+}
+
+/**
+ * 쪽 끝에 홀로 남은 제목을 다음 쪽으로 넘긴다. HWPX에는 '다음 문단과 함께'를 쓰지만
+ * rhwp 조판은 이를 따르지 않으므로, 미리보기와 한글 결과가 같도록 쪽 나눔을 직접 넣는다.
+ * 제목이 이어지면(4. → 가.) 맨 앞 제목에서 나누고 뒤 제목에 넣었던 나눔은 거둔다.
+ */
+function keepHeadingsWithNext(doc: HwpDocument, keepers: number[]) {
+  const page = (p: number, offset: number) => (JSON.parse(doc.getCursorRect(0, p, offset)) as { pageIndex: number }).pageIndex;
+  const broken = new Set<number>();
+  const setBreak = (p: number, on: boolean) => { doc.applyParaFormat(0, p, JSON.stringify({ pageBreakBefore: on })); if (on) broken.add(p); else broken.delete(p); };
+  const keep = new Set(keepers), skip = new Set<number>();
+  for (let round = 0; round < 40; round++) {
+    const orphan = keepers.find(p => p > 0 && p + 1 < doc.getParagraphCount(0) && !broken.has(p) && !skip.has(p) && page(p, doc.getParagraphLength(0, p)) < page(p + 1, 0));
+    if (orphan === undefined) return;
+    let start = orphan;
+    while (keep.has(start - 1) && start - 1 > 0 && page(start - 1, 0) === page(orphan, 0)) start--;
+    for (let p = start + 1; p <= orphan; p++) if (broken.has(p)) setBreak(p, false);
+    // 같은 쪽 맨 위에서 시작하는 제목은 넘겨도 다시 홀로 남으므로 그대로 둔다.
+    if (start > 0 && page(start - 1, doc.getParagraphLength(0, start - 1)) === page(start, 0)) { setBreak(start, true); doc.reflowLinesegs(); }
+    else skip.add(orphan);
+  }
 }
 
 /**

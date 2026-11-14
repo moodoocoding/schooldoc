@@ -1,6 +1,7 @@
 import type { PlanConditions, PlanDraft, PlanPages } from '../../../supabase/functions/_shared/schoolPlan';
 import { planBudgetRowAmount, planBudgetSum } from '../../../supabase/functions/_shared/planDocumentV2';
 import { draftBodyText } from '../officialDocument/draftBody';
+import { fitTableColumns } from '../officialDocument/format';
 import { checkOfficialDocument, normalizeDates, officialAmount, type OfficialCheck } from '../officialDocument/lint';
 import { item, note, table, type OfficialDocument, type OfficialNode } from '../officialDocument/model';
 
@@ -25,6 +26,16 @@ export const STANDARD_PLAN_TEMPLATE: PlanTemplate = {
 const won = (n: number) => `${n.toLocaleString('ko-KR')}원`;
 const lines = (texts: string[]) => texts.map(text => item(text));
 
+/** 표 전체 폭(HWPUNIT): A4 본문 폭에서 들여쓰기를 뺀 값. */
+const TABLE_WIDTH = 48100;
+/** 일정표. 열 너비는 내용에 맞춰 나눈다(짧은 '미정' 열이 넓고 단계 이름이 꺾이지 않게). */
+function scheduleTable(draft: PlanDraft) {
+  const rows = draft.schedule.map(s => [s.step, s.task, s.date ?? '미정', s.owner ?? '미정']);
+  return table(fitTableColumns([
+    { label: '단계', min: 5500, max: 11000 }, { label: '추진 내용', min: 16000 }, { label: '시기', min: 8000, max: 15000 }, { label: '담당', min: 4800, max: 10000 },
+  ], rows, TABLE_WIDTH), rows);
+}
+
 /** 대목차별 본문. 일정은 세부 추진 계획의 마지막 중항목 표, 예산은 소요 예산 표로 둔다. */
 function slotBody(draft: PlanDraft, slot: PlanSlot, template: PlanTemplate): OfficialNode[] {
   switch (slot) {
@@ -38,19 +49,19 @@ function slotBody(draft: PlanDraft, slot: PlanSlot, template: PlanTemplate): Off
     case 'detailedPlans': return [
       ...draft.detailedPlans.map(p => item(p.subTitle, lines(p.details))),
       // 일정이 없으면 빈 표를 그리지 않는다.
-      ...(draft.schedule.length ? [item(template.scheduleHeading, [table(
-        [{ label: '단계', width: 6000 }, { label: '추진 내용', width: 19100 }, { label: '시기', width: 14000 }, { label: '담당', width: 9000 }],
-        draft.schedule.map(s => [s.step, s.task, s.date ?? '미정', s.owner ?? '미정']),
-      )])] : []),
+      ...(draft.schedule.length ? [item(template.scheduleHeading, [scheduleTable(draft)])] : []),
     ];
     case 'budget': {
       const status = draft.meta.budgetStatus;
       if (status === 'confirmed_none') return [item('비예산')];
       if (status === 'unconfirmed' || !draft.budget.length) return [note('예산 미정(검토 필요): 금액 확정 후 집행 기준에 따라 작성')];
       const unknown = draft.budget.some(b => planBudgetRowAmount(b) === null);
+      const rows = draft.budget.map(b => { const amount = planBudgetRowAmount(b); return [b.item, b.spec, b.unitPrice === null ? '미정' : won(b.unitPrice), b.quantity === null ? '미정' : String(b.quantity), amount === null ? '미정' : won(amount), b.note ?? '']; });
       return [
-        table([{ label: '항목', width: 8000 }, { label: '산출 내역', width: 12600 }, { label: '단가', width: 7000, align: 'right' }, { label: '수량', width: 4500, align: 'right' }, { label: '금액', width: 8500, align: 'right' }, { label: '비고', width: 7500 }],
-          draft.budget.map(b => { const amount = planBudgetRowAmount(b); return [b.item, b.spec, b.unitPrice === null ? '미정' : won(b.unitPrice), b.quantity === null ? '미정' : String(b.quantity), amount === null ? '미정' : won(amount), b.note ?? '']; })),
+        table(fitTableColumns([
+          { label: '항목', min: 6000, max: 11000 }, { label: '산출 내역', min: 10000 }, { label: '단가', min: 5500, max: 8000, align: 'right' },
+          { label: '수량', min: 3600, max: 4500, align: 'right' }, { label: '금액', min: 6500, max: 9000, align: 'right' }, { label: '비고', min: 6000 },
+        ], rows, TABLE_WIDTH), rows),
         note(`합계 ${officialAmount(planBudgetSum(draft))}${unknown ? '(미정 항목 제외)' : ''}. 단가는 실제 견적·집행 기준 확인 필요`),
       ];
     }
