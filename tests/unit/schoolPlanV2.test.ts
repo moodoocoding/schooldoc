@@ -267,4 +267,20 @@ describe('운영 재검수(2026-11-14)에서 나온 문제', () => {
     expect(weekend.map(i => i.message).join()).not.toContain('5. 8.');
     expect(corePrompt).toContain('시작일·종료일은 평일로');
   });
+  test('일정 수정으로 공문 마감 행이 다른 단계에 합쳐지면 경고하고, 별도 행이 있으면 경고하지 않는다', () => {
+    // 재검수 때 '세 단계로 나눠 달라'는 수정에서 AI가 결과 제출을 우수작 선정 행에 합쳤다.
+    const merged = doc({ schedule: [
+      { step: '안내', task: '참여 방법 안내', date: '2026. 10. 26.(월)∼10. 30.(금)', owner: null },
+      { step: '운영·정리', task: '운영 및 결과 제출', date: '2026. 11. 2.(월)∼11. 9.(월)까지', owner: null },
+    ] });
+    const deadline = (d: PlanDocumentV2) => checkPlanDocument(d, baseContext).filter(i => i.message.includes('만 적은 행이 없습니다'));
+    expect(deadline(merged).map(i => i.message)).toEqual(['공문 마감(11. 9.)만 적은 행이 없습니다. 제출 단계를 다른 단계와 합치지 말고 별도 행으로 남겨 주세요.']);
+    expect(deadline(base)).toEqual([]);
+    // 기간으로 정한 신청은 기간 행이 맞으므로 경고하지 않는다.
+    const period = ctx({ analysis: analysisWith([req('apply', '신청 기간: 2026. 11. 2.~11. 9. 신청')]) });
+    expect(checkPlanDocument(merged, period).filter(i => i.message.includes('만 적은 행이 없습니다'))).toEqual([]);
+    expect(corePrompt).toContain('공문이 정한 제출·마감은 다른 단계와 합치지 않고');
+    const built = buildPlanAiRequest({ action: 'revise', ...baseContext, referenceType: 'contest', pages: 2, draft: base, revision: { area: 'schedule', instruction: '세 단계로 나눠 주세요.' } }, 'm');
+    expect(built.input[0].content[0].text).toContain('제출·마감 행은 합치지 않고 별도 행으로 남긴다');
+  });
 });

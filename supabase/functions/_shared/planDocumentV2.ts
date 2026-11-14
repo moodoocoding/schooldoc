@@ -234,6 +234,14 @@ export function checkPlanDocument(doc: PlanDocumentV2, context: PlanContext & { 
     if (last && SUBMISSION.test(s.task)) for (const { r, date } of deadlines) if (dayNumber(last) > dayNumber(date)) add('warn', where, `공문 마감(${date.m}. ${date.d}.)보다 늦습니다: "${r.text}"`);
     if (!s.date) add('confirm', where, `"${s.task}"의 시기가 정해지지 않았습니다.`);
   });
+  // 공문 마감은 그 날짜만 적은 별도 행으로 남아야 한다. 다른 단계와 합치면('4. 26.∼5. 7.까지') 마감이 표에서 드러나지 않는다.
+  // '신청 기간: 3. 2.~3. 13.'처럼 기간으로 정한 요구는 기간 행이 맞으므로 날짜 하나로 정한 마감만 본다.
+  const single = deadlines.filter(({ r }) => findPlanDates(r.quote, year).length === 1);
+  if (doc.schedule.length) for (const day of new Set(single.map(({ date }) => dayNumber(date)))) {
+    const own = doc.schedule.some(s => { const ds = findPlanDates(s.date ?? '', year); return ds.length === 1 && dayNumber(ds[0]) === day; });
+    const { date } = single.find(x => dayNumber(x.date) === day)!;
+    if (!own) add('warn', '추진 일정', `공문 마감(${date.m}. ${date.d}.)만 적은 행이 없습니다. 제출 단계를 다른 단계와 합치지 말고 별도 행으로 남겨 주세요.`);
+  }
   const sameDates = new Map<string, number>();
   for (const s of doc.schedule) if (s.date) sameDates.set(squash(s.date), (sameDates.get(squash(s.date)) ?? 0) + 1);
   if ([...sameDates.values()].some(n => n > 1)) add('confirm', '추진 일정', '여러 단계의 시기가 같습니다. 단계별 시기를 나눠 주세요.');
