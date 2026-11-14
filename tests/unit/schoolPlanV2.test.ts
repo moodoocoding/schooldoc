@@ -172,3 +172,62 @@ describe('렌더러·편집', () => {
     expect(() => applyPlanPartText(base, 'detailedPlans', '중항목만')).toThrow('세부 내용');
   });
 });
+
+describe('운영 검수(2026-11-14)에서 나온 문제', () => {
+  // 운영 사이트 검수 때 실제 AI가 쓴 가상 공모전 초안의 문제 줄을 줄여 옮겼다.
+  const ucc = doc({
+    policies: ['학생 얼굴이 드러나는 작품은 보호자 동의서를 확인한 뒤 접수·추천', '추천작은 학교별 2편 이내로 선정'],
+    detailedPlans: [
+      { subTitle: '참가 안내 및 작품 접수', details: [
+        '저작권·초상권 지도: 제작 전 안내하고, 학생 얼굴이 드러나는 작품은 보호자 동의서를 확인한 뒤 접수',
+        '접수 방법 및 제출 장소: 학교 내 접수 방법·장소는 사전 안내 후 운영 (안)',
+      ] },
+      { subTitle: '교내 우수작 선정', details: ['동점 처리: 동점이 발생할 경우 적용할 기준을 사전에 정해 안내 (안)', '선정 기준: 주제 적합성 40점, 창의성 30점, 완성도 30점으로 검토 (안)'] },
+    ],
+    schedule: [
+      { step: '안내', task: '공모 안내', date: '2027. 4. 1.~4. 30. 중', owner: null },
+      { step: '접수', task: '작품 접수', date: '2027. 4. 1.~4. 30. 중', owner: null },
+    ],
+    budget: [{ item: '공모전 운영 지원금', spec: '시상 물품·편집 앱 구입 등', unitPrice: 300000, quantity: 1, total: 300000, note: null }],
+    meta: { ...base.meta, budgetStatus: 'specified' },
+  });
+  const issues = checkPlanDocument(ucc, ctx({ conditions: { ...baseContext.conditions, budget: 300000 } }));
+  test('표현이 조금 다른 방침·세부 계획의 반복을 경고한다', () => {
+    expect(levels(issues, 'warn')).toMatch(/세부 추진 계획\(참가 안내 및 작품 접수\): 운영 방침과\(와\) 같은 내용을 되풀이/);
+  });
+  test('방법 없는 (안)은 경고하고, 구체적인 (안)은 경고하지 않는다', () => {
+    const vague = issues.filter(i => i.message.startsWith('(안)에 구체적인 방법이 없습니다'));
+    expect(vague).toHaveLength(2);
+    expect(vague.map(i => i.where).join()).not.toContain('선정 기준');
+  });
+  test('총액 한 줄 예산과 단계마다 같은 시기는 확정 필요로 알린다', () => {
+    expect(levels(issues, 'confirm')).toContain('예산이 총액 한 줄입니다');
+    expect(levels(issues, 'confirm')).toContain('여러 단계의 시기가 같습니다');
+    expect(checkPlanDocument(base, baseContext).map(i => i.message).join('\n')).not.toMatch(/총액 한 줄|시기가 같습니다|되풀이|구체적인 방법이 없습니다/);
+  });
+  test('지시문이 반복·빈 제안·총액 예산·같은 시기·수정 분량을 다룬다', () => {
+    expect(corePrompt).toContain('같은 사실');
+    expect(corePrompt).toContain("'추후 결정', '사전에 정해 안내'");
+    expect(corePrompt).toContain('용도별 행으로 나눠');
+    expect(corePrompt).toContain('같은 기간을 여러 행에 되풀이하지 않는다');
+    const built = buildPlanAiRequest({ action: 'revise', ...baseContext, referenceType: 'contest', pages: 2, draft: base, revision: { area: 'schedule', instruction: '단계를 나눠 주세요.' } }, 'm');
+    expect(built.input[0].content[0].text).toContain('전체 분량을 현재와 비슷하게 유지');
+  });
+  test('일정표 열은 내용에 맞춘다: 짧은 단계 이름은 한 줄, 담당 "미정" 열은 좁게', () => {
+    const d = doc({ schedule: [{ step: '교내 공모전 안내', task: '5~6학년 학생에게 공모 기간, 주제, 작품 규격 및 추천 한도 안내', date: '2027. 4. 1.~4. 9.', owner: null }] });
+    const table = layoutOfficialDocument(planToOfficialDocument(d, d.title, 2)).find(l => l.kind === 'table')!;
+    if (table.kind !== 'table') throw new Error();
+    const [step, task, , owner] = table.columns.map(c => c.width);
+    expect(step).toBeGreaterThanOrEqual(10000);
+    expect(owner).toBeLessThan(6000);
+    expect(task).toBeGreaterThan(step);
+    expect(table.columns.reduce((a, c) => a + c.width, 0)).toBe(48100);
+  });
+  test('하위 항목·표가 있는 중항목은 다음 줄과 붙여 쪽 끝에 홀로 남지 않게 한다', () => {
+    const lines = layoutOfficialDocument(planToOfficialDocument(base, base.title, 2));
+    const sub = lines.find(l => l.kind === 'item' && l.text === `가. ${base.detailedPlans[0].subTitle}`);
+    const leaf = lines.find(l => l.kind === 'item' && l.text === `1) ${base.detailedPlans[0].details[0]}`);
+    expect(sub && sub.kind === 'item' && sub.keepWithNext).toBe(true);
+    expect(leaf && leaf.kind === 'item' && leaf.keepWithNext).toBe(false);
+  });
+});
