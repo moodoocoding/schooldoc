@@ -45,7 +45,7 @@ export function ConfirmDialog({
           </button>
         </div>
         <h2 id={titleId} className="mt-4 text-lg font-extrabold text-[#0F172A]">{title}</h2>
-        <p id={descriptionId} className="mt-2 text-sm leading-6 text-[#526174]">{description}</p>
+        <p id={descriptionId} className="mt-2 break-keep text-sm leading-6 text-[#526174]">{description}</p>
         <div className="mt-6 grid grid-cols-2 gap-2">
           <Button ref={cancelButtonRef} variant="secondary" onClick={onCancel}>{cancelLabel}</Button>
           <Button variant={tone === 'danger' ? 'danger' : 'primary'} onClick={onConfirm}>{confirmLabel}</Button>
