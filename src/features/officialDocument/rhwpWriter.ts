@@ -67,7 +67,7 @@ export function writeOfficialDocument(doc: HwpDocument, document: OfficialDocume
   doc.deleteText(0, 0, 0, doc.getParagraphLength(0, 0));
   doc.setPageDef(0, JSON.stringify(profile.page));
   let previous: LineKey = 'title';
-  const forcedBreaks: number[] = [], keepers: number[] = [];
+  const forcedBreaks: number[] = [], keepers: number[] = [], bodies: number[] = [];
   lines.forEach((line, index) => {
     const p = index === 0 ? 0 : doc.getParagraphCount(0);
     if (index > 0) doc.insertParagraph(0, p);
@@ -79,10 +79,12 @@ export function writeOfficialDocument(doc: HwpDocument, document: OfficialDocume
       if (line.pageBreakBefore) forcedBreaks.push(p);
       if (line.keepWithNext) keepers.push(p);
       const textStyle = lineStyle(profile, line, gaejosik);
+      const left = levelIndent(line.level, profile.indentUnit), hang = markerHang(line.marker, textStyle.size, textStyle.font);
+      bodies.push(p);
       text(p, line.text, textStyle, {
         alignment: 'justify',
         // 한글 내어쓰기: 첫 줄은 왼쪽 여백에서, 둘째 줄부터 |indent|만큼 더 들어가 내용 첫 글자에 맞춘다.
-        marginLeft: para(levelIndent(line.level, profile.indentUnit)), indent: para(-markerHang(line.marker, textStyle.size, textStyle.font)),
+        marginLeft: para(left), indent: para(-hang),
         spacingBefore: para(gapBefore), spacingAfter: para(scheme.after), keepWithNext: line.keepWithNext, pageBreakBefore: line.pageBreakBefore,
       });
     } else if (line.kind === 'table') {
@@ -99,6 +101,7 @@ export function writeOfficialDocument(doc: HwpDocument, document: OfficialDocume
     }
   });
   doc.reflowLinesegs();
+  if (relieveStretchedLines(doc, bodies).length) doc.reflowLinesegs();
   keepHeadingsWithNext(doc, keepers);
   // rhwp 텍스트 내보내기는 일부 기호(◦ 등)를 &#9702; 같은 문자 참조로 돌려준다.
   const decode = (value: string) => value.replace(/&#(x[0-9a-f]+|\d+);/gi, (_, n: string) => String.fromCodePoint(n[0].toLowerCase() === 'x' ? parseInt(n.slice(1), 16) : Number(n)));
@@ -106,6 +109,40 @@ export function writeOfficialDocument(doc: HwpDocument, document: OfficialDocume
   const actual = normalize(JSON.parse(doc.getTextFileText()));
   if (expected.some(value => !actual.includes(normalize(value)))) throw new Error('문서 내용 보존 검사에 실패했습니다. 초안을 유지한 채 다시 시도해 주세요.');
   return measurePageVolume(doc, lines.length, forcedBreaks);
+}
+
+/** 양쪽 정렬 줄의 빈칸이 보통 빈칸보다 이 비율(글자 크기 대비) 이상 넓어지면 낱말 사이가 벌어져 보인다. */
+export const STRETCH_LIMIT = 0.25;
+type LayoutRun = { text: string; charX: number[]; paraIdx: number; y: number; fontSize: number };
+
+/**
+ * 한글은 어절 단위로 줄을 나누되, 긴 어절이 다음 줄로 넘어가 양쪽 정렬 줄의 빈칸이 크게 벌어진
+ * 본문 문단만 글자 단위로 나눈다(한글 기본값과 같은 방식). 실제 조판의 빈칸 폭을 보통 빈칸
+ * (같은 글자 크기에서 가장 좁은 빈칸)과 비교한다. 바꾼 문단 번호를 돌려준다.
+ */
+export function relieveStretchedLines(doc: HwpDocument, bodies: number[]): number[] {
+  const body = new Set(bodies), lines = new Map<string, LayoutRun[]>(), lastOf = new Map<number, string>();
+  for (let page = 0; page < doc.pageCount(); page++) {
+    for (const run of (JSON.parse(doc.getPageTextLayout(page)) as { runs: LayoutRun[] }).runs) {
+      if (!body.has(run.paraIdx)) continue;
+      const key = `${run.paraIdx}:${page}:${run.y}`;
+      lines.set(key, [...(lines.get(key) ?? []), run]);
+      lastOf.set(run.paraIdx, key);
+    }
+  }
+  const spaces = (runs: LayoutRun[]) => runs.flatMap(r => [...r.text].flatMap((c, i) => c === ' ' && i + 1 < r.charX.length ? [r.charX[i + 1] - r.charX[i]] : []));
+  const normal = new Map<number, number>();
+  for (const runs of lines.values()) for (const w of spaces(runs)) normal.set(runs[0].fontSize, Math.min(normal.get(runs[0].fontSize) ?? Infinity, w));
+  const stretched = new Set<number>();
+  for (const [key, runs] of lines) {
+    const p = runs[0].paraIdx, widths = spaces(runs), size = runs[0].fontSize;
+    // 마지막 줄은 양쪽 정렬로 늘이지 않는다. 줄 끝 빈칸은 늘지 않으므로 평균에서 뺀다.
+    if (key === lastOf.get(p) || widths.length < 2) continue;
+    const inner = widths.slice(0, -1), average = inner.reduce((a, b) => a + b, 0) / inner.length;
+    if ((average - normal.get(size)!) / size >= STRETCH_LIMIT) stretched.add(p);
+  }
+  for (const p of stretched) doc.applyParaFormat(0, p, JSON.stringify({ koreanBreakUnit: 1 }));
+  return [...stretched];
 }
 
 /**
