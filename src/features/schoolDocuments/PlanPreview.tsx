@@ -8,11 +8,15 @@ const List = ({ items }: { items: string[] }) => <ul className="list-disc space-
 /** 비교용 목차별 줄. 문서 출력과 같은 목차 이름·순서를 쓴다. */
 function planSections(draft: PlanDraft): { title: string; lines: string[] }[] {
   const t = STANDARD_PLAN_TEMPLATE.headings, o = draft.overview;
+  const overviewEntries = [['기간', o.period], ['대상', o.target], ['장소', o.venue], ['내용', o.summary]] as const;
+  const overviewLines = overviewEntries.some(([, v]) => v)
+    ? overviewEntries.map(([k, v]) => `${k}: ${v ?? '미정'}`)
+    : ['운영 개요 미정(검토 필요)'];
   return [
+    { title: t.background, lines: draft.background ?? [] },
     { title: t.purpose, lines: draft.purpose },
-    { title: t.overview, lines: ([['기간', o.period], ['대상', o.target], ['장소', o.venue], ['내용', o.summary]] as const).flatMap(([k, v]) => v ? [`${k}: ${v}`] : []) },
     { title: t.policies, lines: draft.policies },
-    { title: t.detailedPlans, lines: draft.detailedPlans.flatMap(p => [`[${p.subTitle}]`, ...p.details]) },
+    { title: t.detailedPlans, lines: [`[${t.overview}]`, ...overviewLines, ...draft.detailedPlans.flatMap(p => [`[${p.subTitle}]`, ...p.details])] },
     { title: STANDARD_PLAN_TEMPLATE.scheduleHeading, lines: draft.schedule.map(s => `${s.step} · ${s.task} · ${s.date ?? '시기 미정'} · ${s.owner ?? '담당 미정'}`) },
     { title: t.budget, lines: draft.meta.budgetStatus === 'specified' && draft.budget.length
       ? [...draft.budget.map(b => { const a = planBudgetRowAmount(b); return `${b.item}(${b.spec}) ${b.unitPrice === null ? '미정' : won(b.unitPrice)} × ${b.quantity ?? '미정'} = ${a === null ? '금액 미정' : won(a)}${b.note ? ` · ${b.note}` : ''}`; }), `합계 ${won(planBudgetSum(draft))}`]

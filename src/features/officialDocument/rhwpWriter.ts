@@ -90,7 +90,6 @@ export function writeOfficialDocument(doc: HwpDocument, document: OfficialDocume
     } else if (line.kind === 'table') {
       const cells = tableCells(line), widths = line.columns.map(c => c.width);
       const t = createTable(p, cells.length, widths);
-      doc.applyParaFormat(0, p, JSON.stringify({ alignment: 'center', marginLeft: 0, indent: 0, spacingBefore: para(gapBefore), spacingAfter: para(scheme.tableAfter), keepWithNext: false, pageBreakBefore: false, ...noBorders }));
       doc.setTableProperties(0, t.paraIdx, t.controlIdx, JSON.stringify({ repeatHeader: true, pageBreak: 2, outerLeft: 0, outerRight: 0, outerTop: 0, outerBottom: 200 }));
       cells.forEach((row, ri) => row.forEach((value, ci) => {
         const cell = ri * row.length + ci;
@@ -98,10 +97,12 @@ export function writeOfficialDocument(doc: HwpDocument, document: OfficialDocume
         // 칸 안 여백: 좌우 1mm, 위아래 1.5mm. 머리행은 바탕색을 칠한다.
         doc.setCellProperties(0, t.paraIdx, t.controlIdx, cell, JSON.stringify({ paddingLeft: 283, paddingRight: 283, paddingTop: 425, paddingBottom: 425, applyInnerMargin: true, isHeader: ri === 0, verticalAlign: 1, ...(ri === 0 ? { fillType: 'solid', fillColor: profile.table.head.fill } : {}) }));
       }));
+      // 셀 내용과 여백이 반영된 뒤에 문단 서식을 적용해야 표 문단 lineseg 높이(vertsize)가 실제 표 크기로 계산된다.
+      doc.applyParaFormat(0, p, JSON.stringify({ alignment: 'center', marginLeft: 0, indent: 0, spacingBefore: para(gapBefore), spacingAfter: para(scheme.tableAfter), keepWithNext: false, pageBreakBefore: false, ...noBorders }));
     }
   });
   doc.reflowLinesegs();
-  if (relieveStretchedLines(doc, bodies).length) doc.reflowLinesegs();
+  relieveStretchedLines(doc, bodies);
   keepHeadingsWithNext(doc, keepers);
   // rhwp 텍스트 내보내기는 일부 기호(◦ 등)를 &#9702; 같은 문자 참조로 돌려준다.
   const decode = (value: string) => value.replace(/&#(x[0-9a-f]+|\d+);/gi, (_, n: string) => String.fromCodePoint(n[0].toLowerCase() === 'x' ? parseInt(n.slice(1), 16) : Number(n)));
@@ -113,35 +114,78 @@ export function writeOfficialDocument(doc: HwpDocument, document: OfficialDocume
 
 /** 양쪽 정렬 줄의 빈칸이 보통 빈칸보다 이 비율(글자 크기 대비) 이상 넓어지면 낱말 사이가 벌어져 보인다. */
 export const STRETCH_LIMIT = 0.25;
-type LayoutRun = { text: string; charX: number[]; paraIdx: number; y: number; fontSize: number };
+type LayoutRun = { text: string; charX: number[]; paraIdx: number; x: number; y: number; fontSize: number };
+type LayoutLine = { paraIdx: number; page: number; y: number; runs: LayoutRun[] };
+
+const ORPHAN_LINE_START = /^(?:[을를은는이가에의와과로도만](?:$|[\s.,)\]}!?])|\(?안\)(?:$|[\s.,!?]))/u;
+const SPLIT_RO_START = /^로(?:$|[\s.,)\]}!?])/u;
+
+/** 페이지·y·문단 기준으로 정렬된 본문 줄들을 수집한다. */
+function collectBodyLines(doc: HwpDocument, targets: Set<number>): LayoutLine[] {
+  const lines = new Map<string, LayoutLine>();
+  for (let page = 0; page < doc.pageCount(); page++) {
+    for (const run of (JSON.parse(doc.getPageTextLayout(page)) as { runs: LayoutRun[] }).runs) {
+      if (!targets.has(run.paraIdx)) continue;
+      const key = `${run.paraIdx}:${page}:${run.y}`;
+      const entry = lines.get(key);
+      if (entry) entry.runs.push(run);
+      else lines.set(key, { paraIdx: run.paraIdx, page, y: run.y, runs: [run] });
+    }
+  }
+  return [...lines.values()];
+}
+
+/** 첫 줄 이후 줄 맨 앞에 1글자 조사나 `(안)`이 홀로 남았는지 검사한다. */
+function hasOrphanLineStart(lines: string[]): boolean {
+  for (let i = 1; i < lines.length; i++) {
+    const trimmed = lines[i].trimStart();
+    if (!ORPHAN_LINE_START.test(trimmed)) continue;
+    // '…으 / 로'처럼 2음절 조사 '으로'가 나뉜 경우는 1글자 조사 고아에서 제외한다.
+    if (lines[i - 1].endsWith('으') && SPLIT_RO_START.test(trimmed)) continue;
+    return true;
+  }
+  return false;
+}
 
 /**
  * 한글은 어절 단위로 줄을 나누되, 긴 어절이 다음 줄로 넘어가 양쪽 정렬 줄의 빈칸이 크게 벌어진
  * 본문 문단만 글자 단위로 나눈다(한글 기본값과 같은 방식). 실제 조판의 빈칸 폭을 보통 빈칸
- * (같은 글자 크기에서 가장 좁은 빈칸)과 비교한다. 바꾼 문단 번호를 돌려준다.
+ * (같은 글자 크기에서 가장 좁은 빈칸)과 비교하고, 고아 조사/`(안)` 줄바꿈이 생기면 되돌린다.
  */
 export function relieveStretchedLines(doc: HwpDocument, bodies: number[]): number[] {
-  const body = new Set(bodies), lines = new Map<string, LayoutRun[]>(), lastOf = new Map<number, string>();
-  for (let page = 0; page < doc.pageCount(); page++) {
-    for (const run of (JSON.parse(doc.getPageTextLayout(page)) as { runs: LayoutRun[] }).runs) {
-      if (!body.has(run.paraIdx)) continue;
-      const key = `${run.paraIdx}:${page}:${run.y}`;
-      lines.set(key, [...(lines.get(key) ?? []), run]);
-      lastOf.set(run.paraIdx, key);
-    }
-  }
+  const lines = collectBodyLines(doc, new Set(bodies));
+  const lastOf = new Map<number, LayoutLine>();
+  for (const line of lines) lastOf.set(line.paraIdx, line);
   const spaces = (runs: LayoutRun[]) => runs.flatMap(r => [...r.text].flatMap((c, i) => c === ' ' && i + 1 < r.charX.length ? [r.charX[i + 1] - r.charX[i]] : []));
   const normal = new Map<number, number>();
-  for (const runs of lines.values()) for (const w of spaces(runs)) normal.set(runs[0].fontSize, Math.min(normal.get(runs[0].fontSize) ?? Infinity, w));
+  for (const { runs } of lines) for (const w of spaces(runs)) normal.set(runs[0].fontSize, Math.min(normal.get(runs[0].fontSize) ?? Infinity, w));
   const stretched = new Set<number>();
-  for (const [key, runs] of lines) {
-    const p = runs[0].paraIdx, widths = spaces(runs), size = runs[0].fontSize;
+  for (const line of lines) {
+    const p = line.paraIdx, widths = spaces(line.runs), size = line.runs[0].fontSize;
     // 마지막 줄은 양쪽 정렬로 늘이지 않는다. 줄 끝 빈칸은 늘지 않으므로 평균에서 뺀다.
-    if (key === lastOf.get(p) || widths.length < 2) continue;
+    if (line === lastOf.get(p) || widths.length < 2) continue;
     const inner = widths.slice(0, -1), average = inner.reduce((a, b) => a + b, 0) / inner.length;
     if ((average - normal.get(size)!) / size >= STRETCH_LIMIT) stretched.add(p);
   }
+  if (!stretched.size) return [];
   for (const p of stretched) doc.applyParaFormat(0, p, JSON.stringify({ koreanBreakUnit: 1 }));
+  doc.reflowLinesegs();
+  const byPara = new Map<number, LayoutLine[]>();
+  for (const line of collectBodyLines(doc, stretched)) {
+    const list = byPara.get(line.paraIdx);
+    if (list) list.push(line);
+    else byPara.set(line.paraIdx, [line]);
+  }
+  let reverted = false;
+  for (const [p, paraLines] of byPara) {
+    paraLines.sort((a, b) => a.page - b.page || a.y - b.y);
+    const texts = paraLines.map(l => [...l.runs].sort((a, b) => a.x - b.x).map(r => r.text).join(''));
+    if (!hasOrphanLineStart(texts)) continue;
+    doc.applyParaFormat(0, p, JSON.stringify({ koreanBreakUnit: 0 }));
+    stretched.delete(p);
+    reverted = true;
+  }
+  if (reverted) doc.reflowLinesegs();
   return [...stretched];
 }
 

@@ -21,7 +21,7 @@ describe('계획서 근거·예산·출력 계약', () => {
     expect(validatePlanAnalysis(analysis, sources)).toEqual(analysis);
     expect(validatePlanDocument(draft, context)).toEqual(draft);
     expect(planBudgetSum(draft)).toBe(200000);
-    expect(checkPlanDocument(draft, context).filter(i => i.level === 'block' || i.level === 'warn')).toEqual([]);
+    expect(checkPlanDocument(draft, { ...context, today: '2026. 10. 26.' }).filter(i => i.level === 'block' || i.level === 'warn')).toEqual([]);
     expect(() => validatePlanAnalysis({ ...analysis, requirements: [{ ...analysis.requirements[0], quote: '공문에 없는 인용' }] }, sources)).toThrow(/원문/);
     expect(() => validatePlanDocument({ ...draft, detailedPlans: [] }, context)).toThrow();
     const missing = { ...draft, meta: { ...draft.meta, requirementIds: ['r1', 'r2', 'r4'] } };

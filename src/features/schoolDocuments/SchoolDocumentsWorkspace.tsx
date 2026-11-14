@@ -62,9 +62,11 @@ function PlanWizard({ ownerId }: {
     const current = !!state.draft && state.draftContext === planContextKey(context);
     // 저장 전 의미 검사(예산·일정·공문 필수 조건·근거 없는 내용). 자동으로 고치지 않고 교사에게 보여 준다.
     const contextKey = planContextKey(context);
-    const planIssues = useMemo(() => state.draft ? checkPlanDocument(state.draft, { ...context, referenceTypeResolved: resolvePlanReference(context).profile.id }) : [],
+    const now = new Date();
+    const today = `${now.getFullYear()}. ${now.getMonth() + 1}. ${now.getDate()}.`;
+    const planIssues = useMemo(() => state.draft ? checkPlanDocument(state.draft, { ...context, referenceTypeResolved: resolvePlanReference(context).profile.id, today }) : [],
         // eslint-disable-next-line react-hooks/exhaustive-deps -- context는 contextKey로 비교한다.
-        [state.draft, contextKey]);
+        [state.draft, contextKey, today]);
     const patch = (value: Partial<PlanState>) => { setState(s => ({ ...s, ...value })); };
     const go = (step: number) => { setError(''); setEdit(null); setCandidate(null); patch({ step }); };
     useEffect(() => { if (!savePlanState(ownerId, state))

@@ -6,7 +6,7 @@ import { checkOfficialDocument, normalizeDates, officialAmount, type OfficialChe
 import { item, note, table, type OfficialDocument, type OfficialNode } from '../officialDocument/model';
 
 /** 운영계획서의 6개 대목차. 내용(AI)과 순서·이름(서식)을 분리한다. */
-export type PlanSlot = 'purpose' | 'overview' | 'policies' | 'detailedPlans' | 'budget' | 'expectedEffects';
+export type PlanSlot = 'background' | 'purpose' | 'overview' | 'policies' | 'detailedPlans' | 'budget' | 'expectedEffects';
 /**
  * 문서 서식. 공문·학교가 지정한 서식이 있으면 대목차 이름·순서를 여기서 바꾼다(AI가 목차를 바꾸지 않는다).
  * 서식은 시스템이 신뢰하는 설정이어야 한다. 공문 본문의 문장을 서식으로 승격하지 않는다.
@@ -18,8 +18,8 @@ export interface PlanTemplate {
   scheduleHeading: string;
 }
 export const STANDARD_PLAN_TEMPLATE: PlanTemplate = {
-  order: ['purpose', 'overview', 'policies', 'detailedPlans', 'budget', 'expectedEffects'],
-  headings: { purpose: '추진 목적', overview: '운영 개요', policies: '운영 방침', detailedPlans: '세부 추진 계획', budget: '소요 예산', expectedEffects: '기대 효과' },
+  order: ['background', 'purpose', 'policies', 'detailedPlans', 'budget', 'expectedEffects'],
+  headings: { background: '추진 배경', purpose: '추진 목적', overview: '운영 개요', policies: '운영 방침', detailedPlans: '세부 추진 계획', budget: '소요 예산', expectedEffects: '기대 효과' },
   scheduleHeading: '추진 일정',
 };
 
@@ -36,17 +36,23 @@ function scheduleTable(draft: PlanDraft) {
   ], rows, TABLE_WIDTH), rows);
 }
 
-/** 대목차별 본문. 일정은 세부 추진 계획의 마지막 중항목 표, 예산은 소요 예산 표로 둔다. */
+function overviewNodes(draft: PlanDraft): OfficialNode[] {
+  const o = draft.overview;
+  const entries = [['기간', o.period], ['대상', o.target], ['장소', o.venue], ['내용', o.summary]] as const;
+  return entries.some(([, v]) => v)
+    ? entries.map(([k, v]) => item(`${k}: ${v ?? '미정'}`))
+    : [note('운영 개요 미정(검토 필요)')];
+}
+
+/** 대목차별 본문. 운영 개요는 기본 서식에서 세부 추진 계획의 첫 중항목(가. 운영 개요)으로 들어간다. */
 function slotBody(draft: PlanDraft, slot: PlanSlot, template: PlanTemplate): OfficialNode[] {
   switch (slot) {
+    case 'background': return lines(draft.background ?? []);
     case 'purpose': return lines(draft.purpose);
-    case 'overview': {
-      const o = draft.overview;
-      const rows = ([['기간', o.period], ['대상', o.target], ['장소', o.venue], ['내용', o.summary]] as const).filter(([, v]) => v);
-      return rows.length ? rows.map(([k, v]) => item(`${k}: ${v}`)) : [note('운영 개요 미정(검토 필요)')];
-    }
+    case 'overview': return overviewNodes(draft);
     case 'policies': return lines(draft.policies);
     case 'detailedPlans': return [
+      ...(template.order.includes('overview') ? [] : [item(template.headings.overview, overviewNodes(draft))]),
       ...draft.detailedPlans.map(p => item(p.subTitle, lines(p.details))),
       // 일정이 없으면 빈 표를 그리지 않는다.
       ...(draft.schedule.length ? [item(template.scheduleHeading, [scheduleTable(draft)])] : []),
@@ -79,7 +85,9 @@ export function planToOfficialDocument(draft: PlanDraft, title: string, _pages: 
   return {
     kind: 'attachment-plan',
     title: title.trim(),
-    body: template.order.map(slot => item(template.headings[slot], slotBody(draft, slot, template))),
+    body: template.order
+      .filter(slot => slot !== 'background' || (draft.background?.length ?? 0) > 0)
+      .map(slot => item(template.headings[slot], slotBody(draft, slot, template))),
   };
 }
 

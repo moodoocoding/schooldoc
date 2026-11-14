@@ -16,6 +16,7 @@ export interface PlanBudgetRow { item: string; spec: string; unitPrice: number |
 export interface PlanDocumentV2 {
   schemaVersion: typeof PLAN_SCHEMA_VERSION;
   title: string;
+  background: string[];
   purpose: string[];
   overview: PlanOverview;
   policies: string[];
@@ -28,7 +29,7 @@ export interface PlanDocumentV2 {
 
 /** 길이·개수 한도의 유일한 출처. 응답 스키마와 구조 검사가 함께 쓴다. */
 export const PLAN_V2_LIMITS = {
-  title: 100, line: 300, purpose: 4, policies: 6, plans: 8, subTitle: 40, details: 10,
+  title: 100, line: 300, background: 4, purpose: 4, policies: 6, plans: 8, subTitle: 40, details: 10,
   schedule: 10, step: 20, task: 160, date: 60, owner: 50,
   budget: 8, item: 60, spec: 120, note: 80, money: 100_000_000, quantity: 10_000,
   effects: 5, ids: 24, unknowns: 8, unknown: 200,
@@ -41,6 +42,7 @@ const nullable = (schema: Record<string, unknown>) => ({ ...schema, type: [schem
 const obj = (properties: Record<string, unknown>) => ({ type: 'object', additionalProperties: false, properties, required: Object.keys(properties) });
 const arr = (items: unknown, maxItems: number, minItems = 0) => ({ type: 'array', minItems, maxItems, items });
 const fields = {
+  background: arr(str(L.line), L.background),
   purpose: arr(str(L.line), L.purpose, 1),
   overview: obj({ period: nullable(str(L.line)), target: nullable(str(L.line)), venue: nullable(str(L.line)), summary: nullable(str(L.line)) }),
   policies: arr(str(L.line), L.policies),
@@ -60,7 +62,7 @@ export const planDocumentSchema = obj({ schemaVersion: { type: 'string', enum: [
 
 /** 부분 수정 영역별로 AI가 다시 쓰는 필드. meta는 근거·미정 사항·예산 상태가 함께 바뀌므로 늘 같이 받는다. */
 export const PLAN_REVISION_FIELDS = {
-  body: ['purpose', 'overview', 'policies', 'detailedPlans', 'expectedEffects', 'meta'],
+  body: ['background', 'purpose', 'overview', 'policies', 'detailedPlans', 'expectedEffects', 'meta'],
   schedule: ['schedule', 'meta'],
   budget: ['budget', 'meta'],
 } as const satisfies Record<string, (keyof typeof fields)[]>;
@@ -95,6 +97,7 @@ export function validatePlanDocument(value: unknown, context: Pick<PlanContext, 
   return {
     schemaVersion: PLAN_SCHEMA_VERSION,
     title: line(d.title, L.title),
+    background: d.background === undefined ? [] : list(d.background, L.background, 0, v => line(v, L.line)),
     purpose: list(d.purpose, L.purpose, 1, v => line(v, L.line)),
     overview: { period: maybe(o.period, L.line), target: maybe(o.target, L.line), venue: maybe(o.venue, L.line), summary: maybe(o.summary, L.line) },
     policies: list(d.policies, L.policies, 0, v => line(v, L.line)),
@@ -118,6 +121,7 @@ export const planBudgetSum = (doc: Pick<PlanDocumentV2, 'budget'>) => doc.budget
 export function planDocumentLines(doc: PlanDocumentV2): { where: string; text: string }[] {
   const o = doc.overview;
   return [
+    ...(doc.background ?? []).map(text => ({ where: '추진 배경', text })),
     ...doc.purpose.map(text => ({ where: '추진 목적', text })),
     ...([['기간', o.period], ['대상', o.target], ['장소', o.venue], ['내용', o.summary]] as const).flatMap(([k, v]) => v ? [{ where: `운영 개요(${k})`, text: v }] : []),
     ...doc.policies.map(text => ({ where: '운영 방침', text })),
@@ -166,7 +170,7 @@ const HABITUAL = ['시상', '심사', '위원회', 'TF', '발표회', '전시회
 const VACUOUS = /(사전에|미리|추후|별도로?|나중에)\s*(정해|정하여|정한\s*뒤|결정|확정|안내\s*후)|정해\s*안내|안내\s*후\s*운영|방안\s*마련/u;
 const COUNTED = /(\d[\d,]*)\s*(명|점|시간|차시|회|개교|팀|부|만\s*원|원)/gu;
 
-export function checkPlanDocument(doc: PlanDocumentV2, context: PlanContext & { referenceTypeResolved?: string }): PlanIssue[] {
+export function checkPlanDocument(doc: PlanDocumentV2, context: PlanContext & { referenceTypeResolved?: string; today?: string }): PlanIssue[] {
   const issues: PlanIssue[] = [];
   const add = (level: PlanIssueLevel, where: string, message: string) => issues.push({ level, where, message });
   const requirements: PlanRequirement[] = context.analysis?.requirements ?? [];
@@ -175,6 +179,20 @@ export function checkPlanDocument(doc: PlanDocumentV2, context: PlanContext & { 
   const lines = planDocumentLines(doc);
   const year = findPlanDates(`${doc.overview.period ?? ''} ${context.conditions.timing}`).find(p => p.y)?.y ?? null;
   const givenDates = new Set(findPlanDates(inputs, year).map(p => `${p.m}. ${p.d}.`));
+  const parsedToday = context.today ? findPlanDates(context.today).find(p => p.y) : undefined;
+  const now = new Date();
+  const todayDate: PlanDate = parsedToday ?? { y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate(), weekday: null };
+  const todayNum = dayNumber(todayDate);
+
+  // 운영 개요 누락(null·미정) 및 지난 기간 확인.
+  const isUndecided = (v: string | null) => v === null || /^미정(?:$|[\s(:])/u.test(v.trim());
+  for (const [key, label] of [['period', '기간'], ['target', '대상'], ['venue', '장소'], ['summary', '내용']] as const) {
+    if (isUndecided(doc.overview[key])) add('confirm', `운영 개요(${label})`, `${label}이(가) 정해지지 않았습니다. 결재 전에 확정해 주세요.`);
+  }
+  const periodLast = findPlanDates(doc.overview.period ?? '', year).at(-1);
+  if (periodLast?.y && dayNumber(periodLast) < todayNum) {
+    add('warn', '운영 개요(기간)', `운영 기간(${periodLast.y}. ${periodLast.m}. ${periodLast.d}.)은 이미 지난 날짜입니다. 일정을 확인해 주세요.`);
+  }
 
   // 예산: 상태와 표가 맞는지, 산출식·합계·상한.
   const status = doc.meta.budgetStatus, school = context.conditions.budget, limit = context.analysis?.budgetLimit?.amount ?? null;
@@ -231,9 +249,13 @@ export function checkPlanDocument(doc: PlanDocumentV2, context: PlanContext & { 
     if (first && previous && dayNumber(first) < dayNumber(previous)) add('warn', where, '앞 행보다 이른 날짜입니다. 일정 순서를 확인해 주세요.');
     if (first) previous = first;
     const last = dates.at(-1);
+    if (last?.y && dayNumber(last) < todayNum) add('warn', where, `${last.y}. ${last.m}. ${last.d}.은 이미 지난 날짜입니다. 일정을 확인해 주세요.`);
     if (last && SUBMISSION.test(s.task)) for (const { r, date } of deadlines) if (dayNumber(last) > dayNumber(date)) add('warn', where, `공문 마감(${date.m}. ${date.d}.)보다 늦습니다: "${r.text}"`);
     if (!s.date) add('confirm', where, `"${s.task}"의 시기가 정해지지 않았습니다.`);
   });
+  if (doc.schedule.length === 1) {
+    add('warn', '추진 일정', '추진 일정 표가 한 행뿐입니다. 하루 일정 연수·행사는 시간별 진행표로, 여러 날 사업은 단계별로 나누어 주세요.');
+  }
   // 공문 마감은 그 날짜만 적은 별도 행으로 남아야 한다. 다른 단계와 합치면('4. 26.∼5. 7.까지') 마감이 표에서 드러나지 않는다.
   // '신청 기간: 3. 2.~3. 13.'처럼 기간으로 정한 요구는 기간 행이 맞으므로 날짜 하나로 정한 마감만 본다.
   const single = deadlines.filter(({ r }) => findPlanDates(r.quote, year).length === 1);
@@ -269,11 +291,19 @@ export function checkPlanDocument(doc: PlanDocumentV2, context: PlanContext & { 
   raw.forEach((set, i) => set.forEach(g => spread.set(g, (spread.get(g) ?? new Set<string>()).add(section(prose[i].where)))));
   const grams = raw.map(set => new Set([...set].filter(g => spread.get(g)!.size < 3)));
   const reported = new Set<number>();
+  const exact = (v: string) => squash(v.replace(/\(안\)/gu, ''));
   prose.forEach((l, i) => {
     for (let j = 0; j < i; j++) {
-      // 기대 효과가 추진 목적과 짝을 이루는 것은 계획서의 관례이므로 반복으로 보지 않는다.
+      if (reported.has(i)) continue;
+      const cur = exact(l.text), prev = exact(prose[j].text);
+      if (Math.min(cur.length, prev.length) >= 6 && cur === prev) {
+        add('warn', l.where, `${withGwa(prose[j].where)} 똑같은 문장을 되풀이합니다. 한 곳을 고치거나 빼 주세요.`);
+        reported.add(i);
+        continue;
+      }
+      // 기대 효과가 추진 목적과 짝을 이루는 것은 계획서의 관례이므로 비슷한 표현은 반복으로 보지 않는다.
       const pair = [section(prose[j].where), section(l.where)].sort().join();
-      if (reported.has(i) || section(prose[j].where) === section(l.where) || pair === '기대 효과,추진 목적') continue;
+      if (section(prose[j].where) === section(l.where) || pair === '기대 효과,추진 목적') continue;
       const [a, b] = grams[i].size <= grams[j].size ? [grams[i], grams[j]] : [grams[j], grams[i]];
       const shared = [...a].filter(g => b.has(g)).length;
       // 거의 같은 문장은 주제어를 빼지 않고도 서로 대부분 겹친다. 세 목차 이상에 되풀이해도 잡는다.

@@ -54,13 +54,13 @@ describe('계획서 OpenAI 연결', () => {
   test('본문 AI 수정은 본문 필드와 meta만 받고 일정·예산·제목은 보존한다', async () => {
     const req: PlanRequest = { action: 'revise', ...context, referenceType: 'general', draft, revision: { area: 'body', instruction: '나눔 활동을 구체화해 주세요.' } };
     const built = buildPlanAiRequest(req, 'fixture');
-    expect(built.text.format.schema.required).toEqual(['purpose', 'overview', 'policies', 'detailedPlans', 'expectedEffects', 'meta']);
+    expect(built.text.format.schema.required).toEqual(['background', 'purpose', 'overview', 'policies', 'detailedPlans', 'expectedEffects', 'meta']);
     expect(built.input[0].content[0].text).toContain('# 수정 요청');
     const detailedPlans = [...draft.detailedPlans, { subTitle: '추가 활동', details: ['짝 활동: 친구와 기록 바꿔 읽기(안)'] }];
-    const { purpose, overview, policies, expectedEffects, meta } = draft;
-    const result = await requestPlanAi(req, 'fixture', 'fixture', async () => completed({ purpose, overview, policies, detailedPlans, expectedEffects, meta }));
+    const { background, purpose, overview, policies, expectedEffects, meta } = draft;
+    const result = await requestPlanAi(req, 'fixture', 'fixture', async () => completed({ background, purpose, overview, policies, detailedPlans, expectedEffects, meta }));
     expect(result.draft).toEqual({ ...draft, detailedPlans });
-    await expect(requestPlanAi(req, 'fixture', 'fixture', async () => completed({ purpose, overview, policies, detailedPlans, expectedEffects, meta, schedule: [] }))).rejects.toMatchObject({ status: 502 });
+    await expect(requestPlanAi(req, 'fixture', 'fixture', async () => completed({ background, purpose, overview, policies, detailedPlans, expectedEffects, meta, schedule: [] }))).rejects.toMatchObject({ status: 502 });
   });
   test('공모전은 해당 유형 점검 목록만 붙이고, 배점·동점 규칙을 근거 없이 확정하지 않게 한다', () => {
     const built = buildPlanAiRequest({ ...drafting, referenceType: 'contest' }, 'fixture');

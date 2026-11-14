@@ -33,6 +33,7 @@ export const legacyDraft: PlanDraftV1 = {
 export const draft: PlanDraft = {
   schemaVersion: '2.0',
   title: '독서 주간 운영계획',
+  background: ['학생 스스로 고른 책을 읽고 생각을 나누는 자율 독서 문화 확산 필요'],
   purpose: ['스스로 고른 책을 읽고 기록하는 자기주도적 독서 습관 형성', '학급별 작품 나눔으로 친구의 관점을 이해하고 존중하는 태도 함양'],
   overview: { period: '2026. 11. 2.(월)∼11. 6.(금)', target: '전교 학생(참여 학급은 학교 확인)', venue: '각 학급 교실', summary: '학생별 읽기 기록과 학급별 작품 나눔' },
   policies: ['학생이 글·그림·말 중 편한 방법으로 기록하도록 허용', '예산은 활동 재료와 인쇄비로만 집행하며 교통비는 집행하지 않음', '공개를 원하지 않는 기록은 게시하지 않고 개별로 나눔'],
@@ -54,5 +55,8 @@ export const draft: PlanDraft = {
   expectedEffects: ['자기주도적 독서 습관 형성에 기여', '서로 다른 읽기 경험을 나누며 표현력과 존중하는 태도 신장'],
   meta: { requirementIds: ['r1', 'r2', 'r3', 'r4'], unknowns: ['참여 학급과 담당 교사는 학교에서 확인'], budgetStatus: 'specified' },
 };
-/** AI 응답은 초안과 같은 형식이다. */
-export const authoredDraft = draft;
+/** AI 응답은 초안과 같은 형식이다(일부 항목에 기호가 섞여 들어와도 검증에서 뗀다). */
+export const authoredDraft: PlanDraft = {
+  ...draft,
+  background: ['가. 학생 스스로 고른 책을 읽고 생각을 나누는 자율 독서 문화 확산 필요'],
+};

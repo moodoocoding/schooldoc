@@ -4,6 +4,7 @@ import type { PlanDocumentV2 } from '../../supabase/functions/_shared/planDocume
 export const uccRecheckDraft: PlanDocumentV2 = {
   schemaVersion: '2.0',
   title: '2027학년도 학생 디지털 시민성 UCC 공모전 운영 계획',
+  background: [],
   purpose: ['디지털 예절·개인정보 보호·사이버 언어폭력 예방에 대한 학생의 이해와 실천 역량 함양', '학생 참여형 영상 제작을 통한 올바른 디지털 소통 문화 확산'],
   overview: { period: '2027. 4. 1. ~ 4. 30.', target: '관내 초등학교 5~6학년 학생', venue: null, summary: '디지털 시민성 주제의 UCC를 교내 공모·심사하고 우수작 2편 이내를 교육지원청에 제출' },
   policies: ['공문에 정한 대상, 주제, 작품 규격 및 제출 한도를 준수하여 운영', '초상권·저작권 침해가 없도록 작품 제작 전 사전 지도', '학생 얼굴이 드러나는 작품은 보호자 동의서를 확인한 뒤 접수', '심사·시상 세부안은 학교 내부 검토 후 확정'],
