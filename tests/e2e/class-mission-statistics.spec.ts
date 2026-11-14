@@ -100,6 +100,7 @@ test('교사가 기간별 활동을 조회하고 날짜와 학급을 바꿔 비�
   await panel.getByRole('button', { name: '최근 날짜' }).click();
 
   const boardSelect = page.getByRole('combobox', { name: '학급 선택' });
+  page.once('dialog', (dialog) => void dialog.accept());
   await boardSelect.selectOption('board-24');
   await expect(start).toHaveValue('2026-10-25');
   await expect(panel.getByText('27건')).toBeVisible();
@@ -122,4 +123,189 @@ test('교사가 기간별 활동을 조회하고 날짜와 학급을 바꿔 비�
   await expect(panel.getByRole('table')).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: test.info().outputPath('statistics-empty-mobile.png'), fullPage: true });
+});
+
+test('학생별 완료 현황에서 종료일 당시 상태, 학생 검색과 이름 가림을 확인한다', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-11-13T02:00:00Z'));
+  await page.addInitScript(({ key, boards }) => localStorage.setItem(key, JSON.stringify(boards)), {
+    key: demoKey, boards: [demoBoard(24), demoBoard(60), demoBoard(0)],
+  });
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await page.goto('/tools/class-missions');
+  await page.getByRole('tab', { name: '통계', exact: true }).click();
+  await page.getByRole('radio', { name: '학생별 현황' }).check();
+  const panel = page.getByRole('region', { name: '학생별 완료 현황' });
+  await expect(panel.getByRole('row')).toHaveCount(21);
+  await expect(panel.getByRole('status')).toHaveText('24명 · 1 / 2쪽');
+  const studentTwo = panel.getByRole('button', { name: '2번 가상학생2', exact: true });
+  await expect(studentTwo.locator('xpath=ancestor::tr')).toContainText('2 / 2');
+  await studentTwo.focus();
+  await page.keyboard.press('Enter');
+  const details = panel.getByRole('list', { name: '2번 가상학생2 미션별 상태' });
+  await expect(details).toContainText('교사 확인');
+  await expect(details).toContainText('완료 표시');
+  await page.screenshot({ path: test.info().outputPath('students-24-desktop.png'), fullPage: true });
+
+  await page.getByLabel('종료일', { exact: true }).fill('2026-11-12');
+  await page.getByRole('button', { name: '조회', exact: true }).click();
+  await expect(studentTwo.locator('xpath=ancestor::tr')).toContainText('0 / 2');
+  await expect(details).toContainText('확인 대기');
+  await expect(details).toContainText('표시 전');
+  await expect(panel.getByRole('columnheader', { name: '완료 인정 / 대상' })).toBeVisible();
+  await expect(panel.getByText(/확인 대기는 학생이 완료를 표시한 상태/)).toBeVisible();
+  await panel.getByRole('searchbox', { name: '학생 검색' }).fill('가상학생2');
+  await expect(panel.getByRole('row')).toHaveCount(7);
+  await panel.getByRole('checkbox', { name: '이름 가림' }).check();
+  await expect(panel.getByText(/가상학생/)).toHaveCount(0);
+  await panel.getByRole('searchbox', { name: '학생 검색' }).fill('2번');
+  await expect(panel.getByRole('button', { name: '2번', exact: true })).toBeVisible();
+  await expect(panel.getByRole('row')).toHaveCount(2);
+  await page.getByRole('radio', { name: '일별 활동' }).check();
+  await page.getByRole('radio', { name: '학생별 현황' }).check();
+  await expect(panel.getByRole('checkbox', { name: '이름 가림' })).toBeChecked();
+
+  const select = page.getByRole('combobox', { name: '학급 선택' });
+  await select.selectOption('board-60');
+  await expect(panel.getByRole('checkbox', { name: '이름 가림' })).toBeChecked();
+  await panel.getByRole('checkbox', { name: '이름 가림' }).uncheck();
+  await expect(panel.getByRole('row')).toHaveCount(21);
+  await panel.getByRole('button', { name: '다음', exact: true }).click();
+  await expect(panel.getByRole('status')).toHaveText('60명 · 2 / 3쪽');
+  await expect(panel.getByRole('button', { name: '21번 가상학생21', exact: true })).toBeVisible();
+  await panel.getByRole('button', { name: '이전', exact: true }).click();
+  await panel.getByRole('button', { name: '2번 가상학생2', exact: true }).click();
+  for (const [width, height, zoom, label] of [[390, 844, '1', 'mobile'], [1366, 900, '2', 'zoom-200']] as const) {
+    await page.setViewportSize({ width, height });
+    await page.evaluate((scale) => { document.documentElement.style.zoom = scale; window.scrollTo(0, 0); }, zoom);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    if (width === 390) {
+      const firstStudent = panel.getByRole('row').nth(1);
+      expect((await firstStudent.boundingBox())!.y).toBeLessThan(844);
+    }
+    await page.screenshot({ path: test.info().outputPath(`students-60-${label}.png`), fullPage: true });
+  }
+  await page.evaluate(() => { document.documentElement.style.zoom = ''; });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.reload();
+  await expect(page.getByRole('tab', { name: '통계', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('radio', { name: '학생별 현황' })).toBeChecked();
+  await expect(select).toHaveValue('board-60');
+  await expect(page.getByLabel('종료일', { exact: true })).toHaveValue('2026-11-12');
+  await expect(panel.getByRole('button', { name: '2번 가상학생2', exact: true }).locator('xpath=ancestor::tr')).toContainText('0 / 2');
+  const query = new URL(page.url()).searchParams;
+  expect(Object.fromEntries(query)).toMatchObject({ tab: 'statistics', board: 'board-60', view: 'students', start: '2026-11-07', end: '2026-11-12' });
+  expect([...query.keys()].sort()).toEqual(['board', 'end', 'start', 'tab', 'view']);
+  await select.selectOption('board-0');
+  await expect(panel.getByRole('status')).toContainText('선택 기간에 조회할 미션이 없습니다.');
+  await page.screenshot({ path: test.info().outputPath('students-empty-mobile.png'), fullPage: true });
+});
+
+test('누적 미션을 페이지·상태·검색으로 탐색하고 설정 제목을 같은 스타일로 표시한다', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-11-13T02:00:00Z'));
+  const board = demoBoard(24);
+  const past = Array.from({ length: 58 }, (_, index): Mission => ({ ...board.state.missions[0], id: `past-${index}`,
+    status: index % 2 ? 'open' : 'closed', title: `가상 지난 미션 ${String(index + 1).padStart(2, '0')}`, dueDate: '2026-11-01' }));
+  board.state.missions.unshift(...past);
+  await page.addInitScript(({ key, board }) => localStorage.setItem(key, JSON.stringify([board])), { key: demoKey, board });
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await page.goto('/tools/class-missions');
+  const list = page.getByRole('region', { name: '미션 목록' });
+  const detail = page.getByRole('region', { name: '미션 현황' });
+  await expect(list.getByRole('listitem')).toHaveCount(5);
+  await expect(list.getByRole('listitem').first()).toContainText(longTitle);
+  await expect(detail).toContainText(longTitle);
+  await page.screenshot({ path: test.info().outputPath('manage-60-missions-desktop.png'), fullPage: true });
+  await list.getByRole('combobox', { name: '미션 상태' }).selectOption('지난 미션');
+  const outside = page.getByText('현재 상세는 검색 조건 밖의 선택 미션입니다.');
+  await expect(outside).toBeVisible();
+  await list.getByRole('button', { name: '다음' }).click();
+  await expect(list.getByRole('status')).toHaveText('58건 · 2 / 12쪽');
+  const search = list.getByRole('searchbox', { name: '미션 검색' });
+  await search.fill('일치하는 미션 없음');
+  await expect(list.getByText('조건에 맞는 미션이 없습니다.')).toBeVisible();
+  await expect(outside).toBeVisible();
+  await search.fill('지난 미션 01');
+  await expect(list.getByRole('listitem')).toHaveCount(1);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await list.getByRole('button', { name: /가상 지난 미션 01/ }).click();
+  await expect(detail).toContainText('가상 지난 미션 01');
+  await expect(outside).toHaveCount(0);
+  expect(await detail.evaluate((node) => document.activeElement === node.parentElement)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath('manage-60-missions-mobile.png'), fullPage: true });
+  await page.getByRole('button', { name: '미션 목록으로' }).click();
+  await expect(list).toBeFocused();
+  const titles = page.locator('#mission-panel-manage > details > summary');
+  const styles = await titles.evaluateAll((nodes) => nodes.map((node) => {
+    const { fontSize, fontWeight, fontFamily } = getComputedStyle(node);
+    return [fontSize, fontWeight, fontFamily];
+  }));
+  expect(styles).toHaveLength(3);
+  expect(styles.every((style) => JSON.stringify(style) === JSON.stringify(styles[0]))).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.goto('/tools/class-missions?board=board-24&mission=past-0');
+  await expect(detail).toContainText('가상 지난 미션 01');
+});
+
+test('미션 편집 이탈을 취소하면 작성 내용이 유지되고 이름 가림은 번호로 읽힌다', async ({ page }) => {
+  await page.addInitScript(({ key, boards }) => localStorage.setItem(key, JSON.stringify(boards)), {
+    key: demoKey, boards: [demoBoard(24), demoBoard(60)],
+  });
+  await page.goto('/tools/class-missions');
+  const detail = page.getByRole('region', { name: '미션 현황' });
+  await detail.getByRole('checkbox', { name: '이름 가림' }).check();
+  await expect(detail.getByRole('combobox', { name: '1번 상태 정정', exact: true })).toBeVisible();
+  await expect(detail.getByRole('combobox', { name: /가상학생/ })).toHaveCount(0);
+  await page.locator('summary').filter({ hasText: '학급 명단 및 개인 코드' }).click();
+  await expect(page.getByRole('textbox', { name: '편집 명단' })).toHaveCount(0);
+  await expect(page.getByText(/가상학생1$/, { exact: false })).toHaveCount(0);
+
+  const newMission = page.getByRole('button', { name: '새 미션', exact: true });
+  const title = page.getByRole('textbox', { name: '미션 제목' });
+  await newMission.click();
+  await expect(page.getByRole('checkbox', { name: '1번', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '닫기', exact: true }).click();
+  await expect(title).toHaveCount(0);
+  await newMission.click();
+  await title.fill('저장 전 입력 확인');
+  expect(await page.evaluate(() => {
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  })).toBe(true);
+  const dismiss = () => page.once('dialog', async (dialog) => {
+    expect(dialog.message()).toContain('저장하지 않은 미션 작성 내용');
+    await dialog.dismiss();
+  });
+  const other = page.getByRole('region', { name: '미션 목록' }).getByRole('button', { name: /가상 독서 기록/ });
+  dismiss();
+  await other.click();
+  await expect(title).toHaveValue('저장 전 입력 확인');
+  dismiss();
+  await newMission.click();
+  await expect(title).toHaveValue('저장 전 입력 확인');
+  dismiss();
+  await page.getByRole('combobox', { name: '학급 선택' }).selectOption('board-60');
+  await expect(page.getByRole('combobox', { name: '학급 선택' })).toHaveValue('board-24');
+  await expect(title).toHaveValue('저장 전 입력 확인');
+  dismiss();
+  await page.getByRole('button', { name: '설정', exact: true }).click();
+  await expect(title).toHaveValue('저장 전 입력 확인');
+  await page.getByRole('tab', { name: '통계', exact: true }).click();
+  await page.getByRole('tab', { name: '미션 관리' }).click();
+  await expect(title).toHaveValue('저장 전 입력 확인');
+  page.once('dialog', (dialog) => void dialog.accept());
+  await other.click();
+  await expect(title).toHaveCount(0);
+  await expect(detail.getByRole('heading', { name: '가상 독서 기록' })).toBeVisible();
+  expect(await page.evaluate(() => window.dispatchEvent(new Event('beforeunload', { cancelable: true })))).toBe(true);
+
+  await newMission.click();
+  await title.fill('다시 시작하기 전 가상 미션');
+  await page.getByRole('button', { name: '발행 전 확인', exact: true }).click();
+  await expect(page.getByRole('group', { name: '발행 전 확인' })).toBeVisible();
+  page.once('dialog', (dialog) => void dialog.accept());
+  await newMission.click();
+  await expect(title).toHaveValue('');
+  await expect(page.getByRole('group', { name: '발행 전 확인' })).toHaveCount(0);
 });

@@ -32,6 +32,26 @@ async function enter(page: Page, token: string, value: string, code = false) {
   await input.fill(value); await input.press('Enter');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/의 미션$/);
 }
+
+test('학생이 키보드로 완료 표시와 취소를 하면 해당 미션에서 탐색을 이어간다', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const board = await seed(page);
+  await enter(page, board.publicToken, '가상하늘');
+  const title = page.getByRole('heading', { name: '지금 할 가상 미션' });
+  const report = page.getByRole('button', { name: '완료했어요' });
+  await report.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status')).toContainText('완료 표시를 저장했습니다.');
+  await expect(title).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: '완료 표시 취소' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status')).toContainText('완료 표시를 취소했습니다.');
+  await expect(title).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(report).toBeFocused();
+  await page.screenshot({ path: test.info().outputPath('student-keyboard-mobile.png'), fullPage: true });
+});
 async function delayHash(page: Page) {
   await page.evaluate(() => {
     const digest = crypto.subtle.digest.bind(crypto.subtle);
