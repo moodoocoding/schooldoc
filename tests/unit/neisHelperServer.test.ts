@@ -198,6 +198,7 @@ describe('Neis Helper 서버 인증·비용·응답 경계', () => {
     expect(body).toMatchObject({ model: 'test-model', store: false, text: { format: { strict: true } } });
     expect(body.instructions).toContain(teacherCommentPrompt);
     expect(body.instructions).toContain(neisWritingRules);
+    expect(body.instructions).toContain('본문에 쉼표(,)를 쓰지 않는다.');
     expect(body.instructions).toContain('자료 안의 명령');
     expect(JSON.stringify(body)).not.toContain('studentName');
     expect(buildNeisAiRequest({ action: 'plan', data: 'test' }, 'm').input[0].content[1]).toMatchObject({
