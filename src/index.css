@@ -649,3 +649,9 @@ html[data-schooldoc-font-size="large"] .schooldoc-admin-shell {
   .special-room-print-root .sm\:flex { display: flex; min-height: 0; padding: 1mm 2mm; line-height: 1.25; }
   .special-room-print-root button { outline: none; }
 }
+
+/* 나이스 평어: 첫 결과가 오기 전 진행 막대가 움직이는 모양 */
+@keyframes neis-busy {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
