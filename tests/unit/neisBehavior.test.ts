@@ -49,6 +49,11 @@ describe('행동특성 자료와 문장 검사', () => {
     }
     const payload = buildBehaviorAiRequest({ ...input(), length }, 'fixture-model');
     expect(payload.instructions).toContain(`반드시 ${min}~${max}자 범위`);
+    const requestLength = payload.instructions.split('==이번 요청의 분량==\n')[1];
+    expect(requestLength).toContain(`공백·문장부호 포함 ${length}자를 목표로`);
+    expect(requestLength).toContain(`반드시 ${min}~${max}자 범위`);
+    expect(requestLength).not.toMatch(/7~8문장|한 문장당/);
+    expect(behaviorInstruction).toContain('문장 수와 문장당 글자 수는 작성 가이드');
     const pattern = new RegExp(payload.text.format.schema.properties.rows.items.properties.text.pattern, 'u');
     expect(pattern.test('가'.repeat(min - 1))).toBe(false);
     expect(pattern.test('가'.repeat(min))).toBe(true);
@@ -64,7 +69,7 @@ describe('행동특성 자료와 문장 검사', () => {
     expect(row.error).toContain('현재 공백 포함 100자');
     expect(row.error).toContain('360~440자');
     expect(behaviorInstruction).not.toContain('분량과 표현 다양성보다 사실 보존이 우선');
-    expect(behaviorInstruction).toContain('메모가 짧거나 없다는 이유로 선택 분량을 임의로 줄이지 않습니다');
+    expect(behaviorInstruction).toContain('특성만 선택했거나 메모가 짧다는 이유로 선택 분량을 임의로 줄여');
   });
   test('첫 단어·공백을 제외한 첫 세 글자·동일 문장·유사 문장을 각각 찾는다', () => {
     const pairs = [
@@ -95,13 +100,13 @@ describe('행동특성 자료와 문장 검사', () => {
     const payload = buildBehaviorAiRequest(input(), 'test-model');
     expect(payload.instructions).toContain(behaviorInstruction);
     expect(payload.instructions).toContain('반드시 360~440자 범위');
-    expect(behaviorInstruction).toContain('교사 메모를 최우선');
+    expect(behaviorInstruction).toContain('교사 메모(notes)를 최우선');
     expect(behaviorInstruction).toContain('첫 세 글자');
-    expect(behaviorInstruction).toContain('교사의 짧은 판단도 근거로 반영');
+    expect(behaviorInstruction).toContain('변화에 관한 교사의 짧은 판단(');
     expect(behaviorInstruction).toContain('구체적인 전후 사례·날짜·수치나 별도 관찰 기록을 요구하지 않습니다');
     expect(behaviorInstruction).not.toContain('메모에 실제 전후 변화가 있을 때만');
     expect(payload.instructions).toContain('메모가 없거나 변화에 대한 언급이 없어도');
-    expect(payload.instructions).toContain('현재 모습이나 미래 가능성만으로 제한하지 않습니다');
+    expect(payload.instructions).toContain('현재 모습이나 미래 가능성만으로 제한하지 않고');
     expect(payload.instructions).toContain('구체적인 변화 이력은 구별');
     expect(payload.instructions).not.toContain('없는 사건·실적·변화는 추가하지 않습니다');
     expect(behaviorInstruction).toContain('기본값은 약 400자');
