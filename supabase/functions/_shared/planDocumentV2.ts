@@ -144,10 +144,17 @@ export function findPlanDates(v: string, year: number | null = null): PlanDate[]
     if (mo < 1 || mo > 12 || d < 1 || d > 31) continue;
     // "3.5%" 같은 소수와 구분: 연도도 요일도 없고 뒤에 점이 없으면 날짜로 보지 않는다.
     if (!y && !m[4] && !m[8] && m[2] && !/\.\s*$/.test(m[0]) && !/^\s*\./.test(v.slice((m.index ?? 0) + m[0].length))) continue;
-    out.push({ y: y ? Number(y) : year, m: mo, d, weekday: m[4] ?? m[8] ?? null });
+    // '2027. 4. 1. ~ 4. 3.'의 뒤 날짜처럼 연도가 없으면 앞 날짜의 연도를 잇는다.
+    out.push({ y: y ? Number(y) : out.at(-1)?.y ?? year, m: mo, d, weekday: m[4] ?? m[8] ?? null });
   }
   return out;
 }
+/** '추진 목적과', '운영 방침과'처럼 받침에 맞는 '과/와'를 붙인다. 괄호 앞 낱말을 기준으로 한다. */
+const withGwa = (word: string) => {
+  const last = word.replace(/\s*\([^)]*\)\s*$/u, '').trim().at(-1) ?? '';
+  const code = last.charCodeAt(0) - 0xac00;
+  return `${word}${code >= 0 && code < 11172 && code % 28 === 0 ? '와' : '과'}`;
+};
 const dayNumber = (p: PlanDate) => (p.y ?? 2000) * 400 + p.m * 32 + p.d;
 const WEEKDAYS = '일월화수목금토';
 // 운영 기간의 '~까지'와 구분해 제출·신청 마감만 본다.
@@ -167,6 +174,7 @@ export function checkPlanDocument(doc: PlanDocumentV2, context: PlanContext & { 
   const inputSquash = squash(inputs);
   const lines = planDocumentLines(doc);
   const year = findPlanDates(`${doc.overview.period ?? ''} ${context.conditions.timing}`).find(p => p.y)?.y ?? null;
+  const givenDates = new Set(findPlanDates(inputs, year).map(p => `${p.m}. ${p.d}.`));
 
   // 예산: 상태와 표가 맞는지, 산출식·합계·상한.
   const status = doc.meta.budgetStatus, school = context.conditions.budget, limit = context.analysis?.budgetLimit?.amount ?? null;
@@ -214,6 +222,11 @@ export function checkPlanDocument(doc: PlanDocumentV2, context: PlanContext & { 
       const actual = WEEKDAYS[new Date(p.y, p.m - 1, p.d).getDay()];
       if (actual !== p.weekday) add('warn', where, `${p.y}. ${p.m}. ${p.d}.은 ${actual}요일입니다(문서: ${p.weekday}요일).`);
     }
+    // 공문·입력이 정한 날짜가 아닌데 주말에 시작·종료하는 단계.
+    for (const p of dates) if (p.y && !givenDates.has(dateKey(p))) {
+      const day = new Date(p.y, p.m - 1, p.d).getDay();
+      if (day === 0 || day === 6) add('warn', where, `${p.m}. ${p.d}.은 ${WEEKDAYS[day]}요일입니다. 주말 운영이 아니면 평일로 옮겨 주세요.`);
+    }
     const first = dates[0];
     if (first && previous && dayNumber(first) < dayNumber(previous)) add('warn', where, '앞 행보다 이른 날짜입니다. 일정 순서를 확인해 주세요.');
     if (first) previous = first;
@@ -240,9 +253,13 @@ export function checkPlanDocument(doc: PlanDocumentV2, context: PlanContext & { 
   }
 
   // 같은 내용이 여러 목차에 반복되는지. 표현이 조금 달라도 짧은 쪽의 글자 쌍 대부분이 긴 쪽에 있으면 반복으로 본다.
+  // 세 목차 이상에 나오는 글자 쌍은 공모 주제처럼 문서 전체의 주제어이므로 비교에서 뺀다.
   const prose = lines.filter(l => !/^(추진 일정|소요 예산|운영 개요|세부 추진 계획$)/u.test(l.where));
   const bigrams = (v: string) => { const t = squash(v.replace(/^[^:]{1,20}:\s*/u, '')); return new Set(Array.from({ length: Math.max(0, t.length - 1) }, (_, i) => t.slice(i, i + 2))); };
-  const grams = prose.map(l => bigrams(l.text)), section = (where: string) => where.split('(')[0];
+  const section = (where: string) => where.split('(')[0];
+  const raw = prose.map(l => bigrams(l.text)), spread = new Map<string, Set<string>>();
+  raw.forEach((set, i) => set.forEach(g => spread.set(g, (spread.get(g) ?? new Set<string>()).add(section(prose[i].where)))));
+  const grams = raw.map(set => new Set([...set].filter(g => spread.get(g)!.size < 3)));
   const reported = new Set<number>();
   prose.forEach((l, i) => {
     for (let j = 0; j < i; j++) {
@@ -250,9 +267,11 @@ export function checkPlanDocument(doc: PlanDocumentV2, context: PlanContext & { 
       const pair = [section(prose[j].where), section(l.where)].sort().join();
       if (reported.has(i) || section(prose[j].where) === section(l.where) || pair === '기대 효과,추진 목적') continue;
       const [a, b] = grams[i].size <= grams[j].size ? [grams[i], grams[j]] : [grams[j], grams[i]];
-      if (a.size < 10) continue;
       const shared = [...a].filter(g => b.has(g)).length;
-      if (shared / a.size >= 0.75) { add('warn', l.where, `${prose[j].where}과(와) 같은 내용을 되풀이합니다. 한 곳에만 써 주세요.`); reported.add(i); }
+      // 거의 같은 문장은 주제어를 빼지 않고도 서로 대부분 겹친다. 세 목차 이상에 되풀이해도 잡는다.
+      const [ra, rb] = [raw[i], raw[j]], rawShared = [...ra].filter(g => rb.has(g)).length;
+      const same = Math.min(ra.size, rb.size) >= 10 && rawShared / Math.max(ra.size, rb.size) >= 0.75;
+      if (same || (a.size >= 10 && shared / a.size >= 0.75)) { add('warn', l.where, `${withGwa(prose[j].where)} 같은 내용을 되풀이합니다. 한 곳에만 써 주세요.`); reported.add(i); }
     }
   });
 

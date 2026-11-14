@@ -1,6 +1,8 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { MissionState } from './missionApi';
+import { MissionStudentProgress } from './MissionStudentProgress';
 import {
   emptyMissionActivity, missionStatisticsPage, missionStatisticsRangeError, recentMissionStatisticsRange,
   summarizeMissionStatistics, type MissionActivityCounts,
@@ -18,20 +20,29 @@ const focus = 'focus-visible:outline focus-visible:outline-2 focus-visible:outli
 const pageButton = `inline-flex min-h-11 items-center gap-1 rounded-lg border border-[#CBD5E1] bg-white px-2.5 text-sm font-semibold text-[#334155] hover:border-[#0F6CBD] ${focus}`;
 const zeroCounts = emptyMissionActivity();
 
-export function MissionStatisticsPanel({ state }: { state: MissionState }) {
-  const [range, setRange] = useState(recentMissionStatisticsRange);
+export function MissionStatisticsPanel({ state, boardId, maskNames, onMaskNamesChange }: {
+  state: MissionState; boardId: string; maskNames: boolean; onMaskNamesChange: (masked: boolean) => void;
+}) {
+  const [params, setParams] = useSearchParams();
+  const [defaultRange] = useState(recentMissionStatisticsRange);
+  const start = params.get('start') ?? '';
+  const end = params.get('end') ?? '';
+  const range = useMemo(() => missionStatisticsRangeError({ start, end }) ? defaultRange : { start, end }, [start, end, defaultRange]);
   const [input, setInput] = useState(range);
   const [error, setError] = useState<ReturnType<typeof missionStatisticsRangeError>>(null);
   const [page, setPage] = useState(0);
   const [expandedDate, setExpandedDate] = useState('');
+  const viewFromUrl = params.get('view') === 'students' ? 'students' : 'daily';
+  const [view, setView] = useState(viewFromUrl);
+  useEffect(() => setView(viewFromUrl), [viewFromUrl]);
+  useEffect(() => { setInput(range); setError(null); setPage(0); setExpandedDate(''); }, [range]);
   const { totals, byDate } = useMemo(() => summarizeMissionStatistics(state, range), [state, range]);
   const { dates, pageCount } = missionStatisticsPage(range, page);
 
   return <section className="rounded-2xl border border-[#DCE3EA] bg-white" aria-labelledby="mission-statistics-heading">
-    <div className="p-4 sm:p-6">
-      <h2 id="mission-statistics-heading" className="text-lg font-extrabold">일별 미션 활동</h2>
-      <p className="mt-1.5 text-sm leading-6 text-[#526174]">활동이 있었던 날짜에 집계합니다(한국 시간). 같은 학생이 여러 번 상태를 바꾸면 각각 셉니다.</p>
-      <form className="mt-4" noValidate onSubmit={(event) => {
+    <div className="p-3 sm:p-6">
+      <h2 id="mission-statistics-heading" className="sr-only sm:not-sr-only sm:text-lg sm:font-extrabold">미션 통계</h2>
+      <form className="sm:mt-4" noValidate onSubmit={(event) => {
         event.preventDefault();
         const issue = missionStatisticsRangeError(input);
         setError(issue);
@@ -39,25 +50,48 @@ export function MissionStatisticsPanel({ state }: { state: MissionState }) {
           (event.currentTarget.elements.namedItem(issue.field) as HTMLInputElement).focus();
           return;
         }
-        setRange(input);
+        setParams((current) => {
+          const next = new URLSearchParams(current);
+          next.set('start', input.start);
+          next.set('end', input.end);
+          return next;
+        }, { replace: true });
         setPage(0);
         setExpandedDate('');
       }}>
-        <div className="grid max-w-xl grid-cols-2 items-end gap-2 sm:grid-cols-[1fr_1fr_auto] sm:gap-3">
+        <div className="grid max-w-xl grid-cols-2 items-end gap-2 min-[380px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:gap-3">
           <label className="min-w-0 text-sm font-bold">시작일
-            <input name="start" type="date" className={dateInput} value={input.start} aria-invalid={error?.field === 'start'}
+            <input name="start" type="date" autoComplete="off" className={dateInput} value={input.start} aria-invalid={error?.field === 'start'}
               aria-describedby={error?.field === 'start' ? 'mission-statistics-error' : undefined}
               onChange={(event) => { setInput({ ...input, start: event.target.value }); setError(null); }} />
           </label>
           <label className="min-w-0 text-sm font-bold">종료일
-            <input name="end" type="date" className={dateInput} value={input.end} aria-invalid={error?.field === 'end'}
+            <input name="end" type="date" autoComplete="off" className={dateInput} value={input.end} aria-invalid={error?.field === 'end'}
               aria-describedby={error?.field === 'end' ? 'mission-statistics-error' : undefined}
               onChange={(event) => { setInput({ ...input, end: event.target.value }); setError(null); }} />
           </label>
-          <button type="submit" className={`col-span-2 min-h-11 rounded-xl bg-[#0F6CBD] px-4 py-2 text-sm font-bold text-white hover:bg-[#0B5B9F] sm:col-span-1 ${focus}`}>조회</button>
+          <button type="submit" className={`col-span-2 min-h-11 rounded-xl bg-[#0F6CBD] px-3 py-2 text-sm font-bold text-white hover:bg-[#0B5B9F] min-[380px]:col-span-1 sm:px-4 ${focus}`}>조회</button>
         </div>
         {error ? <p id="mission-statistics-error" role="alert" className="mt-2 text-sm font-semibold text-[#B42318]">{error.message}</p> : null}
       </form>
+
+      <fieldset className="mt-2 flex flex-wrap gap-2 sm:mt-5">
+        <legend className="sr-only">통계 보기</legend>
+        {([['daily', '일별 활동'], ['students', '학생별 현황']] as const).map(([value, label]) => <label key={value}
+          className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm font-bold ${view === value ? 'border-[#0F6CBD] bg-[#EFF6FC] text-[#0B5B9F]' : 'border-[#DCE3EA] text-[#334155]'}`}>
+          <input type="radio" name="mission-statistics-view" value={value} checked={view === value} onChange={() => {
+            setView(value);
+            setParams((current) => {
+              const next = new URLSearchParams(current);
+              if (value === 'students') next.set('view', value);
+              else next.delete('view');
+              return next;
+            }, { replace: true });
+          }} className="accent-[#0F6CBD]" />{label}
+        </label>)}
+      </fieldset>
+      {view === 'daily' ? <>
+      <p className="mt-4 text-sm leading-6 text-[#526174]">활동 날짜별로 집계합니다(한국 시간). 같은 학생의 여러 변경도 각각 셉니다.</p>
 
       <h3 className="mt-6 text-sm font-bold" aria-live="polite">기간 합계 <span className="ml-1 inline-block font-normal tabular-nums text-[#526174]">{range.start} ~ {range.end}</span></h3>
       <dl className="mt-2 grid grid-cols-4 divide-x divide-[#DCE3EA] rounded-xl border border-[#DCE3EA] bg-[#F8FAFC]">
@@ -66,9 +100,10 @@ export function MissionStatisticsPanel({ state }: { state: MissionState }) {
           <dd className={`mt-0.5 break-words text-xl font-extrabold tabular-nums sm:text-2xl ${tone}`}>{totals[metric].toLocaleString('ko-KR')}<span className="ml-1 text-xs font-medium">건</span></dd>
         </div>)}
       </dl>
+      </> : null}
     </div>
 
-    {byDate.size ? <>
+    {view === 'students' ? <MissionStudentProgress key={boardId} state={state} range={range} maskNames={maskNames} onMaskNamesChange={onMaskNamesChange} /> : byDate.size ? <>
       {pageCount > 1 ? <nav aria-label="일별 통계 페이지" className="flex flex-wrap items-center justify-center gap-3 border-t border-[#DCE3EA] px-3 py-2 sm:justify-end sm:px-6">
         <button type="button" className={`${pageButton} aria-disabled:opacity-60`} aria-disabled={page === 0} onClick={() => { if (page > 0) { setPage(page - 1); setExpandedDate(''); } }}><ChevronLeft aria-hidden="true" className="h-4 w-4" />최근 날짜</button>
         <span role="status" className="text-sm tabular-nums text-[#526174]">{page + 1} / {pageCount}</span>
