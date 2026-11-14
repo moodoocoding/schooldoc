@@ -43,6 +43,19 @@ describe('평어 중복 차단과 자동 재작성', () => {
     expect(rejected.error).toContain('「글의 중심 내용을 요약함」');
     expect(rejected.error).not.toContain('「평균값을 정확히 계산함」');
   });
+  test.each(['주요 문장을 중심으로 평균을 구함.', '살펴본 자료의 짜임을 바탕으로 평균을 구함.', '살펴보면 자료의 평균을 바르게 구함.'])(
+    '첫 문장을 빈 도입구로 시작한 평어는 재작성 대상으로 돌려보낸다: %s', (opening) => {
+      const result = createClassOutputValidator(input()).accept(raw('s1', fitCommentLengthForTest(opening)));
+      expect(result).toMatchObject({ id: 's1', comment: null });
+      expect(result.error).toContain('도입구로 시작하지 말고');
+    },
+  );
+  test('첫 문장이 아닌 곳의 바탕으로 표현과 앞 네 어절 뒤의 표현은 허용한다', () => {
+    const later = fitCommentLengthForTest('주어진 자료의 평균을 정확하게 구함. 계산한 값을 바탕으로 자료의 특징을 설명함.');
+    expect(createClassOutputValidator(input()).accept(raw('s1', later)).error).toBe('');
+    const distant = fitCommentLengthForTest('주어진 여러 자료의 평균값을 구한 결과를 바탕으로 특징을 설명함.');
+    expect(createClassOutputValidator(input()).accept(raw('s1', distant)).error).toBe('');
+  });
   test('첫 응답이 정상이면 학급 전체를 한 번만 요청한다', async () => {
     const request = vi.fn(async (next, _signal, onRow) => {
       const validator = createClassOutputValidator(next);

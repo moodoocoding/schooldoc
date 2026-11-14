@@ -166,7 +166,7 @@ export function createClassOutputValidator(input: ClassCommentInput) {
       const style = commentStyleContext([rejectedText]);
       const overlappingStarts = style.usedStarts.filter((start) => reservedStarts.has(start));
       if (overlappingStarts.length)
-        throw new Error(`평어 맨 처음의 '${overlappingStarts.join("', '")}'이 다른 학생의 시작과 겹칩니다. 배정된 첫 평가 영역에서 대상·방법·결과 중 시작 내용을 바꾸고, 중복 없는 나머지 문장은 유지해 주세요.`);
+        throw new Error(`평어 맨 처음의 '${overlappingStarts.join("', '")}'이 다른 학생의 시작과 겹칩니다. 배정된 첫 평가 영역에서 대상·방법·결과 중 시작 내용을 바꾸고, 중복 없는 나머지 문장은 유지해 주세요. 낱말을 붙여 쓰거나 도입구를 붙여 첫 단어만 바꾸지 마세요.`);
       const previous = { id: 'accepted', text: acceptedText.join('\n') };
       const repeatsSentence = (candidate: string) => repeatedCommentIds([
         previous, { id, text: candidate },
