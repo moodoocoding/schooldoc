@@ -132,6 +132,7 @@ describe('시기 순서상 오른 성적', () => {
     for (const [text, grade] of [[teacherExample, 'high'] as const, ...subjectExamples]) {
       expect(text).not.toBe('');
       expect(text).not.toContain(',');
+      expect(text).not.toMatch(/(?:솜씨|능력|힘)이\s*(?:뛰어남|우수함|돋보임)/u);
       expect(recordTextProblems(text)).toEqual([]);
       const sentences = text.split(/(?<=\.)\s+/u).filter(Boolean);
       expect(sentences.length).toBeGreaterThanOrEqual(5);
