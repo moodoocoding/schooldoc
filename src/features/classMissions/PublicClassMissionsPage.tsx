@@ -14,7 +14,7 @@ function MissionCard({ mission, busy, onMark }: { mission: PublicMission; busy: 
     : mission.check === 'reported' ? '완료 표시' : mission.check === 'exempt' ? '해당 없음'
       : mission.status === 'closed' ? '종료' : today > mission.dueDate ? '마감 지남' : today < mission.startDate ? '시작 전' : '해야 할 일';
   return <article className={`rounded-2xl border p-5 shadow-sm ${isDone ? 'border-[#B7D7C5] bg-[#F7FCF8]' : 'border-[#DCE3EA] bg-white'}`}>
-    <div className="flex items-start gap-3"><span className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isDone ? 'bg-[#E6F4EA] text-[#126B32]' : 'bg-[#EFF6FC] text-[#0F6CBD]'}`}>{isDone ? <CheckCircle2 className="h-6 w-6" aria-hidden="true" /> : <Circle className="h-6 w-6" aria-hidden="true" />}</span><div className="min-w-0 flex-1"><p className="text-xs font-extrabold text-[#526174]">{state}</p><h2 className="mt-1 break-words text-lg font-extrabold text-[#0F172A]">{mission.title}</h2></div></div>
+    <div className="flex items-start gap-3"><span className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isDone ? 'bg-[#E6F4EA] text-[#126B32]' : 'bg-[#EFF6FC] text-[#0F6CBD]'}`}>{isDone ? <CheckCircle2 className="h-6 w-6" aria-hidden="true" /> : <Circle className="h-6 w-6" aria-hidden="true" />}</span><div className="min-w-0 flex-1"><p className="text-xs font-extrabold text-[#526174]">{state}</p><h2 id={`student-mission-${mission.id}`} tabIndex={-1} className="mt-1 scroll-mt-4 break-words rounded text-lg font-extrabold text-[#0F172A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0F6CBD]">{mission.title}</h2></div></div>
     {mission.description ? <p className="mt-4 whitespace-pre-wrap break-words text-sm leading-6 text-[#334155]">{mission.description}</p> : null}
     <p className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-[#526174]"><Clock3 className="h-4 w-4" aria-hidden="true" />{mission.startDate} ~ {mission.dueDate}</p>
     {mission.checkedAt ? <p className="mt-1 text-xs text-[#526174]">마지막 변경: {new Date(mission.checkedAt).toLocaleString('ko-KR')}</p> : null}
@@ -37,6 +37,7 @@ function StudentMissions({ token }: { token: string }) {
   const inFlight = useRef(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const focusMissionId = useRef<string | null>(null);
   const [studentNameInput, setStudentNameInput] = useState('');
   const [studentName, setStudentName] = useState('');
   const [view, setView] = useState<PublicMissionView | null>(null);
@@ -46,6 +47,13 @@ function StudentMissions({ token }: { token: string }) {
   const connected = Boolean(view);
   useEffect(() => () => { generation.current += 1; }, []);
   useEffect(() => { if (connected) headingRef.current?.focus(); else inputRef.current?.focus(); }, [connected]);
+  useEffect(() => {
+    const id = focusMissionId.current;
+    if (!id || busy || !view) return;
+    focusMissionId.current = null;
+    const heading = document.getElementById(`student-mission-${id}`);
+    (heading?.getClientRects().length ? heading : headingRef.current)?.focus();
+  }, [busy, view]);
   const enter = async (event: React.FormEvent) => {
     event.preventDefault();
     if (inFlight.current) return;
@@ -72,7 +80,11 @@ function StudentMissions({ token }: { token: string }) {
     if (inFlight.current || !studentName) return;
     const request = ++generation.current; inFlight.current = true;
     setBusy(true); setError(''); setMessage('');
-    try { const updated = await markPublicMission(token, studentName, missionId, status); if (request !== generation.current) return; setView(updated); setMessage(status === 'unmarked' ? '완료 표시를 취소했습니다.' : '완료 표시를 저장했습니다.'); }
+    try { const updated = await markPublicMission(token, studentName, missionId, status); if (request !== generation.current) return;
+      if (document.activeElement === document.body || document.getElementById(`student-mission-${missionId}`)?.closest('article')?.contains(document.activeElement)) {
+        focusMissionId.current = missionId;
+      }
+      setView(updated); setMessage(status === 'unmarked' ? '완료 표시를 취소했습니다.' : '완료 표시를 저장했습니다.'); }
     catch (cause) { if (request === generation.current) setError(cause instanceof Error ? cause.message : '저장하지 못했습니다. 다시 시도해 주세요.'); }
     finally { if (request === generation.current) { inFlight.current = false; setBusy(false); } }
   };

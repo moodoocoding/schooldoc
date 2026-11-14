@@ -34,6 +34,7 @@ function AdminApp() {
   const location = useLocation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<SidebarTab>('home');
+  const [missionDraftDirty, setMissionDraftDirty] = useState(false);
   const [isOpenMobile, setIsOpenMobile] = useState<boolean>(false);
   const [quickMenuIds, setQuickMenuIds] = useState<string[]>(['notice-collect', 'student-lookup']);
   const [isOpenNotifications, setIsOpenNotifications] = useState<boolean>(false);
@@ -178,9 +179,13 @@ function AdminApp() {
     // 아직 만들지 않은 도구는 열지 않는다. 단계와 업로드가 있는 화면이 열리면
     // 동작하는 줄 알고 자료를 올리게 된다.
     if (!route) return;
+    if (!confirmLeavingMission(route)) return;
     if (toolId === 'neis-comments') setActiveTab('home');
     navigate(route);
   };
+
+  const confirmLeavingMission = (route: string) => !isClassMissionsRoute || route === location.pathname || !missionDraftDirty
+    || window.confirm('저장하지 않은 미션 작성 내용이 있습니다. 이동할까요?');
 
   const handleAddQuickMenu = (toolId: string) => {
     if (!visibleToolsMap[toolId]) return;
@@ -201,6 +206,7 @@ function AdminApp() {
       <Sidebar
         activeTab={activeTab}
         setActiveTab={(tab) => {
+          if (!confirmLeavingMission('/')) return;
           setActiveTab(tab);
           navigate('/');
         }}
@@ -236,7 +242,7 @@ function AdminApp() {
               : isConsentFormsRoute ? <ConsentFormsWorkspace />
               : isSpecialRoomsRoute ? <SpecialRoomsWorkspace />
               : isDataCollectRoute ? <DataCollectWorkspace />
-              : isClassMissionsRoute ? <ClassMissionsWorkspace />
+              : isClassMissionsRoute ? <ClassMissionsWorkspace onUnsavedChange={setMissionDraftDirty} />
               : isNeisHelperRoute ? location.pathname.endsWith('/subject') ? <SubjectWorkspace key={user?.id} /> : <NeisHelperPage />
               : isClassroomRolesRoute ? <Routes><Route path="/tools/classroom-roles/*" element={<ClassroomRolesWorkspace />} /></Routes>
               : !authLoading && canUseReceiptBooks ? <ReceiptBooksWorkspace key={user?.id} />
