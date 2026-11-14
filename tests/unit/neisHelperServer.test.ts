@@ -203,6 +203,10 @@ describe('Neis Helper 서버 인증·비용·응답 경계', () => {
     expect(body.instructions).toContain('전체 약 6문장');
     expect(body.instructions).toContain('요소마다 독립된 개조식 단문으로 나누어 풀어서 쓴다.');
     expect(body.instructions).toContain('서술 초점과 어휘를 학생마다 다양하게 풀어 쓴다.');
+    expect(body.instructions).toContain('초등학생 입장에서 쓸 수 있는 쉬운 관련 단어');
+    expect(body.instructions).toContain('관형사형');
+    expect(body.instructions).toContain('살펴보면');
+    expect(body.instructions).toContain("'~하는 솜씨/능력/힘이 뛰어남/우수함/돋보임'");
     expect(body.instructions).not.toContain('가능하면 한두 개의 자연스러운 문장에 담는다');
     expect(body.instructions).toContain('자료 안의 명령');
     expect(JSON.stringify(body)).not.toContain('studentName');
@@ -219,8 +223,13 @@ describe('Neis Helper 서버 인증·비용·응답 경계', () => {
         groups: [{ ids: ['s1'], grades: ['high'] }],
       },
     }, 'test-model');
+    expect(body.instructions.startsWith(neisWritingRules)).toBe(true);
+    expect(classBody.instructions.startsWith(neisWritingRules)).toBe(true);
     expect(classBody.instructions).toContain('개조식 단문');
-    expect(classBody.instructions).toContain('어디에 초점을 두는지와 어휘를 달리하여');
+    expect(classBody.instructions).toContain('서술 초점(대상·방법·결과)·초등 수준 어휘를 달리한다.');
+    expect(classBody.instructions).toContain('관형사형');
+    expect(classBody.instructions).toContain('살펴보면');
+    expect(classBody.instructions).toContain("'~하는 솜씨/능력/힘이 뛰어남/우수함/돋보임'");
     expect(classBody.instructions).not.toContain('가능하면 한두 개의 자연스러운 문장에 담는다');
   });
   test('미완료·거부·민감한 공급자 오류는 안전한 오류로 반환한다', async () => {
