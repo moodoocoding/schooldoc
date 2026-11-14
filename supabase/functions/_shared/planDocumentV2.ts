@@ -155,6 +155,8 @@ const DEADLINE = /마감|기한|제출|신청/u;
 const SUBMISSION = /제출|보고|신청|접수|등록/u;
 // 사업에 필요하지 않으면 습관적으로 들어가기 쉬운 제도·행사.
 const HABITUAL = ['시상', '심사', '위원회', 'TF', '발표회', '전시회', '우승', '수업 적용', '의무 시수', '자율과제'];
+// 방법 없이 미루기만 하는 표현.
+const VACUOUS = /(사전에|미리|추후|별도로?|나중에)\s*(정해|정하여|정한\s*뒤|결정|확정|안내\s*후)|정해\s*안내|안내\s*후\s*운영|방안\s*마련/u;
 const COUNTED = /(\d[\d,]*)\s*(명|점|시간|차시|회|개교|팀|부|만\s*원|원)/gu;
 
 export function checkPlanDocument(doc: PlanDocumentV2, context: PlanContext & { referenceTypeResolved?: string }): PlanIssue[] {
@@ -182,6 +184,8 @@ export function checkPlanDocument(doc: PlanDocumentV2, context: PlanContext & { 
     else if (b.total !== amount) add('block', where, `금액 ${b.total!.toLocaleString('ko-KR')}원이 단가×수량(${amount!.toLocaleString('ko-KR')}원)과 다릅니다.`);
   });
   const sum = planBudgetSum(doc);
+  const lump = doc.budget.length === 1 ? doc.budget[0] : null;
+  if (status === 'specified' && lump && lump.quantity === 1 && lump.total !== null && (lump.total === school || lump.total === limit)) add('confirm', '소요 예산', '예산이 총액 한 줄입니다. 용도별 산출 내역(단가×수량)으로 나눠 주세요.');
   if (school !== null && school > 0 && sum > school) add('block', '소요 예산', `예산 합계 ${sum.toLocaleString('ko-KR')}원이 학교 예산 ${school.toLocaleString('ko-KR')}원을 넘습니다.`);
   if (limit !== null && sum > limit) add('block', '소요 예산', `예산 합계 ${sum.toLocaleString('ko-KR')}원이 공문 상한 ${limit.toLocaleString('ko-KR')}원을 넘습니다.`);
 
@@ -217,6 +221,9 @@ export function checkPlanDocument(doc: PlanDocumentV2, context: PlanContext & { 
     if (last && SUBMISSION.test(s.task)) for (const { r, date } of deadlines) if (dayNumber(last) > dayNumber(date)) add('warn', where, `공문 마감(${date.m}. ${date.d}.)보다 늦습니다: "${r.text}"`);
     if (!s.date) add('confirm', where, `"${s.task}"의 시기가 정해지지 않았습니다.`);
   });
+  const sameDates = new Map<string, number>();
+  for (const s of doc.schedule) if (s.date) sameDates.set(squash(s.date), (sameDates.get(squash(s.date)) ?? 0) + 1);
+  if ([...sameDates.values()].some(n => n > 1)) add('confirm', '추진 일정', '여러 단계의 시기가 같습니다. 단계별 시기를 나눠 주세요.');
 
   // 근거 없는 제도·수치·법령.
   const contest = context.referenceTypeResolved === 'contest';
@@ -232,15 +239,25 @@ export function checkPlanDocument(doc: PlanDocumentV2, context: PlanContext & { 
     for (const m of l.text.matchAll(/[가-힣]+법\s*제\s*\d+\s*조|제\s*\d{2,}\s*호/gu)) if (!inputSquash.includes(squash(m[0]))) add('warn', l.where, `'${m[0]}'의 근거를 공문·입력에서 찾지 못했습니다.`);
   }
 
-  // 같은 문장이 여러 목차에 반복되는지.
-  const seen = new Map<string, string>();
-  for (const l of lines) {
-    const key = squash(l.text);
-    if (key.length < 12) continue;
-    const before = seen.get(key);
-    if (before && before.split('(')[0] !== l.where.split('(')[0]) add('warn', l.where, `${before}과(와) 같은 문장입니다.`);
-    else seen.set(key, l.where);
-  }
+  // 같은 내용이 여러 목차에 반복되는지. 표현이 조금 달라도 짧은 쪽의 글자 쌍 대부분이 긴 쪽에 있으면 반복으로 본다.
+  const prose = lines.filter(l => !/^(추진 일정|소요 예산|운영 개요|세부 추진 계획$)/u.test(l.where));
+  const bigrams = (v: string) => { const t = squash(v.replace(/^[^:]{1,20}:\s*/u, '')); return new Set(Array.from({ length: Math.max(0, t.length - 1) }, (_, i) => t.slice(i, i + 2))); };
+  const grams = prose.map(l => bigrams(l.text)), section = (where: string) => where.split('(')[0];
+  const reported = new Set<number>();
+  prose.forEach((l, i) => {
+    for (let j = 0; j < i; j++) {
+      // 기대 효과가 추진 목적과 짝을 이루는 것은 계획서의 관례이므로 반복으로 보지 않는다.
+      const pair = [section(prose[j].where), section(l.where)].sort().join();
+      if (reported.has(i) || section(prose[j].where) === section(l.where) || pair === '기대 효과,추진 목적') continue;
+      const [a, b] = grams[i].size <= grams[j].size ? [grams[i], grams[j]] : [grams[j], grams[i]];
+      if (a.size < 10) continue;
+      const shared = [...a].filter(g => b.has(g)).length;
+      if (shared / a.size >= 0.75) { add('warn', l.where, `${prose[j].where}과(와) 같은 내용을 되풀이합니다. 한 곳에만 써 주세요.`); reported.add(i); }
+    }
+  });
+
+  // 방법이 없는 제안: '(안)'을 붙였지만 '정해 안내', '추후 결정'처럼 실제 방법이 없는 문장.
+  for (const l of lines) if (l.text.includes('(안)') && VACUOUS.test(l.text)) add('warn', l.where, '(안)에 구체적인 방법이 없습니다. 방법을 쓰거나 학교 확인 사항으로 옮겨 주세요.');
 
   for (const u of doc.meta.unknowns) add('confirm', '학교 확인', u);
   const proposals = lines.filter(l => l.text.includes('(안)'));

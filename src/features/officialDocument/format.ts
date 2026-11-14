@@ -142,7 +142,7 @@ export const levelIndent = (level: number, size: number) => (level - 1) * size;
 /** 출력기가 그대로 그리는 줄 단위 배치 결과. */
 export type OfficialLine =
   | { kind: 'title'; text: string }
-  | { kind: 'item' | 'note'; level: number; marker: string; text: string; heading: boolean; pageBreakBefore: boolean }
+  | { kind: 'item' | 'note'; level: number; marker: string; text: string; heading: boolean; pageBreakBefore: boolean; keepWithNext: boolean }
   | { kind: 'table'; level: number; columns: OfficialTableColumn[]; rows: string[][] };
 
 /** 본문 트리를 항목 기호가 정해진 줄로 펼친다. */
@@ -156,9 +156,11 @@ export function bodyLines(nodes: OfficialNode[], gaejosik: boolean, nested: bool
       if (node.kind === 'item') {
         const marker = single ? '' : officialMarker(level, index, gaejosik);
         index++;
-        lines.push({ kind: 'item', level, marker, text: marker ? `${marker} ${node.text}` : node.text, heading: level === 1 && nested, pageBreakBefore: !!node.pageBreakBefore });
+        lines.push({ kind: 'item', level, marker, text: marker ? `${marker} ${node.text}` : node.text, heading: level === 1 && nested, pageBreakBefore: !!node.pageBreakBefore,
+          // 하위 항목·표가 있는 항목은 제목 구실을 하므로 쪽 끝에 홀로 남기지 않는다.
+          keepWithNext: (level === 1 && nested) || !!node.children?.length });
         walk(node.children ?? [], level + 1);
-      } else if (node.kind === 'note') lines.push({ kind: 'note', level, marker: '※', text: `※ ${node.text}`, heading: false, pageBreakBefore: false });
+      } else if (node.kind === 'note') lines.push({ kind: 'note', level, marker: '※', text: `※ ${node.text}`, heading: false, pageBreakBefore: false, keepWithNext: false });
       else lines.push({ kind: 'table', level, columns: node.columns, rows: node.rows });
     }
   };
@@ -173,3 +175,37 @@ export function layoutOfficialDocument(document: OfficialDocument): OfficialLine
 }
 /** 표 머리행까지 포함한 셀 글자 목록(보존 검사·본문 읽기용). */
 export const tableCells = (line: Extract<OfficialLine, { kind: 'table' }>) => [line.columns.map(c => c.label), ...line.rows];
+
+/** 내용으로 너비를 정할 표 열. min·max는 HWPUNIT. */
+export interface FitColumn { label: string; min: number; max?: number; align?: OfficialTableColumn['align'] }
+/**
+ * 열 너비를 내용 길이에 맞춰 나눈다. 한 줄에 들어가면 그만큼만 주고(최대 max),
+ * 전체 폭이 남으면 max가 없는 열(긴 글 열)에 나누고, 모자라면 min을 넘는 몫에 비례해 줄인다.
+ * 짧은 값만 있는 열(예: 담당 '미정')이 넓어지고 긴 단계 이름이 여러 줄로 꺾이는 것을 막는다.
+ */
+export function fitTableColumns(columns: FitColumn[], rows: string[][], total: number, size = pt(12), font = '휴먼명조'): OfficialTableColumn[] {
+  const pad = 800; // 칸 안 좌우 여백 566 + 테두리·글자 여유
+  const need = columns.map((c, i) => Math.max(textAdvance(c.label, size, font), ...rows.map(r => textAdvance(r[i] ?? '', size, font))) + pad);
+  let widths = columns.map((c, i) => Math.min(c.max ?? total, Math.max(c.min, need[i])));
+  const sum = (list: number[]) => list.reduce((a, b) => a + b, 0);
+  const diff = total - sum(widths);
+  if (diff < 0) {
+    // 긴 글 열(max 없음)부터 줄인다. 짧은 값 열(단계·금액 등)은 한 줄을 지키고, 그래도 모자랄 때만 줄인다.
+    let short = -diff;
+    for (const pass of [(c: FitColumn) => c.max === undefined, () => true]) {
+      const room = widths.map((w, i) => pass(columns[i]) ? w - columns[i].min : 0), roomSum = sum(room);
+      if (!roomSum || short <= 0) continue;
+      const take = Math.min(short, roomSum);
+      widths = widths.map((w, i) => w - take * room[i] / roomSum);
+      short -= take;
+    }
+  } else if (diff > 0) {
+    const free = columns.map(c => c.max === undefined);
+    const base = widths.map((w, i) => free.some(Boolean) ? (free[i] ? w : 0) : w), baseSum = sum(base);
+    widths = widths.map((w, i) => w + diff * base[i] / baseSum);
+  }
+  const rounded = widths.map(Math.round);
+  const widest = rounded.indexOf(Math.max(...rounded));
+  rounded[widest] += total - sum(rounded);
+  return columns.map((c, i) => ({ label: c.label, width: rounded[i], ...(c.align ? { align: c.align } : {}) }));
+}

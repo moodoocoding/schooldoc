@@ -219,6 +219,11 @@ test('모바일·키보드·접근성·200% 화면 밀도를 확인한다', asyn
   await page.getByLabel('AI 수정 요청').fill('준비를 일주일 앞당겨 주세요.');
   await page.getByRole('button', { name: 'AI 수정안 보기' }).click();
   await expect(page.getByRole('heading', { name: '수정안 비교', exact: true })).toBeVisible(); await decisions(page);
+  // 바뀐 목차(추진 일정)만 보이고, 새 줄은 삽입 표시로 구분한다.
+  const changes = page.getByRole('group', { name: '수정안에서 바뀐 목차' });
+  await expect(changes.getByRole('heading')).toHaveText(['추진 일정']);
+  await expect(changes.locator('ins')).toContainText('10월 셋째 주(안)');
+  await page.screenshot({ path: 'test-results/school-plan/revision-changes-desktop.png', fullPage: true });
   await page.getByRole('button', { name: '기존 초안 유지' }).click();
   await expect(review(page)).toContainText('2026. 10. 26.');
   await page.setViewportSize({ width: 683, height: 450 });
