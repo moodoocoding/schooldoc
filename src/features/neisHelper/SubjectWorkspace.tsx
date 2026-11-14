@@ -60,6 +60,7 @@ export function SubjectWorkspace() {
   const [busy, setBusy] = useState('');
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [lastDone, setLastDone] = useState('');
+  const [generatingIds, setGeneratingIds] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [mismatch, setMismatch] = useState<AssessmentPlan | null>(null);
@@ -112,6 +113,7 @@ export function SubjectWorkspace() {
     setBusy(label);
     setProgress(null);
     setLastDone('');
+    setGeneratingIds([]);
     setError('');
     setNotice('');
     try {
@@ -123,6 +125,7 @@ export function SubjectWorkspace() {
         setBusy('');
         setProgress(null);
         setLastDone('');
+        setGeneratingIds([]);
       }
     }
   }
@@ -131,6 +134,7 @@ export function SubjectWorkspace() {
     request.current?.abort();
     setBusy('');
     setProgress(null);
+    setGeneratingIds([]);
     setNotice('중단했습니다. 이미 만든 평어와 넣은 파일은 유지됩니다.');
   }
   function pickFile(files: FileList | null, kind: 'plan' | 'grades'): File | null {
@@ -236,10 +240,12 @@ export function SubjectWorkspace() {
     const { input, idMap } = buildClassRequest(draft.subject, draft.length, source.book, targets, assessments, mappings, {}, source.results ?? draft.results);
     const received = new Set<string>();
     setProgress({ done: 0, total: targets.length });
+    setGeneratingIds(targets.map((s) => s.id));
     await generateClassComments(input, signal, (row) => {
       const id = idMap.get(row.id);
       if (!id || !current()) return;
       received.add(id);
+      setGeneratingIds((ids) => ids.filter((other) => other !== id));
       const student = source.book.students.find((s) => s.id === id);
       if (student && row.comment) setLastDone(`${student.number}번 ${student.name}`);
       setDraft((prev) => ({ ...prev, results: { ...prev.results, [id]: {
@@ -452,6 +458,7 @@ export function SubjectWorkspace() {
             students={students}
             problems={problems}
             disabled={!!busy}
+            generatingIds={generatingIds}
             onLink={relink}
             onEdit={editAssessment}
             onGrade={setGrade}

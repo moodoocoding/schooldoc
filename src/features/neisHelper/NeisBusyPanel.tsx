@@ -57,18 +57,22 @@ export function NeisBusyPanel({ label, progress, lastDone, onCancel }: {
   const waiting = !progress || progress.done === 0;
 
   return (
-    <div className="sticky top-2 z-20 mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
-        <p role="status" className="flex items-center gap-2 font-semibold text-blue-900">
+    <div className="sticky top-2 z-20 mb-6 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 shadow-sm sm:p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p role="status" className="flex min-w-0 items-center gap-2 font-semibold text-blue-900">
           <LoaderCircle aria-hidden="true" className="h-5 w-5 shrink-0 motion-safe:animate-spin" />
-          <span>
+          <span className="break-keep">
             {label}
             {progress ? ` ${progress.done} / ${progress.total}명` : ''}
           </span>
         </p>
-        <span className="text-sm tabular-nums text-blue-800">경과 {elapsedLabel(seconds)}</span>
+        {/* 모바일은 고정 패널 높이를 줄이려고 중단을 첫 줄에 둔다. */}
+        <button type="button" className="min-h-[44px] shrink-0 text-sm font-semibold text-blue-800 underline sm:hidden" onClick={onCancel}>
+          중단
+        </button>
+        <span className="hidden text-sm tabular-nums text-blue-800 sm:inline">경과 {elapsedLabel(seconds)}</span>
       </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-blue-100" aria-hidden="true">
+      <div className="mt-1 h-2 overflow-hidden rounded-full bg-blue-100 sm:mt-3" aria-hidden="true">
         {waiting ? (
           <div className="h-full w-1/3 rounded-full bg-blue-400 motion-safe:animate-[neis-busy_1.4s_ease-in-out_infinite]" />
         ) : (
@@ -76,11 +80,12 @@ export function NeisBusyPanel({ label, progress, lastDone, onCancel }: {
         )}
       </div>
       {/* 바뀌는 안내 문구는 화면 낭독기가 반복해서 읽지 않도록 상태 알림과 분리한다. */}
-      <p aria-hidden="true" className="mt-3 min-h-6 break-keep text-sm text-blue-900">
+      <p aria-hidden="true" className="mt-2 min-h-5 break-keep text-sm text-blue-900 sm:mt-3">
         {hint}
         {lastDone ? <span className="ml-1 text-blue-700">· 방금 {lastDone} 완료</span> : null}
       </p>
-      <div className="mt-1 flex flex-wrap items-center justify-between gap-x-4">
+      <p className="mt-1 text-xs tabular-nums text-blue-800 sm:hidden">경과 {elapsedLabel(seconds)} · 화면을 열어 둬 주세요.</p>
+      <div className="mt-1 hidden items-center justify-between gap-x-4 sm:flex">
         <p className="break-keep text-xs text-blue-800">잠시 걸릴 수 있습니다. 화면을 열어 둬 주세요.</p>
         <button type="button" className="min-h-[44px] text-sm font-semibold text-blue-800 underline" onClick={onCancel}>
           중단
