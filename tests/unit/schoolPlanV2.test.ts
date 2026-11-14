@@ -193,7 +193,7 @@ describe('운영 검수(2026-11-14)에서 나온 문제', () => {
   });
   const issues = checkPlanDocument(ucc, ctx({ conditions: { ...baseContext.conditions, budget: 300000 } }));
   test('표현이 조금 다른 방침·세부 계획의 반복을 경고한다', () => {
-    expect(levels(issues, 'warn')).toMatch(/세부 추진 계획\(참가 안내 및 작품 접수\): 운영 방침과\(와\) 같은 내용을 되풀이/);
+    expect(levels(issues, 'warn')).toMatch(/세부 추진 계획\(참가 안내 및 작품 접수\): 운영 방침과 같은 내용을 되풀이/);
   });
   test('방법 없는 (안)은 경고하고, 구체적인 (안)은 경고하지 않는다', () => {
     const vague = issues.filter(i => i.message.startsWith('(안)에 구체적인 방법이 없습니다'));
@@ -229,5 +229,42 @@ describe('운영 검수(2026-11-14)에서 나온 문제', () => {
     const leaf = lines.find(l => l.kind === 'item' && l.text === `1) ${base.detailedPlans[0].details[0]}`);
     expect(sub && sub.kind === 'item' && sub.keepWithNext).toBe(true);
     expect(leaf && leaf.kind === 'item' && leaf.keepWithNext).toBe(false);
+  });
+});
+
+describe('운영 재검수(2026-11-14)에서 나온 문제', () => {
+  // 재검수 때 실제 AI가 쓴 가상 공모전 초안에서 문제 줄을 옮겼다.
+  const topics = '디지털 예절·개인정보 보호·사이버 언어폭력 예방';
+  const recheck = doc({
+    purpose: [`${topics}에 관한 학생의 이해 및 실천 역량 함양`, 'UCC 제작을 통한 책임 있는 디지털 소통 문화 확산'],
+    policies: ['공모 주제와 작품 규격 등 교육지원청 안내 조건 준수', '학생 얼굴이 드러나는 작품은 보호자 동의서 확인 후 접수·활용'],
+    detailedPlans: [{ subTitle: '참여 및 작품 제출', details: [
+      '주제 선택: 디지털 예절, 개인정보 보호, 사이버 언어폭력 예방 중 1개',
+      '권리·동의 확인: 저작권·초상권 침해 여부 확인, 학생 얼굴이 드러나는 작품은 보호자 동의서 확인',
+    ] }],
+    schedule: [
+      { step: '안내', task: '공모 안내', date: '2027. 4. 1. ~ 4. 3. (안)', owner: null },
+      { step: '작품 접수', task: '작품 접수', date: '2027. 4. 4. ~ 4. 23. (안)', owner: null },
+      { step: '교육지원청 제출', task: '운영 결과 보고서 제출', date: '2027. 5. 8.까지', owner: null },
+    ],
+    expectedEffects: [`${topics}에 관한 학생의 실천 역량 신장`],
+  });
+  const issues = checkPlanDocument(recheck, ctx({ conditions: { ...baseContext.conditions, timing: '2027. 4. 1.~4. 30. 제출 2027. 5. 8.' } }));
+  const repeats = issues.filter(i => i.message.includes('되풀이'));
+  test('여러 목차에 걸친 공모 주제 목록은 반복으로 보지 않고, 방침·세부 계획의 실제 반복만 경고한다', () => {
+    expect(repeats.map(i => `${i.where}: ${i.message}`)).toEqual(['세부 추진 계획(참여 및 작품 제출): 운영 방침과 같은 내용을 되풀이합니다. 한 곳에만 써 주세요.']);
+  });
+  test('거의 같은 문장은 세 목차에 되풀이해도 경고하고, 문구는 받침에 맞는 조사를 쓴다', () => {
+    const d = doc({ policies: ['학생 얼굴이 드러나는 작품은 보호자 동의서 확인 후 접수'], detailedPlans: [{ subTitle: '작품 접수', details: ['학생 얼굴이 드러나는 작품은 보호자 동의서 확인 후 접수'] }], expectedEffects: ['학생 얼굴이 드러나는 작품은 보호자 동의서 확인 후 접수 문화 정착'] });
+    const msgs = checkPlanDocument(d, baseContext).filter(i => i.message.includes('되풀이')).map(i => i.message).join('\n');
+    expect(msgs).not.toContain('(와)');
+    expect(msgs).toMatch(/운영 방침과 같은/);
+  });
+  test('공문이 정하지 않은 주말 시작·종료일을 경고하고, 공문이 정한 날짜는 그대로 둔다', () => {
+    const weekend = issues.filter(i => i.message.includes('주말 운영이 아니면'));
+    expect(weekend.map(i => i.message.split('입니다')[0])).toEqual(['4. 3.은 토요일', '4. 4.은 일요일']);
+    // 5. 8.도 토요일이지만 공문(입력)이 정한 마감일이므로 경고하지 않는다.
+    expect(weekend.map(i => i.message).join()).not.toContain('5. 8.');
+    expect(corePrompt).toContain('시작일·종료일은 평일로');
   });
 });
