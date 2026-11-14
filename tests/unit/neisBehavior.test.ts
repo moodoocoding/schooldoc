@@ -49,6 +49,12 @@ describe('행동특성 자료와 문장 검사', () => {
     }
     const payload = buildBehaviorAiRequest({ ...input(), length }, 'fixture-model');
     expect(payload.instructions).toContain(`반드시 ${min}~${max}자 범위`);
+    const pattern = new RegExp(payload.text.format.schema.properties.rows.items.properties.text.pattern, 'u');
+    expect(pattern.test('가'.repeat(min - 1))).toBe(false);
+    expect(pattern.test('가'.repeat(min))).toBe(true);
+    expect(pattern.test('가'.repeat(max))).toBe(true);
+    expect(pattern.test('가'.repeat(max + 1))).toBe(false);
+    expect(pattern.test('가'.repeat(length - 1) + '\n')).toBe(false);
     expect(JSON.parse(payload.input[0].content[0].text).length).toBe(length);
   });
   test('400자 선택에 100자 응답이 오면 완료용 정상 행으로 수용하지 않는다', () => {
