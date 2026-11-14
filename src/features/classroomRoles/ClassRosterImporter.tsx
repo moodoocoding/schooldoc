@@ -9,11 +9,12 @@ import { RoleError, RoleField, roleButton, roleInput, roleSecondary } from './Ro
 
 interface Props {
   disabled: boolean;
+  applyHelp?: string;
   onApply: (text: string) => void;
   onPendingChange: (pending: boolean) => void;
 }
 
-export function ClassRosterImporter({ disabled, onApply, onPendingChange }: Props) {
+export function ClassRosterImporter({ disabled, onApply, onPendingChange, applyHelp = '적용하면 아래 편집 명단을 이 명단으로 바꿉니다. 수정 후 ‘학생 명단 저장’을 눌러야 저장됩니다.' }: Props) {
   const [mode, setMode] = useState<'file' | 'paste'>('file');
   const [pastedText, setPastedText] = useState('');
   const [sheets, setSheets] = useState<ImportSheet[]>([]);
@@ -142,7 +143,7 @@ export function ClassRosterImporter({ disabled, onApply, onPendingChange }: Prop
             <thead><tr className="border-b border-[#DCE3EA]"><th scope="col" className="w-20 p-2">번호</th><th scope="col" className="p-2">이름</th></tr></thead>
             <tbody>{preview.students.map((student, index) => <tr key={index} className="border-b border-[#E2E8F0]"><td className="p-2">{student.number}</td><td className="break-words p-2">{student.name}</td></tr>)}</tbody>
           </table> : null}
-          <p className="text-sm leading-6 text-[#526174]">적용하면 아래 편집 명단을 이 명단으로 바꿉니다. 수정 후 ‘학생 명단 저장’을 눌러야 저장됩니다.</p>
+          <p className="text-sm leading-6 text-[#526174]">{applyHelp}</p>
           <div className="flex flex-wrap gap-2">
             <button type="button" className={roleButton} disabled={locked || Boolean(preview.error)} onClick={() => { onApply(rosterImportText(preview.students)); clear(); }}>이 명단 적용</button>
             <button type="button" className={roleSecondary} disabled={locked} onClick={() => { clear(); sourceButtonRef.current?.focus(); }}>가져오기 취소</button>
