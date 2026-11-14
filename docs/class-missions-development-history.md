@@ -52,3 +52,13 @@
 - 검사 자료 main 커밋: [`c947015b47dd499450d9883f81a4b74a4d69fc08`](https://github.com/moodoocoding/schooldoc/commit/c947015b47dd499450d9883f81a4b74a4d69fc08), `test(missions): 실제 로그인과 권한·SQL 원격 검사 기록 (#41)`.
 - 이 작업일지는 `codex/class-missions-work-log` 브랜치의 독립 `docs(missions)` 커밋·PR로 게시한다. 최종 push·main 통합 결과는 이 파일의 GitHub 변경 이력과 연결된 PR에 기록한다.
 - 게시 작업에서는 제품 코드·빌드 설정을 바꾸지 않아 전체 단위·타입·빌드와 원격 쓰기 검사를 재실행하지 않았다. 기존 원격 검사와 이번 파일 게시 검증을 구분했다. DB·Edge Functions의 추가 적용은 해당 없음이며 프런트엔드의 추가 기능 배포도 필요하지 않다.
+
+## 2026-11-14 학생별 완료 현황·미션 관리 UX 배포 (codex)
+
+- 학생별 완료 인정 및 미션별 상태, 미션 제목 검색·상태 필터·페이지 이동을 추가했다. 편집 변경 유실 방지, 이름 가림의 접근성 이름, 모바일 통계 배치와 조회 복원, 필터 밖 상세 안내, 학생 완료·취소 후 키보드 포커스를 보완했다. [화면·모의 검토 기록](../design/class-missions/2026-11-14-student-progress-review.md)
+- GitHub에 `codex/class-missions-student-progress`의 `3b6285ec7b408f0fe940b413e9728755e2138edc`를 푸시하고 [PR #78](https://github.com/moodoocoding/schooldoc/pull/78)을 squash 병합했다. main [`5d39b14ed065eee823adc60e3cb5b1e197b8f436`](https://github.com/moodoocoding/schooldoc/commit/5d39b14ed065eee823adc60e3cb5b1e197b8f436)의 트리가 검증한 브랜치와 같은지 확인했다.
+- 최신 main을 포함한 브랜치에서 타입 검사·린트·빌드·단위 테스트 793건·학급 미션 Chrome 데모 20건이 통과했다. 학급 미션 스크롤 검사도 로컬에서 통과했다. Vercel PR 미리보기 빌드가 성공했고 PR 전체 GitHub Actions 검사는 병합 시점에 진행 중이었다.
+- 프런트엔드 적용 확인. 기존 Vercel `schooldoc`의 운영 배포 `dpl_DfwhZ383eAUMwog1c4WnbFkQuQ89`가 READY였고 공식 주소가 위 main 커밋을 가리켰다. [Vercel 배포](https://vercel.com/panthea0-9353s-projects/schooldoc/DfwhZ383eAUMwog1c4WnbFkQuQ89) · [운영 학급 미션](https://schooldoc-nine.vercel.app/tools/class-missions)
+- 공식 주소의 Chrome 검사에서 HTTP 200과 비로그인 접근 제한을 확인했다. 운영 번들 `/assets/index-C7YK-CFU.js`에 브라우저 가상 세션과 학급 응답을 넣어 이탈 취소 후 입력 유지, 번호로 읽히는 상태 정정, 검색 조건 밖 상세 안내, 일별·학생별 집계, 브라우저 새로고침 후 필터 복원, 390px 첫 학생 행, 학생 키보드 완료·취소와 포커스를 확인했다. 페이지 예외는 0건이었다. 실제 교사 Google 로그인과 운영 Supabase 조회·쓰기는 미실행이다.
+- DB 마이그레이션·Edge Functions 변경은 해당 없음. 요청에 따라 해당 커밋의 [포터블 자동 실행](https://github.com/moodoocoding/schooldoc/actions/runs/43560673108)을 취소했고 릴리즈 미게시를 확인했다.
+- 외부 공용 개발일지가 없어 이 기록을 학급 미션 작업일지의 별도 `docs(missions)` 브랜치에 게시한다.
